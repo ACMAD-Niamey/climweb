@@ -11,3 +11,8 @@ Read more from the user guide - [https://nmhs-cms.readthedocs.io](https://nmhs-c
 ## Docker Installation Guide
 
 For installation instructions with docker, please visit https://github.com/wmo-raf/climweb-docker
+
+ACMAD installation for Development
+
+- To build the project
+  `Make build` or `docker compose -f docker-compose.dev.yml up --build -d --remove-orphans`
