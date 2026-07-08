@@ -192,3 +192,11 @@ node_modules/
 tmp/
 .claude/
 climweb_dump.dump
+# Local runtime data (docker bind mounts)
+cms/
+
+# Accidental root venv artifacts
+bin/
+share/
+pyvenv.cfg
+*.dylib
