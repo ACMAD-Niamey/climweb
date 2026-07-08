@@ -1,144 +1,743 @@
 {% extends "base.html" %}
-{% load static wagtailimages_tags i18n %}
+{% load static wagtailimages_tags i18n wagtailiconchooser_tags %}
 
 {% block body_class %}weather{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'weather/css/weather_detail_page.css' %}">
+  <link rel="stylesheet" href="{% static 'weather/css/weather_detail_page.css' %}">
+  <link rel="stylesheet" href="{% static 'css/maplibre-gl.css' %}">
 {% endblock extra_css %}
+
 {% block content %}
-    <main>
-        {% include "breadcrumbs_include.html" %}
-        <div class="container weather-detail">
-            <div class="header">
-                <div class="city-search">
-                    <label for="city-search" class="search-label">
-                        {% trans "Search Location" %}:
-                    </label>
-                    <div class="dropdown">
-                        <div class="dropdown-trigger">
-                            <div class="control has-icons-left">
-                                <input id="city-search" class="input" type="text"
-                                       placeholder="Search"
-                                       aria-haspopup="true"
-                                       aria-controls="city-search-menu"
-                                       autocomplete="off"
-                                >
-                                <span class="icon is-small is-left">
-                                    <i class="fas fa-search"></i>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="dropdown-menu" id="city-search-menu" role="menu">
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% if error %}
-                <div class="error-message">
-                    <div class="icon is-left">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                    <div>
-                        {{ error_message }}
-                    </div>
-                </div>
-            {% else %}
-                {% if city %}
-                    <h2 class="title is-3 city-name">
-                        <span class="icon is-left">
-                            <i class="fas fa-location-dot"></i>
-                        </span>
-                        <span>
-                            {{ city.name }}
-                        </span>
-                    </h2>
-                {% endif %}
-                <div class="forecast-items">
-                    {% for day, forecast in city_forecasts_by_date.items %}
-                        <div class="forecast-day-item">
-                            <h5 class="title is-6 forecast-date">
-                                {{ day|date:"l j F" }}
-                            </h5>
-                            <div class="table-wrapper">
-                                <table class="table is-fullwidth">
-                                    <thead>
-                                    <tr>
-                                        <th>{% trans "Time" %} </th>
-                                        <th>{% trans "Weather" %} </th>
-                                        {% for param in weather_parameters %}
-                                            <th>{{ param.name }}</th>
-                                        {% endfor %}
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    {% for forecast in forecast %}
-                                        <tr>
-                                            <td>{{ forecast.effective_period.label }}</td>
-                                            <td class="weather-condition">
-                                                <img src="{{ forecast.condition.icon_url }}" alt="">
-                                            </td>
-                                            {% for param in weather_parameters %}
-                                                <td>
-                                                    {% for data in forecast.data_values.all %}
-                                                        {% if data.parameter.parameter == param.parameter and data.value_with_units %}
-                                                            {{ data.value_with_units }}
-                                                        {% endif %}
-                                                    {% endfor %}
-                                                </td>
-                                            {% endfor %}
-                                        </tr>
-                                    {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
+<main>
+  {% include "breadcrumbs_include.html" %}
+
+  <section class="wd-section">
+    <div class="container">
+
+      <div class="wd-card">
+
+        <!-- ── HEADER: city + search ── -->
+        <div class="wd-header">
+          <div class="wd-header-left">
+            {% if city %}
+              <p class="wd-eyebrow">{% trans "Weather detail" %}</p>
+              <h1 class="wd-city">
+                <span class="wd-city-icon">{% svg_icon name="map-pin" %}</span>
+                {{ city.name }}
+              </h1>
             {% endif %}
+          </div>
+          <div class="wd-header-right">
+            <div class="wd-search-wrap dropdown">
+              <div class="dropdown-trigger">
+                <div class="control has-icons-left wd-search-control">
+                  <input id="city-search"
+                         class="input wd-search-input"
+                         type="text"
+                         placeholder="{% trans 'Search location' %}"
+                         aria-haspopup="true"
+                         aria-controls="city-search-menu"
+                         autocomplete="off">
+                  <span class="icon is-small is-left wd-search-icon">
+                    {% svg_icon name="search" %}
+                  </span>
+                </div>
+              </div>
+              <div class="dropdown-menu" id="city-search-menu" role="menu"></div>
+            </div>
+          </div>
         </div>
-    </main>
+
+        {% if error %}
+
+          <!-- ── ERROR STATE ── -->
+          <div class="wd-error">
+            <div class="wd-error-icon">{% svg_icon name="warning" %}</div>
+            <p class="wd-error-msg">{{ error_message }}</p>
+          </div>
+
+        {% else %}
+
+          <!-- ── DAY TABS ── -->
+          <div class="wd-day-tabs" id="wd-day-tabs">
+            {% for day, forecasts in city_forecasts_by_date.items %}
+              <button class="wd-day-tab {% if forloop.first %}active{% endif %}"
+                      data-target="wd-day-{{ day|date:'Y-m-d' }}">
+                <span class="wd-tab-day">
+                  {% if day|date:"Y-m-d" == today %}
+                    {% trans "Today" %}
+                  {% else %}
+                    {{ day|date:"D"|upper }}
+                  {% endif %}
+                </span>
+                <span class="wd-tab-date">{{ day|date:"d M" }}</span>
+              </button>
+            {% endfor %}
+          </div>
+
+          <!-- ── DAY PANELS ── -->
+          <div class="wd-panels">
+            {% for day, forecasts in city_forecasts_by_date.items %}
+              <div class="wd-panel {% if not forloop.first %}wd-hidden{% endif %}"
+                   id="wd-day-{{ day|date:'Y-m-d' }}">
+
+                <div class="wd-table-wrap">
+                  <table class="wd-table">
+                    <thead>
+                      <tr>
+                        <th>{% trans "Time" %}</th>
+                        <th>{% trans "Weather" %}</th>
+                        {% for param in weather_parameters %}
+                          <th>{{ param.name }}</th>
+                        {% endfor %}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for forecast in forecasts %}
+                        <tr>
+                          <td>
+                            <span class="wd-time-badge">
+                              {{ forecast.effective_period.label }}
+                            </span>
+                          </td>
+                          <td class="wd-condition-cell">
+                            <img class="wd-condition-img"
+                                 src="{{ forecast.condition.icon_url }}"
+                                 alt="{{ forecast.condition.label }}"
+                                 title="{{ forecast.condition.label }}">
+                            {% if forecast.condition.label %}
+                              <span class="wd-condition-label">
+                                {{ forecast.condition.label }}
+                              </span>
+                            {% endif %}
+                          </td>
+                          {% for param in weather_parameters %}
+                            <td class="wd-param-cell">
+                              {% for data in forecast.data_values.all %}
+                                {% if data.parameter.parameter == param.parameter and data.value_with_units %}
+                                  <span class="wd-param-val">{{ data.value_with_units }}</span>
+                                {% endif %}
+                              {% endfor %}
+                            </td>
+                          {% endfor %}
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+
+                
+
+              </div>
+            {% endfor %}
+          </div>
+          
+          
+
+        {% endif %}
+
+      </div>
+
+    </div>
+  </section>
+  <section class="wd-section">
+    <div class="container">
+      <div class="wd-card">
+
+        <!-- ── HEADER: graphs ── -->
+        <div class="wd-header">
+          <div >
+              <p class="wd-section-header">{% trans "Weather Graphs" %}</p>
+              <p class="wd-section-subheader">{% trans "Shows forecast values for the currently selected day tab." %}</p>
+          </div>
+        </div>
+        <!-- GRAPHS -->
+         <div class="wd-day-graphs">
+            {{ graph_payloads|json_script:"graph-forecast-data" }}
+            {% if graph_payloads %}
+              <div class="wd-graph" id="temperature-graph"></div>
+              <div class="wd-graph" id="precipitation-graph"></div>
+              <div class="wd-graph" id="wind-graph"></div>
+              <div class="wd-graph" id="air-pressure-graph"></div>
+              <div class="wd-graph" id="humidity-graph"></div>
+            {% else %}
+                <p class="wd-graph-text">{% trans "No weather data to showcase at the moment." %}</p>
+            {% endif %}
+          </div>
+  </section>
+  <section class="wd-section">
+    <div class="container">
+      <div class="wd-card">
+
+        <!-- ── HEADER: map ── -->
+        <div class="wd-header">
+          <div>
+              <p class="wd-section-header">{% trans "City Map" %}</p>
+              <p class="wd-section-subheader">{% trans "Shows the city location and live condition, independent of the selected day tab." %}</p>
+          </div>
+        </div>
+
+        <!-- MAP -->
+        <div id="city-map" class="wd-map">
+          {{ city_map_payload | json_script:"city-map-data" }}
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  
+</main>
 {% endblock content %}
 
 {% block extra_js %}
-    <script type="text/javascript" src="{% static 'js/bulmahead.js' %}"></script>
-    <script>
-        const citySearchUrl = "{{ city_search_url }}"
-        const cityDetailUrl = "{{ city_detail_page_url|default_if_none:"" }}"
+<script type="text/javascript" src="{% static 'js/highcharts.js' %}"></script>
+<script type="text/javascript" src="{% static 'js/accessibility.js' %}"></script>
+<script type="text/javascript" src="{% static 'js/exporting.js' %}"></script>
+<script type="text/javascript" src="{% static 'js/export-data.js' %}"></script>
+<script type="text/javascript" src="{% static 'js/datagrouping.js' %}"></script>
+<script type="text/javascript" src="{% static 'js/windbarb.js' %}"></script>
+<script type="text/javascript" src="{% static 'js/bulmahead.js' %}"></script>
+<script type="text/javascript" src="{% static 'js/maplibre-gl.js' %}"></script>
 
-        $(document).ready(function () {
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
+<script>
+const citySearchUrl = "{{ city_search_url }}";
+const cityDetailUrl = "{{ city_detail_page_url|default_if_none:'' }}";
 
-            const onSelectCity = ({label, value}) => {
-                if (cityDetailUrl) {
-                    let url
-                    // Check if the URL ends with a slash
-                    if (cityDetailUrl.charAt(cityDetailUrl.length - 1) === '/') {
-                        // If it does, append the path without an extra slash
-                        url = cityDetailUrl + value
-                    } else {
-                        // If it doesn't, append the path with a leading slash
-                        url = cityDetailUrl + '/' + value;
-                    }
-                    window.location.href = url;
-                }
-            }
+$(document).ready(function () {
 
-            const getMatchingCity = (name) => {
-                return fetch(`${citySearchUrl}?name=${name}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        return data.map(city => {
-                            return {
-                                label: city.name,
-                                value: city.slug
-                            }
-                        })
-                    })
-            }
-            const citySearch = $('#city-search')
-            if (citySearch) {
-                bulmaHead('city-search', 'city-search-menu', getMatchingCity, onSelectCity, 200, 0);
-            }
+  /* ── DAY TABS ── */
+  const tabs   = document.querySelectorAll('.wd-day-tab');
+  const panels = document.querySelectorAll('.wd-panel');
+
+  function getDayKeyFromTab(tab) {
+    return tab ? tab.dataset.target.replace('wd-day-', '') : '';
+  }
+
+  // Activates tab panel for given dayKey, and renders graphs for that day
+  function setActiveDayTab(dayKey) {
+    tabs.forEach(function (t) {
+      const tabDay = getDayKeyFromTab(t);
+      t.classList.toggle('active', tabDay === dayKey);
+    });
+
+    panels.forEach(function (p) {
+      p.classList.toggle('wd-hidden', p.id !== 'wd-day-' + dayKey);
+    });
+
+    renderGraphsForDay(dayKey);
+  }
+
+  tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      const dayKey = getDayKeyFromTab(tab);
+      setActiveDayTab(dayKey);
+    });
+  });
+
+  /* ── CITY SEARCH ── */
+  const onSelectCity = function ({ label, value }) {
+    if (cityDetailUrl) {
+      var url = cityDetailUrl.endsWith('/')
+        ? cityDetailUrl + value
+        : cityDetailUrl + '/' + value;
+      window.location.href = url;
+    }
+  };
+
+  const getMatchingCity = function (name) {
+    return fetch(citySearchUrl + '?name=' + encodeURIComponent(name))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        return data.map(function (city) {
+          return { label: city.name, value: city.slug };
         });
-    </script>
+      });
+  };
+
+  var citySearch = document.getElementById('city-search');
+  if (citySearch) {
+    bulmaHead('city-search', 'city-search-menu', getMatchingCity, onSelectCity, 200, 0);
+  }
+
+  /* ── HIGHCHARTS GRAPH STYLES ── */
+  const CHART_TITLE_STYLE = {
+    fontSize: '18px'
+  };
+
+  const CHART_RESPONSIVE_RULES = [{
+    condition: {
+      maxWidth: 500,
+      maxHeight: 400
+    },
+    chartOptions: {
+      title: {
+        style: {
+          fontSize: '14px'
+        }
+      },
+      legend: {
+        layout: 'horizontal',
+        align: 'center',
+        verticalAlign: 'bottom'
+      }
+    }
+  }];
+
+
+  /* ── TEMPERATURE LINE GRAPH ── */
+  function renderTemperatureGraph(dayData, dayKey) {
+    const singlePoint = dayData.time_data.length === 1;
+
+    return Highcharts.chart('temperature-graph', {
+      chart: {
+        spacingTop: 20,
+        type: singlePoint ? 'column' : 'line'
+      },
+      title: {
+        text: 'Temperature',
+        align: 'center',
+        style: CHART_TITLE_STYLE
+      },
+      yAxis: {
+        title: {
+          text: 'Temperature (°C)'
+        },
+        labels: {
+          format: '{value}°C'
+        }
+      },
+      xAxis: {
+        type: 'category',
+        categories: dayData.time_data,
+        min: singlePoint ? 0 : null,
+        max: singlePoint ? 0 : null,
+        tickPixelInterval: 80,
+        
+      },
+      tooltip: {
+        valueSuffix: '°C',
+        shared: true
+      },
+      legend: {
+        enabled: true
+      },
+      plotOptions: {
+        series: {
+          marker: {
+            enabled: true,
+            radius: 4
+          },
+          label: {
+            connectorAllowed: false
+          }
+        },
+        column: {
+          pointWidth: singlePoint ? 50 : null,
+          borderRadius: 4
+        }
+      },
+      series: [
+        {
+          name: 'Maximum',
+          data: dayData.air_temperature_max.map(Number),
+          color: '#FF3333'
+        },
+        {
+          name: 'Minimum',
+          data: dayData.air_temperature_min.map(Number),
+          color: '#3333FF'
+        }
+      ],
+      responsive: {
+        rules: CHART_RESPONSIVE_RULES
+      },
+      credits: { enabled: false }
+    });
+  }
+
+  /* ── WIND BARB GRAPH ── */
+  function renderWindGraph(dayData, dayKey) {
+    const singlePoint = dayData.time_data.length === 1;
+    const windSpeeds = dayData.wind_speed.map(Number);
+    const windDirs = dayData.wind_from_direction.map(Number);
+
+    let windSpeedSeries = [];
+    let windBarbSeries = [];
+
+    if (singlePoint) {
+      windSpeedSeries = [[0, windSpeeds[0]]];
+      windBarbSeries = [{
+        x: 0,
+        value: windSpeeds[0],
+        direction: windDirs[0]
+      }];
+    } else {
+      windSpeedSeries = windSpeeds.map((speed, i) => [speed]);
+      windBarbSeries = windSpeeds.map((speed, i) => [speed, windDirs[i]]);
+    }
+
+    return Highcharts.chart('wind-graph', {
+      chart: {
+        spacingTop: 20
+      },
+      title: {
+        text: 'Wind',
+        align: 'center',
+        style: CHART_TITLE_STYLE
+      },
+      yAxis: {
+        title: {
+          text: 'Wind Speed (m/s)'
+        }
+      },
+      xAxis: {
+        type: 'category',
+        categories: dayData.time_data,
+        min: singlePoint ? 0 : null,
+        max: singlePoint ? 0 : null,
+        tickPixelInterval: 80,
+        offset: 40 
+      },
+      tooltip: {
+        valueSuffix: ' m/s',
+        shared: true
+      },
+      legend: {
+        enabled: true
+      },
+      series: [{
+        type: singlePoint ? 'column' : 'area',
+        name: 'Wind speed',
+        data: windSpeedSeries,
+        color: '#2caffe',
+        fillColor: singlePoint ? null : {
+          linearGradient: { x1: 0, x2: 0, y1: 0, y2: 1 },
+          stops: [
+            [0, 'var(--highcharts-color-0, #2caffe)'],
+            [1, 'color-mix(in srgb, var(--highcharts-color-0, #2caffe) 25%, transparent)']
+          ]
+        },
+        pointWidth: singlePoint ? 50 : null,
+        fillColor: {
+          linearGradient: { x1: 0, x2: 0, y1: 0, y2: 1 },
+          stops: [
+            [0, 'var(--highcharts-color-0, #2caffe)'],
+            [
+              1,
+              `color-mix(
+                in srgb,
+                var(--highcharts-color-0, #2caffe) 25%,
+                transparent
+              )`
+            ]
+          ]
+        },
+        tooltip: {
+          shared: true,
+          valueSuffix: ' m/s'
+        },
+        states: {
+          inactive: {
+            opacity: 1
+          }
+        }
+      }, {
+        type: 'windbarb',
+        name: 'Wind',
+        data: windBarbSeries,
+        showInLegend: false,
+        tooltip: {
+          pointFormat: '{beaufort}, {direction:.0f}°'
+        }
+      }],
+      responsive: {
+        rules: CHART_RESPONSIVE_RULES
+      },
+      credits: { enabled: false }
+    });
+  }
+
+  /* ── PRECIPITATION BAR CHART ── */
+  function renderPrecipitationGraph(dayData, dayKey) {
+    const singlePoint = dayData.time_data.length === 1;
+    const precipitationData = dayData.precipitation_amount.map(Number);
+
+    return Highcharts.chart('precipitation-graph', {
+      chart: {
+        spacingTop: 20,
+        type: 'column'
+      },
+      title: {
+        text: 'Precipitation',
+        align: 'center',
+        style: CHART_TITLE_STYLE
+      },
+      yAxis: {
+        title: {
+          text: 'Precipitation (mm)'
+        },
+        labels: {
+          format: '{value} mm'
+        }
+      },
+      xAxis: {
+        type: 'category',
+        categories: dayData.time_data,
+        min: singlePoint ? 0 : null,
+        max: singlePoint ? 0 : null,
+        tickPixelInterval: 80,
+      },
+      tooltip: {
+        valueSuffix: ' mm',
+        shared: true
+      },
+      legend: {
+        enabled: true
+      },
+      plotOptions: {
+        column: {
+          pointWidth: singlePoint ? 50 : null,
+          borderRadius: 4
+        }
+      },
+      series: [
+        {
+          name: 'Precipitation',
+          data: precipitationData,
+          color: '#3b82f6'
+        }
+      ],
+      responsive: {
+        rules: CHART_RESPONSIVE_RULES
+      },
+      credits: { enabled: false }
+    });
+  }
+
+  /* ── AIR PRESSURE BAR CHART ── */
+  function renderAirPressureGraph(dayData, dayKey) {
+    const singlePoint = dayData.time_data.length === 1;
+    const airPressureData = dayData.air_pressure_at_sea_level.map(Number);
+
+    return Highcharts.chart('air-pressure-graph', {
+      chart: {
+        spacingTop: 20,
+        type: 'column'
+      },
+      title: {
+        text: 'Air Pressure',
+        align: 'center',
+        style: CHART_TITLE_STYLE
+      },
+      yAxis: {
+        title: {
+          text: 'Air Pressure (hPa)'
+        },
+        labels: {
+          format: '{value} hPa'
+        }
+      },
+      xAxis: {
+        type: 'category',
+        categories: dayData.time_data,
+        min: singlePoint ? 0 : null,
+        max: singlePoint ? 0 : null,
+        tickPixelInterval: 80,
+      },
+      tooltip: {
+        valueSuffix: ' hPa',
+        shared: true
+      },
+      legend: {
+        enabled: true
+      },
+      plotOptions: {
+        column: {
+          pointWidth: singlePoint ? 50 : null,
+          borderRadius: 4
+        }
+      },
+      series: [
+        {
+          name: 'Air Pressure',
+          data: airPressureData,
+          color: '#f97316'
+        }
+      ],
+      responsive: {
+        rules: CHART_RESPONSIVE_RULES
+      },
+      credits: { enabled: false }
+    });
+  }
+
+  /* ── RELATIVE HUMIDITY BAR CHART ── */
+  function renderHumidityGraph(dayData, dayKey) {
+    const singlePoint = dayData.time_data.length === 1;
+    const humidityData = dayData.relative_humidity.map(Number);
+
+    return Highcharts.chart('humidity-graph', {
+      chart: {
+        spacingTop: 20,
+        type: 'column'
+      },
+      title: {
+        text: 'Relative Humidity',
+        align: 'center',
+        style: CHART_TITLE_STYLE
+      },
+      yAxis: {
+        title: {
+          text: 'Relative Humidity (%)'
+        },
+        labels: {
+          format: '{value} %'
+        }
+      },
+      xAxis: {
+        type: 'category',
+        categories: dayData.time_data,
+        min: singlePoint ? 0 : null,
+        max: singlePoint ? 0 : null,
+        tickPixelInterval: 80,
+      },
+      tooltip: {
+        valueSuffix: ' %',
+        shared: true
+      },
+      legend: {
+        enabled: true
+      },
+      plotOptions: {
+        column: {
+          pointWidth: singlePoint ? 50 : null,
+          borderRadius: 4
+        }
+      },
+      series: [
+        {
+          name: 'Relative Humidity',
+          data: humidityData,
+          color: '#10b981'
+        }
+      ],
+      responsive: {
+        rules: CHART_RESPONSIVE_RULES
+      },
+      credits: { enabled: false }
+    });
+  }
+
+  /* ── MAP (MapLibre GL using OpenStreetMap tiles) ── */
+  function renderMap() {
+    const cityData = JSON.parse(document.getElementById('city-map-data').textContent);
+    if (!cityData || cityData.city_y == null || cityData.city_x == null) return;
+
+    const style = {
+      version: 8,
+      sources: {
+        'osm-tiles': {
+          type: 'raster',
+          tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+          tileSize: 256
+        }
+      },
+      layers: [
+        {
+          id: 'osm-tiles-layer',
+          type: 'raster',
+          source: 'osm-tiles'
+        }
+      ]
+    };
+
+    // Initialize the map
+    const map = new maplibregl.Map({
+      container: 'city-map',
+      style: style,
+      center: [cityData.city_x, cityData.city_y],
+      zoom: 7,
+      scrollZoom: false
+    });
+
+    // Add navigation control (zoom buttons)
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+
+    map.on('load', function () {
+      // pop-up and marker
+      const popupHtml = `<strong>${cityData.city_name || ''}</strong>` + 
+                        (cityData.city_condition ? ` <br> <span class="tag is-info">${cityData.city_condition}</span>` : '');
+      
+      const popup = new maplibregl.Popup({offset: 35}).setHTML(popupHtml);
+
+      const marker = new maplibregl.Marker({
+        color: 'var(--primary-color, #185FA5)'
+      })
+      .setLngLat([cityData.city_x, cityData.city_y])
+      .setPopup(popup)
+      .addTo(map);
+
+      marker.addClassName('wd-map-marker');
+    });
+
+  }
+
+  /* ── HANDLE RESPONSIVENESS FOR HIGHCHARTS GRAPHS ── */
+  window.addEventListener('resize', function() {
+    if (typeof Highcharts !== 'undefined' && Highcharts.charts) {
+      Highcharts.charts.forEach(function(chart) {
+        if (chart) {
+          chart.reflow(); // Instantly recalculated sizing arrays to match fluid container boundaries
+        }
+      });
+    }
+  });
+
+  /* ── RENDER GRAPHS based on active tab if weather data present ── */ 
+  const graphPayloads = JSON.parse(document.getElementById('graph-forecast-data').textContent); 
+
+  function renderGraphsForDay(dayKey) {
+    if (!dayKey) {
+      return;
+    }
+
+    const dayData = graphPayloads[dayKey];
+    if (!dayData || !dayData.time_data || !dayData.time_data.length) {
+      return;
+    }
+
+    if (dayData.has_temperature_data) {
+      renderTemperatureGraph(dayData, dayKey);
+    }
+
+    if (dayData.has_wind_data) {
+      renderWindGraph(dayData, dayKey);
+    }
+
+    if (dayData.has_precipitation_data) {
+      renderPrecipitationGraph(dayData, dayKey);
+    }
+
+    if (dayData.has_air_pressure_data) {
+      renderAirPressureGraph(dayData, dayKey);
+    }
+
+    if (dayData.has_humidity_data) {
+      renderHumidityGraph(dayData, dayKey);
+    }
+  }
+  
+  /* ── INITIALIZE ACTIVE TAB ── */
+  const activeTab = document.querySelector('.wd-day-tab.active') || tabs[0];
+  if (activeTab) {
+    setActiveDayTab(getDayKeyFromTab(activeTab));
+  }
+
+  /* ── RENDER MAP ── */
+  renderMap();
+  
+});
+</script>
 {% endblock %}

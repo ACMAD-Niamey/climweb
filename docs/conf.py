@@ -20,19 +20,13 @@ html_theme = 'sphinx_wagtail_theme'
 
 html_theme_options = {
     "project_name": "ClimWeb Documentation",
-    "github_url": "https://github.com/wmo-raf/nmhs-cms/blob/main/docs/",
-    "header_links": "En|https://nmhs-cms.readthedocs.io/en, Fr|https://nmhs-cms.readthedocs.io/fr, Sw|https://nmhs-cms.readthedocs.io/sw",
+    "github_url": "https://github.com/wmo-raf/climweb/blob/main/docs/",
+    "header_links": "En|https://climweb.readthedocs.io/en, Fr|https://climweb.readthedocs.io/fr, Sw|https://climweb.readthedocs.io/sw, Es|https://climweb.readthedocs.io/es, Pt|https://climweb.readthedocs.io/pt, Am|https://climweb.readthedocs.io/am, Ar|https://climweb.readthedocs.io/ar,",
     "footer_links": ",".join([
         "Demo|http://20.56.94.119/cms/",
         "Packages|https://github.com/wmo-raf",
-        "Developers|https://github.com/wmo-raf/nmhs-cms-init"
+        "Developers|https://github.com/wmo-raf/climweb-docker"
     ]),
-    "logo": "images/logo.svg",
-    "logo_alt": "NMHS",
-    "logo_height": 50,
-    "logo_url": "/",
-    "logo_width": 110,
-
 }
 
 html_css_files = ["css/theme.overrides.css"]
@@ -41,16 +35,6 @@ html_css_files = ["css/theme.overrides.css"]
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath(".."))
-
-import django
-
-# Autodoc may need to import some models modules which require django settings
-# be configured
-os.environ["DJANGO_SETTINGS_MODULE"] = "wagtail.test.settings"
-django.setup()
-
-# Use SQLite3 database engine so it doesn't attempt to use psycopg2 on RTD
-os.environ["DATABASE_ENGINE"] = "django.db.backends.sqlite3"
 
 # -- General configuration ------------------------------------------------
 
@@ -71,6 +55,10 @@ extensions = [
 if not on_rtd:
     extensions.append("sphinxcontrib.spelling")
 
+# Generate HTML anchors for headings up to level 3 (###), so markdown links
+# like "Other-Page.md#some-heading" between doc pages resolve correctly.
+myst_heading_anchors = 3
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
@@ -84,7 +72,7 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = "NMHS ClimWeb Documentation"
+project = "ClimWeb Documentation"
 copyright = f"{datetime.now().year}, WMO Regional Office For Africa"
 
 # The version info for the project you're documenting, acts as replacement for
@@ -93,8 +81,13 @@ copyright = f"{datetime.now().year}, WMO Regional Office For Africa"
 
 import re
 
+import subprocess
 # The full version, including alpha/beta/rc tags.
-release = re.sub('^v', '', os.popen('git describe --tags').read().strip())
+try:
+    git_describe = subprocess.check_output(['git', 'describe', '--tags'], encoding='utf-8').strip()
+    release = re.sub('^v', '', git_describe)
+except Exception:
+    release = ''
 # The short X.Y version.
 version = release
 
@@ -111,8 +104,9 @@ version = release
 # for a list of supported languages.
 # language = 'en'
 # gettext_uuid = True
-# gettext_compact = False
-locales_dirs = ['locale']
+gettext_compact = True
+# locales_dirs = ['locale']
+locale_dirs = [os.path.abspath("locale")]
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
@@ -240,10 +234,64 @@ html_show_sphinx = True
 # html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "NMHSCMSdoc"
+htmlhelp_basename = "Climwebdoc"
 
 # -- Options for LaTeX output ---------------------------------------------
+language = os.environ.get("READTHEDOCS_LANGUAGE", "en")
 
+if language == "ar":
+    latex_engine = "xelatex"
+    latex_elements = {
+        "preamble": r"""
+            \usepackage{fontspec}
+            \usepackage{polyglossia}
+            \usepackage{bidi}
+            \usepackage{graphicx}
+            \usepackage{adjustbox}
+            \usepackage{etoolbox}
+
+            \setmainlanguage{arabic}
+            \setotherlanguage{english}
+
+            \setmainfont{FreeSerif}
+            \newfontfamily\arabicfont[Script=Arabic]{FreeSerif}
+
+            \geometry{a4paper, margin=1in, twoside}
+
+            % FIX IMAGES (KEY PART)
+            \setkeys{Gin}{width=\linewidth,keepaspectratio}
+
+            \AtBeginEnvironment{figure}{\begin{LTR}\centering}
+            \AtEndEnvironment{figure}{\end{LTR}}
+
+            \AtBeginEnvironment{figure*}{\begin{LTR}\centering}
+            \AtEndEnvironment{figure*}{\end{LTR}}
+        """
+    }
+elif language == "am":
+        latex_engine = "xelatex"
+        latex_elements = {
+        "preamble": r"""
+            \usepackage{fontspec}
+            \usepackage{polyglossia}
+            \usepackage{graphicx}
+            \usepackage{adjustbox}
+            \usepackage{geometry}
+
+            \setmainlanguage{amharic}
+            \setotherlanguage{english}
+
+            % Ethiopic font (VERY important)
+            \setmainfont{FreeSerif}
+            \newfontfamily\ethiopicfont{FreeSerif}
+
+            \geometry{a4paper, margin=1in}
+
+            % Fix images
+            \setkeys{Gin}{width=\linewidth,keepaspectratio}
+            \AtBeginEnvironment{figure}{\centering}
+        """
+    }
 # latex_elements = {
 # The paper size ('letterpaper' or 'a4paper').
 # 'papersize': 'a4paper',
@@ -262,7 +310,7 @@ htmlhelp_basename = "NMHSCMSdoc"
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    ("index", "NMHS_CMS.tex", "NMHS ClimWeb Documentation", "ORGANISATION", "manual"),
+    ("index", "climweb.tex", "ClimWeb Documentation", "ORGANISATION", "manual"),
 ]
 
 # with open('./cover.tex', 'r') as cover_page_file:
@@ -294,7 +342,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [("index", "NMHS ClimWeb", "NMHS ClimWeb Documentation", ["ORGANISATION"], 1)]
+man_pages = [("index", "ClimWeb", "ClimWeb Documentation", ["ORGANISATION"], 1)]
 
 # If true, show URL addresses after external links.
 # man_show_urls = False
@@ -307,9 +355,8 @@ man_pages = [("index", "NMHS ClimWeb", "NMHS ClimWeb Documentation", ["ORGANISAT
 texinfo_documents = [
     (
         "index",
-        "NMHS ClimWeb",
-        "NMHS ClimWeb Documentation",
-        "NMHS ClimWeb",
+        "ClimWeb",
+        "ClimWeb Documentation",
         "One line description of project.",
         "Miscellaneous",
     ),

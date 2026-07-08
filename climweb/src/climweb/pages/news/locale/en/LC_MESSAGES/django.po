@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-03 11:31+0300\n"
+"POT-Creation-Date: 2026-05-11 07:47+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,145 +18,169 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: pages/news/models.py:32
+#: climweb/src/climweb/pages/news/models.py:35
 msgid "Name"
 msgstr "Name"
 
-#: pages/news/models.py:44
+#: climweb/src/climweb/pages/news/models.py:47
+#: climweb/src/climweb/pages/news/templates/news_filter_include.html:8
 msgid "News Type"
 msgstr "News Type"
 
-#: pages/news/models.py:45
+#: climweb/src/climweb/pages/news/models.py:48
 msgid "News Types"
 msgstr "News Types"
 
-#: pages/news/models.py:56
+#: climweb/src/climweb/pages/news/models.py:59
 msgid "Items per page"
 msgstr "Items per page"
 
-#: pages/news/models.py:57
+#: climweb/src/climweb/pages/news/models.py:60
 msgid ""
 "How many items should be visible on the news landing page filter section ?"
 msgstr ""
 "How many items should be visible on the news landing page filter section ?"
 
-#: pages/news/models.py:66
+#: climweb/src/climweb/pages/news/models.py:69
 msgid "Other settings"
 msgstr "Other settings"
 
-#: pages/news/models.py:71
+#: climweb/src/climweb/pages/news/models.py:74
 msgid "News Index Page"
 msgstr "News Index Page"
 
-#: pages/news/models.py:151
+#: climweb/src/climweb/pages/news/models.py:153
 msgid "News type"
 msgstr "News type"
 
-#: pages/news/models.py:152
+#: climweb/src/climweb/pages/news/models.py:154
 msgid "Post date"
 msgstr "Post date"
 
-#: pages/news/models.py:153
+#: climweb/src/climweb/pages/news/models.py:155
 msgid "Optional subtitle"
 msgstr "Optional subtitle"
 
-#: pages/news/models.py:153
+#: climweb/src/climweb/pages/news/models.py:155
 msgid "Subtitle"
 msgstr "Subtitle"
 
-#: pages/news/models.py:154
+#: climweb/src/climweb/pages/news/models.py:156
 msgid "Body"
 msgstr "Body"
 
-#: pages/news/models.py:155
-msgid "Feature Image"
-msgstr "Feature Image"
-
-#: pages/news/models.py:156
+#: climweb/src/climweb/pages/news/models.py:157
 msgid "Relevant Services"
 msgstr "Relevant Services"
 
-#: pages/news/models.py:157
+#: climweb/src/climweb/pages/news/models.py:158
 msgid "Relevant Projects"
 msgstr "Relevant Projects"
 
-#: pages/news/models.py:158
+#: climweb/src/climweb/pages/news/models.py:159
 msgid ""
 "Should this news appear on the news landing paging as the featured one ?"
 msgstr ""
 "Should this news appear on the news landing paging as the featured one ?"
 
-#: pages/news/models.py:160
+#: climweb/src/climweb/pages/news/models.py:161
 msgid "Is featured"
 msgstr "Is featured"
 
-#: pages/news/models.py:161
+#: climweb/src/climweb/pages/news/models.py:162
 msgid "Is this an alert ?"
 msgstr "Is this an alert ?"
 
-#: pages/news/models.py:161
+#: climweb/src/climweb/pages/news/models.py:162
 msgid "Is alert"
 msgstr "Is alert"
 
-#: pages/news/models.py:163
+#: climweb/src/climweb/pages/news/models.py:164
 msgid "Should this appear in the homepage as an alert/latest update ?"
 msgstr "Should this appear in the homepage as an alert/latest update ?"
 
-#: pages/news/models.py:165
+#: climweb/src/climweb/pages/news/models.py:166
 msgid "Is visible on homepage"
 msgstr "Is visible on homepage"
 
-#: pages/news/models.py:166
+#: climweb/src/climweb/pages/news/models.py:167
 msgid "Extra links heading"
 msgstr "Extra links heading"
 
-#: pages/news/models.py:170
+#: climweb/src/climweb/pages/news/models.py:171
 msgid "Extra links"
 msgstr "Extra links"
 
-#: pages/news/models.py:172 pages/news/templates/news_detail_page.html:56
+#: climweb/src/climweb/pages/news/models.py:173
+#: climweb/src/climweb/pages/news/templates/news_detail_page.html:98
 msgid "Tags"
 msgstr "Tags"
 
-#: pages/news/models.py:186
+#: climweb/src/climweb/pages/news/models.py:187
 msgid "Extra Links"
 msgstr "Extra Links"
 
-#: pages/news/models.py:204
+#: climweb/src/climweb/pages/news/models.py:205
 msgid "News Page"
 msgstr "News Page"
 
-#: pages/news/templates/news_detail_page.html:72
+#: climweb/src/climweb/pages/news/templates/news_detail_page.html:56
 msgid "Find out more"
 msgstr "Find out more"
 
-#: pages/news/templates/news_filter_include.html:9
-msgid "Filter by News Type"
-msgstr "Filter by News Type"
+#: climweb/src/climweb/pages/news/templates/news_detail_page.html:74
+msgid "Article info"
+msgstr "Article info"
 
-#: pages/news/templates/news_filter_include.html:34
-msgid "Filter by Service"
-msgstr "Filter by Service"
+#: climweb/src/climweb/pages/news/templates/news_detail_page.html:91
+msgid "Share"
+msgstr "Share"
 
-#: pages/news/templates/news_filter_include.html:56
-msgid "Filter by Year"
-msgstr "Filter by Year"
+#: climweb/src/climweb/pages/news/templates/news_filter_include.html:32
+msgid "Service"
+msgstr "Service"
 
-#: pages/news/templates/news_index_page.html:18
+#: climweb/src/climweb/pages/news/templates/news_filter_include.html:56
+msgid "Year"
+msgstr "Year"
+
+#: climweb/src/climweb/pages/news/templates/news_index_page.html:20
+#, fuzzy
+#| msgid "Featured News"
+msgid "Featured"
+msgstr "Featured"
+
+#: climweb/src/climweb/pages/news/templates/news_index_page.html:21
 msgid "Featured News"
 msgstr "Featured News"
 
-#: pages/news/templates/news_index_page.html:27
+#: climweb/src/climweb/pages/news/templates/news_index_page.html:33
+msgid "Latest"
+msgstr "Latest"
+
+#: climweb/src/climweb/pages/news/templates/news_index_page.html:34
 msgid "All News Updates"
 msgstr "All News Updates"
 
-#: pages/news/templates/news_list_include.html:6
+#: climweb/src/climweb/pages/news/templates/news_list_include.html:8
 #, python-format
 msgid "Showing %(counter)s result"
 msgid_plural "Showing %(counter)s results"
 msgstr[0] ""
 msgstr[1] ""
 
-#: pages/news/templates/news_list_include.html:69
+#: climweb/src/climweb/pages/news/templates/news_list_include.html:77
 msgid "Read More"
 msgstr "Read More"
+
+#~ msgid "Filter by News Type"
+#~ msgstr "Filter by News Type"
+
+#~ msgid "Filter by Service"
+#~ msgstr "Filter by Service"
+
+#~ msgid "Filter by Year"
+#~ msgstr "Filter by Year"
+
+#~ msgid "Feature Image"
+#~ msgstr "Feature Image"

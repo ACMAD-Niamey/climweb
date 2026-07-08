@@ -1,198 +1,269 @@
-# SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-# This file is distributed under the same license as the PACKAGE package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
-#
-#, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
+"Project-Id-Version: nmhs-cms\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-03 11:31+0300\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: \n"
+"POT-Creation-Date: 2026-05-11 07:47+0300\n"
+"PO-Revision-Date: 2026-06-22 11:39\n"
+"Last-Translator: \n"
+"Language-Team: Spanish\n"
+"Language: es_ES\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Crowdin-Project: nmhs-cms\n"
+"X-Crowdin-Project-ID: 672958\n"
+"X-Crowdin-Language: es-ES\n"
+"X-Crowdin-File: /climweb/src/climweb/config/locale/en/LC_MESSAGES/django.po\n"
+"X-Crowdin-File-ID: 1296\n"
 
-#: nmhs_cms/templates/404.html:22
+#: climweb/src/climweb/config/templates/404.html:20
 msgid "Page not found"
 msgstr "Página no encontrada"
 
-#: nmhs_cms/templates/404.html:26
+#: climweb/src/climweb/config/templates/404.html:24
 msgid "Sorry, this page could not be found"
 msgstr "Lo sentimos, esta página no se pudo encontrar"
 
-#: nmhs_cms/templates/404.html:30 nmhs_cms/templates/500.html:27
+#: climweb/src/climweb/config/templates/404.html:28
+#: climweb/src/climweb/config/templates/500.html:26
 msgid "Back to Home Page"
 msgstr "Volver a la página de inicio"
 
-#: nmhs_cms/templates/500.html:20
+#: climweb/src/climweb/config/templates/500.html:19
 msgid "Internal server error"
 msgstr "Error Interno del Servidor"
 
-#: nmhs_cms/templates/500.html:23
+#: climweb/src/climweb/config/templates/500.html:22
 msgid "Sorry, there seems to be an error. Please try again soon"
+msgstr "Lo sentimos, parece haber un error. Por favor inténtalo de nuevo pronto"
+
+#: climweb/src/climweb/config/templates/applications_include.html:6
+msgid "Tools & Apps"
+msgstr "Herramientas y aplicaciones"
+
+#: climweb/src/climweb/config/templates/applications_include.html:7
+#| msgid "Go to publication"
+msgid "Applications"
 msgstr ""
-"Lo sentimos, parece haber un error. Por favor inténtalo de nuevo pronto"
 
-#: nmhs_cms/templates/applications_include.html:19
-msgid "View"
-msgstr "Vista"
+#: climweb/src/climweb/config/templates/applications_include.html:37
+msgid "Open App"
+msgstr "Abrir aplicación"
 
-#: nmhs_cms/templates/document_detail_include.html:33
-#, python-format
-msgid "Download - %(file_size)s"
-msgstr "Descargar - %(file_size)s"
+#: climweb/src/climweb/config/templates/axes/lockout.html:4
+#: climweb/src/climweb/config/templates/wagtail_2fa/otp_form.html:4
+#: climweb/src/climweb/config/templates/wagtail_2fa/otp_form.html:52
+msgid "Sign in"
+msgstr "Iniciar sesión"
 
-#: nmhs_cms/templates/document_detail_include.html:44
-#: nmhs_cms/templates/document_detail_include.html:148
-msgid "Go to publication"
-msgstr "Ir a publicación"
+#: climweb/src/climweb/config/templates/axes/lockout.html:10
+msgid "Account Locked"
+msgstr "Cuenta bloqueada"
 
-#: nmhs_cms/templates/document_detail_include.html:76
-msgid "Additional Materials"
-msgstr "Materiales adicionales"
+#: climweb/src/climweb/config/templates/axes/lockout.html:16
+msgid "Your account has been locked due to multiple failed login attempts. Please try again later."
+msgstr "Su cuenta ha sido bloqueada debido a múltiples intentos fallidos de inicio de sesión. Inténtelo de nuevo más tarde."
 
-#: nmhs_cms/templates/document_detail_include.html:116
-#: nmhs_cms/templates/featured_item_include.html:45
-msgid "Tags"
-msgstr "Etiquetas"
+#: climweb/src/climweb/config/templates/axes/lockout.html:20
+msgid "Back to sign in"
+msgstr "Volver para iniciar sesión"
 
-#: nmhs_cms/templates/document_detail_include.html:138
-msgid "Download document"
-msgstr "Descargar documento"
+#: climweb/src/climweb/config/templates/axes/lockout.html:23
+#| msgid ""
+#| "You account has been locked due to multiple failed login attempts. Please "
+#| "contact our support team for assistance."
+msgid "Your account has been locked due to multiple failed login attempts. Please contact our support team for assistance."
+msgstr "Su cuenta ha sido bloqueada debido a múltiples intentos fallidos de inicio de sesión. Comuníquese con nuestro equipo de soporte para obtener ayuda."
 
-#: nmhs_cms/templates/empty_items.html:7
+#: climweb/src/climweb/config/templates/axes/lockout.html:31
+#: climweb/src/climweb/config/templates/navigation/app_navbar.html:86
+#: climweb/src/climweb/config/templates/navigation/navbar.html:84
+#: climweb/src/climweb/config/templates/navigation/navbar.html:168
+msgid "Contact us"
+msgstr "Contáctenos"
+
+#: climweb/src/climweb/config/templates/bulma/forms/field.html:109
+msgid "Choose a file"
+msgstr "Elige un archivo"
+
+#: climweb/src/climweb/config/templates/bulma/forms/field.html:113
+msgid "Please select a file"
+msgstr "Por favor seleccione un archivo"
+
+#: climweb/src/climweb/config/templates/empty_items.html:7
 msgid "Nothing listed at the moment"
 msgstr "No hay nada listado por el momento."
 
-#: nmhs_cms/templates/empty_state_include.html:24
+#: climweb/src/climweb/config/templates/empty_state_include.html:24
 msgid "No data found"
 msgstr "Datos no encontrados"
 
-#: nmhs_cms/templates/events_include.html:44
-msgid "More Events"
-msgstr "Más eventos"
+#: climweb/src/climweb/config/templates/events_include.html:8
+msgid "Upcoming"
+msgstr "Próximo"
 
-#: nmhs_cms/templates/featured_item_include.html:28
+#: climweb/src/climweb/config/templates/events_include.html:9
+#| msgid "More Events"
+msgid "Events"
+msgstr ""
+
+#: climweb/src/climweb/config/templates/events_include.html:13
+msgid "All events"
+msgstr "Todos los eventos"
+
+#: climweb/src/climweb/config/templates/featured_item_include.html:28
 msgid "Featured"
 msgstr "Presentado"
 
-#: nmhs_cms/templates/featured_item_include.html:59
+#: climweb/src/climweb/config/templates/featured_item_include.html:45
+msgid "Tags"
+msgstr "Etiquetas"
+
+#: climweb/src/climweb/config/templates/featured_item_include.html:59
 msgid "Read More"
 msgstr "Leer más"
 
-#: nmhs_cms/templates/form_thank_you_landing.html:33
+#: climweb/src/climweb/config/templates/form_thank_you_landing.html:33
 msgid "We have received your submission. Thank you!"
 msgstr "Hemos recibido su envío. ¡Gracias!"
 
-#: nmhs_cms/templates/form_thank_you_landing.html:44
+#: climweb/src/climweb/config/templates/form_thank_you_landing.html:44
 msgid "Back to Homepage"
 msgstr "Volver a la página de inicio"
 
-#: nmhs_cms/templates/modeladmin/index.html:33
+#: climweb/src/climweb/config/templates/modeladmin/index.html:33
 msgid "Download XLSX"
 msgstr "Descargar XLSX"
 
-#: nmhs_cms/templates/modeladmin/index.html:39
+#: climweb/src/climweb/config/templates/modeladmin/index.html:39
 msgid "Download CSV"
 msgstr "Descargar CSV"
 
-#: nmhs_cms/templates/modeladmin/index.html:62
+#: climweb/src/climweb/config/templates/modeladmin/index.html:62
 msgid "Filter"
 msgstr "Filtrar"
 
-#: nmhs_cms/templates/modeladmin/index.html:74
+#: climweb/src/climweb/config/templates/modeladmin/index.html:74
 #, python-format
-msgid ""
-"No %(name)s have been created yet. One of the following must be created "
-"before you can add any %(name)s:"
-msgstr ""
-"Aún no se han creado %(name)s. Se debe crear uno de los siguientes antes de "
-"poder agregar %(name)s:"
+msgid "No %(name)s have been created yet. One of the following must be created before you can add any %(name)s:"
+msgstr "Aún no se han creado %(name)s. Se debe crear uno de los siguientes antes de poder agregar %(name)s:"
 
-#: nmhs_cms/templates/modeladmin/index.html:79
+#: climweb/src/climweb/config/templates/modeladmin/index.html:79
 #, python-format
 msgid "No %(name)s have been created yet."
 msgstr "Aún no se han creado %(name)s."
 
-#: nmhs_cms/templates/modeladmin/index.html:81
+#: climweb/src/climweb/config/templates/modeladmin/index.html:81
 #, python-format
 msgid "Why not <a href=\"%(url)s\">add one</a>?"
 msgstr "¿Por qué no <a href=\"%(url)s\">añadir uno</a>?"
 
-#: nmhs_cms/templates/modeladmin/index.html:96
+#: climweb/src/climweb/config/templates/modeladmin/index.html:96
 msgid "Pagination"
 msgstr "Paginación"
 
-#: nmhs_cms/templates/modeladmin/index.html:97
+#: climweb/src/climweb/config/templates/modeladmin/index.html:97
 #, python-format
 msgid "Page %(current_page)s of %(num_pages)s."
 msgstr "Página %(current_page)s de %(num_pages)s."
 
-#: nmhs_cms/templates/navigation/footer.html:37
-#, fuzzy
-#| msgid "Powered by NMHS ClimWeb"
-msgid "Powered by Climweb"
-msgstr "Desarrollado por Climweb"
-
-#: nmhs_cms/templates/navigation/navbar.html:26
+#: climweb/src/climweb/config/templates/navigation/app_navbar.html:26
+#: climweb/src/climweb/config/templates/navigation/navbar.html:32
+#: climweb/src/climweb/config/templates/navigation/navbar.html:156
 msgid "Alerts"
 msgstr "Alertas"
 
-#: nmhs_cms/templates/navigation/navbar.html:35
+#: climweb/src/climweb/config/templates/navigation/app_navbar.html:35
+#: climweb/src/climweb/config/templates/navigation/navbar.html:41
+#: climweb/src/climweb/config/templates/navigation/navbar.html:162
+#: climweb/src/climweb/config/templates/videos_include.html:39
+#: climweb/src/climweb/config/templates/videos_include.html:88
 msgid "Subscribe"
 msgstr "Suscribir"
 
-#: nmhs_cms/templates/navigation/navbar.html:45
+#: climweb/src/climweb/config/templates/navigation/app_navbar.html:45
+#: climweb/src/climweb/config/templates/navigation/navbar.html:49
 msgid "Language"
 msgstr "Idioma"
 
-#: nmhs_cms/templates/navigation/navbar.html:79
+#: climweb/src/climweb/config/templates/navigation/app_navbar.html:76
+#: climweb/src/climweb/config/templates/navigation/navbar.html:72
+#: climweb/src/climweb/config/templates/navigation/navbar.html:76
 msgid "Search"
 msgstr "Buscar"
 
-#: nmhs_cms/templates/navigation/navbar.html:89
-msgid "Contact us"
-msgstr "Contáctenos"
-
-#: nmhs_cms/templates/navigation/navbar.html:96
+#: climweb/src/climweb/config/templates/navigation/app_navbar.html:93
+#: climweb/src/climweb/config/templates/navigation/navbar.html:91
+#: climweb/src/climweb/config/templates/navigation/navbar.html:174
 msgid "Feedback"
 msgstr "Comentario"
 
-#: nmhs_cms/templates/projects_include.html:7
+#: climweb/src/climweb/config/templates/navigation/footer.html:98
+msgid "Powered by Climweb"
+msgstr "Desarrollado por Climweb"
+
+#: climweb/src/climweb/config/templates/projects_include.html:7
 msgid "Projects"
 msgstr "Proyectos"
 
-#: nmhs_cms/templates/projects_include.html:15
+#: climweb/src/climweb/config/templates/projects_include.html:15
 msgid "More Projects"
 msgstr "Más proyectos"
 
-#: nmhs_cms/templates/update_card_include.html:58
+#: climweb/src/climweb/config/templates/update_card_include.html:75
 msgid "Read more"
 msgstr "Leer más"
 
-#: nmhs_cms/templates/videos_include.html:21
-#, python-format
-msgid "Published on : %(updated_on)s"
-msgstr "Publicado el: %(updated_on)s"
+#: climweb/src/climweb/config/templates/videos_include.html:29
+#: climweb/src/climweb/config/templates/videos_include.html:77
+#| msgid "Published on : %(updated_on)s"
+msgid "Published on: %(updated_on)s"
+msgstr ""
 
-#: nmhs_cms/templates/videos_include.html:33
-msgid "SUBSCRIBE"
-msgstr "SUSCRIBIR"
+#: climweb/src/climweb/config/templates/wagtail_2fa/otp_form.html:12
+msgid "Enter your two-factor authentication code"
+msgstr "Ingrese su código de autenticación de dos factores"
 
-#: nmhs_cms/templates/wagtailadmin/home.html:5
+#: climweb/src/climweb/config/templates/wagtail_2fa/otp_form.html:21
+msgid "Invalid code"
+msgstr "código no válido"
+
+#: climweb/src/climweb/config/templates/wagtail_2fa/otp_form.html:52
+msgid "Signing in…"
+msgstr "Iniciando sesión…"
+
+#: climweb/src/climweb/config/templates/wagtail_2fa/otp_form.html:56
+msgid "Sign out"
+msgstr "desconectar"
+
+#: climweb/src/climweb/config/templates/wagtailadmin/home.html:5
 msgid "Welcome to"
 msgstr "Bienvenido a"
 
-#: nmhs_cms/templates/wagtailadmin/home.html:9
-msgid "NMHS ClimWeb"
-msgstr "SMHN ClimWeb"
+#: climweb/src/climweb/config/templates/wagtailadmin/login.html:6
+msgid "Sign in to"
+msgstr "Inicie sesión en"
 
-#: nmhs_cms/templates/what_we_do_section.html:8
-msgid "What we do"
-msgstr "que hacemos"
+#~ msgid "View"
+#~ msgstr "View"
+
+#~ msgid "SUBSCRIBE"
+#~ msgstr "SUBSCRIBE"
+
+#, python-format
+#~ msgid "Download - %(file_size)s"
+#~ msgstr "Download - %(file_size)s"
+
+#~ msgid "Additional Materials"
+#~ msgstr "Additional Materials"
+
+#~ msgid "Download document"
+#~ msgstr "Download document"
+
+#~ msgid "NMHS ClimWeb"
+#~ msgstr "NMHS ClimWeb"
+
+#~ msgid "What we do"
+#~ msgstr "What we do"
+

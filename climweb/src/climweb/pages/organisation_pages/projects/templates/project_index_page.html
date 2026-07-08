@@ -19,7 +19,7 @@
         {% else %}
             <section class="nmhs-work" style="background-color:#f8f9fb">
                 <div class="work container">
-                    <h2 class="section-subheader">
+                    <h2 class="title is-3">
                         {{ page.introduction_title }}
                     </h2>
                     <div class="intro-description format-text">
@@ -59,11 +59,8 @@
 
             if (windowWidth <= 768) {
                 //for  smaller devices
-                $('.publication-filter .js-accordion-item').removeClass('active');
+                $('.js-accordion-item').removeClass('active');
             }
-
-            // initialize filter accordion
-            accordion.init({speed: 300, oneOpen: false});
 
             const listButton = $("#list-view-button");
             const gridButton = $("#grid-view-button");

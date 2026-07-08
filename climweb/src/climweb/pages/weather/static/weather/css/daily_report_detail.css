@@ -5,12 +5,18 @@
 .report-item .report-item-title {
     padding: 10px;
     margin-bottom: 10px;
-    border-left: 2px solid var(--primary-color);
+    border-left: 2px solid var(--text-color);
     background-color: #f8f9fb;
 }
 
 .report-item .report-item-date {
     margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+}
+
+.report-item .report-item-date svg {
+    margin-right: 10px;
 }
 
 .extremes-observation-section {

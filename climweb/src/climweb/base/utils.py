@@ -16,6 +16,45 @@ from wagtail.images import get_image_model
 from .constants import COUNTRIES
 
 CMS_UPGRADE_HOOK_URL = getattr(settings, "CMS_UPGRADE_HOOK_URL", None)
+CMS_PLUGIN_MANAGE_HOOK_URL = getattr(settings, "CMS_PLUGIN_MANAGE_HOOK_URL", None)
+
+
+def send_plugin_remove(plugin_name):
+    """Send a remove command to the plugin-remove webhook."""
+    if CMS_PLUGIN_MANAGE_HOOK_URL:
+        payload = {"plugin_name": plugin_name}
+        headers = {"X-Webhook-Secret": settings.SECRET_KEY}
+        request = requests.Request("POST", CMS_PLUGIN_MANAGE_HOOK_URL, json=payload, headers=headers)
+        prepped = request.prepare()
+        with requests.Session() as session:
+            session.send(prepped)
+
+
+def hex_to_rgb(hex_color):
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i + 2], 16) / 255 for i in (0, 2, 4))
+
+
+def rgb_to_hex(rgb):
+    return '#%02x%02x%02x' % tuple(int(c * 255) for c in rgb)
+
+
+def mix_with_white(hex_color, amount=0.9):
+    """
+    amount = 0.0 → original color
+    amount = 1.0 → white
+    """
+    hex_color = hex_color.lstrip('#')
+    
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+    
+    r = int(r + (255 - r) * amount)
+    g = int(g + (255 - g) * amount)
+    b = int(b + (255 - b) * amount)
+    
+    return f'#{r:02x}{g:02x}{b:02x}'
 
 
 def validate_svg(f):
@@ -28,14 +67,14 @@ def validate_svg(f):
             break
     except et.ParseError:
         pass
-
+    
     # Check that this "tag" is correct
     if tag != '{http://www.w3.org/2000/svg}svg':
         raise ValidationError('Uploaded file is not an image or SVG file.')
-
+    
     # Do not forget to "reset" file
     f.seek(0)
-
+    
     return f
 
 
@@ -70,36 +109,34 @@ def query_param_to_list(query_param, as_int=False):
     if query_param:
         # convert to list and remove empty items
         query_param_list = filter(None, query_param.split(','))
-
+        
         if as_int:
             # convert to int
             query_param_list = map(int, query_param_list)
-
+        
         try:
             return list(query_param_list)
         except ValueError:
             # TODO: Return error message
             pass
-
+    
     return None
 
 
 def get_first_img_src(html):
     # parse html and get first image src
     soup = BeautifulSoup(html, 'html.parser')
-    img = soup.find('img')
+    img = soup.find('img', )
     if img and img['src']:
         return img['src']
     return None
 
 
-def get_first_non_empty_p_string(html):
-    # parse html and get first non empty p tag text
+def get_first_non_empty_p_string(html, remove_tags=False):
     soup = BeautifulSoup(html, 'html.parser')
-
-    p = soup.find(lambda tag: tag.name == 'p' and tag.text is not None and tag.text.strip() != "")
+    p = soup.find(lambda tag: tag.name == 'p' and tag.text.strip())
     if p:
-        return p.text
+        return p.get_text(separator=' ') if remove_tags else p.text
     return None
 
 
@@ -126,16 +163,16 @@ def get_pytz_gmt_offset_str(tz):
     gmt_timezone = pytz.timezone('Greenwich')
     time_ref = datetime.datetime(2000, 1, 1)
     time_zero = gmt_timezone.localize(time_ref)
-
+    
     delta = (time_zero - tz.localize(time_ref)).total_seconds()
     h = (datetime.datetime.min + datetime.timedelta(seconds=delta.__abs__())).hour
     gmt_diff = datetime.time(h).strftime('%H:%M')
-
+    
     gmt_offset = "GMT{sign}{gmt_diff} {timezone}".format(
         sign="-" if delta < 0 else "+",
         gmt_diff=gmt_diff,
         timezone=tz.zone.replace('_', ' '))
-
+    
     return gmt_offset
 
 
@@ -144,29 +181,82 @@ def get_country_info(country_iso):
 
 
 def get_latest_cms_release():
-    r = requests.get("https://api.github.com/repos/wmo-raf/nmhs-cms/releases/latest")
+    r = requests.get("https://api.github.com/repos/wmo-raf/climweb/releases/latest")
     r.raise_for_status()
     res = r.json()
     version = res.get("name")
     version = version.strip("v").strip("V")
-
+    body = res.get("body")
+    published_at = res.get("published_at")
+    
     return {
         "version": version,
-        "html_url": res.get("html_url")
+        "html_url": res.get("html_url"),
+        "published_at": published_at,
+        "body": body,
     }
 
 
 def send_upgrade_command(latest_version):
     if CMS_UPGRADE_HOOK_URL:
         payload = {"latest_version": latest_version}
-        request = requests.Request('POST', CMS_UPGRADE_HOOK_URL, json=payload, headers={})
-
+        headers = {
+            "X-Webhook-Secret": settings.SECRET_KEY,
+        }
+        request = requests.Request('POST', CMS_UPGRADE_HOOK_URL, json=payload, headers=headers)
+        
         prepped = request.prepare()
-        # signature = hmac.new(codecs.encode(GSKY_WEBHOOK_SECRET), codecs.encode(prepped.body), digestmod=hashlib.sha256)
-        # prepped.headers['X-ClimWeb-Signature'] = signature.hexdigest()
-
+        
         with requests.Session() as session:
-            response = session.send(prepped)
+            session.send(prepped)
+
+
+def get_installed_plugins():
+    """Return a list of dicts describing each installed plugin, read from climweb_plugin_info.json."""
+    import json
+    import os
+    
+    plugin_dirs = getattr(settings, "CLIMWEB_PLUGIN_DIR", ["/climweb/plugins"])
+    plugins = []
+    
+    for base_dir in plugin_dirs:
+        if not os.path.isdir(base_dir):
+            continue
+        for entry in sorted(os.scandir(base_dir), key=lambda e: e.name):
+            if not entry.is_dir():
+                continue
+            info_file = os.path.join(entry.path, "climweb_plugin_info.json")
+            if os.path.isfile(info_file):
+                try:
+                    with open(info_file) as f:
+                        info = json.load(f)
+                except Exception:
+                    info = {}
+            else:
+                info = {}
+            
+            # Read the git repo URL saved at install time (by plugin-manage.sh)
+            repo_url_file = os.path.join(entry.path, ".plugin_repo_url")
+            if os.path.isfile(repo_url_file):
+                try:
+                    with open(repo_url_file) as f:
+                        repo_url = f.read().strip()
+                except Exception:
+                    repo_url = ""
+            else:
+                repo_url = ""
+            
+            plugins.append({
+                "folder_name": entry.name,
+                "name": info.get("name", entry.name),
+                "version": info.get("version", "—"),
+                "description": info.get("description", ""),
+                "author": info.get("author", ""),
+                "url": info.get("url", ""),
+                "repo_url": repo_url,
+            })
+    
+    return plugins
 
 
 def get_first_page_of_pdf_as_image(file_path, title, file_name):
@@ -176,20 +266,20 @@ def get_first_page_of_pdf_as_image(file_path, title, file_name):
             buffer = io.BytesIO()
             images[0].save(buffer, format='JPEG')
             buff_val = buffer.getvalue()
-
+            
             content_file = ContentFile(buff_val, f"{file_name}")
             image = get_image_model().objects.create(title=title, file=content_file)
             return image
-
+    
     return None
 
 
 def get_duplicates(dict_):
     rev_multidict = {}
-
+    
     for key, value in dict_.items():
         rev_multidict.setdefault(value, set()).add(key)
-
+    
     dups = [key for key, values in rev_multidict.items() if len(values) > 1]
-
+    
     return dups

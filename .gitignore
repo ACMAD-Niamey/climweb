@@ -137,6 +137,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.venv1/
 
 # Spyder project settings
 .spyderproject
@@ -176,9 +177,18 @@ cython_debug/
 media/
 cache/
 dumpdata.json
+media_backup.tar.gz
+dump.json
+dump.rdb
 docker/volumes
 climweb/src/climweb/static
 climweb/src/climweb/media
+.env.local
+.env.dev
 
 backup/
 .vscode/
+node_modules/
+tmp/
+.claude/
+climweb_dump.dump

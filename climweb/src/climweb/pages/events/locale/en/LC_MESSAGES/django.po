@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-03 11:31+0300\n"
+"POT-Creation-Date: 2026-05-11 07:47+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,217 +18,236 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: pages/events/models.py:46
+#: climweb/src/climweb/pages/events/models.py:49
 msgid "Event type"
 msgstr "Event type"
 
-#: pages/events/models.py:54
+#: climweb/src/climweb/pages/events/models.py:57
 msgid "Thumbnail/image for this type of event."
 msgstr "Thumbnail/image for this type of event."
 
-#: pages/events/models.py:67 pages/events/models.py:177
+#: climweb/src/climweb/pages/events/models.py:70
+#: climweb/src/climweb/pages/events/models.py:196
+#: climweb/src/climweb/pages/events/templates/events_filter_include.html:8
 msgid "Event Type"
 msgstr "Event Type"
 
-#: pages/events/models.py:80
+#: climweb/src/climweb/pages/events/models.py:83
 msgid "How many events should be visible on the all events section ?"
 msgstr "How many events should be visible on the all events section ?"
 
-#: pages/events/models.py:81
+#: climweb/src/climweb/pages/events/models.py:84
 msgid "Events per page"
 msgstr "Events per page"
 
-#: pages/events/models.py:89
+#: climweb/src/climweb/pages/events/models.py:92
 msgid "Other Settings"
 msgstr "Other Settings"
 
-#: pages/events/models.py:93
+#: climweb/src/climweb/pages/events/models.py:96
 msgid "Event Index Page"
 msgstr "Event Index Page"
 
-#: pages/events/models.py:178
+#: climweb/src/climweb/pages/events/models.py:197
 msgid "Service Categories"
 msgstr "Service Categories"
 
-#: pages/events/models.py:179
+#: climweb/src/climweb/pages/events/models.py:198
 msgid "Relevant Projects"
 msgstr "Relevant Projects"
 
-#: pages/events/models.py:180
+#: climweb/src/climweb/pages/events/models.py:199
 msgid "Event begin date"
 msgstr "Event begin date"
 
-#: pages/events/models.py:181
+#: climweb/src/climweb/pages/events/models.py:200
 msgid "Day of the event. If multi-day, then this should be the first day"
 msgstr "Day of the event. If multi-day, then this should be the first day"
 
-#: pages/events/models.py:183
+#: climweb/src/climweb/pages/events/models.py:202
 msgid "End date - Note: Not Required if this is a one day Event"
 msgstr "End date - Note: Not Required if this is a one day Event"
 
-#: pages/events/models.py:184
+#: climweb/src/climweb/pages/events/models.py:203
 msgid "Not required if this is a one day event"
 msgstr "Not required if this is a one day event"
 
-#: pages/events/models.py:186 pages/events/models.py:189
-#: pages/events/templates/event_meta_include.html:88
+#: climweb/src/climweb/pages/events/models.py:205
+#: climweb/src/climweb/pages/events/models.py:208
+#: climweb/src/climweb/pages/events/templates/event_meta_include.html:88
 msgid "Timezone"
 msgstr "Timezone"
 
-#: pages/events/models.py:191
+#: climweb/src/climweb/pages/events/models.py:210
 msgid "Where will the event take place ?"
 msgstr "Where will the event take place ?"
 
-#: pages/events/models.py:192
-#: pages/events/templates/event_meta_include.html:41
+#: climweb/src/climweb/pages/events/models.py:211
+#: climweb/src/climweb/pages/events/templates/event_meta_include.html:41
 msgid "Location"
 msgstr "Location"
 
-#: pages/events/models.py:194
+#: climweb/src/climweb/pages/events/models.py:213
 msgid "What is the cost for participating in this event ? Leave blank if free"
 msgstr ""
 "What is the cost for participating in this event ? Leave blank if free"
 
-#: pages/events/models.py:195
-#: pages/events/templates/event_meta_include.html:102
+#: climweb/src/climweb/pages/events/models.py:214
+#: climweb/src/climweb/pages/events/templates/event_meta_include.html:102
 msgid "Cost"
 msgstr "Cost"
 
-#: pages/events/models.py:197
+#: climweb/src/climweb/pages/events/models.py:216
 msgid "Description"
 msgstr "Description"
 
-#: pages/events/models.py:200
+#: climweb/src/climweb/pages/events/models.py:219
 msgid "Downloadable agenda document"
 msgstr "Downloadable agenda document"
 
-#: pages/events/models.py:201
+#: climweb/src/climweb/pages/events/models.py:220
 msgid "Agenda document, if available, preferably in PDF format"
 msgstr "Agenda document, if available, preferably in PDF format"
 
-#: pages/events/models.py:209
+#: climweb/src/climweb/pages/events/models.py:228
 msgid "Event Image"
 msgstr "Event Image"
 
-#: pages/events/models.py:210
+#: climweb/src/climweb/pages/events/models.py:229
 msgid "An image for this event, can be a poster or any relevant image"
 msgstr "An image for this event, can be a poster or any relevant image"
 
-#: pages/events/models.py:217
+#: climweb/src/climweb/pages/events/models.py:236
 msgid "Image Placement"
 msgstr "Image Placement"
 
-#: pages/events/models.py:219
+#: climweb/src/climweb/pages/events/models.py:238
 msgid "Form template"
 msgstr "Form template"
 
-#: pages/events/models.py:223
+#: climweb/src/climweb/pages/events/models.py:242
 msgid "Show this event in the events landing page as featured ?"
 msgstr "Show this event in the events landing page as featured ?"
 
-#: pages/events/models.py:223
+#: climweb/src/climweb/pages/events/models.py:242
 msgid "Featured"
 msgstr "Featured"
 
-#: pages/events/models.py:227
+#: climweb/src/climweb/pages/events/models.py:246
 msgid "Make this event hidden in events page or elsewhere"
 msgstr "Make this event hidden in events page or elsewhere"
 
-#: pages/events/models.py:227
+#: climweb/src/climweb/pages/events/models.py:246
 msgid "Is hidden"
 msgstr "Is hidden"
 
-#: pages/events/models.py:231
+#: climweb/src/climweb/pages/events/models.py:250
 msgid "Show this event on the homepage ?"
 msgstr "Show this event on the homepage ?"
 
-#: pages/events/models.py:231
+#: climweb/src/climweb/pages/events/models.py:250
 msgid "Is visible on homepage"
 msgstr "Is visible on homepage"
 
-#: pages/events/models.py:235 pages/events/templates/event_page.html:30
+#: climweb/src/climweb/pages/events/models.py:254
+#: climweb/src/climweb/pages/events/templates/event_page.html:30
 msgid "Panelists"
 msgstr "Panelists"
 
-#: pages/events/models.py:239
-#: pages/events/templates/zoom_events_details_include.html:302
+#: climweb/src/climweb/pages/events/models.py:258
+#: climweb/src/climweb/pages/events/templates/zoom_events_details_include.html:302
 msgid "Sessions"
 msgstr "Sessions"
 
-#: pages/events/models.py:243
-#: pages/events/templates/new_events_header.html:160
+#: climweb/src/climweb/pages/events/models.py:262
+#: climweb/src/climweb/pages/events/templates/event_header.html:162
 msgid "Additional Materials"
 msgstr "Additional Materials"
 
-#: pages/events/models.py:246
+#: climweb/src/climweb/pages/events/models.py:265
 msgid "Acknowledgement/sponsors"
 msgstr "Acknowledgement/sponsors"
 
-#: pages/events/models.py:248
+#: climweb/src/climweb/pages/events/models.py:267
 msgid "Is archived"
 msgstr "Is archived"
 
-#: pages/events/models.py:249
+#: climweb/src/climweb/pages/events/models.py:268
 msgid "Registration open"
 msgstr "Registration open"
 
-#: pages/events/models.py:251
+#: climweb/src/climweb/pages/events/models.py:270
 msgid "Youtube Video ID if the event is being livestreamed"
 msgstr "Youtube Video ID if the event is being livestreamed"
 
-#: pages/events/models.py:252
+#: climweb/src/climweb/pages/events/models.py:271
 msgid "Meeting Registration Integration Platform"
 msgstr "Meeting Registration Integration Platform"
 
-#: pages/events/models.py:255
+#: climweb/src/climweb/pages/events/models.py:274
 msgid "Platform for Event"
 msgstr "Platform for Event"
 
-#: pages/events/models.py:285 pages/events/models.py:507
+#: climweb/src/climweb/pages/events/models.py:277
+msgid "Enable Zoom Integration in registration form"
+msgstr "Enable Zoom Integration in registration form"
+
+#: climweb/src/climweb/pages/events/models.py:279
+msgid "Enable Mailchimp Integration in registration form"
+msgstr "Enable Mailchimp Integration in registration form"
+
+#: climweb/src/climweb/pages/events/models.py:315
+#: climweb/src/climweb/pages/events/models.py:653
 msgid "Content"
 msgstr "Content"
 
-#: pages/events/models.py:286 pages/events/models.py:508
+#: climweb/src/climweb/pages/events/models.py:316
+#: climweb/src/climweb/pages/events/models.py:654
 msgid "SEO"
 msgstr "SEO"
 
-#: pages/events/models.py:287 pages/events/models.py:509
-msgid "Settings"
-msgstr "Settings"
+#: climweb/src/climweb/pages/events/models.py:317
+msgid "Registration and Integrations"
+msgstr "Registration and Integrations"
 
-#: pages/events/models.py:293
+#: climweb/src/climweb/pages/events/models.py:323
 msgid "Event Page"
 msgstr "Event Page"
 
-#: pages/events/models.py:430
+#: climweb/src/climweb/pages/events/models.py:450
+#, python-format
+msgid "Register for %(event_title)s"
+msgstr "Register for %(event_title)s"
+
+#: climweb/src/climweb/pages/events/models.py:502
 msgid "Optional Additional information/details"
 msgstr "Optional Additional information/details"
 
-#: pages/events/models.py:431
+#: climweb/src/climweb/pages/events/models.py:503
 msgid "Additional Information - (Optional)"
 msgstr "Additional Information - (Optional)"
 
-#: pages/events/models.py:433
+#: climweb/src/climweb/pages/events/models.py:505
 msgid "Number of available registrations"
 msgstr "Number of available registrations"
 
-#: pages/events/models.py:434
+#: climweb/src/climweb/pages/events/models.py:506
 msgid "Registration Limit - (Leave blank if no limit)"
 msgstr "Registration Limit - (Leave blank if no limit)"
 
-#: pages/events/models.py:438
+#: climweb/src/climweb/pages/events/models.py:510
 msgid "Text to display after successful submission"
 msgstr "Text to display after successful submission"
 
-#: pages/events/models.py:439
+#: climweb/src/climweb/pages/events/models.py:511
 msgid "Thank you text"
 msgstr "Thank you text"
 
-#: pages/events/models.py:440
+#: climweb/src/climweb/pages/events/models.py:512
 msgid "Validation Field"
 msgstr "Validation Field"
 
-#: pages/events/models.py:441
+#: climweb/src/climweb/pages/events/models.py:513
 msgid ""
 "A field on the form to check if is already submitted so as to prevent "
 "multiple submissions by one person. This is usually the email address field "
@@ -238,15 +257,15 @@ msgstr ""
 "multiple submissions by one person. This is usually the email address field "
 "in snake casing format"
 
-#: pages/events/models.py:447
+#: climweb/src/climweb/pages/events/models.py:519
 msgid "Should we send a confirmation/follow up email ?"
 msgstr "Should we send a confirmation/follow up email ?"
 
-#: pages/events/models.py:448
+#: climweb/src/climweb/pages/events/models.py:520
 msgid "Send confirmation Email"
 msgstr "Send confirmation Email"
 
-#: pages/events/models.py:450
+#: climweb/src/climweb/pages/events/models.py:522
 msgid ""
 "The field in the form that corresponds to the email to use. Should be "
 "snake_cased"
@@ -254,19 +273,19 @@ msgstr ""
 "The field in the form that corresponds to the email to use. Should be "
 "snake_cased"
 
-#: pages/events/models.py:451
+#: climweb/src/climweb/pages/events/models.py:523
 msgid "Email Field"
 msgstr "Email Field"
 
-#: pages/events/models.py:453
+#: climweb/src/climweb/pages/events/models.py:525
 msgid "Email Confirmation message"
 msgstr "Email Confirmation message"
 
-#: pages/events/models.py:454
+#: climweb/src/climweb/pages/events/models.py:526
 msgid "Message to send to the user. For example zoom links"
 msgstr "Message to send to the user. For example zoom links"
 
-#: pages/events/models.py:456
+#: climweb/src/climweb/pages/events/models.py:528
 msgid ""
 "Batch Zoom Registration Enabled - Leave unchecked for direct zoom "
 "registrations"
@@ -274,141 +293,163 @@ msgstr ""
 "Batch Zoom Registration Enabled - Leave unchecked for direct zoom "
 "registrations"
 
-#: pages/events/models.py:459
+#: climweb/src/climweb/pages/events/models.py:531
 msgid "Enable batch option for adding registrants to zoom later"
 msgstr "Enable batch option for adding registrants to zoom later"
 
-#: pages/events/models.py:477
+#: climweb/src/climweb/pages/events/models.py:551
 msgid "Event Registration Page"
 msgstr "Event Registration Page"
 
-#: pages/events/models.py:510
+#: climweb/src/climweb/pages/events/models.py:655
+msgid "Settings"
+msgstr "Settings"
+
+#: climweb/src/climweb/pages/events/models.py:656
 msgid "Zoom Events Settings"
 msgstr "Zoom Events Settings"
 
-#: pages/events/models.py:511
+#: climweb/src/climweb/pages/events/models.py:657
 msgid "MailChimp Settings"
 msgstr "MailChimp Settings"
 
-#: pages/events/models.py:524
+#: climweb/src/climweb/pages/events/models.py:670
 msgid "Added to Zoom"
 msgstr "Added to Zoom"
 
-#: pages/events/templates/event_index_page.html:17
-msgid "Featured Event"
-msgstr "Featured Event"
-
-#: pages/events/templates/event_index_page.html:26
-msgid "All Events"
-msgstr "All Events"
-
-#: pages/events/templates/event_meta_include.html:12
-msgid "Ended"
-msgstr "Ended"
-
-#: pages/events/templates/event_meta_include.html:28
-msgid "Type"
-msgstr "Type"
-
-#: pages/events/templates/event_meta_include.html:55
-msgid "Start Date"
-msgstr "Start Date"
-
-#: pages/events/templates/event_meta_include.html:57
-#, python-format
-msgid "%(start_date)s"
-msgstr "%(start_date)s"
-
-#: pages/events/templates/event_meta_include.html:72
-msgid "End Date"
-msgstr "End Date"
-
-#: pages/events/templates/event_meta_include.html:74
-#, python-format
-msgid "%(end_date)s"
-msgstr "%(end_date)s"
-
-#: pages/events/templates/event_meta_include.html:116
-msgid "Registration closed"
-msgstr "Registration closed"
-
-#: pages/events/templates/event_meta_include.html:128
-msgid "Registration will be open soon"
-msgstr "Registration will be open soon"
-
-#: pages/events/templates/event_meta_include.html:143
-msgid "Register"
-msgstr "Register"
-
-#: pages/events/templates/event_meta_include.html:156
-msgid "Register on Zoom"
-msgstr "Register on Zoom"
-
-#: pages/events/templates/event_page.html:41
-msgid "Acknowledgements"
-msgstr "Acknowledgements"
-
-#: pages/events/templates/event_registration_page.html:41
-msgid "Submit"
-msgstr "Submit"
-
-#: pages/events/templates/event_registration_page.html:50
-msgid "ended"
-msgstr "ended"
-
-#: pages/events/templates/event_registration_page.html:57
-msgid " Registration closed"
-msgstr "Registration closed"
-
-#: pages/events/templates/events_filter_include.html:9
-msgid "Filter by Event Type"
-msgstr "Filter by Event Type"
-
-#: pages/events/templates/events_filter_include.html:35
-msgid "Filter by Year"
-msgstr "Filter by Year"
-
-#: pages/events/templates/events_filter_include.html:57
-msgid "Filter by Status"
-msgstr "Filter by Status"
-
-#: pages/events/templates/events_filter_include.html:65
-msgid "Past"
-msgstr "Past"
-
-#: pages/events/templates/events_list_include.html:6
-#, python-format
-msgid "Showing %(counter)s result"
-msgid_plural "Showing %(counter)s results"
-msgstr[0] ""
-msgstr[1] ""
-
-#: pages/events/templates/events_list_include.html:57
-msgid " Read More"
-msgstr "Read More"
-
-#: pages/events/templates/new_events_header.html:129
+#: climweb/src/climweb/pages/events/templates/event_header.html:131
 #, python-format
 msgid "Starts in %(counter)s day"
 msgid_plural "Starts in %(counter)s days"
 msgstr[0] ""
 msgstr[1] ""
 
-#: pages/events/templates/new_events_header.html:152
+#: climweb/src/climweb/pages/events/templates/event_header.html:154
 msgid "Download Agenda"
 msgstr "Download Agenda"
 
-#: pages/events/templates/panelists_include.html:90
+#: climweb/src/climweb/pages/events/templates/event_index_page.html:20
+msgid "Spotlight"
+msgstr "Spotlight"
+
+#: climweb/src/climweb/pages/events/templates/event_index_page.html:21
+msgid "Featured Event"
+msgstr "Featured Event"
+
+#: climweb/src/climweb/pages/events/templates/event_index_page.html:32
+msgid "Calendar"
+msgstr "Calendar"
+
+#: climweb/src/climweb/pages/events/templates/event_index_page.html:33
+msgid "All Events"
+msgstr "All Events"
+
+#: climweb/src/climweb/pages/events/templates/event_meta_include.html:12
+msgid "Ended"
+msgstr "Ended"
+
+#: climweb/src/climweb/pages/events/templates/event_meta_include.html:28
+msgid "Type"
+msgstr "Type"
+
+#: climweb/src/climweb/pages/events/templates/event_meta_include.html:55
+msgid "Start Date"
+msgstr "Start Date"
+
+#: climweb/src/climweb/pages/events/templates/event_meta_include.html:57
+#, python-format
+msgid "%(start_date)s"
+msgstr "%(start_date)s"
+
+#: climweb/src/climweb/pages/events/templates/event_meta_include.html:72
+msgid "End Date"
+msgstr "End Date"
+
+#: climweb/src/climweb/pages/events/templates/event_meta_include.html:74
+#, python-format
+msgid "%(end_date)s"
+msgstr "%(end_date)s"
+
+#: climweb/src/climweb/pages/events/templates/event_meta_include.html:116
+#: climweb/src/climweb/pages/events/templates/event_registration_page.html:57
+msgid "Registration closed"
+msgstr "Registration closed"
+
+#: climweb/src/climweb/pages/events/templates/event_meta_include.html:128
+msgid "Registration will be open soon"
+msgstr "Registration will be open soon"
+
+#: climweb/src/climweb/pages/events/templates/event_meta_include.html:143
+msgid "Register"
+msgstr "Register"
+
+#: climweb/src/climweb/pages/events/templates/event_meta_include.html:156
+msgid "Register on Zoom"
+msgstr "Register on Zoom"
+
+#: climweb/src/climweb/pages/events/templates/event_page.html:41
+msgid "Acknowledgements"
+msgstr "Acknowledgements"
+
+#: climweb/src/climweb/pages/events/templates/event_registration_page.html:41
+msgid "Submit"
+msgstr "Submit"
+
+#: climweb/src/climweb/pages/events/templates/event_registration_page.html:50
+msgid "ended"
+msgstr "ended"
+
+#: climweb/src/climweb/pages/events/templates/events_filter_include.html:32
+msgid "Year"
+msgstr "Year"
+
+#: climweb/src/climweb/pages/events/templates/events_filter_include.html:56
+msgid "Status"
+msgstr "Status"
+
+#: climweb/src/climweb/pages/events/templates/events_filter_include.html:69
+msgid "Past events"
+msgstr "Past events"
+
+#: climweb/src/climweb/pages/events/templates/events_list_include.html:8
+#, python-format
+msgid "Showing %(counter)s result"
+msgid_plural "Showing %(counter)s results"
+msgstr[0] ""
+msgstr[1] ""
+
+#: climweb/src/climweb/pages/events/templates/events_list_include.html:84
+#, fuzzy
+#| msgid " Read More"
+msgid "Read More"
+msgstr "Read More"
+
+#: climweb/src/climweb/pages/events/templates/panelists_include.html:90
 msgid "Topic"
 msgstr "Topic"
 
-#: pages/events/templates/zoom_events_details_include.html:309
+#: climweb/src/climweb/pages/events/templates/zoom_events_details_include.html:309
 msgid "Speakers"
 msgstr "Speakers"
 
-#: pages/events/templates/zoom_events_details_include.html:316
+#: climweb/src/climweb/pages/events/templates/zoom_events_details_include.html:316
 msgid "Sponsors"
 msgstr "Sponsors"
+
+#~ msgid "Filter by Event Type"
+#~ msgstr "Filter by Event Type"
+
+#~ msgid "Filter by Year"
+#~ msgstr "Filter by Year"
+
+#~ msgid "Filter by Status"
+#~ msgstr "Filter by Status"
+
+#~ msgid "Past"
+#~ msgstr "Past"
+
+#~ msgid " Registration closed"
+#~ msgstr "Registration closed"
 
 #~ msgid "Banner Image"
 #~ msgstr "Banner Image"

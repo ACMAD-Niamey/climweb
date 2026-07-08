@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static wagtailiconchooser_tags i18n wagtailcore_tags %}
+{% load static wagtailiconchooser_tags i18n wagtailcore_tags wagtailiconchooser_tags %}
 
 {% block extra_css %}
     {% if page.map_layers %}
@@ -8,6 +8,7 @@
     {% endif %}
 
     <link rel="stylesheet" type="text/css" href="{% static 'products/css/product.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/publication.css' %}">
 {% endblock %}
 
 {% block body_class %}product-page{% endblock %}
@@ -23,7 +24,7 @@
         {% else %}
             <section>
                 <div class="work container">
-                    <h2 class="section-subheader">
+                    <h2 class="title is-3">
                         {{ page.introduction_title }}
                     </h2>
                     <div class="intro-description format-text">
@@ -38,7 +39,9 @@
                     <ul>
                         <li class="is-active" data-content="browse">
                             <a>
-                                <span class="icon is-small"><i class="fas fa-list" aria-hidden="true"></i></span>
+                                <span class="icon is-small">
+                                    {% svg_icon name="list-ul" %}
+                                </span>
                                 <span>
                                     {% translate "Browse" %}
                                 </span>
@@ -46,7 +49,9 @@
                         </li>
                         <li data-content="mapViewer">
                             <a>
-                                <span class="icon is-small"><i class="fas fa-map" aria-hidden="true"></i></span>
+                                <span class="icon is-small">
+                                    {% svg_icon name="map" %}
+                                </span>
                                 <span>
                                     {% translate "MapViewer" %}
                                 </span>
@@ -149,9 +154,6 @@
                 //for  smaller devices
                 $('.results-filter .js-accordion-item').removeClass('active');
             }
-
-            // initialize filter accordion
-            accordion.init({speed: 300, oneOpen: false});
 
             const listButton = $("#list-view-button");
             const gridButton = $("#grid-view-button");

@@ -1,19 +1,29 @@
+from adminboundarymanager.models import AdminBoundarySettings
 from django.conf import settings
 from django.contrib.gis.db import models
 from django.template.defaultfilters import truncatechars
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
-from forecastmanager.forecast_settings import ForecastSetting
-from wagtail.admin.panels import MultiFieldPanel, FieldPanel
+if "forecastmanager" in settings.INSTALLED_APPS:
+    from forecastmanager.forecast_settings import ForecastSetting
+    from forecastmanager.models import City
+from geomanager.models import RasterFileLayer, WmsLayer, VectorTileLayer
+from modelcluster.models import ClusterableModel
+from wagtail import blocks
+from wagtail.admin.panels import MultiFieldPanel, FieldPanel, TabbedInterface, ObjectList
 from wagtail.api.v2.utils import get_full_url
 from wagtail.contrib.settings.models import BaseSiteSetting
 from wagtail.contrib.settings.registry import register_setting
 from wagtail.fields import StreamField
 from wagtail.models import Page
 from wagtail_color_panel.fields import ColorField
+from wagtailiconchooser.blocks import IconChooserBlock
+from wagtailiconchooser.utils import get_svg_sprite_for_icons
+from climweb.base.choosers import register_searchable_chooser
 
-from climweb.base import blocks
+from climweb.base import blocks as climweb_blocks
 from climweb.base.mixins import MetadataPageMixin
 from climweb.base.registries import plugin_registry
 from climweb.pages.events.models import EventPage
@@ -24,10 +34,9 @@ from climweb.pages.services.models import ServicePage
 from climweb.pages.videos.models import YoutubePlaylist
 from .blocks import AreaBoundaryBlock, AreaPolygonBlock
 
-CLIMWEB_OPTIONAL_APPS = getattr(settings, "CLIMWEB_OPTIONAL_APPS", [])
+CLIMWEB_ADDITIONAL_APPS = getattr(settings, "CLIMWEB_ADDITIONAL_APPS", [])
 
 HOME_SUBPAGE_TYPES = [
-    'weather.WeatherDetailPage',
     'contact.ContactPage',
     'services.ServiceIndexPage',
     'products.ProductIndexPage',
@@ -44,14 +53,17 @@ HOME_SUBPAGE_TYPES = [
     'flex_page.FlexPage',
     'stations.StationsPage',
     'satellite_imagery.SatelliteImageryPage',
-    'cityclimate.CityClimateDataPage',
-    'cap.CapAlertListPage',
     'glossary.GlossaryIndexPage',
     'webstories.WebStoryListPage',
+    'dashboards.DashboardGalleryPage'
 ]
 
-if "climweb.pages.aviation" in CLIMWEB_OPTIONAL_APPS:
-    HOME_SUBPAGE_TYPES.append('aviation.AviationPage')
+if "forecastmanager" in settings.INSTALLED_APPS:
+    HOME_SUBPAGE_TYPES += ['weather.WeatherDetailPage', 'cityclimate.CityClimateDataPage']
+
+if "capcomposer.cap" in settings.INSTALLED_APPS:
+    HOME_SUBPAGE_TYPES.append('cap.CapAlertListPage')
+
 
 
 class HomePage(MetadataPageMixin, Page):
@@ -60,29 +72,67 @@ class HomePage(MetadataPageMixin, Page):
         ('half', 'Half Banner'),
         ('card', 'Card Banner')
     )
-
+    
     template = "home/home_page.html"
-
+    
     parent_page_type = [
         'wagtailcore.Page'
     ]
     max_count = 1
-
+    
     pre_title = models.CharField(max_length=100, blank=True, null=True, verbose_name=_('Pre Title'),
                                  help_text=_("Text to show before the name of the institution. "
                                              "For example, if the institution is under a ministry, the ministry name "
                                              "can added here"))
     hero_title = models.CharField(max_length=100, verbose_name=_('Institution Name'),
                                   help_text=_("Full name of the institution"))
-    hero_subtitle = models.CharField(blank=True, null=True, max_length=100, verbose_name=_('Tagline'),
+    hero_subtitle = models.CharField(blank=True, null=True, max_length=200, verbose_name=_('Tagline'),
                                      help_text=_("Can be the tagline or slogan of the institution"))
-    hero_banner = models.ForeignKey("wagtailimages.Image", on_delete=models.SET_NULL, null=True, blank=False,
+    hero_banner = models.ForeignKey("wagtailimages.Image", on_delete=models.SET_NULL, null=True, blank=True,
                                     related_name="+", verbose_name=_("Banner Image"))
+    show_banner_video = models.BooleanField(default=False, verbose_name=_("Use YouTube Video as Banner"),
+                                            help_text=_("If enabled, the YouTube video will be used as the banner background instead of the banner image"))
+    banner_youtube_video_id = models.CharField(max_length=100, blank=True, null=True,
+                                               verbose_name=_("YouTube Video ID"),
+                                               help_text=_("YouTube Video ID. Only used if 'Use YouTube Video as Banner' is enabled."))
     hero_text_color = ColorField(blank=True, null=True, default="#f0f0f0", verbose_name=_("Banner Text Color"))
     hero_type = models.CharField(_("Banner Type"), max_length=50, choices=BANNER_TYPES, default='full')
+    
+    call_to_action_button_text = models.CharField(max_length=100, blank=True, null=True,
+                                                  verbose_name=_('Call to action button text'))
+    call_to_action_related_page = models.ForeignKey(
+        'wagtailcore.Page',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        verbose_name=_('Call to action related page')
+    )
 
+    call_to_action_button_text_2 = models.CharField(max_length=100, blank=True, null=True,
+                                                   verbose_name=_('Call to action button text 2'))
+    call_to_action_related_page_2 = models.ForeignKey(
+        'wagtailcore.Page',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        verbose_name=_('Call to action related page 2')
+    )
+
+    call_to_action_button_text_3 = models.CharField(max_length=100, blank=True, null=True,
+                                                   verbose_name=_('Call to action button text 3'))
+    call_to_action_related_page_3 = models.ForeignKey(
+        'wagtailcore.Page',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        verbose_name=_('Call to action related page 3')
+    )
+    
     show_city_forecast = models.BooleanField(default=True, verbose_name=_("Show city forecast section"))
-
+    
     show_weather_watch = models.BooleanField(default=True, verbose_name=_("Show weather watch section"))
     weather_watch_header = models.CharField(max_length=100, default="Our Weather Watch",
                                             verbose_name=_("Weather Watch Section header"))
@@ -90,7 +140,7 @@ class HomePage(MetadataPageMixin, Page):
     mapviewer_cta_title = models.CharField(max_length=100, blank=True, null=True, default='Explore on MapViewer',
                                            verbose_name=_('MapViewer Call to Action Title'))
     mapviewer_cta_url = models.URLField(blank=True, null=True, verbose_name=_("Mapviewer URL"), )
-
+    
     youtube_playlist = models.ForeignKey(
         YoutubePlaylist,
         null=True,
@@ -99,23 +149,41 @@ class HomePage(MetadataPageMixin, Page):
         related_name='+',
         verbose_name=_("Youtube Playlist")
     )
-
+    
     feature_block = StreamField([
-        ('feature_item', blocks.FeatureBlock()),
+        ('feature_item', climweb_blocks.FeatureBlock()),
     ], null=True, blank=True, use_json_field=True, verbose_name=_("Feature block"))
+
+    stats_bar = StreamField([
+        ('stat', blocks.StructBlock([
+            ('value', blocks.CharBlock(max_length=20, label=_("Value"), help_text=_("e.g. 47, 2.4M, 138"))),
+            ('label', blocks.CharBlock(max_length=100, label=_("Label"), help_text=_("e.g. Regional Centers"))),
+        ], label=_("Stat Item"))),
+    ], null=True, blank=True, use_json_field=True, verbose_name=_("Stats Bar"),
+        help_text=_("Displayed below the hero on non-meteorological sites. Add up to 4 items."),
+        max_num=4)
 
     content_panels = Page.content_panels + [
         MultiFieldPanel([
+            FieldPanel("hero_banner"),
+            FieldPanel('show_banner_video'),
+            FieldPanel('banner_youtube_video_id'),
             FieldPanel('pre_title'),
             FieldPanel('hero_title'),
             FieldPanel('hero_subtitle'),
-            FieldPanel("hero_banner"),
-            # NativeColorPanel('hero_text_color'),
             FieldPanel('hero_type')
         ], heading=_("Banner Section")),
         MultiFieldPanel([
+            FieldPanel('call_to_action_button_text'),
+            FieldPanel('call_to_action_related_page'),
+            FieldPanel('call_to_action_button_text_2'),
+            FieldPanel('call_to_action_related_page_2'),
+            FieldPanel('call_to_action_button_text_3'),
+            FieldPanel('call_to_action_related_page_3'),
+        ], heading=_("Banner Call to Action Buttons")),
+        MultiFieldPanel([
             FieldPanel('show_city_forecast'),
-        ], heading=_("City Forecast Section")),
+        ], heading=_("City Forecast Section")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
         MultiFieldPanel([
             FieldPanel('show_weather_watch'),
             FieldPanel('weather_watch_header'),
@@ -128,76 +196,166 @@ class HomePage(MetadataPageMixin, Page):
         ], heading=_("Media Section")),
         MultiFieldPanel([
             FieldPanel('feature_block'),
-
         ], heading=_("Addditional Information")),
-
+        MultiFieldPanel([
+            FieldPanel('stats_bar'),
+        ], heading=_("Stats Bar")) if not settings.IS_METEOROLOGICAL else MultiFieldPanel(),
+        
     ]
-
+    
+    
     class Meta:
         verbose_name = _("Home Page")
         verbose_name_plural = _("Home Pages")
-
-    @classmethod
-    @property
-    def subpage_types(self):
-        plugin_subpage_types = plugin_registry.get_plugin_subpage_types_for_page(self._meta.model_name)
-        return HOME_SUBPAGE_TYPES + plugin_subpage_types
-
+    
+    # Python 3.13 removed stacked @classmethod+@property. Compute subpage_types
+    # eagerly at class definition time (plugin_registry is empty at startup
+    # for bare dev environments, so the dynamic lookup adds nothing useful).
+    subpage_types = HOME_SUBPAGE_TYPES + plugin_registry.get_plugin_subpage_types_for_page("homepage")
+    
     def get_meta_image(self):
         if self.search_image:
             return self.search_image
         return self.hero_banner
-
+    
     def save(self, *args, **kwargs):
         if not self.search_image and self.hero_banner:
             self.search_image = self.hero_banner
-
+        
         if not self.seo_title and self.hero_title:
             self.seo_title = self.hero_title
-
+        
         if not self.search_description and self.hero_subtitle:
             self.search_description = truncatechars(self.hero_subtitle, 160)
-
+        
         return super().save(*args, **kwargs)
-
+    
     def get_meta_description(self):
         if self.search_description:
             return self.search_description
         return self.hero_subtitle
-
+    
     def get_meta_title(self):
         if self.seo_title:
             return self.seo_title
         return self.hero_title
-
+    
     def get_context(self, request, *args, **kwargs):
         context = super(HomePage, self).get_context(request, *args, **kwargs)
+        
+        if "capcomposer.cap" in settings.INSTALLED_APPS:
+            context["home_map_alerts_url"] = get_full_url(request, reverse("home_map_alerts"))
 
-        forecast_setting = ForecastSetting.for_request(request)
-        city_detail_page = forecast_setting.weather_detail_page
-
-        if city_detail_page:
-            city_detail_page = city_detail_page.specific
-            all_city_detail_page_url = city_detail_page.get_full_url(request)
-            city_detail_page_url = all_city_detail_page_url + city_detail_page.detail_page_base_url
-            context.update({
-                "city_detail_page_url": city_detail_page_url,
-            })
-
-        city_search_url = get_full_url(request, reverse("cities-list"))
+        abm_settings = AdminBoundarySettings.for_request(request)
+        abm_extents = abm_settings.combined_countries_bounds
         context.update({
-            "city_search_url": city_search_url,
+            "country_bounds": abm_extents,
         })
+        
+        if "forecastmanager" in settings.INSTALLED_APPS:
+            forecast_setting = ForecastSetting.for_request(request)
+            city_detail_page = forecast_setting.weather_detail_page
 
+            if city_detail_page:
+                city_detail_page = city_detail_page.specific
+                all_city_detail_page_url = city_detail_page.get_full_url(request)
+                city_detail_page_url = all_city_detail_page_url + city_detail_page.detail_page_base_url
+                context.update({
+                    "city_detail_page_url": city_detail_page_url,
+                })
+
+            city_search_url = get_full_url(request, reverse("cities-list"))
+            context.update({
+                "city_search_url": city_search_url,
+            })
+        
         map_settings_url = get_full_url(request, reverse("home-map-settings"))
         context.update({
             "home_map_settings_url": map_settings_url,
-            "home_weather_widget_url": get_full_url(request, reverse("home-weather-widget")),
         })
 
+        if "forecastmanager" in settings.INSTALLED_APPS:
+            context["home_weather_widget_url"] = get_full_url(request, reverse("home-weather-widget"))
+
+            if self.show_city_forecast:
+                from climweb.pages.weather.utils import get_city_forecast_detail_data
+
+                default_city = forecast_setting.default_city
+                if not default_city:
+                    default_city = City.objects.first()
+
+                if default_city:
+                    forecast_periods_count = forecast_setting.periods.count()
+                    multi_period = forecast_periods_count > 1
+                    widget_data = get_city_forecast_detail_data(
+                        default_city, multi_period=multi_period, request=request, for_home_widget=True
+                    )
+
+                    widget_context = {
+                        "city": default_city,
+                        "show_condition_label": forecast_setting.show_conditions_label_on_widget,
+                        "use_period_labels": forecast_setting.use_period_labels,
+                        "city_search_url": context.get("city_search_url"),
+                        **widget_data,
+                    }
+
+                    if city_detail_page:
+                        try:
+                            widget_context["city_detail_page_url"] = (
+                                city_detail_page.get_full_url(request)
+                                + city_detail_page.reverse_subpage(
+                                    "daily_table_for_city", kwargs={"city_slug": default_city.slug}
+                                )
+                            )
+                        except Exception:
+                            pass
+
+                    home_map_settings = HomeMapSettings.for_request(request)
+                    if home_map_settings.show_forecast_attribution and forecast_setting.enable_auto_forecast:
+                        widget_context.update({
+                            "external_source_attribution": str(
+                                _("Forecast Data Source: %(forecast_source)s") % {"forecast_source": "Yr.no"}
+                            ),
+                            "external_source_url": "https://www.yr.no",
+                        })
+
+                    if forecast_setting.weather_reports_page:
+                        widget_context["weather_reports_page_url"] = forecast_setting.weather_reports_page.get_full_url(request)
+
+                    if not widget_data.get("city_forecasts_by_date"):
+                        context["home_weather_widget_no_data"] = True
+                    else:
+                        template_name = (
+                            'weather/widgets/location_forecast_multiple_slider.html'
+                            if multi_period
+                            else 'weather/widgets/location_forecast_single_slider.html'
+                        )
+                        try:
+                            context["home_weather_widget_html"] = render_to_string(
+                                template_name, widget_context, request=request
+                            )
+                        except Exception:
+                            pass
+        
         if self.youtube_playlist:
             context['youtube_playlist_url'] = self.youtube_playlist.get_playlist_items_api_url(request)
-
+        
+        home_map_settings = HomeMapSettings.for_request(request)
+        home_map_layer_icons = [
+            "warning",
+            "heavy-rain",
+            "layer-group"
+        ]
+        
+        if home_map_settings.map_layers:
+            icons = [layer_block.value.get("icon") for layer_block in home_map_settings.map_layers]
+            home_map_layer_icons.extend(icons)
+        
+        context.update({
+            "home_map_layer_svg_sprite": get_svg_sprite_for_icons(home_map_layer_icons)
+        })
+        
+        context['IS_METEOROLOGICAL'] = settings.IS_METEOROLOGICAL
         return context
 
     @cached_property
@@ -205,45 +363,139 @@ class HomePage(MetadataPageMixin, Page):
         # get the first 6 partners that should be visible on the homepage
         partners = Partner.objects.filter(visible_on_homepage=True, logo__isnull=False)[:6]
         return partners
-
+    
     @cached_property
     def latest_updates(self):
         updates = []
-
+        
         # get latest news, publication, crop monitor, seasonal forecast, food security statement,
         news = NewsPage.objects.live().filter(is_visible_on_homepage=True).order_by('-date').first()
         events = EventPage.objects.live().filter(is_visible_on_homepage=True).order_by('-date_from').first()
-
+        
         if events is None:
             events = EventPage.objects.live().order_by('-date_from').first()
-
+        
         if news is None:
             news = NewsPage.objects.live().order_by('-date').first()
-
+        
         publications = PublicationPage.objects.live().filter(is_visible_on_homepage=True).order_by(
             '-publication_date').first()
-
+        
         if publications is None:
             publications = PublicationPage.objects.live().order_by('-publication_date').first()
-
+        
         if news:
             updates.append(news)
         if events:
             updates.append(events)
         if publications:
             updates.append(publications)
-
+        
         return updates
-
+    
     @cached_property
     def services(self):
         services = ServicePage.objects.live()
         return services
 
 
+register_searchable_chooser(WmsLayer)
+register_searchable_chooser(VectorTileLayer)
+
+
+class BaseLayerBlock(blocks.StructBlock):
+    layer = blocks.CharBlock()  # placeholder for the actual layer chooser block, implemented in the subclasses
+    icon = IconChooserBlock(required=False, default="layer-group", label=_("Icon"))
+    display_name = blocks.CharBlock(max_length=100, required=False,
+                                    help_text=_("Name to display on the map. "
+                                                "Leave blank to use the original layer name"))
+    enabled = blocks.BooleanBlock(default=True, required=False, label=_("Enabled"))
+    default = blocks.BooleanBlock(default=False, required=False, label=_("Show on map by default ?"),
+                                  help_text=_("You can only select one layer to be shown on the map by default. "
+                                              "If multiple layers are selected, only the first one will be shown"))
+
+
+class RasterFileLayerBlock(BaseLayerBlock):
+    layer = climweb_blocks.UUIDModelChooserBlock(RasterFileLayer, icon="map")
+
+
+class WMSLayerBlock(BaseLayerBlock):
+    layer = climweb_blocks.UUIDModelChooserBlock(WmsLayer, icon="map")
+
+
+class VectorTileLayerBlock(BaseLayerBlock):
+    layer = climweb_blocks.UUIDModelChooserBlock(VectorTileLayer, icon="map")
+
+
 @register_setting(icon="map")
-class HomeMapSettings(BaseSiteSetting):
+class HomeMapSettings(BaseSiteSetting, ClusterableModel):
+    DATE_FORMAT_CHOICES = (
+        ("yyyy-MM-dd HH:mm", _("Hour minute:second - (E.g 2023-01-01 00:00)")),
+        ("iii d HH:mm", _("Day of Week Day - (E.g Tue 25 08:00)")),
+        ("yyyy-MM-dd", _("Day - (E.g 2023-01-01)")),
+    )
+    
+    show_warnings_layer = models.BooleanField(default=True, verbose_name=_("Show CAP Warnings Layer"))
+    warnings_layer_display_name = models.CharField(max_length=100, default=_("Weather Warnings"),
+                                                   verbose_name=_("CAP Warnings Layer Display Name"))
+    show_location_forecast_layer = models.BooleanField(default=True, verbose_name=_("Show Location forecast Layer"))
+    location_forecast_layer_display_name = models.CharField(max_length=100, default=_("Location Forecast"),
+                                                            verbose_name=_("Location Forecast Layer Display Name"))
+    location_forecat_date_display_format = models.CharField(max_length=100, choices=DATE_FORMAT_CHOICES,
+                                                            default="yyyy-MM-dd HH:mm",
+                                                            help_text=_("Location Forecast Date Display Format"))
+    forecast_cluster = models.BooleanField(default=False, verbose_name=_("Cluster Location Forecast Points"), )
+    forecast_cluster_min_points = models.PositiveIntegerField(default=2, null=True, blank=True,
+                                                              verbose_name=_("Cluster Minimum number of Points"),
+                                                              help_text=_("Minimum number of points necessary to form"
+                                                                          " a cluster if clustering is enabled"))
+    forecast_cluster_radius = models.PositiveIntegerField(default=50, null=True, blank=True,
+                                                          verbose_name=_("Cluster Radius"),
+                                                          help_text=_("Radius of each cluster if clustering is "
+                                                                      "enabled"))
+    show_forecast_attribution = models.BooleanField(default=False, verbose_name=_("Show Location Forecast Attribution"))
     zoom_locations = StreamField([
         ("boundary_block", AreaBoundaryBlock(label=_("Admin Boundary"))),
         ("polygon_block", AreaPolygonBlock(label=_("Draw Polygon"))),
     ], use_json_field=True, blank=True)
+    
+    map_layers = StreamField([
+        ('raster_file_layer', RasterFileLayerBlock(label=_("Raster Layer"), icon="map")),
+        ('wms_layer', WMSLayerBlock(label=_("WMS Layer"), icon="map")),
+        ('vector_tile_layer', VectorTileLayerBlock(label=_("Vector Tile Layer"), icon="map")),
+    ], null=True, blank=True, max_num=5, verbose_name=_("Map Layers"))
+    
+    show_level_1_boundaries = models.BooleanField(default=False, verbose_name=_("Show Level 1 Boundaries"))
+    use_geomanager_basemaps = models.BooleanField(default=False, verbose_name=_("Use Geomanager Basemaps, if set"))
+    
+    edit_handler = TabbedInterface([
+        ObjectList([
+            FieldPanel("map_layers"),
+        ], heading=_("Geomanager Map Layers")),
+        ObjectList([
+            MultiFieldPanel([
+                FieldPanel("show_level_1_boundaries"),
+                FieldPanel("use_geomanager_basemaps"),
+            ], heading=_("Boundary Settings"), ),
+            MultiFieldPanel([
+                FieldPanel("show_warnings_layer"),
+                FieldPanel("warnings_layer_display_name"),
+            ], heading=_("CAP Warnings Layer")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
+            
+            MultiFieldPanel([
+                FieldPanel("show_forecast_attribution"),
+                FieldPanel("show_location_forecast_layer"),
+                FieldPanel("location_forecast_layer_display_name"),
+                FieldPanel("location_forecat_date_display_format"),
+                FieldPanel("forecast_cluster"),
+                FieldPanel("forecast_cluster_min_points"),
+                FieldPanel("forecast_cluster_radius"),
+            ], heading=_("Location Forecast Layer")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
+            
+            FieldPanel("zoom_locations") if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
+        ], heading=_("Map Settings")),
+        
+    ])
+
+
+    

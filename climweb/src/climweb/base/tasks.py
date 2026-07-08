@@ -1,10 +1,37 @@
-from datetime import timedelta
-
 from celery.schedules import crontab
-from celery_singleton import Singleton
+from celery.signals import task_prerun, worker_process_init, worker_ready
+from celery_singleton import Singleton, clear_locks
 from django.core.management import call_command
+from loguru import logger
+from opentelemetry import baggage, context
+
+from django.conf import settings
 
 from climweb.config.celery import app
+from climweb.config.telemetry.telemetry import setup_telemetry, setup_logging
+from climweb.config.telemetry.utils import otel_is_enabled
+
+TASK_NAME_KEY = "celery.task_name"
+
+
+@worker_process_init.connect
+def initialize_otel(**kwargs):
+    setup_telemetry(add_django_instrumentation=False)
+    setup_logging()
+
+
+@task_prerun.connect
+def before_task(task_id, task, *args, **kwargs):
+    if otel_is_enabled():
+        context.attach(baggage.set_baggage(TASK_NAME_KEY, task.name))
+
+
+@worker_ready.connect
+def unlock_all(**kwargs):
+    # Clear any singleton locks left behind by a previous worker crash.
+    # Without this, a task killed mid-run (e.g. by CELERY_WORKER_MAX_MEMORY_PER_CHILD)
+    # would leave its Redis lock open and all subsequent scheduled runs would be skipped.
+    clear_locks(app)
 
 
 @app.task(
@@ -13,43 +40,59 @@ from climweb.config.celery import app
 )
 def run_backup(self):
     # Run the `dbbackup` command
+    logger.info("[BACKUP] Running backup")
     call_command('dbbackup', '--clean', '--noinput')
-
+    
     # Run the `mediabackup` command
+    logger.info("[BACKUP] Running mediabackup")
     call_command('mediabackup', '--clean', '--noinput')
 
 
-@app.task(
-    base=Singleton,
-    bind=True
-)
-def download_forecast(self):
-    # Run the `generate_forecast` command
-    call_command('generate_forecast')
+if "forecastmanager" in settings.INSTALLED_APPS:
+    # lock_expiry prevents the singleton lock from persisting indefinitely if the
+    # worker is killed (e.g. by CELERY_WORKER_MAX_MEMORY_PER_CHILD) before the
+    # task completes and can release the lock normally.  Set to slightly longer
+    # than the worst-case runtime so a legitimately-running task is never evicted,
+    # but a stuck lock is cleared within a reasonable window.
+    _FORECAST_LOCK_EXPIRY = 1800  # 30 minutes
+
+    @app.task(
+        base=Singleton,
+        bind=True,
+        lock_expiry=_FORECAST_LOCK_EXPIRY,
+    )
+    def download_forecast(self):
+        # Run the `generate_forecast` command
+        logger.info("[FORECAST] Running generate_forecast")
+        try:
+            call_command('generate_auto_forecast')
+        except Exception as exc:
+            logger.error(f"[FORECAST] generate_forecast failed: {exc}")
+            raise  # re-raise so Celery records the failure and releases the lock
+
+    @app.task(
+        base=Singleton,
+        bind=True,
+        lock_expiry=_FORECAST_LOCK_EXPIRY,
+    )
+    def clear_old_forecasts(self):
+        # Run the `clear_old_forecasts` command
+        logger.info("[FORECAST] Running clear_old_forecasts")
+        try:
+            call_command('clear_old_forecasts')
+        except Exception as exc:
+            logger.error(f"[FORECAST] clear_old_forecasts failed: {exc}")
+            raise
 
 
-@app.task(
-    base=Singleton,
-    bind=True
-)
-def clear_old_forecasts(self):
-    # Run the `clear_old_forecasts` command
-    call_command('clear_old_forecasts')
+if "climweb_wdqms" in settings.INSTALLED_APPS:
+    @app.task(base=Singleton, bind=True)
+    def run_wdqms_stats(self, variable):
+        # Log that the task is starting
+        logger.info(f"[WDQMS] Running wdqms_stats for {variable}")
 
-
-@app.task(base=Singleton, bind=True)
-def run_wdqms_stats(self, variable):
-    # Log that the task is starting
-    self.logger.info(f"Running wdqms_stats for {variable}")
-
-    # Run the `wdqms_stats` management command
-    call_command('wdqms_stats', '-var', variable)
-
-
-@app.task(base=Singleton, bind=True)
-def process_tasks(self, duration):
-    # Run the `process_tasks` management command
-    call_command('process_tasks', '--duration', str(duration))
+        # Run the `wdqms_stats` management command
+        call_command('wdqms_stats', '-var', variable)
 
 
 @app.on_after_finalize.connect
@@ -61,59 +104,53 @@ def setup_periodic_tasks(sender, **kwargs):
         name="run-backup-every-day-midnight",
     )
 
-    # download_forecast every hour
-    sender.add_periodic_task(
-        crontab(minute=0),
-        download_forecast.s(),
-        name="download-forecast-every-hour",
-    )
+    if "forecastmanager" in settings.INSTALLED_APPS:
+        # download_forecast every hour
+        sender.add_periodic_task(
+            crontab(minute=0),
+            download_forecast.s(),
+            name="download-forecast-every-hour",
+        )
 
-    # clear_old_forecasts every day at midnight
-    sender.add_periodic_task(
-        crontab(hour=0, minute=0),
-        clear_old_forecasts.s(),
-        name="clear-old-forecasts-every-day-midnight",
-    )
+        # clear_old_forecasts every day at midnight
+        sender.add_periodic_task(
+            crontab(hour=0, minute=0),
+            clear_old_forecasts.s(),
+            name="clear-old-forecasts-every-day-midnight",
+        )
 
-    # Schedule task for pressure at 00:00 and 12:00
-    sender.add_periodic_task(
-        crontab(hour='0,12', minute=0),
-        run_wdqms_stats.s('pressure'),
-        name='Run wdqms_stats for pressure at 00:00 and 12:00'
-    )
+    if "climweb_wdqms" in settings.INSTALLED_APPS:
+        # Schedule task for pressure at 00:00 and 12:00
+        sender.add_periodic_task(
+            crontab(hour='0,12', minute=0),
+            run_wdqms_stats.s('pressure'),
+            name='Run wdqms_stats for pressure at 00:00 and 12:00'
+        )
 
-    # Schedule task for temperature at 00:00 and 12:00
-    sender.add_periodic_task(
-        crontab(hour='0,12', minute=0),
-        run_wdqms_stats.s('temperature'),
-        name='Run wdqms_stats for temperature at 00:00 and 12:00'
-    )
+        # Schedule task for temperature at 00:00 and 12:00
+        sender.add_periodic_task(
+            crontab(hour='0,12', minute=0),
+            run_wdqms_stats.s('temperature'),
+            name='Run wdqms_stats for temperature at 00:00 and 12:00'
+        )
 
-    # Schedule task for humidity at 00:00 and 12:00
-    sender.add_periodic_task(
-        crontab(hour='0,12', minute=0),
-        run_wdqms_stats.s('humidity'),
-        name='Run wdqms_stats for humidity at 00:00 and 12:00'
-    )
+        # Schedule task for humidity at 00:00 and 12:00
+        sender.add_periodic_task(
+            crontab(hour='0,12', minute=0),
+            run_wdqms_stats.s('humidity'),
+            name='Run wdqms_stats for humidity at 00:00 and 12:00'
+        )
 
-    # Schedule task for meridional_wind at 00:00 and 12:00
-    sender.add_periodic_task(
-        crontab(hour='0,12', minute=0),
-        run_wdqms_stats.s('meridional_wind'),
-        name='Run wdqms_stats for meridional_wind at 00:00 and 12:00'
-    )
+        # Schedule task for meridional_wind at 00:00 and 12:00
+        sender.add_periodic_task(
+            crontab(hour='0,12', minute=0),
+            run_wdqms_stats.s('meridional_wind'),
+            name='Run wdqms_stats for meridional_wind at 00:00 and 12:00'
+        )
 
-    # Schedule task for zonal_wind at 00:00 and 12:00
-    sender.add_periodic_task(
-        crontab(hour='0,12', minute=0),
-        run_wdqms_stats.s('zonal_wind'),
-        name='Run wdqms_stats for zonal_wind at 00:00 and 12:00'
-    )
-
-    # Schedule process_tasks to run every 15 minutes
-    # This runs tasks scheduled using django-background-tasks
-    sender.add_periodic_task(
-        timedelta(minutes=15),  # Schedule the task every 15 minutes
-        process_tasks.s(900),  # Call the task with --duration 900
-        name='Run process_tasks every 15 minutes'
-    )
+        # Schedule task for zonal_wind at 00:00 and 12:00
+        sender.add_periodic_task(
+            crontab(hour='0,12', minute=0),
+            run_wdqms_stats.s('zonal_wind'),
+            name='Run wdqms_stats for zonal_wind at 00:00 and 12:00'
+        )

@@ -13,7 +13,7 @@
                         {% image settings.base.OrganisationSetting.logo original as logo %}
                         <img src="{{ logo.url }}" alt="Logo">
                     {% else %}
-                        N.M.H.S
+                        CLIMWEB
                     {% endif %}
                 </a>
 
@@ -23,7 +23,7 @@
                     <a href="{{ settings.base.ImportantPages.cap_warnings_list_page.url }}"
                        class="level-item top-nav-item"
                     >
-                        <span style="margin-right: 4px"> {% translate "Alerts" %} </span>
+                        <span style="margin-inline-end: 4px"> {% translate "Alerts" %} </span>
                         <img src="{% static 'img/CAPLogo.jpeg' %}" alt="CAP Alerts"
                              style="height: 18px;width: 18px;border-radius:4px">
                     </a>
@@ -64,14 +64,11 @@
                 <div class="level-item top-nav-item">
                     <div id="search-input" class="field is-hidden search-input">
                         <form action="{% url 'search' %}">
-                            <div class="control is-small has-icons-right">
+                            <div class="control is-small">
                                 <input id="input-el"
                                        class="input is-small is-rounded" type="text" name="query"
                                        value="{{ request.GET.query }}"
                                        placeholder="Search">
-                                <span class="icon is-small is-right">
-                                    <i class="fas fa-search"></i>
-                                </span>
                             </div>
                         </form>
                     </div>
@@ -116,14 +113,15 @@
         </div>
     </div>
 
-  
+
     <div class="is-hidden-desktop nav-left-circle-active-alert">
     </div>
 
 </header>
 {% block extra_js %}
     <script>
-        const latestActiveAlertUrl = {% url 'latest_active_alert' %};
+        {% url 'latest_active_alert' as latest_active_alert_url %}
+        const latestActiveAlertUrl = "{{ latest_active_alert_url }}";
 
         document.addEventListener('DOMContentLoaded', () => {
             const navbarBurgerEl = document.getElementById('navBurger')

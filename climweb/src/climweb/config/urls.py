@@ -1,9 +1,14 @@
-from climweb_wdqms import urls as climweb_wdqms_urls
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import include, path, re_path
-from forecastmanager import urls as forecastmanager_urls
+from rest_framework.authtoken.views import obtain_auth_token
+
+if "forecastmanager" in settings.INSTALLED_APPS:
+    from forecastmanager import urls as forecastmanager_urls
+
+if "climweb_wdqms" in settings.INSTALLED_APPS:
+    from climweb_wdqms import urls as climweb_wdqms_urls
 from wagtail import views as wagtail_views
 from wagtail.admin import urls as wagtailadmin_urls
 from wagtail.contrib.sitemaps.views import sitemap
@@ -12,63 +17,69 @@ from wagtail.urls import WAGTAIL_FRONTEND_LOGIN_TEMPLATE, serve_pattern
 from wagtailcache.cache import cache_page
 
 from climweb.base.registries import plugin_registry
-from climweb.base.views import humans, public_health_check
+from climweb.base.views import humans, public_health_check, style_guide, style_guide_tokens
 from climweb.pages.search import views as search_views
 from .api import api_router
 
 handler500 = 'climweb.base.views.handler500'
 
 ADMIN_URL_PATH = getattr(settings, "ADMIN_URL_PATH", None)
-CLIMWEB_OPTIONAL_APPS = getattr(settings, "CLIMWEB_OPTIONAL_APPS", [])
+DJANGO_ADMIN_URL_PATH = getattr(settings, "DJANGO_ADMIN_URL_PATH", None)
+
+CLIMWEB_ADDITIONAL_APPS = getattr(settings, "CLIMWEB_ADDITIONAL_APPS", [])
 
 urlpatterns = [
     path("documents/", include(wagtaildocs_urls)),
-
+    
     path("", include("climweb.pages.home.urls")),
-    path("", include("climweb.pages.wdqms.urls")),
-    path("", include("climweb.pages.cap.urls")),
+    *([path("", include("climweb.pages.wdqms.urls"))] if "climweb.pages.wdqms" in settings.INSTALLED_APPS else []),
+    *([path("", include("capcomposer.cap.urls"))] if "capcomposer.cap" in settings.INSTALLED_APPS else []),
     path("", include("climweb.pages.stations.urls"), name="stations"),
     path("", include("climweb.pages.videos.urls")),
-    path("weather/", include("climweb.pages.weather.urls")),
-
+    *([path("weather/", include("climweb.pages.weather.urls"))] if "climweb.pages.weather" in settings.INSTALLED_APPS else []),
+    
     path("", include("geomanager.urls"), name="geomanager"),
     # path("", include("django_nextjs.urls")),
     path("", include("wagtailsurveyjs.urls")),
-    path("", include(forecastmanager_urls), name="forecast_api"),
-    path("", include(climweb_wdqms_urls), name="climweb_wdqms_api"),
-
+    *([path("", include(forecastmanager_urls), name="forecast_api")] if "forecastmanager" in settings.INSTALLED_APPS else []),
+    *([path("", include(climweb_wdqms_urls), name="climweb_wdqms_api")] if "climweb_wdqms" in settings.INSTALLED_APPS else []),
+    
+    path("style-guide/", style_guide, name="style-guide"),
+    path("style-guide/tokens.json", style_guide_tokens, name="style-guide-tokens"),
     path("sitemap.xml", sitemap),
     path("humans.txt", humans),
-
+    
     path("search/", search_views.search, name="search"),
     path('auth/', include('allauth.urls')),
-
+    
     path('api/v2/', api_router.urls, name="wagtailapi"),
-
+    
     path("api/satellite-imagery/", include("climweb.pages.satellite_imagery.urls")),
-    path("api/cityclimate/", include("climweb.pages.cityclimate.urls")),
+    *([path("api/cityclimate/", include("climweb.pages.cityclimate.urls"))] if "climweb.pages.cityclimate" in settings.INSTALLED_APPS else []),
     path("api/_health/", public_health_check),
+    path("api/token/", obtain_auth_token),
 ]
 
-if "climweb.pages.aviation" in CLIMWEB_OPTIONAL_APPS:
-    urlpatterns += path("", include("climweb.pages.aviation.urls")),
 
 if ADMIN_URL_PATH:
     ADMIN_URL_PATH = ADMIN_URL_PATH.strip("/")
     urlpatterns += path(f"{ADMIN_URL_PATH}/", include(wagtailadmin_urls), name='admin'),
 
+if DJANGO_ADMIN_URL_PATH:
+    DJANGO_ADMIN_URL_PATH = DJANGO_ADMIN_URL_PATH.strip("/")
+    urlpatterns += path(f"{DJANGO_ADMIN_URL_PATH}/", admin.site.urls, name='django-admin'),
+
 if settings.DEBUG:
     from django.conf.urls.static import static
     from django.contrib.staticfiles.urls import staticfiles_urlpatterns
     from django.views.generic import TemplateView
-
+    
     # Serve static and media files from development server
     urlpatterns += staticfiles_urlpatterns()
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-    urlpatterns += path("django-admin/", admin.site.urls),
-
+    
     import debug_toolbar
-
+    
     urlpatterns = [
                       path('__debug__/', include(debug_toolbar.urls)),
                       path("test404/", TemplateView.as_view(template_name="404.html")),
@@ -82,7 +93,7 @@ urlpatterns = urlpatterns + [
     # For anything not caught by a more specific rule above, hand over to
     # Wagtail's page serving mechanism. This should be the last pattern in
     # the list:
-
+    
     # Copied from wagtail.urls for compatibility with wagtail-cache. See wagtail-cache documentation
     path(
         "_util/authenticate_with_password/<int:page_view_restriction_id>/<int:page_id>/",

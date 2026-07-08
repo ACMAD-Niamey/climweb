@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-03 11:31+0300\n"
+"POT-Creation-Date: 2026-05-11 07:47+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,95 +18,111 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: pages/services/models.py:29
+#: climweb/src/climweb/pages/services/models.py:31
 msgid "Services listing Heading"
 msgstr "Services listing Heading"
 
-#: pages/services/models.py:38
+#: climweb/src/climweb/pages/services/models.py:40
 msgid "Service List Page"
 msgstr "Service List Page"
 
-#: pages/services/models.py:39
+#: climweb/src/climweb/pages/services/models.py:41
 msgid "Service List Pages"
 msgstr "Service List Pages"
 
-#: pages/services/models.py:53
+#: climweb/src/climweb/pages/services/models.py:77
 msgid "Service"
 msgstr "Service"
 
-#: pages/services/models.py:60
+#: climweb/src/climweb/pages/services/models.py:84
 msgid "What we do button text"
 msgstr "What we do button text"
 
-#: pages/services/models.py:67
+#: climweb/src/climweb/pages/services/models.py:91
 msgid "What we do button link"
 msgstr "What we do button link"
 
-#: pages/services/models.py:70
+#: climweb/src/climweb/pages/services/models.py:94
 msgid "Projects description text"
 msgstr "Projects description text"
 
-#: pages/services/models.py:71
+#: climweb/src/climweb/pages/services/models.py:95
 msgid "Project Description"
 msgstr "Project Description"
 
-#: pages/services/models.py:75
+#: climweb/src/climweb/pages/services/models.py:99
 msgid "Feature block items"
 msgstr "Feature block items"
 
-#: pages/services/models.py:83
+#: climweb/src/climweb/pages/services/models.py:118
 msgid "Youtube playlist"
 msgstr "Youtube playlist"
 
-#: pages/services/models.py:94
+#: climweb/src/climweb/pages/services/models.py:129
 msgid "What we do in this Service section"
 msgstr "What we do in this Service section"
 
-#: pages/services/models.py:99
+#: climweb/src/climweb/pages/services/models.py:136
 msgid "Projects Section"
 msgstr "Projects Section"
 
-#: pages/services/models.py:103
-#: pages/services/templates/services/service_page.html:162
+#: climweb/src/climweb/pages/services/models.py:139
+#: climweb/src/climweb/pages/services/templates/services/service_page.html:178
 msgid "Applications"
 msgstr "Applications"
 
-#: pages/services/models.py:103
+#: climweb/src/climweb/pages/services/models.py:139
 msgid "Heading"
 msgstr "Heading"
 
-#: pages/services/models.py:107
+#: climweb/src/climweb/pages/services/models.py:143
 msgid "Service Page"
 msgstr "Service Page"
 
-#: pages/services/models.py:108
+#: climweb/src/climweb/pages/services/models.py:144
 msgid "Service Pages"
 msgstr "Service Pages"
 
-#: pages/services/models.py:214
+#: climweb/src/climweb/pages/services/models.py:253
 msgid "Application"
 msgstr "Application"
 
-#: pages/services/templates/services/service_page.html:31
+#: climweb/src/climweb/pages/services/templates/services/service_page.html:44
 msgid "Our Products"
 msgstr "Our Products"
 
-#: pages/services/templates/services/service_page.html:103
+#: climweb/src/climweb/pages/services/templates/services/service_page.html:92
+#, fuzzy
+#| msgid "Service"
+msgid "Our Services"
+msgstr "Our Services"
+
+#: climweb/src/climweb/pages/services/templates/services/service_page.html:93
+#, fuzzy
+#| msgid "What we do"
+msgid "What We Do"
+msgstr "What We Do"
+
+#: climweb/src/climweb/pages/services/templates/services/service_page.html:148
 msgid "Events"
 msgstr "Events"
 
-#: pages/services/templates/services/service_page.html:114
-msgid "Latest Updates"
-msgstr "Latest Updates"
-
-#: pages/services/templates/services/service_page.html:126
-msgid "All News"
-msgstr "All News"
-
-#: pages/services/templates/services/service_page.html:134
-msgid "All Publications"
-msgstr "All Publications"
-
-#: pages/services/templates/services/service_page.html:151
+#: climweb/src/climweb/pages/services/templates/services/service_page.html:164
 msgid "Latest Media"
 msgstr "Latest Media"
+
+#: climweb/src/climweb/pages/services/templates/services/service_page.html:166
+msgid "Highlights & Videos"
+msgstr "Highlights & Videos"
+
+#~ msgid "Latest Updates"
+#~ msgstr "Latest Updates"
+
+#~ msgid "All News"
+#~ msgstr "All News"
+
+#~ msgid "All Publications"
+#~ msgstr "All Publications"
+
+#~ msgid "Icon"
+#~ msgstr "Icon"

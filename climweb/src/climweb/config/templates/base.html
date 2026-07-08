@@ -7,18 +7,10 @@
 {% get_current_language_bidi as LANGUAGE_BIDI %}
 
 <!DOCTYPE html>
-<html lang="{{ LANGUAGE_CODE }}" dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}">
-<head>
+<html lang="{{ settings.base.LanguageSettings.default_language }}" 
+      dir="{% if settings.base.LanguageSettings.default_language|slice:":2" == "ar" %}rtl{% else %}ltr{% endif %}">
+    <head>
     <meta charset="utf-8"/>
-    <title>
-        {% block title %}
-            {% if page.seo_title %}{{ page.seo_title }}{% else %}{{ page.title }}{% endif %}
-        {% endblock %}
-        {% block title_suffix %}
-            {% wagtail_site as current_site %}
-            {% if current_site and current_site.site_name %} {{ current_site.site_name }}{% endif %}
-        {% endblock %}
-    </title>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
     {% if settings.base.IntegrationSettings.google_site_verification_key %}
@@ -43,29 +35,57 @@
         <base target="_blank" rel="noopener noreferrer">
     {% endif %}
 
-    {# Global stylesheets #}
-    <style>
-        :root {
-            --primary-color: {{ primary_color }};
-            --primary-color-background: {{ primary_color }}25;
-            --secondary-color: {{ secondary_color }};
-            --border-radius: {{ border_radius }};
-            --primary-hover-color: {{ primary_hover_color }};
-        }
-    </style>
+    
     <link rel="stylesheet" type="text/css" href="{% static 'css/bulma.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rtl-bulma-overrides.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'css/bulma-divider.min.css' %}">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&family=Noto+Sans+Arabic:wght@400;600;700&display=swap"
           rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="{% static 'css/animate.min.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'css/google-translate.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'css/navigation.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'css/cms_style.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'css/override.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/base.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/components.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/footer.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/sections.css' %}">
     <link rel="stylesheet" href="{% static 'css/services_common.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'css/nmhs_cms.css' %}">
 
+    {# Global stylesheets #}
+    <style>
+        :root {
+            --text-color: {{ text_color }};
+            --text-color-background: {{ text_color }}25;
+            --background-color: {{ background_color }} ;
+            --primary-color-lightest: {{ primary_color }}0d; 
+            --primary-color-light: {{ primary_color }}1A; 
+            --primary-color-medium: {{ primary_color }}4f; 
+            --border-radius: {{ border_radius }};
+            --primary-color: {{ primary_color }};
+        }
+
+        {% if settings.base.LanguageSettings.default_language|slice:":2" == "ar" %}
+            .title is-3{
+                text-align:right !important;
+            }
+            h1,h2,h3,h4,h5,p{
+                text-align:right !important;
+            }
+
+            .table th {
+                text-align: right !important;
+            }
+
+            .has-text-left{
+                text-align: right !important;
+            }
+}
+        
+        {% endif %}
+
+    </style>
     <script type="text/javascript" src="{% static 'js/jquery-3.6.3.min.js' %}"></script>
     {% if request.user.is_authenticated or request.is_preview %} {% else %}
         {% if settings.base.IntegrationSettings.ga_tracking_id %}
@@ -95,7 +115,7 @@
 {% wagtailuserbar %}
 
 {% block navbar %}
-{% include 'navigation/navbar.html' %}
+    {% include 'navigation/navbar.html' %}
 {% endblock navbar %}
 
 <div class="page-container is-medium">
@@ -129,7 +149,6 @@
     progressively.init()
 </script>
 
-<script src="https://kit.fontawesome.com/db8ac3c257.js" crossorigin="anonymous"></script>
 <script src="{% static 'js/bulma-toast.min.js' %}"></script>
 
 <script>

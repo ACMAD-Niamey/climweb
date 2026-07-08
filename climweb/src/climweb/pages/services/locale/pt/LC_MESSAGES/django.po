@@ -1,0 +1,128 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: nmhs-cms\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-05-11 07:47+0300\n"
+"PO-Revision-Date: 2026-04-13 12:55\n"
+"Last-Translator: \n"
+"Language-Team: Portuguese\n"
+"Language: pt_PT\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Crowdin-File: /climweb/src/climweb/pages/services/locale/en/LC_MESSAGES/django.po\n"
+"X-Crowdin-File-ID: 1540\n"
+"X-Crowdin-Language: pt-PT\n"
+"X-Crowdin-Project: nmhs-cms\n"
+"X-Crowdin-Project-ID: 672958\n"
+
+#: climweb/src/climweb/pages/services/models.py:31
+msgid "Services listing Heading"
+msgstr "Título da listagem de serviços"
+
+#: climweb/src/climweb/pages/services/models.py:40
+msgid "Service List Page"
+msgstr "Página da lista de serviços"
+
+#: climweb/src/climweb/pages/services/models.py:41
+msgid "Service List Pages"
+msgstr "Páginas da lista de serviços"
+
+#: climweb/src/climweb/pages/services/models.py:77
+msgid "Service"
+msgstr "Serviço"
+
+#: climweb/src/climweb/pages/services/models.py:84
+msgid "What we do button text"
+msgstr "Texto do botão O que fazemos"
+
+#: climweb/src/climweb/pages/services/models.py:91
+msgid "What we do button link"
+msgstr "Link do botão O que fazemos"
+
+#: climweb/src/climweb/pages/services/models.py:94
+msgid "Projects description text"
+msgstr "Texto de descrição dos projetos"
+
+#: climweb/src/climweb/pages/services/models.py:95
+msgid "Project Description"
+msgstr "Descrição do Projeto"
+
+#: climweb/src/climweb/pages/services/models.py:99
+msgid "Feature block items"
+msgstr "Itens de bloco de recursos"
+
+#: climweb/src/climweb/pages/services/models.py:118
+msgid "Youtube playlist"
+msgstr "Lista de reprodução do YouTube"
+
+#: climweb/src/climweb/pages/services/models.py:129
+msgid "What we do in this Service section"
+msgstr "O que fazemos nesta seção de serviço"
+
+#: climweb/src/climweb/pages/services/models.py:136
+msgid "Projects Section"
+msgstr "Seção de Projetos"
+
+#: climweb/src/climweb/pages/services/models.py:139
+#: climweb/src/climweb/pages/services/templates/services/service_page.html:178
+msgid "Applications"
+msgstr "Aplicativos"
+
+#: climweb/src/climweb/pages/services/models.py:139
+msgid "Heading"
+msgstr "Cabeçalho"
+
+#: climweb/src/climweb/pages/services/models.py:143
+msgid "Service Page"
+msgstr "Página de serviço"
+
+#: climweb/src/climweb/pages/services/models.py:144
+msgid "Service Pages"
+msgstr "Páginas de serviço"
+
+#: climweb/src/climweb/pages/services/models.py:253
+msgid "Application"
+msgstr "Aplicativo"
+
+#: climweb/src/climweb/pages/services/templates/services/service_page.html:44
+msgid "Our Products"
+msgstr "Nossos produtos"
+
+#: climweb/src/climweb/pages/services/templates/services/service_page.html:92
+#, fuzzy
+#| msgid "Service"
+msgid "Our Services"
+msgstr "Nossos serviços"
+
+#: climweb/src/climweb/pages/services/templates/services/service_page.html:93
+#, fuzzy
+#| msgid "What we do"
+msgid "What We Do"
+msgstr "O que fazemos"
+
+#: climweb/src/climweb/pages/services/templates/services/service_page.html:148
+msgid "Events"
+msgstr "Eventos"
+
+#: climweb/src/climweb/pages/services/templates/services/service_page.html:164
+msgid "Latest Media"
+msgstr "Últimas mídias"
+
+#: climweb/src/climweb/pages/services/templates/services/service_page.html:166
+msgid "Highlights & Videos"
+msgstr "Destaques e vídeos"
+
+#~ msgid "Latest Updates"
+#~ msgstr "Últimas atualizações"
+
+#~ msgid "All News"
+#~ msgstr "Todas as notícias"
+
+#~ msgid "All Publications"
+#~ msgstr "Todas as publicações"
+
+#~ msgid "Icon"
+#~ msgstr "Ícone"

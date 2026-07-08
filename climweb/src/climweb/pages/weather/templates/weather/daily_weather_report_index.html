@@ -14,7 +14,7 @@
         {% else %}
             <section class="nmhs-work intro-section">
                 <div class="work container">
-                    <h2 class="section-subheader">
+                    <h2 class="title is-3">
                         {{ page.introduction_title }}
                     </h2>
                     <div class="intro-description format-text">
@@ -52,9 +52,6 @@
                 //for  smaller devices
                 $('.results-filter .js-accordion-item').removeClass('active');
             }
-
-            // initialize filter accordion
-            accordion.init({speed: 300, oneOpen: false});
 
             const listButton = $("#list-view-button");
             const gridButton = $("#grid-view-button");

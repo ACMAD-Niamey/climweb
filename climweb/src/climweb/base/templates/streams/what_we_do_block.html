@@ -1,0 +1,21 @@
+{% load wagtailiconchooser_tags static wagtailcore_tags %}
+
+<div class="column {% if is_by3 %}is-one-third-tablet{% else %}is-one-third-desktop is-half-tablet{% endif %} is-full-mobile">
+  <div class="wwd-card">
+
+    <div class="wwd-icon">
+      {% if value.icon %}
+        {% svg_icon value.icon %}
+      {% endif %}
+    </div>
+
+    {% if value.title %}
+      <h5 class="wwd-title">{{ value.title }}</h5>
+    {% endif %}
+
+    <div class="wwd-body format-text">
+      {{ value.description|richtext|truncatechars:300 }}
+    </div>
+
+  </div>
+</div>

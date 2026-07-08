@@ -1,60 +1,58 @@
-const accordion = (function () {
-    const $accordion = $(".js-accordion");
-    const $accordion_header = $accordion.find(".js-accordion-header");
-    const $accordion_item = $(".js-accordion-item");
+class Accordion {
+    constructor(id, options = {}) {
+        this.$accordion = $(`#${id}`);
+        this.$accordion_header = this.$accordion.find(".js-accordion-header");
 
-    // default settings
-    const settings = {
-        // animation speed
-        speed: 400,
+        // Default settings
+        this.settings = {
+            speed: 400, // Animation speed
+            firstOpen: true, // Close all other accordion items if true
+        };
 
-        // close all other accordion items if true
-        oneOpen: false
-    };
+        // Extend default settings with user-provided options
+        $.extend(this.settings, options);
 
-    return {
-        // pass configurable object literal
-        init: function ($settings) {
-            $accordion_header.on("click", function () {
-                accordion.toggle($(this));
-            });
+        this.init();
+    }
 
-            $.extend(settings, $settings);
+    init() {
+        this.$accordion_header.on("click", (event) => {
+            this.toggle($(event.currentTarget));
+        });
 
-            // ensure only one accordion is active if oneOpen is true
-            if (settings.oneOpen && $(".js-accordion-item.active").length > 1) {
-                $(".js-accordion-item.active:not(:first)").removeClass("active");
-            }
-
-            // reveal the active accordion bodies
-            $(".js-accordion-item.active")
-                .find("> .js-accordion-body")
-                .show();
-        },
-        toggle: function ($this) {
-            if (
-                settings.oneOpen &&
-                $this[0] !=
-                $this
-                    .closest(".js-accordion")
-                    .find("> .js-accordion-item.active > .js-accordion-header")[0]
-            ) {
-                $this
-                    .closest(".js-accordion")
-                    .find("> .js-accordion-item")
-                    .removeClass("active")
-                    .find(".js-accordion-body")
-                    .slideUp();
-            }
-            // show/hide the clicked accordion item
-            $this.closest(".js-accordion-item").toggleClass("active");
-            $this
-                .next()
-                .stop()
-                .slideToggle(settings.speed);
+        if (this.settings.firstOpen) {
+            this.$accordion.find(".js-accordion-item:first").addClass("active");
+            this.$accordion.find(".js-accordion-item.active:not(:first)").removeClass("active");
         }
-    };
-})();
+
+        // Reveal the active accordion bodies
+        this.$accordion.find(".js-accordion-item.active").find("> .js-accordion-body").show();
+    }
+
+    toggle($this) {
+        if (
+            this.settings.oneOpen &&
+            $this[0] !=
+            $this
+                .closest(".js-accordion")
+                .find("> .js-accordion-item.active > .js-accordion-header")[0]
+        ) {
+            $this
+                .closest(".js-accordion")
+                .find("> .js-accordion-item")
+                .removeClass("active")
+                .find(".js-accordion-body")
+                .slideUp();
+        }
+
+        // Show/hide the clicked accordion item
+        $this.closest(".js-accordion-item").toggleClass("active");
+        $this
+            .next()
+            .stop()
+            .slideToggle(this.settings.speed);
+    }
+}
 
 
 function getCookie(name) {
@@ -313,45 +311,51 @@ $(document).ready(function () {
             }
         });
 
-        // Header search
-        const inputContainer = $('#search-input')
-        const trigger = $('#search-trigger')
-        const inputEl = $('#input-el')
+        /* ── SEARCH TOGGLE ── */
+        const searchTrigger = document.getElementById('search-trigger');
+        const searchInput   = document.getElementById('search-input');
+        const inputEl       = document.getElementById('input-el');
 
-        trigger.on('click', function () {
-            $(this).hide()
-            inputContainer.removeClass('is-hidden')
-            inputEl.focus()
-        })
+        if (searchTrigger && searchInput) {
+        searchTrigger.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const isVisible = searchInput.style.display !== 'none';
+            searchInput.style.display = isVisible ? 'none' : 'block';
+            if (!isVisible && inputEl) inputEl.focus();
+        });
 
-
-        inputEl.on('focusout', function () {
-            const $this = $(this)
-
-            const value = $this.val()
-
-            if (!value) {
-                trigger.show()
-                inputContainer.addClass('is-hidden')
+        /* close when clicking outside the search area */
+        document.addEventListener('click', function (e) {
+            if (
+            searchInput.style.display !== 'none' &&
+            !searchInput.contains(e.target) &&
+            !searchTrigger.contains(e.target)
+            ) {
+            searchInput.style.display = 'none';
             }
-        })
+        });
+        }
 
-        inputEl.keypress(function (event) {
-            if (event.keyCode === 13) {
-                const value = $(this).val()
-                if (value) {
-                    // tract on search
-                    ga_reg_event('search', {
-                        "event_category": "Search",
-                        "event_label": "Header Search",
-                        "value": value,
-                    })
-                }
+        /* submit on Enter */
+        if (inputEl) {
+        inputEl.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+            e.preventDefault();
+            const q = this.value.trim();
+            if (q) this.closest('form').submit();
             }
+        });
+        }
+
+        /* close search on Escape */
+        document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && searchInput && searchInput.style.display !== 'none') {
+            searchInput.style.display = 'none';
+        }
         });
         const default_lang = "en-us"
 
-        $(".languages a").on("click", function () {
+        $(".util-dropdown-item[data-lang-prefix]").on("click", function () {
 
             const lang_text = $(this).attr("data-lang")
 

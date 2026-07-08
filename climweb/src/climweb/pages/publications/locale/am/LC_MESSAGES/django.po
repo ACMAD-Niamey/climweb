@@ -1,180 +1,279 @@
-# SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-# This file is distributed under the same license as the PACKAGE package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
-#, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
+"Project-Id-Version: nmhs-cms\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-03 11:31+0300\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: \n"
+"POT-Creation-Date: 2026-05-11 07:47+0300\n"
+"PO-Revision-Date: 2026-04-13 13:25\n"
+"Last-Translator: \n"
+"Language-Team: Amharic\n"
+"Language: am_ET\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"X-Crowdin-File: /climweb/src/climweb/pages/publications/locale/en/LC_MESSAGES/django.po\n"
+"X-Crowdin-File-ID: 1510\n"
+"X-Crowdin-Language: am\n"
+"X-Crowdin-Project: nmhs-cms\n"
+"X-Crowdin-Project-ID: 672958\n"
 
-#: pages/publications/models.py:27
+#: climweb/src/climweb/pages/publications/models.py:33
+msgid "IP Address"
+msgstr "የአይፒ አድራሻ"
+
+#: climweb/src/climweb/pages/publications/models.py:34
+msgid "User Agent"
+msgstr "የተጠቃሚ ወኪል"
+
+#: climweb/src/climweb/pages/publications/models.py:35
+msgid "View Timestamp"
+msgstr "የጊዜ ማህተም ይመልከቱ"
+
+#: climweb/src/climweb/pages/publications/models.py:36
+msgid "Session Key"
+msgstr "የክፍለ-ጊዜ ቁልፍ"
+
+#: climweb/src/climweb/pages/publications/models.py:39
+msgid "Page View"
+msgstr "የገጽ እይታ"
+
+#: climweb/src/climweb/pages/publications/models.py:40
+msgid "Page Views"
+msgstr "የገጽ እይታዎች"
+
+#: climweb/src/climweb/pages/publications/models.py:142
 msgid "Name"
 msgstr "ስም"
 
-#: pages/publications/models.py:43
+#: climweb/src/climweb/pages/publications/models.py:158
 msgid "Publication Types"
 msgstr "የህትመት ዓይነቶች"
 
-#: pages/publications/models.py:59
+#: climweb/src/climweb/pages/publications/models.py:174
 msgid ""
 "The year for the earliest available publication. This is used to generate "
 "the years available for filtering "
 msgstr "ለመጀመሪያ ጊዜ ለህትመት የበቃበት ዓመት። ይህ ለማጣራት ያሉትን ዓመታት ለማመንጨት ጥቅም ላይ ይውላል"
 
-#: pages/publications/models.py:60
+#: climweb/src/climweb/pages/publications/models.py:175
 msgid "Earliest Publication Year"
 msgstr "የመጀመሪያው የህትመት ዓመት"
 
-#: pages/publications/models.py:64
+#: climweb/src/climweb/pages/publications/models.py:179
 msgid ""
 "How many publications per page should be visible on the all publications "
 "section ?"
 msgstr "በሁሉም የሕትመት ክፍል ላይ በገጽ ስንት ሕትመቶች መታየት አለባቸው?"
 
-#: pages/publications/models.py:78
+#: climweb/src/climweb/pages/publications/models.py:193
 msgid "Publications Index Page"
 msgstr "የሕትመት መረጃ ጠቋሚ ገጽ"
 
-#: pages/publications/models.py:152
+#: climweb/src/climweb/pages/publications/models.py:267
+#: climweb/src/climweb/pages/publications/templates/publications_filter_include.html:8
 msgid "Publication Type"
 msgstr "የህትመት አይነት"
 
-#: pages/publications/models.py:153
+#: climweb/src/climweb/pages/publications/models.py:268
 msgid "Services related to this publication"
 msgstr "ከዚህ ህትመት ጋር የተያያዙ አገልግሎቶች"
 
-#: pages/publications/models.py:154
+#: climweb/src/climweb/pages/publications/models.py:269
 msgid "Relevant Projects"
 msgstr "ተዛማጅ ፕሮጀክቶች"
 
-#: pages/publications/models.py:155
+#: climweb/src/climweb/pages/publications/models.py:270
 msgid "Summary"
 msgstr "ማጠቃለያ"
 
-#: pages/publications/models.py:156
+#: climweb/src/climweb/pages/publications/models.py:271
 msgid "Date of Publish"
 msgstr "የታተመበት ቀን"
 
-#: pages/publications/models.py:160
+#: climweb/src/climweb/pages/publications/models.py:275
 msgid "Is visible on homepage"
 msgstr "መነሻ ገጽ ላይ ይታያል"
 
-#: pages/publications/models.py:162
+#: climweb/src/climweb/pages/publications/models.py:277
 msgid "Mark as featured"
 msgstr "ተለይቶ እንደቀረበ ምልክት አድርግበት"
 
-#: pages/publications/models.py:163
+#: climweb/src/climweb/pages/publications/models.py:278
 msgid "Featured publications appear on the publications landing page"
 msgstr "ተለይተው የቀረቡ ህትመቶች በህትመቶች ማረፊያ ገጽ ላይ ይታያሉ"
 
-#: pages/publications/models.py:165
+#: climweb/src/climweb/pages/publications/models.py:280
 msgid "Optional start date for which this publication is relevant"
 msgstr "ይህ ህትመት አስፈላጊ የሆነበት አማራጭ መጀመሪያ ቀን"
 
-#: pages/publications/models.py:166
+#: climweb/src/climweb/pages/publications/models.py:281
 msgid "Start date"
 msgstr "የመጀመሪያ ቀን"
 
-#: pages/publications/models.py:169
+#: climweb/src/climweb/pages/publications/models.py:284
 msgid "End date"
 msgstr "የመጨረሻ ቀን"
 
-#: pages/publications/models.py:171
+#: climweb/src/climweb/pages/publications/models.py:286
 msgid "Peer reviewed"
 msgstr "አቻ ተገምግሟል"
 
-#: pages/publications/models.py:179
-msgid "Publication image"
-msgstr "የሕትመት ምስል"
+#: climweb/src/climweb/pages/publications/models.py:294
+msgid "Publication Image (Thumbnail)"
+msgstr "የሕትመት ምስል (ድንክዬ)"
 
-#: pages/publications/models.py:180
-msgid "This can be a screenshot of the front page of the publication"
-msgstr "ይህ የሕትመቱ የፊት ገጽ ቅጽበታዊ ገጽ እይታ ሊሆን ይችላል።"
+#: climweb/src/climweb/pages/publications/models.py:295
+msgid ""
+"This can be a screenshot of the front page of the publication. If left empty"
+" and Auto-generate above is checked and the uploaded document is a PDF, an "
+"image of the first page will be auto-generated."
+msgstr ""
+"ይህ የታተሙ የፊት ገጽ ገጽ ቅጽበታዊ ገጽ እይታ ሊሆን ይችላል. ቢተው ባዶ ከሆነ እና በራስ-ማመንሪያ ከተመረመረ እና "
+"የተሰቀለው ሰነድ ፒዲኤፍ ነው, የመጀመሪያው ገጽ ምስል በራስ-ተፈጥሮአዊ ይሆናል."
 
-#: pages/publications/models.py:188
+#: climweb/src/climweb/pages/publications/models.py:301
+msgid ""
+"If the document is a PDF, an image of the first page will be auto-generated."
+msgstr "ሰነዱ ፒዲኤፍ ከሆነ, የመጀመሪያው ገጽ ምስል በራስ-ተፈጥሮአዊ ይሆናል."
+
+#: climweb/src/climweb/pages/publications/models.py:302
+msgid "Auto-generate thumbnail"
+msgstr "ድንክዬዎን በራስ-ሰር ይፍጠሩ"
+
+#: climweb/src/climweb/pages/publications/models.py:311
 msgid "Document or File"
 msgstr "ሰነድ ወይም ፋይል"
 
-#: pages/publications/models.py:189
+#: climweb/src/climweb/pages/publications/models.py:312
 msgid ""
 "Here you can upload pdfs, word documents, powerpoints, zip files or any "
 "other file"
 msgstr ""
 "እዚህ ፒዲኤፍ ፣ የቃላት ሰነዶች ፣ የኃይል ነጥቦች ፣ ዚፕ ፋይሎች ወይም ሌላ ማንኛውንም ፋይል መስቀል ይችላሉ።"
 
-#: pages/publications/models.py:193
+#: climweb/src/climweb/pages/publications/models.py:316
 msgid "External Url - *Only If published/hosted somewhere else"
 msgstr "ውጫዊ ዩአርኤል - * ሌላ ቦታ ከታተመ/የሚስተናገድ ከሆነ ብቻ"
 
-#: pages/publications/models.py:194
+#: climweb/src/climweb/pages/publications/models.py:317
 msgid "Link to published resource if external"
 msgstr "ውጫዊ ከሆነ ወደ የታተመ ምንጭ አገናኝ"
 
-#: pages/publications/models.py:196
+#: climweb/src/climweb/pages/publications/models.py:319
+#: climweb/src/climweb/pages/publications/templates/document_detail_include.html:137
 msgid "Tags"
 msgstr "መለያዎች"
 
-#: pages/publications/models.py:213
+#: climweb/src/climweb/pages/publications/models.py:337
 msgid "Additional Details"
 msgstr "ተጨማሪ ዝርዝሮች"
 
-#: pages/publications/templates/publication_page.html:24
+#: climweb/src/climweb/pages/publications/templates/document_detail_include.html:21
+#, fuzzy
+#| msgid "Download document"
+msgid "Download"
+msgstr "አውርድ"
+
+#: climweb/src/climweb/pages/publications/templates/document_detail_include.html:34
+#, fuzzy, python-format
+#| msgid "Download - %(file_size)s"
+msgid "Download — %(file_size)s"
+msgstr "አውርድ — %(ፋይል_መጠን) s"
+
+#: climweb/src/climweb/pages/publications/templates/document_detail_include.html:44
+#: climweb/src/climweb/pages/publications/templates/document_detail_include.html:163
+msgid "Go to publication"
+msgstr "ወደ ሕትመት ይሂዱ"
+
+#: climweb/src/climweb/pages/publications/templates/document_detail_include.html:54
+#, fuzzy
+#| msgid "Page Views"
+msgid "Views"
+msgstr "እይታዎች"
+
+#: climweb/src/climweb/pages/publications/templates/document_detail_include.html:64
+#, fuzzy
+#| msgid "Download document"
+msgid "Downloads"
+msgstr "ውርዶች"
+
+#: climweb/src/climweb/pages/publications/templates/document_detail_include.html:96
+msgid "Additional Materials"
+msgstr "ተጨማሪ ቁሳቁሶች"
+
+#: climweb/src/climweb/pages/publications/templates/document_detail_include.html:155
+msgid "Download document"
+msgstr "ሰነድ ማውረድ"
+
+#: climweb/src/climweb/pages/publications/templates/publication_page.html:24
 msgid "Other Recent Publications"
 msgstr "ሌሎች የቅርብ ጊዜ ህትመቶች"
 
-#: pages/publications/templates/publications_filter_include.html:9
-msgid "Filter by Publication Type"
-msgstr "በህትመት አይነት አጣራ"
+#: climweb/src/climweb/pages/publications/templates/publications_filter_include.html:32
+msgid "Service"
+msgstr "አገልግሎት"
 
-#: pages/publications/templates/publications_filter_include.html:35
-msgid "Filter by Service"
-msgstr "በአገልግሎት አጣራ"
+#: climweb/src/climweb/pages/publications/templates/publications_filter_include.html:56
+#, fuzzy
+#| msgid "Relevant Projects"
+msgid "Projects"
+msgstr "ፕሮጀክቶች"
 
-#: pages/publications/templates/publications_filter_include.html:57
-msgid "Filter by Projects"
-msgstr "በፕሮጀክቶች አጣራ"
+#: climweb/src/climweb/pages/publications/templates/publications_filter_include.html:80
+msgid "Year"
+msgstr "አመት"
 
-#: pages/publications/templates/publications_filter_include.html:82
-msgid "Filter by Year"
-msgstr "በአመት አጣራ"
-
-#: pages/publications/templates/publications_index_page.html:18
+#: climweb/src/climweb/pages/publications/templates/publications_index_page.html:17
 msgid "Featured Publications"
 msgstr "ተለይተው የቀረቡ ህትመቶች"
 
-#: pages/publications/templates/publications_index_page.html:34
+#: climweb/src/climweb/pages/publications/templates/publications_index_page.html:33
 msgid "All Publications"
 msgstr "ሁሉም ህትመቶች"
 
-#: pages/publications/templates/publications_list_include.html:6
+#: climweb/src/climweb/pages/publications/templates/publications_list_include.html:8
 #, python-format
 msgid "Showing %(counter)s result"
-msgid_plural "Showing %(counter)s result"
+msgid_plural "Showing %(counter)s results"
 msgstr[0] ""
 msgstr[1] ""
 
-#: pages/publications/templates/publications_list_include.html:33
+#: climweb/src/climweb/pages/publications/templates/publications_list_include.html:31
+msgid "Search by title"
+msgstr "በርዕስ ይፈልጉ"
+
+#: climweb/src/climweb/pages/publications/templates/publications_list_include.html:34
 msgid "Search"
 msgstr "ፈልግ"
 
-#: pages/publications/templates/publications_list_include.html:74
-msgid "Number of views"
-msgstr "የእይታዎች ብዛት"
+#: climweb/src/climweb/pages/publications/templates/publications_list_include.html:36
+msgid "Clear"
+msgstr "ግልጽ"
 
-#: pages/publications/templates/publications_list_include.html:79
+#: climweb/src/climweb/pages/publications/templates/publications_list_include.html:95
+msgid "Read More"
+msgstr "ተጨማሪ ያንብቡ"
+
+#: climweb/src/climweb/pages/publications/templates/publications_list_include.html:106
 msgid "Number of downloads"
 msgstr "የውርዶች ብዛት"
 
-#: pages/publications/templates/publications_list_include.html:98
-msgid "Read More"
-msgstr "ተጨማሪ ያንብቡ"
+#: climweb/src/climweb/pages/publications/templates/publications_list_include.html:113
+msgid "Number of views"
+msgstr "የእይታዎች ብዛት"
+
+#~ msgid "Filter by Publication Type"
+#~ msgstr "በህትመት አይነት አጣራ"
+
+#~ msgid "Filter by Service"
+#~ msgstr "በአገልግሎት አጣራ"
+
+#~ msgid "Filter by Projects"
+#~ msgstr "በፕሮጀክቶች አጣራ"
+
+#~ msgid "Filter by Year"
+#~ msgstr "በአመት አጣራ"
+
+#~ msgid "This can be a screenshot of the front page of the publication"
+#~ msgstr "ይህ የሕትመቱ የፊት ገጽ ቅጽበታዊ ገጽ እይታ ሊሆን ይችላል።"
