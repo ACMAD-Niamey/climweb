@@ -178,42 +178,41 @@ echo "./dev.sh running docker-compose commands:
 "
 
 CORE_FILE=docker-compose.yml
-OVERRIDE_FILE=(-f docker-compose.dev.yml)
 
 set -x
 
 if [ "$down" = true ] ; then
 # Remove the containers and remove the anonymous volumes for cleanliness sake.
-$DOCKER_COMPOSE -f "$CORE_FILE" "${OVERRIDE_FILE[@]}" rm -s -v -f
-$DOCKER_COMPOSE -f "$CORE_FILE" "${OVERRIDE_FILE[@]}" down --remove-orphans
+$DOCKER_COMPOSE -f "$CORE_FILE" rm -s -v -f
+$DOCKER_COMPOSE -f "$CORE_FILE" down --remove-orphans
 fi
 
 if [ "$kill" = true ] ; then
-$DOCKER_COMPOSE -f "$CORE_FILE" "${OVERRIDE_FILE[@]}" kill
+$DOCKER_COMPOSE -f "$CORE_FILE" kill
 fi
 
 if [ "$build" = true ] ; then
-  $DOCKER_COMPOSE -f "$CORE_FILE" "${OVERRIDE_FILE[@]}" build "$@"
+  $DOCKER_COMPOSE -f "$CORE_FILE" build "$@"
 fi
 
 if [ "$delete_volumes" = true ] ; then
-  $DOCKER_COMPOSE -f "$CORE_FILE" "${OVERRIDE_FILE[@]}" down -v
+  $DOCKER_COMPOSE -f "$CORE_FILE" down -v
 fi
 
 if [ "$up" = true ] ; then
-$DOCKER_COMPOSE -f "$CORE_FILE" "${OVERRIDE_FILE[@]}" up "$@"
+$DOCKER_COMPOSE -f "$CORE_FILE" up "$@"
 fi
 
 if [ "$run" = true ] ; then
-$DOCKER_COMPOSE -f "$CORE_FILE" "${OVERRIDE_FILE[@]}" run "$@"
+$DOCKER_COMPOSE -f "$CORE_FILE" run "$@"
 fi
 
 if [ "$exec" = true ] ; then
-$DOCKER_COMPOSE -f "$CORE_FILE" "${OVERRIDE_FILE[@]}" exec "$@"
+$DOCKER_COMPOSE -f "$CORE_FILE" exec "$@"
 fi
 
 if [ "$config" = true ] ; then
-$DOCKER_COMPOSE -f "$CORE_FILE" "${OVERRIDE_FILE[@]}" config
+$DOCKER_COMPOSE -f "$CORE_FILE" config
 fi
 
 set +x

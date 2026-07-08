@@ -22,7 +22,6 @@ x-climweb-variables: &climweb-variables
   RECAPTCHA_PRIVATE_KEY: ${RECAPTCHA_PRIVATE_KEY:-}
   RECAPTCHA_DOMAIN: ${RECAPTCHA_DOMAIN:-www.google.com}
   RECAPTCHA_VERIFY_REQUEST_TIMEOUT: ${RECAPTCHA_VERIFY_REQUEST_TIMEOUT:-60}
-  NEXTJS_SERVER_URL: http://climweb_mapviewer_dev:3000
   CMS_UPGRADE_HOOK_URL: ${CMS_UPGRADE_HOOK_URL:-}
   WAGTAILADMIN_BASE_URL: ${CMS_BASE_URL:-}
   LANGUAGE_CODE: ${CMS_DEFAULT_LANGUAGE_CODE:-en}
@@ -48,22 +47,22 @@ x-climweb-variables: &climweb-variables
 services:
   climweb_db_dev:
     container_name: climweb_db_dev
-    image: postgis/postgis:15-master
+    image: postgis/postgis:${POSTGRES_VERSION:-15}-master
     platform: linux/x86_64
     restart: no
     environment:
       - POSTGRES_USER=${CMS_DB_USER:-climweb}
       - POSTGRES_DB=${CMS_DB_NAME:-climweb}
-      - POSTGRES_PASSWORD=${CMS_DB_PASSWORD:-?}
+      - POSTGRES_PASSWORD=${CMS_DB_PASSWORD:-climweb}
     ports:
       - "5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data/
+      - ${CMS_DB_VOLUME:-./cms/db-data}:/var/lib/postgresql/data/
 
   climweb_redis_dev:
     image: redis:alpine
     container_name: climweb_redis_dev
-    command: redis-server --requirepass ${REDIS_PASSWORD:?}
+    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
     restart: no
 
   climweb_dev:
@@ -79,15 +78,16 @@ services:
         - GID=${GID}
     expose:
       - 8000
+    ports:
+      - "${CLIMWEB_DEV_PORT:-8000}:8000"
     environment:
       <<: *climweb-variables
       WAIT_HOSTS: climweb_db_dev:5432,climweb_redis_dev:6379
-    ports:
-      - "80:8000"
     volumes:
+      - ./climweb:/climweb/web
       - static:/climweb/web/src/climweb/static
       - media:/climweb/web/src/climweb/media
-      - ${BACKUP_VOLUME}:/climweb/web/src/climweb/backup
+      - ${BACKUP_VOLUME:-./cms/backup}:/climweb/web/src/climweb/backup
 
   climweb_celery_worker_dev:
     image: climweb_dev
@@ -98,9 +98,10 @@ services:
       <<: *climweb-variables
       WAIT_HOSTS: climweb_db_dev:5432,climweb_redis_dev:6379,climweb_dev:8000
     volumes:
+      - ./climweb:/climweb/web
       - static:/climweb/web/src/climweb/static
       - media:/climweb/web/src/climweb/media
-      - ${BACKUP_VOLUME}:/climweb/web/src/climweb/backup
+      - ${BACKUP_VOLUME:-./cms/backup}:/climweb/web/src/climweb/backup
 
   climweb_celery_beat_dev:
     image: climweb_dev
@@ -111,11 +112,24 @@ services:
       <<: *climweb-variables
       WAIT_HOSTS: climweb_db_dev:5432,climweb_redis_dev:6379,climweb_dev:8000
     volumes:
+      - ./climweb:/climweb/web
       - static:/climweb/web/src/climweb/static
       - media:/climweb/web/src/climweb/media
-      - ${BACKUP_VOLUME}:/climweb/web/src/climweb/backup
+      - ${BACKUP_VOLUME:-./cms/backup}:/climweb/web/src/climweb/backup
+
+  climweb_nginx:
+    image: nginx:alpine
+    container_name: climweb_nginx
+    restart: no
+    ports:
+      - "80:80"
+    volumes:
+      - ./deploy/nginx/${NGINX_CONFIG:-nginx.conf}:/etc/nginx/nginx.conf:ro
+      - static:/wagtail_static:ro
+      - media:/wagtail_media:ro
+    depends_on:
+      - climweb_dev
 
 volumes:
-  pgdata:
   static:
   media:
