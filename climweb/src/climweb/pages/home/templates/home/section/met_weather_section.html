@@ -23,7 +23,10 @@
     </div>
     {% endif %}
 
-    <!-- Bottom Row: Map + Alerts -->
+    <!-- Bottom Row: Map + Alerts. Hidden entirely unless the "Show weather
+         watch section" toggle is on in the Wagtail admin (HomePage settings),
+         since the interactive map depends on the mapviewer stack. -->
+    {% if page.show_weather_watch %}
     <div class="bottom-row">
 
       {% if home_map_layer_svg_sprite %}
@@ -103,6 +106,7 @@
       
 
     </div>
+    {% endif %}
     <!-- /bottom-row -->
 
   </div>

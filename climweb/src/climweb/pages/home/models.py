@@ -243,7 +243,9 @@ class HomePage(MetadataPageMixin, Page):
     def get_context(self, request, *args, **kwargs):
         context = super(HomePage, self).get_context(request, *args, **kwargs)
         
-        if "capcomposer.cap" in settings.INSTALLED_APPS:
+        # The alerts panel is part of the weather watch map section, so only
+        # expose its url when the section is enabled in the admin.
+        if self.show_weather_watch and "capcomposer.cap" in settings.INSTALLED_APPS:
             context["home_map_alerts_url"] = get_full_url(request, reverse("home_map_alerts"))
 
         abm_settings = AdminBoundarySettings.for_request(request)
@@ -269,10 +271,11 @@ class HomePage(MetadataPageMixin, Page):
                 "city_search_url": city_search_url,
             })
         
-        map_settings_url = get_full_url(request, reverse("home-map-settings"))
-        context.update({
-            "home_map_settings_url": map_settings_url,
-        })
+        if self.show_weather_watch:
+            map_settings_url = get_full_url(request, reverse("home-map-settings"))
+            context.update({
+                "home_map_settings_url": map_settings_url,
+            })
 
         if "forecastmanager" in settings.INSTALLED_APPS:
             context["home_weather_widget_url"] = get_full_url(request, reverse("home-weather-widget"))

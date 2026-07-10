@@ -8,10 +8,13 @@
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/home.css' %}">
     <link href="{% static 'css/hero.css' %}" type="text/css" rel="stylesheet"/>
-    <link href='{% static "css/maplibre-gl.css" %}' rel='stylesheet'/>
     <link rel="stylesheet" type="text/css" href="{% static 'css/partners.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'css/project_detail.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'css/zoom-to-location-control.css' %}">
+    {% if page.show_weather_watch %}
+        {# map-only styles — loaded only when the weather watch map section is enabled #}
+        <link href='{% static "css/maplibre-gl.css" %}' rel='stylesheet'/>
+        <link rel="stylesheet" type="text/css" href="{% static 'css/zoom-to-location-control.css' %}">
+    {% endif %}
     {% if page.youtube_playlist %}
         <link rel="stylesheet" type="text/css" href="{% static 'css/jquery.skeleton.css' %}">
         <link rel="stylesheet" type="text/css" href="{% static 'css/video_include.css' %}">
@@ -118,11 +121,14 @@
 {% endblock content %}
 
 {% block extra_js %}
-    <script src="{% static 'js/maplibre-gl.js' %}"></script>
-    <script src="{% static 'js/turf.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'js/bulmahead.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/zoom-to-location-control.js' %}"></script>
-    <script type="module" crossorigin src="{% vue_bundle_url 'home-map' %}"></script>
+    {% if page.show_weather_watch %}
+        {# map-only scripts — loaded only when the weather watch map section is enabled #}
+        <script src="{% static 'js/maplibre-gl.js' %}"></script>
+        <script src="{% static 'js/turf.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'js/zoom-to-location-control.js' %}"></script>
+        <script type="module" crossorigin src="{% vue_bundle_url 'home-map' %}"></script>
+    {% endif %}
 
     {% if page.youtube_playlist %}
         <script src="{% static 'js/jquery.scheletrone.js' %}"></script>
