@@ -9,7 +9,12 @@
 
   <div class="mhz-card-header">
     <div class="mhz-card-title">
-      <span class="mhz-live-dot" aria-hidden="true"></span>
+      <svg class="mhz-title-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+           xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M3 12h18M12 3c2.5 2.5 3.75 5.5 3.75 9s-1.25 6.5-3.75 9c-2.5-2.5-3.75-5.5-3.75-9S9.5 5.5 12 3Z"
+              stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+      </svg>
       <span>{{ page.weather_watch_header }}</span>
     </div>
 
@@ -29,6 +34,12 @@
   </div>
 
   {% if multi_hazard_api_base_url %}
+    {# Docked category tab row — sits in normal flow between the header and #}
+    {# the map viewport so it never overlaps the map's own floating legend, #}
+    {# date chip, or zoom controls. multi_hazard_map.js renders into this #}
+    {# element by id rather than appending inside the map mount. #}
+    <div id="multi-hazard-tabs" class="mhz-tabs-row"></div>
+
     {# data-country-bounds mirrors data-initial-bounds in met_weather_section.html: #}
     {# the raw Django list rendering of country_bounds, parsed client-side as JSON. #}
     <div id="multi-hazard-map" class="mhz-map"

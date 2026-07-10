@@ -21,12 +21,8 @@
   font-weight: 700;
 }
 
-.mhz-live-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: #27ae60;
-  box-shadow: 0 0 0 4px rgba(39, 174, 96, 0.14);
+.mhz-title-icon {
+  color: var(--primary-color, #0a2240);
   flex-shrink: 0;
 }
 
@@ -66,29 +62,35 @@
   margin-block-end: 8px;
 }
 
-.mhz-tabs {
-  position: absolute;
-  inset-block-start: 12px;
-  inset-inline-start: 12px;
-  z-index: 5;
+/* Docked tab row — normal page flow between the header and the map
+   viewport, so it never overlaps the map's own floating legend, date
+   chip, or zoom controls (unlike the earlier floating-overlay version). */
+.mhz-tabs-row {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  max-inline-size: calc(100% - 24px);
+  padding: 10px 16px;
+  border-block-end: 1px solid #f0f0f0;
 }
 
 .mhz-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 1px solid rgba(10, 34, 64, 0.14);
   border-radius: 999px;
-  padding: 7px 11px;
-  background: rgba(255, 255, 255, 0.94);
+  padding: 6px 12px;
+  background: #fff;
   color: #253040;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
   font: inherit;
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
+}
+
+.mhz-tab svg {
+  flex-shrink: 0;
 }
 
 .mhz-tab.is-active {

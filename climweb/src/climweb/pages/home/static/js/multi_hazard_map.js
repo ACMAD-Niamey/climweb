@@ -10,7 +10,21 @@
     const RASTER_SOURCE_ID = 'mhz-raster-source';
     const RASTER_LAYER_ID = 'mhz-raster-layer';
 
+    // The catalog API's hazard-categories endpoint returns icon_url as null
+    // in production, so tab icons come from this local set instead — thin
+    // stroke-style SVGs matching the rest of the redesign's icon language.
+    // Keyed by category key; TAB_ICONS.default covers any category the API
+    // returns that isn't one of the four core tabs.
+    const TAB_ICONS = {
+        weather: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M8 15a4 4 0 1 1 .6-7.96A5.5 5.5 0 0 1 19 9.5 3.5 3.5 0 0 1 18.5 16H8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 3v1.5M2 6.5h1.5M8.5 2v1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+        drought: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 3c3 4 6 7.5 6 11a6 6 0 1 1-12 0c0-3.5 3-7 6-11Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+        climate: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c2.5 2.5 3.75 5.5 3.75 9s-1.25 6.5-3.75 9c-2.5-2.5-3.75-5.5-3.75-9S9.5 5.5 12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+        flood: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M3 15c1.5 1.3 3 1.3 4.5 0s3-1.3 4.5 0 3 1.3 4.5 0 3-1.3 4.5 0M3 19c1.5 1.3 3 1.3 4.5 0s3-1.3 4.5 0 3 1.3 4.5 0 3-1.3 4.5 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+        default: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/></svg>',
+    };
+
     let map = null;
+    let tabsRow = null;
     let activeToken = 0;
     let groupedLayers = {};
     let config = {};
@@ -180,23 +194,37 @@
     }
 
     function renderTabs(mount, tabs) {
-        clearByClass(mount, 'mhz-tabs');
-        const wrapper = document.createElement('div');
-        wrapper.className = 'mhz-tabs';
+        // Tabs render into the docked #multi-hazard-tabs row (in normal page
+        // flow, a sibling of the map), not into the map mount itself — this
+        // keeps them clear of the map's own floating legend/date-chip/zoom
+        // controls. `mount` is still threaded through for the click handler's
+        // closure over the map div that activateCategory operates on.
+        if (!tabsRow) {
+            return;
+        }
+        tabsRow.innerHTML = '';
         tabs.forEach((tab) => {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'mhz-tab';
             button.dataset.key = tab.key;
-            button.textContent = tab.label;
+            // Icon HTML comes only from the local, hardcoded TAB_ICONS set
+            // (never from API/user data); the label is set via textContent
+            // on a separate span so it's always safely escaped.
+            button.innerHTML = TAB_ICONS[tab.key] || TAB_ICONS.default;
+            const labelSpan = document.createElement('span');
+            labelSpan.textContent = tab.label;
+            button.appendChild(labelSpan);
             button.addEventListener('click', () => activateCategory(mount, tab.key));
-            wrapper.appendChild(button);
+            tabsRow.appendChild(button);
         });
-        mount.appendChild(wrapper);
     }
 
-    function setActiveTab(mount, key) {
-        mount.querySelectorAll('.mhz-tab').forEach((tab) => {
+    function setActiveTab(key) {
+        if (!tabsRow) {
+            return;
+        }
+        tabsRow.querySelectorAll('.mhz-tab').forEach((tab) => {
             tab.classList.toggle('is-active', tab.dataset.key === key);
         });
     }
@@ -247,6 +275,9 @@
     }
 
     function showUnavailable(mount) {
+        if (tabsRow) {
+            tabsRow.innerHTML = '';
+        }
         mount.innerHTML = '';
         const panel = document.createElement('div');
         panel.className = 'mhz-unavailable';
@@ -313,7 +344,7 @@
         const layers = groupedLayers[key] || [];
         const layer = layers[0];
 
-        setActiveTab(mount, key);
+        setActiveTab(key);
         showNoData(mount, false);
         renderDateChip(mount, null);
         renderLegend(mount, layer && layer.legend);
@@ -377,6 +408,7 @@
         if (!mount) {
             return;
         }
+        tabsRow = document.getElementById('multi-hazard-tabs');
 
         config = {
             apiBaseUrl: mount.dataset.apiBaseUrl || '',
