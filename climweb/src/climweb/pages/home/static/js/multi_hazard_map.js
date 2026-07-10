@@ -7,6 +7,11 @@
         {key: 'climate', label: 'Climate'},
         {key: 'flood', label: 'Flood'},
     ];
+
+    // The homepage card only ever shows these four tabs — never "Boundary
+    // Layers" or any other category the catalog API happens to return.
+    // Order here is the fixed display order, independent of API order.
+    const CORE_CATEGORY_KEYS = ['weather', 'drought', 'climate', 'flood'];
     const RASTER_SOURCE_ID = 'mhz-raster-source';
     const RASTER_LAYER_ID = 'mhz-raster-layer';
 
@@ -168,7 +173,17 @@
     }
 
     function visibleTabs(categories, grouped) {
-        return categories.filter((category) => grouped[category.key] && grouped[category.key].length).slice(0, 4);
+        // Restrict to the fixed Weather/Drought/Climate/Flood set (in that
+        // order), regardless of how many other categories the API returns
+        // or what order it returns them in. A category only shows up as a
+        // tab if it actually has layers assigned to it.
+        const byKey = {};
+        categories.forEach((category) => {
+            byKey[category.key] = category;
+        });
+        return CORE_CATEGORY_KEYS
+            .map((key) => byKey[key] || FALLBACK_CATEGORIES.find((category) => category.key === key))
+            .filter((category) => category && grouped[category.key] && grouped[category.key].length);
     }
 
     function createMap(mount) {
