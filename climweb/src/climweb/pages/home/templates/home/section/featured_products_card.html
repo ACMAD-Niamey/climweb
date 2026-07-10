@@ -1,0 +1,54 @@
+{% load wagtailiconchooser_tags i18n %}
+
+{% comment %}
+  Featured Products card — column 2 of the met homepage card row.
+  Renders up to 3 rows of icon tile + title + short description + chevron
+  from page.featured_products_list: [{"title","description","icon","url"}].
+{% endcomment %}
+<div class="hc-card hc-products-card">
+
+  <div class="hc-card-header">
+    <h3 class="hc-card-title">{% translate "Featured Products" %}</h3>
+  </div>
+
+  <div class="hc-card-body">
+    {% for product in page.featured_products_list|slice:":3" %}
+      <a class="hc-product-item" href="{{ product.url }}">
+
+        <span class="hc-product-icon">
+          {% if product.icon %}
+            {% svg_icon product.icon %}
+          {% endif %}
+        </span>
+
+        <span class="hc-product-text">
+          <span class="hc-product-title">{{ product.title }}</span>
+          {% if product.description %}
+            <span class="hc-product-desc">{{ product.description|truncatechars:90 }}</span>
+          {% endif %}
+        </span>
+
+        <span class="hc-item-chevron">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.5"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+
+      </a>
+    {% endfor %}
+  </div>
+
+  {% if settings.base.ImportantPages.all_products_page %}
+    <div class="hc-card-footer">
+      <a class="hc-card-footer-link" href="{{ settings.base.ImportantPages.all_products_page.url }}">
+        {% translate "View all products" %}
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+    </div>
+  {% endif %}
+
+</div>

@@ -43,12 +43,23 @@
   }
 
   /* ── Met Banner ───────────────────────────────────────────────── */
+  /* Full-bleed height per the homepage redesign. Set here (not in
+     home_redesign.css) because this inline block renders after that
+     stylesheet in document order and would otherwise win the cascade
+     for the same .met-banner selector. */
   .met-banner {
+    display: flex;
     align-items: center;
-    min-height: 110px;
+    min-height: 400px;
     padding: 3rem 4rem;
     position: relative;
     background: linear-gradient(135deg, var(--background-color) 0%, #f8f9fb 100%);
+  }
+
+  @media (max-width: 768px) {
+    .met-banner {
+      min-height: 320px;
+    }
   }
 
   .met-banner-bg {
@@ -211,143 +222,6 @@
     align-items: center;
     gap: 4px;
     white-space: nowrap;
-  }
-
-  .bottom-row {
-    display: grid;
-    grid-template-columns: 1fr 800px;
-    gap: 1rem;
-    align-items: start;
-  }
-
-  .met-map-panel {
-    background: #fff;
-    border: 1px solid #f0f0f0;
-    border-radius: var(--border-radius);
-    overflow: hidden;
-  }
-
-  .met-map-header {
-    padding: 12px 16px;
-    border-bottom: 1px solid #f0f0f0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 16px;
-    font-weight: 600;
-    color: #333333;
-    justify-content: space-between;
-  }
-
-  .met-live-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--primary-color);
-    display: inline-block;
-    flex-shrink: 0;
-  }
-
-  .met-map-panel #home-map {
-    height: 450px;
-    width: 100%;
-    position: relative;
-  }
-
-  .met-map-footer {
-    padding: 10px 16px;
-    border-top: 1px solid #f0f0f0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .met-map-tag {
-    font-size: 11px;
-    font-weight: 600;
-    padding: 3px 8px;
-    border-radius: calc(var(--border-radius) / 3);
-    background: #f0f6ff;
-    color: var(--primary-color);
-  }
-
-  .met-map-discover {
-    margin-left: auto;
-    font-size: 12px;
-    color: var(--primary-color);
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .alerts-panel {
-    background: #fff;
-    border: 1px solid #f0f0f0;
-    border-radius: var(--border-radius);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-  }
-
-  .alerts-panel-header {
-    padding: 12px 16px;
-    border-bottom: 1px solid #f0f0f0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .alerts-panel-title {
-    font-weight: 700;
-    font-size: 14px;
-    color: #1a1a1a;
-  }
-
-  .alerts-count-badge {
-    font-size: 11px;
-    font-weight: 700;
-    background: #E24B4A;
-    color: #fff;
-    border-radius: 20px;
-    padding: 2px 8px;
-    min-width: 22px;
-    text-align: center;
-    line-height: 1.6;
-  }
-
-  .alerts-panel-body {
-    flex: 1;
-    overflow-y: auto;
-    max-height: 380px;
-  }
-
-  .alerts-panel .alerts-item-wrapper {
-    overflow-y: visible;
-    height: auto;
-  }
-
-  .alerts-panel .alert-item {
-    margin-bottom: 0;
-    border-radius: 0;
-    border: none;
-    border-bottom: 1px solid #f8f8f8;
-  }
-
-  .alerts-panel-footer {
-    padding: 10px 14px;
-    border-top: 1px solid #f0f0f0;
-    text-align: center;
-  }
-
-  .alerts-panel-footer a {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--primary-color);
-    text-decoration: none;
   }
 
   /* ── Stats Bar ────────────────────────────────────────────────── */

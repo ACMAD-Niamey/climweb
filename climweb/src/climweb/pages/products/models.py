@@ -205,6 +205,11 @@ class ProductPage(BaseProductPage):
     product = models.OneToOneField(Product, on_delete=models.PROTECT, verbose_name=_("Product"))
     other_services = ParentalManyToManyField(ServiceCategory, blank=True, verbose_name=_("Other relevant Services"),
                                              related_name="other_services")
+    is_featured_on_homepage = models.BooleanField(
+        default=False,
+        verbose_name=_("Feature on homepage"),
+        help_text=_("Show this product in the homepage Featured Products card"),
+    )
     map_layers = StreamField([
         ('layers', LayerBlock(label="Layer"))
     ], blank=True, null=True, use_json_field=True, verbose_name=_("Map Layers"))
@@ -219,11 +224,12 @@ class ProductPage(BaseProductPage):
                 FieldPanel('products_per_page'),
                 FieldPanel('default_listing_thumbnail'),
                 FieldPanel('menu_order'),
+                FieldPanel('is_featured_on_homepage'),
             ],
             heading=_("Other settings"),
         ),
     ]
-    
+
     class Meta:
         verbose_name = _('National Product Page')
         verbose_name_plural = _('National Product Pages')

@@ -1,0 +1,52 @@
+{% load static i18n wagtailcore_tags %}
+
+{% get_current_language as LANGUAGE_CODE %}
+{% translate "Open Multi-Hazard Viewer" as default_viewer_label %}
+
+{# Multi-Hazard Overview map card. The hc-card class hooks into the page grid #}
+{# shell (owned elsewhere); everything inside uses the mhz- prefix only. #}
+<div class="hc-card mhz-card">
+
+  <div class="mhz-card-header">
+    <div class="mhz-card-title">
+      <span class="mhz-live-dot" aria-hidden="true"></span>
+      <span>{{ page.weather_watch_header }}</span>
+    </div>
+
+    {% if page.show_mapviewer_cta and page.mapviewer_cta_url %}
+      <a class="mhz-viewer-btn"
+         href="{{ page.mapviewer_cta_url }}"
+         target="_blank"
+         rel="noopener">
+        <span>{{ page.mapviewer_cta_title|default:default_viewer_label }}</span>
+        <svg class="mhz-viewer-btn-icon" width="13" height="13" viewBox="0 0 24 24"
+             fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+    {% endif %}
+  </div>
+
+  {% if multi_hazard_api_base_url %}
+    {# data-country-bounds mirrors data-initial-bounds in met_weather_section.html: #}
+    {# the raw Django list rendering of country_bounds, parsed client-side as JSON. #}
+    <div id="multi-hazard-map" class="mhz-map"
+         data-api-base-url="{{ multi_hazard_api_base_url }}"
+         data-project-slug="{{ multi_hazard_project_slug }}"
+         data-country-bounds="{{ country_bounds }}"
+         data-language-code="{{ LANGUAGE_CODE }}"
+         data-msg-latest="{% translate 'Latest' %}"
+         data-msg-no-data="{% translate 'No data available for this category' %}"
+         data-msg-unavailable="{% translate 'Map data is temporarily unavailable' %}">
+      <div class="mhz-placeholder">{% translate "Loading map…" %}</div>
+    </div>
+  {% else %}
+    {# No API configured: keep the card (header + viewer CTA still useful) but #}
+    {# show a static unavailable panel instead of initialising any JS. #}
+    <div class="mhz-map mhz-map--static">
+      <div class="mhz-unavailable">{% translate "Map data is temporarily unavailable" %}</div>
+    </div>
+  {% endif %}
+
+</div>
