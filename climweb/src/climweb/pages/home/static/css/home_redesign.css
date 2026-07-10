@@ -331,6 +331,15 @@
 /* ── Services strip ───────────────────────────────────────────────────────
    Compact horizontal row of up to 5 service links below the card grid.
    flex + flex-basis (not grid) so 4 items still fill the row evenly. */
+.hc-strip-header {
+  margin-block-start: 2.5rem;
+  margin-block-end: 1rem;
+}
+
+.hc-strip-header .title {
+  margin-block-end: 0;
+}
+
 .hc-strip {
   display: flex;
   flex-wrap: wrap;
