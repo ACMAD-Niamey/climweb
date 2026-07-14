@@ -140,8 +140,10 @@ services:
     profiles: ["dev"]
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./deploy/nginx/${NGINX_CONFIG:-nginx.conf}:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl
       - static:/wagtail_static:ro
       - media:/wagtail_media:ro
     depends_on:
