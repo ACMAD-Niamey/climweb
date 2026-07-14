@@ -1,24 +1,28 @@
 DC = docker compose
-MANAGE = $(DC) exec climweb_dev python /climweb/web/src/climweb/manage.py
+DEV = $(DC) --profile dev
+PROD = $(DC) --profile prod
+MANAGE = $(DEV) exec climweb_dev python /climweb/web/src/climweb/manage.py
 
 # Disposable Postgis container used only for `make test`, so the suite never
 # touches (or depends on) the persistent dev DB volume/credentials.
 TEST_DB_CONTAINER = climweb_test_db
 TEST_DB_NETWORK = climweb_default
 
-.PHONY: build up down logs migrate makemigrations createsuperuser collectstatic shell test restart
+.PHONY: build up down logs migrate makemigrations createsuperuser collectstatic shell test restart \
+        build-prod up-prod down-prod logs-prod restart-prod
 
+# ── dev profile ──────────────────────────────────────────────────────────────
 build:
-	$(DC) build
+	$(DEV) build
 
 up:
-	$(DC) up -d
+	$(DEV) up -d
 
 down:
-	$(DC) down
+	$(DEV) down
 
 logs:
-	$(DC) logs -f
+	$(DEV) logs -f
 
 migrate:
 	$(MANAGE) migrate
@@ -46,11 +50,29 @@ test:
 	@# Waiting for pg_isready alone races the restart; wait for the 2nd line.
 	@until [ "$$(docker logs $(TEST_DB_CONTAINER) 2>&1 | grep -c 'ready to accept connections')" -ge 2 ]; do sleep 1; done
 	@status=0; \
-	$(DC) run --rm \
+	$(DEV) run --rm \
 		-e DATABASE_URL=postgis://postgres:testpass@$(TEST_DB_CONTAINER):5432/test_db \
 		climweb_dev manage test --settings=climweb.config.settings.test --verbosity=2 || status=$$?; \
 	docker rm -f $(TEST_DB_CONTAINER) >/dev/null 2>&1; \
 	exit $$status
 
 restart:
-	$(DC) down && $(DC) up -d
+	$(DEV) down && $(DEV) up -d
+
+# ── prod profile ─────────────────────────────────────────────────────────────
+# Builds the Dockerfile's `base` stage locally and runs it via the prod-profile
+# services (climweb_prod, climweb_db_prod, ...) defined in docker-compose.yml.
+build-prod:
+	$(PROD) build
+
+up-prod:
+	$(PROD) up -d
+
+down-prod:
+	$(PROD) down
+
+logs-prod:
+	$(PROD) logs -f
+
+restart-prod:
+	$(PROD) down && $(PROD) up -d

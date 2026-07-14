@@ -195,6 +195,9 @@ climweb_dump.dump
 # Local runtime data (docker bind mounts)
 cms/
 
+# Real SSL cert-path config (contains your actual domain) — keep ssl.conf.sample tracked
+deploy/nginx/ssl/ssl.conf
+
 # Accidental root venv artifacts
 bin/
 share/
