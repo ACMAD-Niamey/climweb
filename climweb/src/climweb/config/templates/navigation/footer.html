@@ -34,6 +34,14 @@
                             </p>
                             {% endif %}
                             <a
+                                class="footer-powered"
+                                href="https://github.com/wmo-raf/nmhs-cms"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                {% translate "Powered by Climweb" %} v{% cms_version %}
+                            </a>
+                            <a
                                 href="https://digitalpublicgoods.net/r/climweb"
                                 target="_blank"
                                 rel="noopener"
@@ -70,33 +78,6 @@
                         <!-- NAV COLUMNS — rendered by footer_menu.html -->
                         {% for block in settings.base.NavigationSettings.footer_menu %} 
                         {% include_block block %} {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- BOTTOM BAR -->
-    <div class="site-footer-bottom container">
-        <div>
-            <div class="columns is-mobile is-vcentered">
-                <!-- LEFT: copyright + powered by -->
-                <div class="column">
-                    <div class="footer-bottom-left">
-                        {% if settings.base.OrganisationSetting.name %}
-                        <p class="footer-copy">
-                            &copy; {{ settings.base.OrganisationSetting.name }}
-                            {% now 'Y' %}
-                        </p>
-                        {% endif %}
-                        <a
-                            class="footer-powered"
-                            href="https://github.com/wmo-raf/nmhs-cms"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            {% translate "Powered by Climweb" %} v{% cms_version %}
-                        </a>
                     </div>
                 </div>
             </div>
