@@ -124,6 +124,11 @@ FROM base as dev
 
 USER $UID:$GID
 
+# Install dev-only dependencies (test tooling: factory-boy, wagtail-factories,
+# faker, coverage) so the dev image can run the test suite out of the box.
+RUN --mount=type=cache,mode=777,target=$PIP_CACHE_DIR,uid=$UID,gid=$GID . /climweb/venv/bin/activate && \
+     pip3 install -r /climweb/web/requirements/dev.txt
+
 # Override env variables and initial cmd to start up in dev mode.
 ENV DJANGO_SETTINGS_MODULE='climweb.config.settings.dev'
 CMD ["django-dev-no-attach"]
