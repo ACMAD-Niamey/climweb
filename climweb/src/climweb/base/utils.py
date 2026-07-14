@@ -124,6 +124,8 @@ def query_param_to_list(query_param, as_int=False):
 
 
 def get_first_img_src(html):
+    if not html:
+        return None
     # parse html and get first image src
     soup = BeautifulSoup(html, 'html.parser')
     img = soup.find('img', )
@@ -133,6 +135,8 @@ def get_first_img_src(html):
 
 
 def get_first_non_empty_p_string(html, remove_tags=False):
+    if not html:
+        return None
     soup = BeautifulSoup(html, 'html.parser')
     p = soup.find(lambda tag: tag.name == 'p' and tag.text.strip())
     if p:
