@@ -154,7 +154,12 @@
         if (/weather|storm|wind|heat|hazard|warning/.test(text)) {
             return 'weather';
         }
-        return 'weather';
+        // Anything that doesn't match a known category (heat, agriculture,
+        // exposure, boundary layers, etc.) must NOT fall through to
+        // 'weather' — this homepage card only has 4 tabs, so an unmatched
+        // layer should simply be excluded from all of them, not silently
+        // misrepresented as a weather dataset.
+        return 'other';
     }
 
     function groupByCategory(layers, categories) {
