@@ -33,6 +33,13 @@ if os.path.isfile(dev_env_path):
 
 DEBUG = env('DEBUG', False)
 
+# Needed in every settings module (not just production) whenever the app sits
+# behind an SSL-terminating reverse proxy on a real domain — e.g. dev/staging
+# instances reachable over https:// still need CSRF's Origin check to trust
+# that domain, and Django needs to know the forwarded request was secure.
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', cast=None, default=[])
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # Application definition
 INSTALLED_APPS = [
     "climweb.base",
