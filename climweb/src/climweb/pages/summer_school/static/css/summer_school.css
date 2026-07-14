@@ -1090,3 +1090,382 @@
     .ss-application-title { font-size: 20px; }
     .ss-application-form-title { font-size: 16px; }
 }
+
+/* ------------------------------------------------------------
+   INDEX PAGE
+   ------------------------------------------------------------
+   Light gradient hero (unlike the dark-photo .ss-hero used on
+   edition pages) since the index lists many programmes rather
+   than promoting one specific edition's imagery. Reuses .ss-hero-*
+   element classes with a scoped colour override rather than new
+   class names, so both hero variants share the same markup shape. */
+
+.ss-index-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 3rem 0 2.5rem;
+    background: linear-gradient(135deg, #eaf4ff 0%, #dceeff 55%, #cfe8ff 100%);
+}
+
+.ss-index-hero-brand {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.ss-index-hero-logo {
+    max-height: 56px;
+    width: auto;
+}
+
+.ss-index-hero .ss-hero-heading {
+    color: var(--text-color, #14213d);
+    font-size: 32px;
+    margin-bottom: 0;
+    max-width: 44rem;
+}
+
+.ss-index-hero-subtitle {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin: 0.5rem 0 0.75rem;
+}
+
+.ss-index-hero .ss-hero-description {
+    color: rgba(20, 33, 61, 0.75);
+    max-width: 40rem;
+}
+
+.ss-index-hero .ss-hero-badges {
+    margin-bottom: 0;
+}
+
+/* ── SEARCH + FILTER TOOLBAR ── */
+.ss-index-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 2rem 0 1.5rem;
+}
+
+.ss-index-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 999px;
+    padding: 8px 16px;
+    min-width: 260px;
+    background: #fff;
+}
+
+.ss-index-search .icon svg {
+    width: 14px;
+    height: 14px;
+    opacity: 0.5;
+}
+
+.ss-index-search-input {
+    border: none;
+    outline: none;
+    font-size: 13px;
+    flex: 1;
+    background: transparent;
+}
+
+.ss-index-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ss-filter-pill {
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: #fff;
+    border-radius: 999px;
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-color, #333);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.ss-filter-pill.is-active,
+.ss-filter-pill:hover {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #fff;
+}
+
+/* ── STATS ROW ── */
+.ss-index-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+}
+
+.ss-index-stat {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: var(--border-radius, 12px);
+    padding: 14px 18px;
+    background: #fff;
+}
+
+.ss-index-stat-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-color, #14213d);
+    line-height: 1.1;
+}
+
+.ss-index-stat-label {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.55);
+}
+
+.ss-index-stat-label-only {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-color, #14213d);
+}
+
+/* ── PROGRAMME CARDS ── */
+.ss-index-grid {
+    margin-bottom: 1rem;
+}
+
+.ss-index-edition-card {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: var(--border-radius, 14px);
+    overflow: hidden;
+    background: #fff;
+    height: 100%;
+    text-decoration: none;
+    transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.ss-index-edition-card:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+.ss-index-card-col.is-featured .ss-index-edition-card {
+    border-left: 3px solid var(--primary-color);
+}
+
+/* .ss-index-grid is a Bulma flexbox `columns` row, not CSS grid, so
+   "span 2 columns" is done via flex-basis/width, not grid-column. */
+@media (min-width: 1024px) {
+    .ss-index-card-col.is-featured {
+        flex: 0 0 66.6% !important;
+        max-width: 66.6% !important;
+    }
+}
+
+.ss-index-edition-image {
+    height: 160px;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+}
+
+.ss-index-edition-image-plain {
+    background: var(--primary-color-lightest, #eef4ff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ss-index-edition-icon {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.ss-index-edition-icon svg {
+    width: 16px;
+    height: 16px;
+    fill: var(--primary-color);
+}
+
+.ss-index-edition-image-plain .ss-index-edition-icon {
+    position: static;
+    width: 56px;
+    height: 56px;
+}
+
+.ss-index-edition-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 16px;
+    flex: 1;
+}
+
+.ss-index-edition-top-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.ss-index-edition-tagline {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.ss-index-edition-status {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--primary-color-lightest, #eef4ff);
+    color: var(--primary-color);
+    white-space: nowrap;
+}
+
+.ss-index-edition-title {
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--text-color, #14213d);
+    line-height: 1.3;
+}
+
+.ss-index-edition-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.6);
+}
+
+.ss-index-edition-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ss-index-edition-meta-item .icon svg {
+    width: 12px;
+    height: 12px;
+}
+
+.ss-index-edition-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.ss-index-edition-tag {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.05);
+    color: rgba(0, 0, 0, 0.65);
+}
+
+.ss-index-edition-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: auto;
+    padding-top: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.ss-index-edition-link .icon svg {
+    width: 12px;
+    height: 12px;
+    fill: var(--primary-color);
+}
+
+.ss-index-empty,
+.ss-index-empty-filtered {
+    text-align: center;
+    padding: 2rem 0;
+    color: rgba(0, 0, 0, 0.5);
+}
+
+/* ── BOTTOM BANNER ── */
+.ss-index-banner {
+    background: var(--primary-color-lightest, #eef4ff);
+    padding: 2rem 0;
+    margin-top: 2rem;
+}
+
+.ss-index-banner-inner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.ss-index-banner-icon {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+}
+
+.ss-index-banner-icon svg {
+    width: 22px;
+    height: 22px;
+}
+
+.ss-index-banner-heading {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text-color, #14213d);
+    margin-bottom: 4px;
+}
+
+.ss-index-banner-description {
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.65);
+}
+
+@media (max-width: 1024px) {
+    .ss-index-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .ss-index-hero {
+        padding: 2rem 0 1.5rem;
+    }
+
+    .ss-index-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .ss-index-search {
+        min-width: 0;
+    }
+
+    .ss-index-stats {
+        grid-template-columns: 1fr;
+    }
+}

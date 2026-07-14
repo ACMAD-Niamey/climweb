@@ -4,6 +4,7 @@ from django.core.mail import mail_admins
 from django.db import models
 from django.template.defaultfilters import truncatechars
 from django.template.response import TemplateResponse
+from django.utils import timezone
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 from loguru import logger
@@ -16,6 +17,7 @@ from wagtail.fields import RichTextField, StreamField
 from wagtail.models import Page
 from wagtailcaptcha.forms import remove_captcha_field
 from wagtailcaptcha.models import WagtailCaptchaEmailForm
+from wagtailiconchooser.widgets import IconChooserWidget
 
 from climweb.base import blocks as base_blocks
 from climweb.base.mixins import MetadataPageMixin
@@ -33,13 +35,40 @@ class SummerSchoolIndexPage(MetadataPageMixin, Page):
     max_count = 1
     show_in_menus = True
 
-    intro_title = models.CharField(max_length=255, blank=True, verbose_name=_("Introduction Title"))
-    intro_text = RichTextField(blank=True, features=SUMMARY_RICHTEXT_FEATURES,
-                               verbose_name=_("Introduction Text"))
+    # --- Hero ---
+    hero_heading = models.CharField(max_length=255, blank=True, verbose_name=_("Hero Heading"))
+    hero_subtitle = models.CharField(max_length=255, blank=True, verbose_name=_("Hero Subtitle"))
+    hero_description = RichTextField(blank=True, features=SUMMARY_RICHTEXT_FEATURES,
+                                     verbose_name=_("Hero Description"))
+    hero_badges = StreamField([
+        ('badge', blocks.CharBlock(max_length=60)),
+    ], blank=True, use_json_field=True, verbose_name=_("Hero Badges"))
+    hero_background_image = models.ForeignKey(
+        'wagtailimages.Image',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        verbose_name=_("Hero Background Image"),
+    )
+
+    # --- Bottom banner ---
+    banner_heading = models.CharField(max_length=255, blank=True, verbose_name=_("Banner Heading"))
+    banner_description = RichTextField(blank=True, features=SUMMARY_RICHTEXT_FEATURES,
+                                       verbose_name=_("Banner Description"))
 
     content_panels = Page.content_panels + [
-        FieldPanel('intro_title'),
-        FieldPanel('intro_text'),
+        MultiFieldPanel([
+            FieldPanel('hero_heading'),
+            FieldPanel('hero_subtitle'),
+            FieldPanel('hero_description'),
+            FieldPanel('hero_badges'),
+            FieldPanel('hero_background_image'),
+        ], heading=_("Hero")),
+        MultiFieldPanel([
+            FieldPanel('banner_heading'),
+            FieldPanel('banner_description'),
+        ], heading=_("Bottom Banner")),
     ]
 
     class Meta:
@@ -47,6 +76,9 @@ class SummerSchoolIndexPage(MetadataPageMixin, Page):
 
     def get_meta_image(self):
         meta_image = super().get_meta_image()
+
+        if not meta_image:
+            meta_image = self.hero_background_image
 
         if not meta_image:
             meta_image = get_homepage_meta_image(self.get_site())
@@ -63,7 +95,29 @@ class SummerSchoolIndexPage(MetadataPageMixin, Page):
 
     @cached_property
     def editions(self):
-        return SummerSchoolPage.objects.live().child_of(self).order_by('-edition_start_date')
+        return SummerSchoolPage.objects.live().child_of(self).order_by('-featured', '-edition_start_date')
+
+    @cached_property
+    def programmes_count(self):
+        return self.editions.count()
+
+    @cached_property
+    def unique_badge_tags(self):
+        tags = []
+        for edition in self.editions:
+            for badge in edition.hero_badges:
+                if badge.value not in tags:
+                    tags.append(badge.value)
+        return tags
+
+    @cached_property
+    def upcoming_count(self):
+        today = timezone.now().date()
+        return self.editions.filter(edition_start_date__gte=today).count()
+
+    @cached_property
+    def past_cohorts_count(self):
+        return sum(len(edition.cohorts) for edition in self.editions)
 
 
 class SummerSchoolPage(MetadataPageMixin, Page):
@@ -127,6 +181,13 @@ class SummerSchoolPage(MetadataPageMixin, Page):
     key_info_certificate = models.CharField(max_length=255, blank=True, verbose_name=_("Certificate"))
     key_info_contact = models.CharField(max_length=255, blank=True, verbose_name=_("Contact"))
     apply_button_text = models.CharField(max_length=60, default="Apply", verbose_name=_("Apply Button Text"))
+
+    # --- Index card display ---
+    card_icon = models.CharField(max_length=100, null=True, blank=True, verbose_name=_("Card Icon"),
+                                 help_text=_("Small icon shown on this edition's card on the index page"))
+    status_badge_text = models.CharField(max_length=60, blank=True, verbose_name=_("Status Badge Text"),
+                                         help_text=_("e.g. 'Applications opening soon', 'Applications open'. "
+                                                     "Leave blank to hide the badge."))
 
     # --- Background ---
     background_intro = RichTextField(blank=True, features=SUMMARY_RICHTEXT_FEATURES,
@@ -229,6 +290,10 @@ class SummerSchoolPage(MetadataPageMixin, Page):
             FieldPanel('apply_button_text'),
         ], heading=_("Key Info")),
         MultiFieldPanel([
+            FieldPanel('card_icon', widget=IconChooserWidget),
+            FieldPanel('status_badge_text'),
+        ], heading=_("Index Card Display")),
+        MultiFieldPanel([
             FieldPanel('background_intro'),
             FieldPanel('background_items'),
         ], heading=_("Background")),
@@ -303,6 +368,12 @@ class SummerSchoolPage(MetadataPageMixin, Page):
     @cached_property
     def application_page(self):
         return self.get_first_child()
+
+    @cached_property
+    def is_upcoming(self):
+        if not self.edition_start_date:
+            return False
+        return self.edition_start_date >= timezone.now().date()
 
     @cached_property
     def schedule_data(self):
