@@ -1107,22 +1107,10 @@
     background: linear-gradient(135deg, #eaf4ff 0%, #dceeff 55%, #cfe8ff 100%);
 }
 
-.ss-index-hero-brand {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 0.5rem;
-}
-
-.ss-index-hero-logo {
-    max-height: 56px;
-    width: auto;
-}
-
 .ss-index-hero .ss-hero-heading {
     color: var(--text-color, #14213d);
     font-size: 32px;
-    margin-bottom: 0;
+    margin-bottom: 0.5rem;
     max-width: 44rem;
 }
 

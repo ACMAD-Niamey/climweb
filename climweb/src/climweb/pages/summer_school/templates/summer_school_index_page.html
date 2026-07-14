@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
-{% load wagtailcore_tags wagtailimages_tags wagtailsettings_tags wagtailiconchooser_tags static i18n %}
-{% get_settings use_default_site=True %}
+{% load wagtailcore_tags wagtailimages_tags wagtailiconchooser_tags static i18n %}
 
 {% block extra_css %}
     <link rel="stylesheet" type="text/css" href="{% static 'css/summer_school.css' %}">
@@ -18,17 +17,9 @@
         {% endif %}
 
         <div class="container">
-            <div class="ss-index-hero-brand">
-                {% if settings.base.OrganisationSetting.logo %}
-                    {% image settings.base.OrganisationSetting.logo original as org_logo %}
-                    <img class="ss-index-hero-logo"
-                         src="{{ org_logo.url }}"
-                         alt="{{ settings.base.OrganisationSetting.name }}">
-                {% endif %}
-                {% if page.hero_heading %}
-                    <h1 class="ss-hero-heading">{{ page.hero_heading }}</h1>
-                {% endif %}
-            </div>
+            {% if page.hero_heading %}
+                <h1 class="ss-hero-heading">{{ page.hero_heading }}</h1>
+            {% endif %}
 
             {% if page.hero_subtitle %}
                 <p class="ss-index-hero-subtitle">{{ page.hero_subtitle }}</p>
