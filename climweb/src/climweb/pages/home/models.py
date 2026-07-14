@@ -64,7 +64,8 @@ HOME_SUBPAGE_TYPES = [
     'satellite_imagery.SatelliteImageryPage',
     'glossary.GlossaryIndexPage',
     'webstories.WebStoryListPage',
-    'dashboards.DashboardGalleryPage'
+    'dashboards.DashboardGalleryPage',
+    'summer_school.SummerSchoolIndexPage',
 ]
 
 if "forecastmanager" in settings.INSTALLED_APPS:
