@@ -1390,6 +1390,15 @@
     fill: var(--primary-color);
 }
 
+/* Bulma's `.column { display: block; }` is an author-stylesheet rule,
+   which overrides the browser's default `[hidden] { display: none }`
+   UA rule regardless of selector specificity (author styles always
+   beat UA styles). Without this, summer_school_index.js's `card.hidden
+   = true` sets the attribute but the card stays visually visible. */
+.ss-index-card-col[hidden] {
+    display: none !important;
+}
+
 .ss-index-empty,
 .ss-index-empty-filtered {
     text-align: center;
