@@ -1,0 +1,82 @@
+{% load wagtailcore_tags wagtailimages_tags lazyimages_tags static i18n %}
+
+<div class="ss-section-heading">
+    <h2>{% translate "Schedule" %}</h2>
+</div>
+
+<div class="ss-schedule">
+    {% for session_date, sessions_by_time in page.schedule_data.items %}
+        <div class="ss-schedule-date-heading">
+            {{ session_date|date:"D, d M Y" }}
+        </div>
+
+        {% for time, sessions in sessions_by_time.items %}
+            <div class="ss-schedule-time-heading">{{ time }}</div>
+            <div class="columns is-multiline is-mobile">
+                {% for session in sessions %}
+                    <div class="column is-full">
+                        <div class="ss-session-card">
+                            {% if session.value.image %}
+                                {% image session.value.image original as session_img %}
+                                <div class="ss-session-image">
+                                    <img class="progressive__img progressive--not-loaded"
+                                         data-progressive="{{ session_img.url }}"
+                                         src="{% lazy_image_url session_img %}"
+                                         alt="{{ session.value.title }}"/>
+                                </div>
+                            {% endif %}
+                            <div class="ss-session-content">
+                                <div class="ss-session-card-time">
+                                    {{ session.value.start_time|date:"h:i A" }}
+                                    - {{ session.value.end_time|date:"h:i A" }}
+                                </div>
+
+                                {% if session.value.session_type %}
+                                    <span class="ss-session-type-badge">
+                                        {% if session.value.session_type == "foundation" %}
+                                            {% translate "Foundation" %}
+                                        {% elif session.value.session_type == "sectoral" %}
+                                            {% translate "Sectoral" %}
+                                        {% endif %}
+                                    </span>
+                                {% endif %}
+
+                                <h3 class="ss-session-name" title="{{ session.value.title }}">
+                                    {{ session.value.title }}
+                                </h3>
+
+                                {% if session.value.detail %}
+                                    <div class="ss-session-detail format-text">
+                                        {{ session.value.detail|richtext }}
+                                    </div>
+                                {% endif %}
+
+                                {% if session.value.roles %}
+                                    <div class="columns is-multiline is-mobile">
+                                        {% for role in session.value.roles %}
+                                            <div class="column is-one-third-desktop is-full-mobile ss-session-role">
+                                                {% if role.image %}
+                                                    {% image role.image original as role_image %}
+                                                    <img class="progressive__img progressive--not-loaded"
+                                                         data-progressive="{{ role_image.url }}"
+                                                         src="{% lazy_image_url role_image %}"
+                                                         alt="{{ role.name }}"/>
+                                                {% else %}
+                                                    <img src="{% static 'images/person.svg' %}" alt="{{ role.name }}"/>
+                                                {% endif %}
+                                                <div class="ss-session-role-detail">
+                                                    <span class="ss-session-role-name">{{ role.name }}</span>
+                                                    <span class="ss-session-role-title">{{ role.role }}</span>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    {% endfor %}
+</div>

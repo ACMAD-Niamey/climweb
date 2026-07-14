@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% load wagtailcore_tags wagtailimages_tags static i18n %}
+
+{% block extra_css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/summer_school.css' %}">
+{% endblock %}
+
+{% block body_class %}summer-school-index{% endblock %}
+
+{% block content %}
+    {% include 'breadcrumbs_include.html' with page=page %}
+
+    <main class="is-index">
+
+        <section class="ss-index-intro-section">
+            <div class="container">
+                {% if page.intro_title %}
+                    <h1 class="ss-index-title">{{ page.intro_title }}</h1>
+                {% endif %}
+                {% if page.intro_text %}
+                    <div class="ss-index-intro format-text">
+                        {{ page.intro_text|richtext }}
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="ss-index-editions-section">
+            <div class="container">
+                {% if page.editions %}
+                    <div class="columns is-multiline">
+                        {% for edition in page.editions %}
+                            <div class="column is-one-third-desktop is-half-tablet is-full-mobile">
+                                <a class="ss-index-edition-card" href="{{ edition.url }}">
+
+                                    {% if edition.hero_background_image %}
+                                        {% image edition.hero_background_image fill-600x400 as edition_img %}
+                                        <div class="ss-index-edition-image"
+                                             style="background-image:url('{{ edition_img.url }}');"></div>
+                                    {% endif %}
+
+                                    <div class="ss-index-edition-body">
+                                        {% if edition.program_tagline %}
+                                            <p class="ss-index-edition-tagline">{{ edition.program_tagline }}</p>
+                                        {% endif %}
+
+                                        <h3 class="ss-index-edition-title">
+                                            {{ edition.hero_heading|default:edition.title }}
+                                        </h3>
+
+                                        {% if edition.key_info_dates %}
+                                            <p class="ss-index-edition-dates">{{ edition.key_info_dates }}</p>
+                                        {% endif %}
+
+                                        {% if edition.key_info_location %}
+                                            <p class="ss-index-edition-location">{{ edition.key_info_location }}</p>
+                                        {% endif %}
+                                    </div>
+                                </a>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="ss-index-empty">{% translate "No summer school editions are available yet." %}</p>
+                {% endif %}
+            </div>
+        </section>
+
+    </main>
+{% endblock content %}

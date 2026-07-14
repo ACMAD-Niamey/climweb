@@ -1,0 +1,1092 @@
+/* ============================================================
+   Summer School — bespoke stylesheet
+   ============================================================
+   Sole owner: T3 (this file). Loaded by every Summer School
+   template (index, edition, application) via {% static 'css/summer_school.css' %}.
+
+   Design tokens reused from the sitewide theme (set as CSS custom
+   properties on :root in base.html, driven by the CMS "brand
+   colour" settings) so this page automatically matches whatever
+   colour scheme an NMHS operator configures, rather than hard-coding
+   a colour that would drift from the rest of the site:
+     --primary-color, --primary-color-light, --primary-color-lightest,
+     --primary-color-medium, --text-color, --border-radius
+
+   Layout is Bulma-first (columns/column/container/button) — the
+   rules below only add what Bulma does not already provide:
+   colour, icon badges, pill shapes, sticky nav, card chrome,
+   stat typography, checklist checkmarks and grid spacing.
+
+   Every selector here is a flat, self-contained block (class name
+   only, no deep descendant chains) on purpose: three agents are
+   building this feature's HTML in parallel off a shared class-name
+   contract, so styling must tolerate minor differences in the
+   exact wrapper markup each of them lands on.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   HERO
+   ------------------------------------------------------------ */
+
+.ss-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 5rem 0 6rem;
+    color: #fff;
+    isolation: isolate; /* keeps .ss-hero-bg's negative z-index confined to this stacking context */
+}
+
+/* Background image/overlay layer — sits behind all hero content.
+   Absolute + inset so it works regardless of whether the sibling
+   agent renders it as an <img> or a background div. */
+.ss-hero-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -2;
+}
+
+/* Dark scrim so light hero text stays readable over any photo */
+.ss-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.35) 60%, rgba(0, 0, 0, 0.6) 100%);
+    z-index: -1;
+}
+
+.ss-hero-tagline {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 0.75rem;
+}
+
+.ss-hero-heading {
+    font-size: 40px;
+    font-weight: 800;
+    line-height: 1.2;
+    color: #fff;
+    margin-bottom: 1rem;
+    max-width: 40rem;
+}
+
+.ss-hero-description {
+    font-size: 16px;
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.9);
+    max-width: 34rem;
+    margin-bottom: 1.5rem;
+}
+
+.ss-hero-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.75rem;
+}
+
+/* Generic pill badge — reused for hero badges ("Upcoming edition"),
+   the application deadline chip, and anywhere else a small rounded
+   status chip is needed. Two visual variants (outlined default,
+   filled via .is-filled) cover both hero-on-dark and card-on-light use. */
+.ss-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(4px);
+    white-space: nowrap;
+}
+
+.ss-pill.is-filled {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #fff;
+}
+
+/* On light backgrounds (e.g. the application deadline chip, which
+   sits on a white form card, not the dark hero) the outlined variant
+   above is unreadable — this override kicks in whenever a .ss-pill
+   is not directly inside the hero. */
+.ss-application-deadline .ss-pill,
+.ss-key-info-card .ss-pill {
+    border-color: var(--primary-color-medium);
+    color: var(--primary-color);
+    background: var(--primary-color-lightest);
+    backdrop-filter: none;
+}
+
+.ss-hero-cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.ss-hero-cta-primary,
+.ss-hero-cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 26px;
+    border-radius: var(--border-radius, 8px);
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    border: 2px solid transparent;
+    transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+    cursor: pointer;
+}
+
+.ss-hero-cta-primary {
+    background: var(--primary-color);
+    color: #fff;
+}
+
+.ss-hero-cta-primary:hover {
+    opacity: 0.9;
+    color: #fff;
+}
+
+.ss-hero-cta-secondary {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.7);
+    color: #fff;
+}
+
+.ss-hero-cta-secondary:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+}
+
+/* Bottom-right decorative graphic (e.g. an illustration/pattern) —
+   purely positional, self-contained so it doesn't fight whatever
+   image size the sibling agent's markup provides. */
+.ss-decorative-image {
+    position: absolute;
+    right: -2rem;
+    bottom: -2rem;
+    max-width: 320px;
+    width: 30%;
+    height: auto;
+    opacity: 0.9;
+    pointer-events: none;
+    z-index: -1;
+}
+
+@media (max-width: 768px) {
+    .ss-hero { padding: 3rem 0 4rem; }
+    .ss-hero-heading { font-size: 28px; }
+    .ss-hero-description { font-size: 14px; }
+    .ss-decorative-image { display: none; } /* avoid crowding the stacked mobile layout */
+}
+
+/* ------------------------------------------------------------
+   KEY INFO CARD
+   ------------------------------------------------------------ */
+
+/* Card chrome only — positioning (top-right of hero via Bulma
+   columns, stacking on mobile) is left to the markup/Bulma grid. */
+.ss-key-info-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+    padding: 1.75rem;
+    color: var(--text-color, #1a1a1a);
+}
+
+.ss-key-info-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.ss-key-info-item:last-of-type {
+    border-bottom: none;
+}
+
+.ss-key-info-item strong {
+    display: block;
+    font-size: 14px;
+    color: var(--text-color, #1a1a1a);
+}
+
+.ss-key-info-item span,
+.ss-key-info-item small {
+    display: block;
+    font-size: 12px;
+    color: #888;
+}
+
+/* Small rounded colour-badge for icons — mirrors streams/what_we_do_block.html's
+   .wwd-icon rule (copied rather than @extended since this project has no Sass
+   build step), scaled slightly down and re-themed for a light card background
+   instead of .wwd-icon's dark-card context. */
+.ss-icon-badge {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: var(--primary-color-lightest);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ss-icon-badge svg {
+    width: 20px;
+    height: 20px;
+    fill: var(--primary-color);
+    stroke: transparent;
+}
+
+.ss-apply-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 1.25rem;
+    padding: 12px 20px;
+    border-radius: var(--border-radius, 8px);
+    background: var(--primary-color);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.ss-apply-btn:hover {
+    opacity: 0.9;
+    color: #fff;
+}
+
+.ss-eligibility-link {
+    display: inline-block;
+    margin-top: 0.75rem;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary-color);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+/* ------------------------------------------------------------
+   NAV — sticky wayfinding bar (NOT a tab switcher)
+   ------------------------------------------------------------ */
+
+.ss-nav {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: #fff;
+    border-bottom: 1px solid #eee;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+}
+
+.ss-nav-list {
+    display: flex;
+    align-items: center;
+    gap: 1.75rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* keep the scroll affordance invisible on desktop-width screens */
+    padding: 0.9rem 0;
+}
+
+.ss-nav-list::-webkit-scrollbar {
+    display: none;
+}
+
+.ss-nav-link {
+    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+    text-decoration: none;
+    padding: 6px 2px;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+
+.ss-nav-link:hover {
+    color: var(--primary-color);
+}
+
+/* Toggled at runtime by T1's scrollspy JS as the visitor scrolls
+   past each section. Deliberately a subtle underline + colour
+   change rather than a filled "selected tab" background — this
+   page scrolls continuously and nothing is hidden/swapped, so the
+   active state should read as "you are here", not "showing this,
+   hiding the rest". */
+.ss-nav-link.is-active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+@media (max-width: 768px) {
+    .ss-nav-list { gap: 1.25rem; }
+}
+
+/* ------------------------------------------------------------
+   SECTION HEADING — consistent heading style atop every content section
+   ------------------------------------------------------------ */
+
+.ss-section-heading {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text-color, #1a1a1a);
+    margin-bottom: 2rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 3px solid var(--primary-color-lightest);
+    display: inline-block;
+}
+
+@media (max-width: 768px) {
+    .ss-section-heading { font-size: 21px; margin-bottom: 1.5rem; }
+}
+
+/* ------------------------------------------------------------
+   BACKGROUND / STRUCTURE — mostly Bulma columns.is-multiline; this
+   just tightens up default gutter spacing for the card grid.
+   ------------------------------------------------------------ */
+
+.ss-card-grid {
+    margin-top: -0.5rem;
+    row-gap: 1rem;
+}
+
+/* ------------------------------------------------------------
+   TRAINERS
+   ------------------------------------------------------------ */
+
+.ss-trainer-grid {
+    row-gap: 1.5rem;
+}
+
+/* Self-contained card: looks right whether it sits in a 3-up or
+   30-up wrapping grid, since sizing/columns come from Bulma on the
+   wrapper, not from this rule. */
+.ss-trainer-card {
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 14px;
+    padding: 1.75rem 1.25rem;
+    height: 100%;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.ss-trainer-card:hover {
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    border-color: #e2e2e2;
+}
+
+/* Circular photo — cloned visual from events/panelists_include.html's
+   .panelist-figure, sized down slightly for a grid-of-many context. */
+.ss-trainer-figure {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    margin-bottom: 1rem;
+    background: var(--primary-color-lightest);
+}
+
+.ss-trainer-figure img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.ss-trainer-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-color, #1a1a1a);
+    margin-bottom: 2px;
+}
+
+.ss-trainer-position {
+    font-size: 13px;
+    font-style: italic;
+    color: #777;
+    margin-bottom: 8px;
+}
+
+.ss-trainer-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 999px;
+    background: var(--primary-color-lightest);
+    color: var(--primary-color);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: capitalize;
+    margin-bottom: 8px;
+}
+
+.ss-trainer-module {
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 6px;
+}
+
+.ss-trainer-bio {
+    font-size: 13px;
+    line-height: 1.65;
+    color: #666;
+}
+
+@media (max-width: 1280px) {
+    .ss-trainer-figure { width: 110px; height: 110px; }
+}
+
+/* ------------------------------------------------------------
+   SCHEDULE
+   ------------------------------------------------------------ */
+
+.ss-schedule {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.ss-schedule-date-heading {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--primary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.75rem;
+}
+
+.ss-schedule-time-heading {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-color, #1a1a1a);
+    margin: 1rem 0 0.75rem;
+}
+
+/* Adapted from events/event_sessions_include.html's .session-card-wrap —
+   same image+content flex-card visual, minus anything related to the
+   tab-swap behaviour that page uses (this page has no tabs, it's a
+   single continuous scroll). */
+.ss-session-card {
+    background: #fff;
+    border: 1px solid rgba(82, 82, 128, 0.18);
+    border-radius: 16px;
+    color: #222230;
+    overflow: hidden;
+    display: flex;
+    width: 100%;
+}
+
+.ss-session-card img {
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* image slot — width matches events' precedent so photos don't
+   dominate the card at any breakpoint above mobile */
+.ss-session-card > :first-child:has(img) {
+    width: 256px;
+    flex-shrink: 0;
+}
+
+.ss-session-card-content,
+.ss-session-content {
+    flex: 1 1 auto;
+    padding: 16px;
+    min-width: 0; /* allow text truncation/wrap inside a flex child */
+}
+
+/* explicit alias for the image wrapper, in addition to the structural
+   `:first-child:has(img)` rule above — covers browsers without :has() */
+.ss-session-image {
+    width: 256px;
+    flex-shrink: 0;
+}
+
+.ss-session-image img {
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.ss-session-card-time {
+    color: #222230;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 16px;
+    margin-bottom: 6px;
+}
+
+.ss-session-name {
+    font-size: 20px;
+    line-height: 1.25;
+    font-weight: 700;
+    margin: 4px 0 10px;
+}
+
+.ss-session-detail {
+    font-size: 14px;
+    color: #4a4a58;
+    margin-bottom: 8px;
+}
+
+.ss-session-type-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 999px;
+    background: var(--primary-color-lightest);
+    color: var(--primary-color);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 8px;
+}
+
+.ss-session-role {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.ss-session-role img,
+.ss-session-role .ss-session-role-initials {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    object-fit: cover;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-color-lightest);
+    color: var(--primary-color);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.ss-session-role-detail {
+    display: flex;
+    flex-direction: column;
+}
+
+.ss-session-role-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #000;
+}
+
+.ss-session-role-title {
+    font-size: 12px;
+    color: #6b6b78;
+    text-transform: capitalize;
+}
+
+@media (max-width: 640px) {
+    .ss-session-card { flex-direction: column; }
+    .ss-session-card > :first-child:has(img) { width: 100%; height: 200px; }
+    .ss-session-image { width: 100%; height: 200px; }
+}
+
+/* ------------------------------------------------------------
+   COHORTS
+   ------------------------------------------------------------ */
+
+.ss-cohort-grid {
+    row-gap: 1.5rem;
+}
+
+.ss-cohort-card {
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 14px;
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.ss-cohort-photo {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    display: block;
+    background: var(--primary-color-lightest);
+}
+
+.ss-cohort-heading {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-color, #1a1a1a);
+    margin: 1.1rem 1.1rem 0.5rem;
+}
+
+.ss-cohort-stats {
+    display: flex;
+    gap: 0.5rem;
+    margin: 0.5rem 1.1rem 1rem;
+}
+
+.ss-cohort-stats > * {
+    flex: 1 1 0;
+    text-align: center;
+    padding: 0.6rem 0.25rem;
+    border-radius: 10px;
+    background: #f8f9fb;
+}
+
+.ss-cohort-stat-value {
+    display: block;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--primary-color);
+    line-height: 1.2;
+}
+
+.ss-cohort-stat-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+}
+
+.ss-cohort-highlights-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 0 1.1rem 1.1rem;
+    padding: 9px 16px;
+    border-radius: var(--border-radius, 8px);
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    background: transparent;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    margin-top: auto; /* pin to card bottom regardless of stats block height */
+}
+
+.ss-cohort-highlights-btn:hover {
+    background: var(--primary-color);
+    color: #fff;
+}
+
+/* ------------------------------------------------------------
+   CONCEPT NOTE
+   ------------------------------------------------------------ */
+
+.ss-concept-note-card {
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 16px;
+    padding: 2rem;
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.ss-concept-note-thumbnail {
+    width: 160px;
+    height: 210px;
+    object-fit: cover;
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+    flex-shrink: 0;
+}
+
+/* Checklist with a checkmark bullet drawn via ::before — no new
+   icon dependency needed, matches the "checkmark bullets" spec. */
+.ss-concept-note-checklist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex: 1 1 260px;
+}
+
+.ss-concept-note-checklist li {
+    position: relative;
+    padding-left: 28px;
+    margin-bottom: 0.6rem;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #444;
+}
+
+.ss-concept-note-checklist li::before {
+    content: '\2713';
+    position: absolute;
+    left: 0;
+    top: -1px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.ss-concept-note-download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 0.5rem;
+    padding: 11px 22px;
+    border-radius: var(--border-radius, 8px);
+    background: var(--primary-color);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    flex-basis: 100%; /* forces the button onto its own line under the checklist */
+}
+
+.ss-concept-note-download-btn:hover {
+    opacity: 0.9;
+    color: #fff;
+}
+
+@media (max-width: 768px) {
+    .ss-concept-note-card { padding: 1.5rem; gap: 1.25rem; }
+    .ss-concept-note-thumbnail { width: 120px; height: 158px; }
+}
+
+/* ------------------------------------------------------------
+   FAQ
+   ------------------------------------------------------------ */
+
+.ss-faq-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.ss-faq-view-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 1.25rem;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.ss-faq-view-all:hover {
+    text-decoration: underline;
+}
+
+/* ============================================================
+   APPLICATION FORM (SummerSchoolApplicationPage)
+   Freedom to design both markup and CSS here — mirrors the visual
+   language of pages/feedback/static/feedback/css/feedback.css
+   (two-column intro/illustration + form-card layout) since the
+   application page model is deliberately shaped like FeedbackPage.
+   ============================================================ */
+
+.ss-application-page {
+    background: #f8f9fb;
+    min-height: 100vh;
+}
+
+.ss-application-section {
+    padding: 2.5rem 0 5rem;
+}
+
+.ss-application-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: start;
+}
+
+/* ── LEFT: intro column ── */
+.ss-application-intro-col {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    position: sticky;
+    top: 2rem;
+}
+
+.ss-application-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--primary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+}
+
+.ss-application-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text-color, #1a1a1a);
+    line-height: 1.25;
+    margin-bottom: 12px;
+}
+
+.ss-application-subtitle {
+    font-size: 15px;
+    color: #666;
+    line-height: 1.75;
+    max-width: 420px;
+}
+
+.ss-application-deadline {
+    margin-top: 0.75rem;
+}
+
+.ss-application-illustration {
+    width: 100%;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.ss-application-illustration img,
+.ss-application-illustration-img {
+    width: 100%;
+    height: auto;
+    max-height: 380px;
+    object-fit: cover;
+    display: block;
+    border-radius: 14px;
+}
+
+.ss-application-illustration svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* ── RIGHT: form column ── */
+.ss-application-form-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.ss-application-form-card {
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.ss-application-messages {
+    padding: 1.25rem 2rem 0;
+    list-style: none;
+    margin: 0;
+}
+
+.ss-application-form-card-header {
+    padding: 1.5rem 2rem 1.25rem;
+    border-bottom: 1px solid #f0f0f0;
+    background: #fff;
+}
+
+.ss-application-form-eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--primary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+}
+
+.ss-application-form-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-color, #1a1a1a);
+    margin: 0;
+}
+
+.ss-application-form {
+    padding: 1.75rem 2rem;
+}
+
+/* Bulma field overrides — same treatment as feedback.css so a
+   visitor moving between the Feedback and Summer School application
+   forms gets a visually consistent form experience */
+.ss-application-form .field {
+    margin-bottom: 1.25rem;
+}
+
+.ss-application-form .label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 6px;
+}
+
+.ss-application-form .input,
+.ss-application-form .textarea,
+.ss-application-form .select select {
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    font-size: 13px;
+    background: #fafafa;
+    color: #333;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.ss-application-form .input:focus,
+.ss-application-form .textarea:focus,
+.ss-application-form .select select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-color-lightest);
+    background: #fff;
+    outline: none;
+}
+
+.ss-application-form .input::placeholder,
+.ss-application-form .textarea::placeholder {
+    color: #bbb;
+}
+
+.ss-application-form .help {
+    font-size: 11px;
+    color: #aaa;
+    margin-top: 3px;
+}
+
+.ss-application-form .control .radio {
+    display: block;
+    margin-left: 0;
+    margin-top: 0.5em;
+    font-size: 13px;
+    color: #444;
+}
+
+.ss-application-form .control.multiple-checkbox ul li {
+    display: block;
+    margin-left: 0;
+    margin-top: 0.5em;
+    font-size: 13px;
+}
+
+.ss-application-form .required::after {
+    content: "*";
+    color: #DC2626;
+    margin-left: 2px;
+}
+
+.ss-application-form-footer {
+    padding-top: 1rem;
+    border-top: 1px solid #f0f0f0;
+    margin-top: 0.5rem;
+}
+
+.ss-application-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    background: var(--primary-color);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    width: 100%;
+    justify-content: center;
+}
+
+.ss-application-submit-btn:hover {
+    opacity: 0.9;
+}
+
+.ss-application-submit-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    transition: transform 0.15s;
+}
+
+.ss-application-submit-btn:hover svg {
+    transform: translateX(3px);
+}
+
+@media (max-width: 1024px) {
+    .ss-application-layout { gap: 2rem; }
+    .ss-application-title { font-size: 26px; }
+}
+
+@media (max-width: 768px) {
+    .ss-application-page { background: #fff; }
+    .ss-application-section { padding: 1.5rem 0 3rem; }
+
+    .ss-application-layout {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .ss-application-intro-col {
+        position: static;
+        gap: 1.25rem;
+    }
+
+    .ss-application-illustration {
+        max-height: 220px;
+        overflow: hidden;
+    }
+
+    .ss-application-illustration-img {
+        max-height: 220px;
+    }
+
+    .ss-application-title { font-size: 22px; }
+    .ss-application-subtitle { font-size: 14px; }
+
+    .ss-application-form { padding: 1.25rem; }
+    .ss-application-form-card-header { padding: 1.25rem; }
+}
+
+@media (max-width: 480px) {
+    .ss-application-title { font-size: 20px; }
+    .ss-application-form-title { font-size: 16px; }
+}

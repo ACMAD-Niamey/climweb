@@ -1,0 +1,43 @@
+{% load i18n %}
+
+{# Sticky scrollspy nav bar. Each link below is gated to match the conditional #}
+{# section in summer_school_page.html so we never link to an unrendered section. #}
+
+<nav class="ss-nav" aria-label="{% translate 'Summer School section navigation' %}">
+    <div class="container">
+        <ul class="ss-nav-list">
+            <li>
+                <a class="ss-nav-link" href="#key-info">{% translate "Key Info" %}</a>
+            </li>
+            <li>
+                <a class="ss-nav-link" href="#background">{% translate "Background" %}</a>
+            </li>
+            <li>
+                <a class="ss-nav-link" href="#structure">{% translate "Structure" %}</a>
+            </li>
+            {% if page.trainers %}
+                <li>
+                    <a class="ss-nav-link" href="#trainers">{% translate "Trainers" %}</a>
+                </li>
+            {% endif %}
+            {% if page.schedule_sessions %}
+                <li>
+                    <a class="ss-nav-link" href="#schedule">{% translate "Schedule" %}</a>
+                </li>
+            {% endif %}
+            {% if page.cohorts %}
+                <li>
+                    <a class="ss-nav-link" href="#previous-schools">{% translate "Previous Schools" %}</a>
+                </li>
+            {% endif %}
+            <li>
+                <a class="ss-nav-link" href="#concept-note">{% translate "Concept Note" %}</a>
+            </li>
+            {% if page.faq %}
+                <li>
+                    <a class="ss-nav-link" href="#faq">{% translate "FAQ" %}</a>
+                </li>
+            {% endif %}
+        </ul>
+    </div>
+</nav>

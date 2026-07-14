@@ -1,0 +1,58 @@
+{% load wagtailcore_tags wagtailimages_tags lazyimages_tags static i18n %}
+
+<div class="ss-section-heading">
+    <h2>{% translate "Trainers" %}</h2>
+</div>
+
+<div class="columns is-multiline ss-trainer-grid">
+    {% for trainer in page.trainers %}
+        <div class="column is-one-quarter-desktop is-half-tablet is-full-mobile">
+            <div class="ss-trainer-card">
+                <figure class="ss-trainer-figure image">
+                    {% if trainer.value.image %}
+                        {% image trainer.value.image original as trainer_img %}
+                        <img class="is-rounded progressive__img progressive--not-loaded"
+                             data-progressive="{{ trainer_img.url }}"
+                             src="{% lazy_image_url trainer_img %}"
+                             alt="{{ trainer.value.name }}"/>
+                    {% else %}
+                        <img src="{% static 'images/person.svg' %}" alt="{{ trainer.value.name }}"/>
+                    {% endif %}
+                </figure>
+
+                <h4 class="ss-trainer-name">{{ trainer.value.name }}</h4>
+
+                {% if trainer.value.position %}
+                    <span class="ss-trainer-position">{{ trainer.value.position }}</span>
+                {% endif %}
+                {% if trainer.value.organisation %}
+                    <span class="ss-trainer-org">{{ trainer.value.organisation }}</span>
+                {% endif %}
+
+                {% if trainer.value.role %}
+                    <span class="ss-trainer-badge">
+                        {% if trainer.value.role == "lead_facilitator" %}
+                            {% translate "Lead Facilitator" %}
+                        {% elif trainer.value.role == "instructor" %}
+                            {% translate "Instructor" %}
+                        {% elif trainer.value.role == "guest_trainer" %}
+                            {% translate "Guest Trainer" %}
+                        {% endif %}
+                    </span>
+                {% endif %}
+
+                {% if trainer.value.module_taught %}
+                    <h5 class="ss-trainer-module">
+                        <b>{% translate "Module" %}:</b> {{ trainer.value.module_taught }}
+                    </h5>
+                {% endif %}
+
+                {% if trainer.value.bio %}
+                    <div class="ss-trainer-bio format-text">
+                        {{ trainer.value.bio|richtext }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+</div>
