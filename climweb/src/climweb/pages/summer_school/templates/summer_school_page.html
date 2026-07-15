@@ -26,6 +26,12 @@
                 {% include 'summer_school_background_include.html' %}
             </section>
 
+            {% if page.has_eligibility_content %}
+                <section id="eligibility">
+                    {% include 'summer_school_eligibility_include.html' %}
+                </section>
+            {% endif %}
+
             <section id="structure">
                 {% include 'summer_school_structure_include.html' %}
             </section>
@@ -51,6 +57,12 @@
             <section id="concept-note">
                 {% include 'summer_school_concept_note_include.html' %}
             </section>
+
+            {% if page.partners %}
+                <section id="partners">
+                    {% include 'summer_school_partners_include.html' %}
+                </section>
+            {% endif %}
 
             {% if page.faq %}
                 <section id="faq">

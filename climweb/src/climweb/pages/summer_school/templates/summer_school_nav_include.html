@@ -12,6 +12,11 @@
             <li>
                 <a class="ss-nav-link" href="#background">{% translate "Background" %}</a>
             </li>
+            {% if page.has_eligibility_content %}
+                <li>
+                    <a class="ss-nav-link" href="#eligibility">{% translate "Eligibility" %}</a>
+                </li>
+            {% endif %}
             <li>
                 <a class="ss-nav-link" href="#structure">{% translate "Structure" %}</a>
             </li>
@@ -33,6 +38,11 @@
             <li>
                 <a class="ss-nav-link" href="#concept-note">{% translate "Concept Note" %}</a>
             </li>
+            {% if page.partners %}
+                <li>
+                    <a class="ss-nav-link" href="#partners">{% translate "Partners" %}</a>
+                </li>
+            {% endif %}
             {% if page.faq %}
                 <li>
                     <a class="ss-nav-link" href="#faq">{% translate "FAQ" %}</a>

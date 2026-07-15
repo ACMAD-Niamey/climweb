@@ -389,8 +389,14 @@
 /* Deliberate, uniform gap between every content section - takes
    precedence over whatever incidental spacing each section's own
    last element happens to contribute, so this is the one place
-   that controls inter-section rhythm on this page. */
+   that controls inter-section rhythm on this page.
+
+   padding is reset to 0 because base.css's sitewide `main section
+   { padding: 90px 0; }` (40px on mobile) also matches these bare
+   <section> tags - without this override that global rule stacks
+   with margin-bottom below, roughly doubling the intended gap. */
 .ss-main-container > section {
+    padding: 0;
     margin-bottom: 2rem;
 }
 
@@ -400,6 +406,7 @@
 
 @media (max-width: 768px) {
     .ss-main-container > section {
+        padding: 0;
         margin-bottom: 1.5rem;
     }
 }
@@ -412,6 +419,66 @@
 .ss-card-grid {
     margin-top: -0.5rem;
     row-gap: 1rem;
+}
+
+/* ------------------------------------------------------------
+   ELIGIBILITY
+   ------------------------------------------------------------ */
+
+/* Checkmark bullet list - visually identical to .ss-concept-note-checklist
+   but kept as its own rule rather than shared, matching this file's existing
+   per-section duplication convention (see header note). */
+.ss-eligibility-checklist {
+    list-style: none;
+    margin: 0 0 1rem;
+    padding: 0;
+}
+
+.ss-eligibility-checklist li {
+    position: relative;
+    padding-left: 28px;
+    margin-bottom: 0.6rem;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #444;
+}
+
+.ss-eligibility-checklist li::before {
+    content: '\2713';
+    position: absolute;
+    left: 0;
+    top: -1px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.ss-eligibility-prereq-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 22px;
+    border-radius: var(--border-radius, 8px);
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    background: transparent;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+}
+
+.ss-eligibility-prereq-link:hover {
+    background: var(--primary-color);
+    color: #fff;
 }
 
 /* ------------------------------------------------------------
@@ -835,6 +902,66 @@
 }
 
 /* ------------------------------------------------------------
+   SPONSORS, ORGANIZERS & PARTNERS
+   ------------------------------------------------------------ */
+
+.ss-partners-group-heading {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #888;
+    margin: 1.5rem 0 1rem;
+}
+
+.ss-partners-group-heading:first-of-type {
+    margin-top: 0;
+}
+
+.ss-partners-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.ss-partner-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 160px;
+    padding: 1.25rem 1rem;
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    text-align: center;
+    text-decoration: none;
+    transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+a.ss-partner-card:hover {
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    border-color: #e2e2e2;
+}
+
+.ss-partner-card img {
+    max-width: 100%;
+    max-height: 60px;
+    object-fit: contain;
+}
+
+.ss-partner-card-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-color, #1a1a1a);
+}
+
+@media (max-width: 768px) {
+    .ss-partner-card { width: calc(50% - 0.5rem); }
+}
+
+/* ------------------------------------------------------------
    FAQ
    ------------------------------------------------------------ */
 
@@ -942,6 +1069,78 @@
     display: block;
 }
 
+/* ── Application Journey stepper (static/informational, no login or
+   live per-applicant tracking - just sets expectations up front) ── */
+.ss-journey {
+    padding-top: 0.25rem;
+}
+
+.ss-journey-heading {
+    font-size: 11px;
+    font-weight: 700;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.9rem;
+}
+
+.ss-journey-steps {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.ss-journey-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #888;
+}
+
+.ss-journey-step:not(:last-child)::after {
+    content: '';
+    width: 20px;
+    height: 1px;
+    background: #e0e0e0;
+    margin: 0 10px;
+}
+
+.ss-journey-step-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #eee;
+    color: #888;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.ss-journey-step.is-current .ss-journey-step-marker {
+    background: var(--primary-color);
+    color: #fff;
+}
+
+.ss-journey-step.is-current .ss-journey-step-label {
+    color: var(--text-color, #1a1a1a);
+}
+
+.ss-journey-note {
+    margin-top: 0.75rem;
+    font-size: 12px;
+    color: #aaa;
+    line-height: 1.5;
+}
+
 /* ── RIGHT: form column ── */
 .ss-application-form-col {
     display: flex;
@@ -1024,6 +1223,23 @@
 .ss-application-form .input::placeholder,
 .ss-application-form .textarea::placeholder {
     color: #bbb;
+}
+
+.ss-application-form input[type="file"] {
+    display: block;
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    font-size: 13px;
+    background: #fafafa;
+    color: #333;
+}
+
+.ss-application-form input[type="file"]:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-color-lightest);
+    outline: none;
 }
 
 .ss-application-form .help {
@@ -1117,6 +1333,16 @@
 
     .ss-application-illustration-img {
         max-height: 220px;
+    }
+
+    .ss-journey-steps {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .ss-journey-step:not(:last-child)::after {
+        display: none;
     }
 
     .ss-application-title { font-size: 22px; }

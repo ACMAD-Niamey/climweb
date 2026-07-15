@@ -201,7 +201,8 @@
                         </a>
                     {% endif %}
 
-                    <a href="#background" class="ss-eligibility-link">
+                    <a href="{% if page.has_eligibility_content %}#eligibility{% else %}#background{% endif %}"
+                       class="ss-eligibility-link">
                         {% translate "View eligibility" %}
                     </a>
 

@@ -74,3 +74,19 @@ class CohortBlock(blocks.StructBlock):
     class Meta:
         icon = "placeholder"
         label = "Cohort"
+
+
+class SummerSchoolPartnerBlock(blocks.StructBlock):
+    ROLE_CHOICES = (
+        ("sponsor", "Sponsor"),
+        ("organizer", "Organizer"),
+        ("partner", "Partner"),
+    )
+    name = blocks.CharBlock(max_length=150, help_text="Organisation name")
+    logo = ImageChooserBlock(help_text="Organisation logo")
+    website_url = blocks.URLBlock(required=False, help_text="Link to the organisation's website")
+    role = blocks.ChoiceBlock(choices=ROLE_CHOICES, default="partner", help_text="Sponsor, Organizer, or Partner")
+
+    class Meta:
+        icon = "group"
+        label = "Sponsor / Organizer / Partner"

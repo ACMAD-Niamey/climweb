@@ -12,7 +12,7 @@ from modelcluster.fields import ParentalKey
 from wagtail import blocks
 from wagtail.admin.panels import (FieldPanel, FieldRowPanel, InlinePanel, MultiFieldPanel, TabbedInterface,
                                   ObjectList)
-from wagtail.contrib.forms.models import AbstractEmailForm, AbstractFormField
+from wagtail.contrib.forms.models import AbstractEmailForm, AbstractFormField, FORM_FIELD_CHOICES
 from wagtail.fields import RichTextField, StreamField
 from wagtail.models import Page
 from wagtailcaptcha.forms import remove_captcha_field
@@ -20,10 +20,13 @@ from wagtailcaptcha.models import WagtailCaptchaEmailForm
 from wagtailiconchooser.widgets import IconChooserWidget
 
 from climweb.base import blocks as base_blocks
+from climweb.base.forms import (FormImageField, FormDocumentField, CustomSubmissionsListView,
+                                CustomWagtailCaptchaFormBuilder)
 from climweb.base.mixins import MetadataPageMixin
+from climweb.base.models import FormFileSubmission
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
-from climweb.base.utils import get_duplicates
-from .blocks import CohortBlock, ScheduleSessionBlock, TrainerBlock
+from climweb.base.utils import get_duplicates, generate_title_from_filename
+from .blocks import CohortBlock, ScheduleSessionBlock, SummerSchoolPartnerBlock, TrainerBlock
 
 SUMMARY_RICHTEXT_FEATURES = getattr(settings, "SUMMARY_RICHTEXT_FEATURES")
 
@@ -196,6 +199,19 @@ class SummerSchoolPage(MetadataPageMixin, Page):
         ('card', base_blocks.WhatWeDoBlock()),
     ], blank=True, use_json_field=True, verbose_name=_("Background Items"))
 
+    # --- Eligibility ---
+    eligibility_intro = RichTextField(blank=True, features=SUMMARY_RICHTEXT_FEATURES,
+                                      verbose_name=_("Eligibility Introduction"))
+    eligibility_criteria = StreamField([
+        ('item', blocks.CharBlock(max_length=200)),
+    ], blank=True, use_json_field=True, verbose_name=_("Eligibility Criteria"))
+    prerequisite_courses_text = models.CharField(max_length=150, blank=True,
+                                                 default="View pre-requisite courses",
+                                                 verbose_name=_("Pre-requisite Courses - Link Text"))
+    prerequisite_courses_url = models.URLField(blank=True, verbose_name=_("Pre-requisite Courses - External URL"),
+                                               help_text=_("Link to an external course a candidate should complete "
+                                                           "before applying"))
+
     # --- Structure ---
     structure_items = StreamField([
         ('card', base_blocks.WhatWeDoBlock()),
@@ -240,6 +256,11 @@ class SummerSchoolPage(MetadataPageMixin, Page):
         on_delete=models.SET_NULL,
         related_name='+',
     )
+
+    # --- Sponsors, Organizers & Partners ---
+    partners = StreamField([
+        ('partner', SummerSchoolPartnerBlock()),
+    ], blank=True, use_json_field=True, verbose_name=_("Sponsors, Organizers & Partners"))
 
     # --- FAQ ---
     faq = StreamField([
@@ -298,6 +319,12 @@ class SummerSchoolPage(MetadataPageMixin, Page):
             FieldPanel('background_items'),
         ], heading=_("Background")),
         MultiFieldPanel([
+            FieldPanel('eligibility_intro'),
+            FieldPanel('eligibility_criteria'),
+            FieldPanel('prerequisite_courses_text'),
+            FieldPanel('prerequisite_courses_url'),
+        ], heading=_("Eligibility")),
+        MultiFieldPanel([
             FieldPanel('structure_items'),
         ], heading=_("Structure")),
         MultiFieldPanel([
@@ -316,6 +343,9 @@ class SummerSchoolPage(MetadataPageMixin, Page):
             FieldPanel('concept_note_checklist'),
             FieldPanel('concept_note_document'),
         ], heading=_("Concept Note")),
+        MultiFieldPanel([
+            FieldPanel('partners'),
+        ], heading=_("Sponsors, Organizers & Partners")),
         MultiFieldPanel([
             FieldPanel('faq'),
             FieldPanel('faq_view_all_text'),
@@ -370,6 +400,24 @@ class SummerSchoolPage(MetadataPageMixin, Page):
         return self.get_first_child()
 
     @cached_property
+    def card_props(self):
+        # same contract NewsPage/EventPage use, so this edition can slot into
+        # the homepage's generic "Latest Updates" card loop unchanged
+        return {
+            "card_image": self.hero_background_image,
+            "card_title": self.hero_heading,
+            "card_text": self.hero_description,
+            "card_meta": self.key_info_dates,
+            "card_more_link": self.url,
+            "card_tag": _("Summer School"),
+            "card_tags": "",
+        }
+
+    @cached_property
+    def has_eligibility_content(self):
+        return bool(self.eligibility_intro or self.eligibility_criteria or self.prerequisite_courses_url)
+
+    @cached_property
     def is_upcoming(self):
         if not self.edition_start_date:
             return False
@@ -399,9 +447,21 @@ class SummerSchoolPage(MetadataPageMixin, Page):
 
         return sessions_by_date
 
+    @cached_property
+    def partners_by_role(self):
+        grouped = {'sponsor': [], 'organizer': [], 'partner': []}
+
+        for item in self.partners:
+            role = item.value.get('role') or 'partner'
+            grouped.setdefault(role, []).append(item.value)
+
+        return grouped
+
 
 class SummerSchoolApplicationPage(MetadataPageMixin, WagtailCaptchaEmailForm):
     required_css_class = 'required'
+    form_builder = CustomWagtailCaptchaFormBuilder
+    submissions_list_view_class = CustomSubmissionsListView
 
     template = 'summer_school_application_page.html'
     landing_page_template = 'form_thank_you_landing.html'
@@ -424,6 +484,11 @@ class SummerSchoolApplicationPage(MetadataPageMixin, WagtailCaptchaEmailForm):
     )
     thank_you_text = models.TextField(blank=True, null=True, verbose_name=_("Thank you text"))
     application_deadline = models.DateField(null=True, blank=True, verbose_name=_("Application Deadline"))
+    journey_stages = StreamField([
+        ('stage', blocks.CharBlock(max_length=60)),
+    ], blank=True, use_json_field=True, verbose_name=_("Application Journey Stages"))
+    journey_note = models.CharField(max_length=255, blank=True, verbose_name=_("Application Journey Note"),
+                                    help_text=_("Optional caption shown under the journey steps"))
     validation_field = models.CharField(max_length=100, blank=True, default="email_address",
                                         verbose_name=_("Validation Field"),
                                         help_text=_("A field on the form to check if is already submitted so as to "
@@ -435,6 +500,10 @@ class SummerSchoolApplicationPage(MetadataPageMixin, WagtailCaptchaEmailForm):
         FieldPanel('introduction_subtitle'),
         FieldPanel('illustration'),
         FieldPanel('application_deadline'),
+        MultiFieldPanel([
+            FieldPanel('journey_stages'),
+            FieldPanel('journey_note'),
+        ], heading=_("Application Journey")),
         InlinePanel('application_form_fields', label="Form fields"),
         FieldPanel('validation_field'),
         FieldPanel('thank_you_text'),
@@ -592,8 +661,43 @@ class SummerSchoolApplicationPage(MetadataPageMixin, WagtailCaptchaEmailForm):
         mail_admins("POSSIBLE SPAM (SUMMER SCHOOL APPLICATION PAGE) - {}".format(self.subject), content,
                    fail_silently=True)
 
+    def process_form_submission(self, form):
+        cleaned_data = form.cleaned_data
+
+        for name, field in form.fields.items():
+            file_type = None
+            if isinstance(field, FormImageField):
+                file_type = 'image'
+            elif isinstance(field, FormDocumentField):
+                file_type = 'document'
+
+            if file_type:
+                file = cleaned_data.get(name)
+                if file:
+                    file.title = generate_title_from_filename(file.name)
+
+                    file_submission = FormFileSubmission.objects.create(
+                        file=file,
+                        file_type=file_type,
+                    )
+
+                    cleaned_data[name] = file_submission.pk
+                else:
+                    del cleaned_data[name]
+
+        return super(SummerSchoolApplicationPage, self).process_form_submission(form)
+
 
 class SummerSchoolApplicationFormField(AbstractFormField):
+    FILE_SUBMISSION_FIELD_CHOICES = (
+        ("image", _("Upload Image")),
+        ("document", _("Upload PDF Document")),
+    )
+
+    field_type = models.CharField(
+        verbose_name=_("field type"), max_length=16, choices=FORM_FIELD_CHOICES + FILE_SUBMISSION_FIELD_CHOICES
+    )
+
     page = ParentalKey(SummerSchoolApplicationPage,
                        on_delete=models.CASCADE,
                        related_name="application_form_fields")

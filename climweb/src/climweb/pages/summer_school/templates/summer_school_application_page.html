@@ -35,6 +35,23 @@
                         {% endif %}
                     </div>
 
+                    {% if page.journey_stages %}
+                        <div class="ss-journey">
+                            <p class="ss-journey-heading">{% translate "Application Journey" %}</p>
+                            <ol class="ss-journey-steps">
+                                {% for stage in page.journey_stages %}
+                                    <li class="ss-journey-step{% if forloop.first %} is-current{% endif %}">
+                                        <span class="ss-journey-step-marker">{{ forloop.counter }}</span>
+                                        <span class="ss-journey-step-label">{{ stage.value }}</span>
+                                    </li>
+                                {% endfor %}
+                            </ol>
+                            {% if page.journey_note %}
+                                <p class="ss-journey-note">{{ page.journey_note }}</p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+
                     <!-- ILLUSTRATION -->
                     {% if page.illustration %}
                         <div class="ss-application-illustration">
