@@ -1,0 +1,60 @@
+{% load wagtailcore_tags wagtailimages_tags lazyimages_tags wagtailiconchooser_tags i18n %}
+
+<div class="ss-section-heading">
+    <h2>{{ page.concept_note_title }}</h2>
+</div>
+
+<div class="columns ss-concept-note-card">
+    <div class="column is-one-third-desktop is-full-mobile">
+        {% if page.concept_note_thumbnail %}
+            {% image page.concept_note_thumbnail original as concept_note_img %}
+            <figure class="ss-concept-note-thumbnail image">
+                <img class="progressive__img progressive--not-loaded"
+                     data-progressive="{{ concept_note_img.url }}"
+                     src="{% lazy_image_url concept_note_img %}"
+                     alt="{{ page.concept_note_title }}"/>
+            </figure>
+        {% elif page.concept_note_document %}
+            {% with thumb=page.concept_note_document.get_thumbnail %}
+                {% if thumb %}
+                    {% image thumb original as concept_note_img %}
+                    <figure class="ss-concept-note-thumbnail image">
+                        <img class="progressive__img progressive--not-loaded"
+                             data-progressive="{{ concept_note_img.url }}"
+                             src="{% lazy_image_url concept_note_img %}"
+                             alt="{{ page.concept_note_title }}"/>
+                    </figure>
+                {% endif %}
+            {% endwith %}
+        {% endif %}
+    </div>
+
+    <div class="column is-two-thirds-desktop is-full-mobile">
+        {% if page.concept_note_description %}
+            <div class="format-text">
+                {{ page.concept_note_description|richtext }}
+            </div>
+        {% endif %}
+
+        {% if page.concept_note_checklist %}
+            <ul class="ss-concept-note-checklist">
+                {% for item in page.concept_note_checklist %}
+                    <li>&#10003; {{ item.value }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        {% if page.concept_note_document %}
+            <div class="ss-concept-note-download-btn">
+                <a class="button is-rounded" href="{{ page.concept_note_document.url }}">
+                    <span class="icon" style="height: 20px;width: 20px">
+                        {% svg_icon name="download" %}
+                    </span>
+                    <span>
+                        {% translate "Download Concept Note" %}
+                    </span>
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>

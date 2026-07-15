@@ -1,0 +1,71 @@
+{% load wagtailcore_tags wagtailimages_tags lazyimages_tags i18n %}
+
+{% if page.cohorts %}
+    <div class="ss-section-heading">
+        <h2>{% translate "Previous Summer Schools" %}</h2>
+    </div>
+
+    <div class="columns is-multiline ss-cohort-grid">
+        {% for cohort in page.cohorts %}
+            <div class="column is-one-third-desktop is-half-tablet is-full-mobile">
+                <div class="ss-cohort-card">
+                    {% if cohort.value.photo %}
+                        {% image cohort.value.photo original as cohort_img %}
+                        <figure class="ss-cohort-photo image">
+                            <img class="progressive__img progressive--not-loaded"
+                                 data-progressive="{{ cohort_img.url }}"
+                                 src="{% lazy_image_url cohort_img %}"
+                                 alt="{{ cohort.value.year }}"/>
+                        </figure>
+                    {% endif %}
+
+                    <h3 class="ss-cohort-heading">
+                        {{ cohort.value.year }}
+                        {% if cohort.value.location %}
+                            &mdash; {{ cohort.value.location }}
+                        {% endif %}
+                    </h3>
+
+                    <div class="columns is-mobile ss-cohort-stats">
+                        {% if cohort.value.stat_1_value %}
+                            <div class="column">
+                                <div class="ss-cohort-stat-value">{{ cohort.value.stat_1_value }}</div>
+                                {% if cohort.value.stat_1_label %}
+                                    <div class="ss-cohort-stat-label">{{ cohort.value.stat_1_label }}</div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                        {% if cohort.value.stat_2_value %}
+                            <div class="column">
+                                <div class="ss-cohort-stat-value">{{ cohort.value.stat_2_value }}</div>
+                                {% if cohort.value.stat_2_label %}
+                                    <div class="ss-cohort-stat-label">{{ cohort.value.stat_2_label }}</div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                        {% if cohort.value.stat_3_value %}
+                            <div class="column">
+                                <div class="ss-cohort-stat-value">{{ cohort.value.stat_3_value }}</div>
+                                {% if cohort.value.stat_3_label %}
+                                    <div class="ss-cohort-stat-label">{{ cohort.value.stat_3_label }}</div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    {% if cohort.value.highlights_external_url %}
+                        <a class="button is-rounded ss-cohort-highlights-btn"
+                           href="{{ cohort.value.highlights_external_url }}">
+                            {{ cohort.value.highlights_link_text }}
+                        </a>
+                    {% elif cohort.value.highlights_page %}
+                        <a class="button is-rounded ss-cohort-highlights-btn"
+                           href="{{ cohort.value.highlights_page.url }}">
+                            {{ cohort.value.highlights_link_text }}
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}

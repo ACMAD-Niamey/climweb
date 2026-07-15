@@ -140,8 +140,13 @@ services:
     profiles: ["dev"]
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./deploy/nginx/${NGINX_CONFIG:-nginx.conf}:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/ssl:/etc/nginx/ssl:ro
+      - ${LETSENCRYPT_DIR:-/etc/letsencrypt}:/etc/letsencrypt:ro
+      # Shared with certbot's webroot plugin for HTTP-01 renewal (nginx.conf serves this path at /.well-known/acme-challenge/ before the HTTPS redirect).
+      - ${CERTBOT_WEBROOT_DIR:-./deploy/certbot/www}:/var/www/certbot:ro
       - static:/wagtail_static:ro
       - media:/wagtail_media:ro
     depends_on:

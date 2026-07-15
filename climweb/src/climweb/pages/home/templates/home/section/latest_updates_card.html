@@ -2,10 +2,17 @@
 
 {% comment %}
   Latest Updates card — column 3 of the met homepage card row.
-  Compact list variant of updates_include.html: 3 rows of small thumbnail +
-  date + title + "Read more", driven by each update's card_props (the same
-  contract used by update_card_include.html), so news/events/publications
-  all render uniformly without template-side type checks.
+  Compact list variant of updates_include.html: up to 4 rows of small
+  thumbnail + date + title + "Read more", driven by each update's
+  card_props (the same contract used by update_card_include.html), so
+  news/events/publications/a featured Summer School edition all render
+  uniformly without template-side type checks.
+
+  Note: this card sits in a `.hc-card-row` with `align-items: stretch`,
+  so when a 4th item (summer school) is present this card is a row
+  taller than its siblings (weather/hazard card, featured products card)
+  in that row — a known, accepted trade-off rather than displacing an
+  existing news/event/publication item.
 {% endcomment %}
 <div class="hc-card hc-updates-card">
 
@@ -14,7 +21,7 @@
   </div>
 
   <div class="hc-card-body">
-    {% for update in page.latest_updates|slice:":3" %}
+    {% for update in page.latest_updates|slice:":4" %}
       {% with card=update.card_props %}
         <div class="hc-update-item">
 
