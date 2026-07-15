@@ -204,3 +204,4 @@ bin/
 share/
 pyvenv.cfg
 *.dylib
+include/
