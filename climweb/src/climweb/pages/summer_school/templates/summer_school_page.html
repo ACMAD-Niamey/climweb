@@ -5,7 +5,10 @@
 {# Do not inline section markup here; add new sections as new includes.     #}
 
 {% block extra_css %}
-    <link rel="stylesheet" type="text/css" href="{% static 'css/summer_school.css' %}">
+    {# cache-bust: this stylesheet has no content-hashed filename (ManifestStaticFilesStorage #}
+    {# is disabled sitewide), so a plain browser reload can silently serve a stale cached copy #}
+    {# during active development - a timestamp query string forces a fresh fetch every load. #}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/summer_school.css' %}?v={% now 'U' %}">
 {% endblock %}
 
 {% block body_class %}summer-school-page{% endblock %}
@@ -59,5 +62,5 @@
 {% endblock content %}
 
 {% block extra_js %}
-    <script src="{% static 'js/summer_school.js' %}"></script>
+    <script src="{% static 'js/summer_school.js' %}?v={% now 'U' %}"></script>
 {% endblock %}

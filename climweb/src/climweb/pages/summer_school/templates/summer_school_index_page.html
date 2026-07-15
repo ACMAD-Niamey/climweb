@@ -2,7 +2,8 @@
 {% load wagtailcore_tags wagtailimages_tags wagtailiconchooser_tags static i18n %}
 
 {% block extra_css %}
-    <link rel="stylesheet" type="text/css" href="{% static 'css/summer_school.css' %}">
+    {# cache-bust: see summer_school_page.html for why #}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/summer_school.css' %}?v={% now 'U' %}">
 {% endblock %}
 
 {% block body_class %}summer-school-index{% endblock %}
@@ -211,5 +212,5 @@
 {% endblock content %}
 
 {% block extra_js %}
-    <script src="{% static 'js/summer_school_index.js' %}"></script>
+    <script src="{% static 'js/summer_school_index.js' %}?v={% now 'U' %}"></script>
 {% endblock %}

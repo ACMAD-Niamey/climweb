@@ -351,11 +351,11 @@
    ------------------------------------------------------------ */
 
 .ss-section-heading {
-    font-size: 26px;
+    font-size: 24px;
     font-weight: 800;
     color: var(--text-color, #1a1a1a);
-    margin-bottom: 2rem;
-    padding-bottom: 0.75rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.5rem;
     border-bottom: 3px solid var(--primary-color-lightest);
     display: inline-block;
 }
@@ -377,12 +377,12 @@
    controlled top padding instead of relying on stacked default margins
    (hero padding + nav padding + <h2> UA margin + heading margin). */
 .ss-main-container {
-    padding-top: 2rem;
+    padding-top: 1rem;
 }
 
 @media (max-width: 768px) {
     .ss-main-container {
-        padding-top: 1.5rem;
+        padding-top: 0.75rem;
     }
 }
 
