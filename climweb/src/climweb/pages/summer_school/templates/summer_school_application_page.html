@@ -55,7 +55,7 @@
                     <!-- ILLUSTRATION -->
                     {% if page.illustration %}
                         <div class="ss-application-illustration">
-                            {% if page.illustration.url %}
+                            {% if page.illustration.file.name|lower|slice:"-4:" == ".svg" %}
                                 {% svg page.illustration.file.name %}
                             {% else %}
                                 {% image page.illustration original as img %}
