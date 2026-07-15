@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var filterPills = document.getElementById('ss-filter-pills');
     var grid = document.getElementById('ss-cards-grid');
     var noResults = document.getElementById('ss-no-results');
+    var programmesHeading = document.getElementById('ss-programmes-heading');
 
     if (!grid) {
         return;
@@ -66,6 +67,10 @@ document.addEventListener('DOMContentLoaded', function () {
             pill.classList.add('is-active');
             activeFilter = pill.getAttribute('data-filter');
             applyFilters();
+
+            if (programmesHeading) {
+                programmesHeading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         });
     }
 });

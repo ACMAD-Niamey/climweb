@@ -1103,27 +1103,28 @@
 .ss-index-hero {
     position: relative;
     overflow: hidden;
-    padding: 3rem 0 2.5rem;
+    padding: 1.75rem 0 1.5rem;
     background: linear-gradient(135deg, #eaf4ff 0%, #dceeff 55%, #cfe8ff 100%);
 }
 
 .ss-index-hero .ss-hero-heading {
     color: var(--text-color, #14213d);
-    font-size: 32px;
-    margin-bottom: 0.5rem;
+    font-size: 30px;
+    margin-bottom: 0.35rem;
     max-width: 44rem;
 }
 
 .ss-index-hero-subtitle {
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 700;
     color: var(--primary-color);
-    margin: 0.5rem 0 0.75rem;
+    margin: 0.35rem 0 0.5rem;
 }
 
 .ss-index-hero .ss-hero-description {
     color: rgba(20, 33, 61, 0.75);
     max-width: 40rem;
+    margin-bottom: 0.75rem;
 }
 
 .ss-index-hero .ss-hero-badges {
@@ -1137,7 +1138,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    margin: 2rem 0 1.5rem;
+    margin: 1.25rem 0 1rem;
 }
 
 .ss-index-search {
@@ -1256,8 +1257,8 @@
    "span 2 columns" is done via flex-basis/width, not grid-column. */
 @media (min-width: 1024px) {
     .ss-index-card-col.is-featured {
-        flex: 0 0 66.6% !important;
-        max-width: 66.6% !important;
+        flex: 0 0 50% !important;
+        max-width: 50% !important;
     }
 }
 
@@ -1450,12 +1451,13 @@
 
 @media (max-width: 768px) {
     .ss-index-hero {
-        padding: 2rem 0 1.5rem;
+        padding: 1.5rem 0 1.25rem;
     }
 
     .ss-index-toolbar {
         flex-direction: column;
         align-items: stretch;
+        margin: 1rem 0 0.75rem;
     }
 
     .ss-index-search {
