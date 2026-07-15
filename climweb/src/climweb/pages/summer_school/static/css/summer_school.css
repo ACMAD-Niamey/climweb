@@ -386,6 +386,24 @@
     }
 }
 
+/* Deliberate, uniform gap between every content section - takes
+   precedence over whatever incidental spacing each section's own
+   last element happens to contribute, so this is the one place
+   that controls inter-section rhythm on this page. */
+.ss-main-container > section {
+    margin-bottom: 2rem;
+}
+
+.ss-main-container > section:last-child {
+    margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+    .ss-main-container > section {
+        margin-bottom: 1.5rem;
+    }
+}
+
 /* ------------------------------------------------------------
    BACKGROUND / STRUCTURE — mostly Bulma columns.is-multiline; this
    just tightens up default gutter spacing for the card grid.
