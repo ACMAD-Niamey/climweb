@@ -377,12 +377,12 @@
    controlled top padding instead of relying on stacked default margins
    (hero padding + nav padding + <h2> UA margin + heading margin). */
 .ss-main-container {
-    padding-top: 1rem;
+    padding-top: 0.1rem;
 }
 
 @media (max-width: 768px) {
     .ss-main-container {
-        padding-top: 0.75rem;
+        padding-top: 0.1rem;
     }
 }
 
