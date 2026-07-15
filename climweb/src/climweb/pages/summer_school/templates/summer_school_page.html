@@ -18,41 +18,43 @@
     {% include 'summer_school_nav_include.html' %}
 
     <main>
-        <section id="background">
-            {% include 'summer_school_background_include.html' %}
-        </section>
-
-        <section id="structure">
-            {% include 'summer_school_structure_include.html' %}
-        </section>
-
-        {% if page.trainers %}
-            <section id="trainers">
-                {% include 'trainers_include.html' %}
+        <div class="container ss-main-container">
+            <section id="background">
+                {% include 'summer_school_background_include.html' %}
             </section>
-        {% endif %}
 
-        {% if page.schedule_sessions %}
-            <section id="schedule">
-                {% include 'summer_school_schedule_include.html' %}
+            <section id="structure">
+                {% include 'summer_school_structure_include.html' %}
             </section>
-        {% endif %}
 
-        {% if page.cohorts %}
-            <section id="previous-schools">
-                {% include 'summer_school_cohorts_include.html' %}
+            {% if page.trainers %}
+                <section id="trainers">
+                    {% include 'trainers_include.html' %}
+                </section>
+            {% endif %}
+
+            {% if page.schedule_sessions %}
+                <section id="schedule">
+                    {% include 'summer_school_schedule_include.html' %}
+                </section>
+            {% endif %}
+
+            {% if page.cohorts %}
+                <section id="previous-schools">
+                    {% include 'summer_school_cohorts_include.html' %}
+                </section>
+            {% endif %}
+
+            <section id="concept-note">
+                {% include 'summer_school_concept_note_include.html' %}
             </section>
-        {% endif %}
 
-        <section id="concept-note">
-            {% include 'summer_school_concept_note_include.html' %}
-        </section>
-
-        {% if page.faq %}
-            <section id="faq">
-                {% include 'summer_school_faq_include.html' %}
-            </section>
-        {% endif %}
+            {% if page.faq %}
+                <section id="faq">
+                    {% include 'summer_school_faq_include.html' %}
+                </section>
+            {% endif %}
+        </div>
     </main>
 {% endblock content %}
 

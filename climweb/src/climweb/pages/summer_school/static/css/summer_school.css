@@ -360,8 +360,30 @@
     display: inline-block;
 }
 
+/* .ss-section-heading wraps a bare <h2> - reset its browser-default
+   margin so section spacing is controlled solely by .ss-section-heading
+   and .ss-main-container's padding-top, not stacked UA defaults. */
+.ss-section-heading h2 {
+    margin: 0;
+}
+
 @media (max-width: 768px) {
     .ss-section-heading { font-size: 21px; margin-bottom: 1.5rem; }
+}
+
+/* ── MAIN CONTENT CONTAINER ──
+   Sections previously had no .container wrapper at all, so text ran
+   edge-to-edge with no side margin. This also gives us one explicit,
+   controlled top padding instead of relying on stacked default margins
+   (hero padding + nav padding + <h2> UA margin + heading margin). */
+.ss-main-container {
+    padding-top: 2rem;
+}
+
+@media (max-width: 768px) {
+    .ss-main-container {
+        padding-top: 1.5rem;
+    }
 }
 
 /* ------------------------------------------------------------
