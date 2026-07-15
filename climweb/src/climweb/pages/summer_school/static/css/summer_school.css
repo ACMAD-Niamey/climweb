@@ -31,7 +31,7 @@
 .ss-hero {
     position: relative;
     overflow: hidden;
-    padding: 5rem 0 6rem;
+    padding: 2.5rem 0 3rem;
     color: #fff;
     isolation: isolate; /* keeps .ss-hero-bg's negative z-index confined to this stacking context */
 }
@@ -187,7 +187,7 @@
 }
 
 @media (max-width: 768px) {
-    .ss-hero { padding: 3rem 0 4rem; }
+    .ss-hero { padding: 1.75rem 0 2rem; }
     .ss-hero-heading { font-size: 28px; }
     .ss-hero-description { font-size: 14px; }
     .ss-decorative-image { display: none; } /* avoid crowding the stacked mobile layout */
@@ -203,7 +203,7 @@
     background: #fff;
     border-radius: 16px;
     box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
-    padding: 1.75rem;
+    padding: 1.35rem;
     color: var(--text-color, #1a1a1a);
 }
 
@@ -211,7 +211,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 0.65rem 0;
+    padding: 0.45rem 0;
     border-bottom: 1px solid #f0f0f0;
 }
 
