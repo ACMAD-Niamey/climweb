@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+{% load wagtailcore_tags wagtailimages_tags wagtailiconchooser_tags static i18n %}
+
+{% block extra_css %}
+    {# cache-bust: see summer_school_page.html for why #}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/summer_school.css' %}?v={% now 'U' %}">
+{% endblock %}
+
+{% block body_class %}summer-school-index{% endblock %}
+
+{% block content %}
+    {% include 'breadcrumbs_include.html' with page=page %}
+
+    <section class="ss-index-hero">
+        {% if page.hero_background_image %}
+            {% image page.hero_background_image fill-1600x900 as hero_bg_img %}
+            <div class="ss-hero-bg" style="background-image:url('{{ hero_bg_img.url }}');"></div>
+        {% endif %}
+
+        <div class="container">
+            {% if page.hero_heading %}
+                <h1 class="ss-hero-heading">{{ page.hero_heading }}</h1>
+            {% endif %}
+
+            {% if page.hero_subtitle %}
+                <p class="ss-index-hero-subtitle">{{ page.hero_subtitle }}</p>
+            {% endif %}
+
+            {% if page.hero_description %}
+                <div class="ss-hero-description format-text">
+                    {{ page.hero_description|richtext }}
+                </div>
+            {% endif %}
+
+            {% if page.hero_badges %}
+                <div class="ss-hero-badges">
+                    {% for badge in page.hero_badges %}
+                        <span class="ss-pill is-filled">{{ badge.value }}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <main class="is-index">
+        <div class="container">
+
+            {% if page.editions %}
+                <div class="ss-index-toolbar">
+                    <div class="ss-index-search">
+                        <span class="icon">{% svg_icon name="search" %}</span>
+                        <input type="text"
+                               id="ss-search-input"
+                               class="ss-index-search-input"
+                               placeholder="{% translate 'Search summer schools' %}"
+                               aria-label="{% translate 'Search summer schools' %}">
+                    </div>
+                    <div class="ss-index-filters" id="ss-filter-pills">
+                        <button type="button" class="ss-filter-pill is-active" data-filter="all">
+                            {% translate "All" %}
+                        </button>
+                        <button type="button" class="ss-filter-pill" data-filter="upcoming">
+                            {% translate "Upcoming" %}
+                        </button>
+                        <button type="button" class="ss-filter-pill" data-filter="past">
+                            {% translate "Past schools" %}
+                        </button>
+                        {% for tag in page.unique_badge_tags %}
+                            <button type="button" class="ss-filter-pill" data-filter="{{ tag|slugify }}">
+                                {{ tag }}
+                            </button>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="ss-index-stats">
+                    <div class="ss-index-stat">
+                        <span class="ss-icon-badge">{% svg_icon name="school" %}</span>
+                        <div class="ss-index-stat-body">
+                            <div class="ss-index-stat-value">{{ page.programmes_count }}</div>
+                            <div class="ss-index-stat-label">{% translate "programmes" %}</div>
+                        </div>
+                    </div>
+                    <div class="ss-index-stat">
+                        <span class="ss-icon-badge">{% svg_icon name="group" %}</span>
+                        <div class="ss-index-stat-body">
+                            <div class="ss-index-stat-value">{{ page.past_cohorts_count }}</div>
+                            <div class="ss-index-stat-label">{% translate "past cohorts" %}</div>
+                        </div>
+                    </div>
+                    <div class="ss-index-stat">
+                        <span class="ss-icon-badge">{% svg_icon name="calendar-alt" %}</span>
+                        <div class="ss-index-stat-body">
+                            <div class="ss-index-stat-value">{{ page.upcoming_count }}</div>
+                            <div class="ss-index-stat-label">{% translate "upcoming" %}</div>
+                        </div>
+                    </div>
+                    <div class="ss-index-stat">
+                        <span class="ss-icon-badge">{% svg_icon name="globe" %}</span>
+                        <div class="ss-index-stat-body">
+                            <div class="ss-index-stat-label ss-index-stat-label-only">
+                                {% translate "Across Africa" %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <h2 class="ss-section-heading" id="ss-programmes-heading">{% translate "Summer School Programmes" %}</h2>
+
+            {% if page.editions %}
+                <div class="columns is-multiline ss-index-grid" id="ss-cards-grid">
+                    {% for edition in page.editions %}
+                        <div class="column is-one-third-desktop is-half-tablet is-full-mobile ss-index-card-col {% if edition.featured %}is-featured{% endif %}"
+                             data-search="{{ edition.title|lower }} {{ edition.program_tagline|lower }} {{ edition.key_info_location|lower }}"
+                             data-upcoming="{{ edition.is_upcoming|yesno:'1,0' }}"
+                             data-tags="{% for badge in edition.hero_badges %}{{ badge.value|slugify }} {% endfor %}">
+                            <a class="ss-index-edition-card" href="{{ edition.url }}">
+
+                                {% if edition.hero_background_image %}
+                                    {% image edition.hero_background_image fill-600x400 as edition_img %}
+                                    <div class="ss-index-edition-image"
+                                         style="background-image:url('{{ edition_img.url }}');">
+                                        {% if edition.card_icon %}
+                                            <span class="ss-index-edition-icon">
+                                                {% svg_icon name=edition.card_icon %}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                {% elif edition.card_icon %}
+                                    <div class="ss-index-edition-image ss-index-edition-image-plain">
+                                        <span class="ss-index-edition-icon">
+                                            {% svg_icon name=edition.card_icon %}
+                                        </span>
+                                    </div>
+                                {% endif %}
+
+                                <div class="ss-index-edition-body">
+                                    <div class="ss-index-edition-top-row">
+                                        {% if edition.program_tagline %}
+                                            <p class="ss-index-edition-tagline">{{ edition.program_tagline }}</p>
+                                        {% endif %}
+
+                                        {% if edition.status_badge_text %}
+                                            <span class="ss-index-edition-status">{{ edition.status_badge_text }}</span>
+                                        {% endif %}
+                                    </div>
+
+                                    <h3 class="ss-index-edition-title">
+                                        {{ edition.hero_heading|default:edition.title }}
+                                    </h3>
+
+                                    <div class="ss-index-edition-meta">
+                                        {% if edition.key_info_dates %}
+                                            <span class="ss-index-edition-meta-item">
+                                                <span class="icon">{% svg_icon name="calendar-alt" %}</span>
+                                                {{ edition.key_info_dates }}
+                                            </span>
+                                        {% endif %}
+
+                                        {% if edition.key_info_location %}
+                                            <span class="ss-index-edition-meta-item">
+                                                <span class="icon">{% svg_icon name="location" %}</span>
+                                                {{ edition.key_info_location }}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+
+                                    {% if edition.hero_badges %}
+                                        <div class="ss-index-edition-tags">
+                                            {% for badge in edition.hero_badges %}
+                                                <span class="ss-index-edition-tag">{{ badge.value }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+
+                                    <span class="ss-index-edition-link">
+                                        {% translate "View details" %}
+                                        <span class="icon">{% svg_icon name="arrow-right-full" %}</span>
+                                    </span>
+                                </div>
+                            </a>
+                        </div>
+                    {% endfor %}
+                </div>
+                <p class="ss-index-empty-filtered" id="ss-no-results" hidden>
+                    {% translate "No programmes match your search." %}
+                </p>
+            {% else %}
+                <p class="ss-index-empty">{% translate "No summer school editions are available yet." %}</p>
+            {% endif %}
+        </div>
+    </main>
+
+    {% if page.banner_heading or page.banner_description %}
+        <section class="ss-index-banner">
+            <div class="container ss-index-banner-inner">
+                <span class="ss-icon-badge ss-index-banner-icon">{% svg_icon name="group" %}</span>
+                <div>
+                    {% if page.banner_heading %}
+                        <h3 class="ss-index-banner-heading">{{ page.banner_heading }}</h3>
+                    {% endif %}
+                    {% if page.banner_description %}
+                        <div class="ss-index-banner-description format-text">
+                            {{ page.banner_description|richtext }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+    {% endif %}
+{% endblock content %}
+
+{% block extra_js %}
+    <script src="{% static 'js/summer_school_index.js' %}?v={% now 'U' %}"></script>
+{% endblock %}

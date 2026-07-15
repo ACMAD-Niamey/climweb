@@ -1,0 +1,25 @@
+{% load wagtailcore_tags i18n %}
+
+<div class="ss-section-heading">
+    <h2>{% translate "Eligibility" %}</h2>
+</div>
+
+{% if page.eligibility_intro %}
+    <div class="format-text">
+        {{ page.eligibility_intro|richtext }}
+    </div>
+{% endif %}
+
+{% if page.eligibility_criteria %}
+    <ul class="ss-eligibility-checklist">
+        {% for item in page.eligibility_criteria %}
+            <li>{{ item.value }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+{% if page.prerequisite_courses_url %}
+    <a class="ss-eligibility-prereq-link" href="{{ page.prerequisite_courses_url }}" target="_blank" rel="noopener">
+        {{ page.prerequisite_courses_text }}
+    </a>
+{% endif %}

@@ -1,0 +1,55 @@
+{% load i18n wagtailcore_tags wagtailimages_tags lazyimages_tags %}
+
+{% if page.featured_summer_school %}
+    {% with edition=page.featured_summer_school %}
+        <section class="section">
+            <div class="container py-5">
+                <div class="home-summer-school-banner">
+
+                    {% if edition.hero_background_image %}
+                        {% image edition.hero_background_image fill-700x500 as ss_banner_img %}
+                        <figure class="home-summer-school-banner-image">
+                            <img class="progressive__img progressive--not-loaded"
+                                 data-progressive="{{ ss_banner_img.url }}"
+                                 src="{% lazy_image_url ss_banner_img %}"
+                                 alt="{{ edition.hero_heading }}"/>
+                        </figure>
+                    {% endif %}
+
+                    <div class="home-summer-school-banner-body">
+                        {% if edition.program_tagline %}
+                            <p class="home-summer-school-banner-eyebrow">{{ edition.program_tagline }}</p>
+                        {% else %}
+                            <p class="home-summer-school-banner-eyebrow">{% translate "Summer School" %}</p>
+                        {% endif %}
+
+                        <h2 class="home-summer-school-banner-title">{{ edition.hero_heading }}</h2>
+
+                        {% if edition.key_info_dates or edition.key_info_location %}
+                            <div class="home-summer-school-banner-meta">
+                                {% if edition.key_info_dates %}
+                                    <span>{{ edition.key_info_dates }}</span>
+                                {% endif %}
+                                {% if edition.key_info_location %}
+                                    <span>{{ edition.key_info_location }}</span>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+
+                        <div class="home-summer-school-banner-cta">
+                            <a href="{{ edition.url }}" class="home-summer-school-banner-btn-secondary">
+                                {% translate "Learn more" %}
+                            </a>
+                            {% if edition.application_open and edition.application_page and edition.application_page.live %}
+                                <a href="{{ edition.application_page.url }}" class="home-summer-school-banner-btn-primary">
+                                    {{ edition.apply_button_text }}
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+    {% endwith %}
+{% endif %}

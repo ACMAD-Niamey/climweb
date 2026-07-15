@@ -1,0 +1,16 @@
+{% load wagtailimages_tags lazyimages_tags %}
+
+{% if item.website_url %}<a class="ss-partner-card" href="{{ item.website_url }}" target="_blank" rel="noopener">
+{% else %}<div class="ss-partner-card">
+{% endif %}
+
+    {% if item.logo %}
+        {% image item.logo max-200x100 as partner_logo %}
+        <img class="progressive__img progressive--not-loaded"
+             data-progressive="{{ partner_logo.url }}"
+             src="{% lazy_image_url partner_logo %}"
+             alt="{{ item.name }}"/>
+    {% endif %}
+    <span class="ss-partner-card-name">{{ item.name }}</span>
+
+{% if item.website_url %}</a>{% else %}</div>{% endif %}

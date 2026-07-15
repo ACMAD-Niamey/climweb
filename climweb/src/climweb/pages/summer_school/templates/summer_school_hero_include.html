@@ -1,0 +1,214 @@
+{% load wagtailcore_tags wagtailimages_tags wagtailiconchooser_tags i18n %}
+
+{# Hero banner + nested key-info card (id="key-info") for a SummerSchoolPage edition. #}
+
+<section class="ss-hero">
+
+    {% if page.hero_background_image %}
+        {% image page.hero_background_image fill-1600x900 as hero_bg_img %}
+        <div class="ss-hero-bg" style="background-image:url('{{ hero_bg_img.url }}');"></div>
+    {% endif %}
+
+    {% if page.decorative_image %}
+        {% image page.decorative_image width-480 as decorative_img %}
+        <img class="ss-decorative-image" src="{{ decorative_img.url }}" alt="" aria-hidden="true">
+    {% endif %}
+
+    <div class="container">
+        <div class="columns is-vcentered">
+
+            <div class="column is-two-thirds-desktop is-full-mobile">
+
+                {% if page.program_tagline %}
+                    <p class="ss-hero-tagline">{{ page.program_tagline }}</p>
+                {% endif %}
+
+                <h1 class="ss-hero-heading">{{ page.hero_heading }}</h1>
+
+                {% if page.hero_description %}
+                    <div class="ss-hero-description format-text">
+                        {{ page.hero_description|richtext }}
+                    </div>
+                {% endif %}
+
+                {% if page.hero_badges %}
+                    <div class="ss-hero-badges">
+                        {% for badge in page.hero_badges %}
+                            <span class="ss-pill">{{ badge.value }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% if page.cta_primary_text or page.cta_secondary_text %}
+                    <div class="ss-hero-cta">
+
+                        {% if page.cta_primary_text and page.cta_primary_external_url %}
+                            <a href="{{ page.cta_primary_external_url }}"
+                               target="_blank"
+                               rel="noopener"
+                               class="button ss-hero-cta-primary"
+                               data-ga-action="click"
+                               data-ga-event-category="Summer School CTA Primary"
+                               data-ga-event-label="{{ page.title }}"
+                               data-ga-value="{{ page.cta_primary_external_url }}">
+                                <span>{{ page.cta_primary_text }}</span>
+                                <span class="icon btn-icon">{% svg_icon name="arrow-right-full" %}</span>
+                            </a>
+                        {% elif page.cta_primary_text and page.cta_primary_page %}
+                            <a href="{{ page.cta_primary_page.url }}"
+                               class="button ss-hero-cta-primary"
+                               data-ga-action="click"
+                               data-ga-event-category="Summer School CTA Primary"
+                               data-ga-event-label="{{ page.title }}"
+                               data-ga-value="{{ page.cta_primary_page.url }}">
+                                <span>{{ page.cta_primary_text }}</span>
+                                <span class="icon btn-icon">{% svg_icon name="arrow-right-full" %}</span>
+                            </a>
+                        {% endif %}
+
+                        {% if page.cta_secondary_text and page.cta_secondary_external_url %}
+                            <a href="{{ page.cta_secondary_external_url }}"
+                               target="_blank"
+                               rel="noopener"
+                               class="button ss-hero-cta-secondary"
+                               data-ga-action="click"
+                               data-ga-event-category="Summer School CTA Secondary"
+                               data-ga-event-label="{{ page.title }}"
+                               data-ga-value="{{ page.cta_secondary_external_url }}">
+                                <span>{{ page.cta_secondary_text }}</span>
+                            </a>
+                        {% elif page.cta_secondary_text and page.cta_secondary_page %}
+                            <a href="{{ page.cta_secondary_page.url }}"
+                               class="button ss-hero-cta-secondary"
+                               data-ga-action="click"
+                               data-ga-event-category="Summer School CTA Secondary"
+                               data-ga-event-label="{{ page.title }}"
+                               data-ga-value="{{ page.cta_secondary_page.url }}">
+                                <span>{{ page.cta_secondary_text }}</span>
+                            </a>
+                        {% endif %}
+
+                    </div>
+                {% endif %}
+
+            </div>
+
+            <div class="column is-one-third-desktop is-full-mobile">
+                <div id="key-info" class="ss-key-info-card">
+
+                    {% if page.key_info_dates %}
+                        <div class="ss-key-info-item">
+                            <span class="ss-icon-badge">
+                                {% svg_icon name="calendar-alt" %}
+                            </span>
+                            <div class="ss-key-info-item-body">
+                                <strong class="ss-key-info-item-label">{% translate "Dates" %}</strong>
+                                <span class="ss-key-info-item-value">{{ page.key_info_dates }}</span>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if page.key_info_location %}
+                        <div class="ss-key-info-item">
+                            <span class="ss-icon-badge">
+                                {% svg_icon name="location" %}
+                            </span>
+                            <div class="ss-key-info-item-body">
+                                <strong class="ss-key-info-item-label">{% translate "Location" %}</strong>
+                                <span class="ss-key-info-item-value">{{ page.key_info_location }}</span>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if page.key_info_format %}
+                        <div class="ss-key-info-item">
+                            <span class="ss-icon-badge">
+                                {% svg_icon name="layer-group" %}
+                            </span>
+                            <div class="ss-key-info-item-body">
+                                <strong class="ss-key-info-item-label">{% translate "Format" %}</strong>
+                                <span class="ss-key-info-item-value">{{ page.key_info_format }}</span>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if page.key_info_language %}
+                        <div class="ss-key-info-item">
+                            <span class="ss-icon-badge">
+                                {% svg_icon name="globe" %}
+                            </span>
+                            <div class="ss-key-info-item-body">
+                                <strong class="ss-key-info-item-label">{% translate "Language" %}</strong>
+                                <span class="ss-key-info-item-value">{{ page.key_info_language }}</span>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if page.key_info_certificate %}
+                        <div class="ss-key-info-item">
+                            <span class="ss-icon-badge">
+                                {% svg_icon name="document" %}
+                            </span>
+                            <div class="ss-key-info-item-body">
+                                <strong class="ss-key-info-item-label">{% translate "Certificate" %}</strong>
+                                <span class="ss-key-info-item-value">{{ page.key_info_certificate }}</span>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if page.key_info_contact %}
+                        <div class="ss-key-info-item">
+                            <span class="ss-icon-badge">
+                                {% svg_icon name="mail" %}
+                            </span>
+                            <div class="ss-key-info-item-body">
+                                <strong class="ss-key-info-item-label">{% translate "Contact" %}</strong>
+                                <span class="ss-key-info-item-value">{{ page.key_info_contact }}</span>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if not page.application_open and page.application_page %}
+                        <div class="ss-key-info-item">
+                            <span class="ss-icon-badge">
+                                {% svg_icon name="circle-xmark" %}
+                            </span>
+                            <div class="ss-key-info-item-body">
+                                <span class="ss-key-info-item-value">{% translate "Applications closed" %}</span>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if page.application_open and page.application_page and not page.application_page.live %}
+                        <div class="ss-key-info-item">
+                            <span class="ss-icon-badge">
+                                {% svg_icon name="hourglass-half" %}
+                            </span>
+                            <div class="ss-key-info-item-body">
+                                <span class="ss-key-info-item-value">{% translate "Applications opening soon" %}</span>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if page.application_open and page.application_page and page.application_page.live %}
+                        <a href="{{ page.application_page.url }}"
+                           class="button is-fullwidth ss-apply-btn"
+                           data-ga-action="click"
+                           data-ga-event-category="Summer School Application"
+                           data-ga-event-label="{{ page.title }}"
+                           data-ga-value="{{ page.application_page.url }}">
+                            {{ page.apply_button_text }}
+                        </a>
+                    {% endif %}
+
+                    <a href="{% if page.has_eligibility_content %}#eligibility{% else %}#background{% endif %}"
+                       class="ss-eligibility-link">
+                        {% translate "View eligibility" %}
+                    </a>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>

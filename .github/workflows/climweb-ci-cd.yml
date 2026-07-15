@@ -1,0 +1,100 @@
+name: acmad/climweb CI/CD
+
+# NOTE: this project has no repo-root requirements.txt/manage.py and requires
+# PostGIS (not vanilla Postgres) plus a GDAL/GEOS toolchain matching the one
+# baked into the project's own Dockerfile - installing those piecemeal on a
+# bare ubuntu-latest runner is fragile and drifts from the Dockerfile over
+# time. Instead this job builds and runs the same dev Docker image used
+# locally (see Makefile's `make test` / `make up`), so CI stays in lockstep
+# with whatever the Dockerfile/docker-compose.yml actually specify.
+
+on:
+  push:
+    branches: [develop, production]
+  pull_request:
+    branches: [develop, production]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # docker-compose.yml requires a .env file (see .env.sample) - these are
+      # throwaway, CI-only values for an ephemeral stack, never real secrets.
+      - name: Create .env file for docker compose
+        run: |
+          cat <<'EOF' > .env
+          CMS_DB_USER=climweb
+          CMS_DB_NAME=climweb
+          CMS_DB_PASSWORD=climweb
+          POSTGRES_VERSION=15
+          REDIS_PASSWORD=climweb
+          SECRET_KEY=ci-only-secret-key-not-for-production-use
+          CMS_DEBUG=True
+          ALLOWED_HOSTS=*
+          TIME_ZONE=UTC
+          CMS_DEFAULT_LANGUAGE_CODE=en
+          UID=1000
+          GID=1000
+          EOF
+
+      - name: Build and start the dev stack
+        run: docker compose --profile dev up -d --build
+
+      # Migrations run automatically on container startup (see
+      # climweb/docker/docker-entrypoint.sh), so we just need to wait for
+      # that startup sequence (db/redis wait + migrate + collectstatic) to
+      # finish and the dev server to actually be listening.
+      - name: Wait for climweb_dev to be ready
+        run: |
+          for i in $(seq 1 60); do
+            if docker compose --profile dev logs climweb_dev 2>&1 | grep -q "Running Development Server"; then
+              echo "climweb_dev is ready"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Timed out waiting for climweb_dev to start"
+          docker compose --profile dev logs
+          exit 1
+
+      - name: Run tests
+        run: >
+          docker compose --profile dev exec -T climweb_dev
+          python /climweb/web/src/climweb/manage.py test
+          --settings=climweb.config.settings.test --verbosity=2
+
+      - name: Tear down
+        if: always()
+        run: docker compose --profile dev down -v
+    
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/production'
+
+    steps:
+    - name: Copy SSH key
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.VULTR_SSH_KEY }}
+
+    - name: Deploy to Vultr
+      run: |
+        ssh -o StrictHostKeyChecking=no -p 2225 ${{ secrets.VULTR_USER }}@${{ secrets.VULTR_IP }} << 'EOF'
+          set -e
+          cd climweb
+          git pull origin production
+
+          # build the new prod image, then recreate the running prod containers
+          # from it - `make up build-prod` (the old command here) never actually
+          # restarted production with the new build, it only built the image and
+          # separately brought up the unrelated *dev* profile.
+          make build-prod
+          make up-prod
+
+          docker builder prune -af
+        EOF
+
