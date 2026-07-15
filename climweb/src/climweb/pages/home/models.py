@@ -38,6 +38,7 @@ from climweb.pages.organisation_pages.partners.models import Partner
 from climweb.pages.products.models import ProductItemPage, ProductPage
 from climweb.pages.publications.models import PublicationPage
 from climweb.pages.services.models import ServicePage
+from climweb.pages.summer_school.models import SummerSchoolPage
 from climweb.pages.videos.models import YoutubePlaylist
 from .blocks import AreaBoundaryBlock, AreaPolygonBlock
 
@@ -468,19 +469,31 @@ class HomePage(MetadataPageMixin, Page):
         if publications is None:
             publications = PublicationPage.objects.live().order_by('-publication_date').first()
         
+        # featured summer school edition takes priority over news/events/publications
+        if self.featured_summer_school:
+            updates.append(self.featured_summer_school)
         if news:
             updates.append(news)
         if events:
             updates.append(events)
         if publications:
             updates.append(publications)
-        
+
         return updates
     
     @cached_property
     def services(self):
         services = ServicePage.objects.live()
         return services
+
+    @cached_property
+    def featured_summer_school(self):
+        # editors opt an edition into this via the "Featured" + "Is visible on
+        # homepage" checkboxes on the SummerSchoolPage itself; most recent
+        # edition wins if more than one is marked
+        return SummerSchoolPage.objects.live().filter(
+            featured=True, is_visible_on_homepage=True
+        ).order_by('-edition_start_date').first()
 
     def _weather_watch_indicators_list(self) -> list[dict]:
         """
