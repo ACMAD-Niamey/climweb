@@ -45,13 +45,13 @@
                     <div class="ss-trainer-links">
                         {% for link in trainer.value.links %}
                             {% if link.url %}
-                                <a href="{{ link.url }}" target="_blank" rel="noopener"
-                                   title="{{ link.text }}" aria-label="{{ link.text }}"
-                                   onclick="event.stopPropagation()">
-                                    {% if link.icon %}
+                                {% if link.icon %}
+                                    <a href="{{ link.url }}" target="_blank" rel="noopener"
+                                       title="{{ link.text|default:link.url }}" aria-label="{{ link.text|default:link.url }}"
+                                       onclick="event.stopPropagation()">
                                         {% svg_icon link.icon %}
-                                    {% endif %}
-                                </a>
+                                    </a>
+                                {% endif %}
                             {% endif %}
                         {% endfor %}
                     </div>
