@@ -31,7 +31,7 @@
 .ss-hero {
     position: relative;
     overflow: hidden;
-    padding: 2.5rem 0 3rem;
+    padding: 1.75rem 0 2rem;
     color: #fff;
     isolation: isolate; /* keeps .ss-hero-bg's negative z-index confined to this stacking context */
 }
@@ -68,27 +68,27 @@
 }
 
 .ss-hero-heading {
-    font-size: 40px;
+    font-size: 34px;
     font-weight: 800;
     line-height: 1.2;
     color: #fff;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
     max-width: 40rem;
 }
 
 .ss-hero-description {
     font-size: 16px;
-    line-height: 1.7;
+    line-height: 1.6;
     color: rgba(255, 255, 255, 0.9);
     max-width: 34rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.1rem;
 }
 
 .ss-hero-badges {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    margin-bottom: 1.75rem;
+    margin-bottom: 1.25rem;
 }
 
 /* Generic pill badge — reused for hero badges ("Upcoming edition"),
@@ -187,8 +187,8 @@
 }
 
 @media (max-width: 768px) {
-    .ss-hero { padding: 1.75rem 0 2rem; }
-    .ss-hero-heading { font-size: 28px; }
+    .ss-hero { padding: 1.25rem 0 1.5rem; }
+    .ss-hero-heading { font-size: 26px; }
     .ss-hero-description { font-size: 14px; }
     .ss-decorative-image { display: none; } /* avoid crowding the stacked mobile layout */
 }
@@ -502,6 +502,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    cursor: pointer;
     transition: box-shadow 0.15s, border-color 0.15s;
 }
 
@@ -536,10 +537,30 @@
     margin-bottom: 2px;
 }
 
+/* Only present when a profile_url is set on the trainer block - link
+   inherits the card's text colour so it doesn't look like a stray blue
+   link, but still underlines on hover to signal it's clickable. */
+.ss-trainer-name a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.ss-trainer-name a:hover {
+    text-decoration: underline;
+}
+
 .ss-trainer-position {
+    display: block;
     font-size: 13px;
     font-style: italic;
     color: #777;
+    margin-bottom: 2px;
+}
+
+.ss-trainer-org {
+    display: block;
+    font-size: 12px;
+    color: #999;
     margin-bottom: 8px;
 }
 
@@ -568,8 +589,91 @@
     color: #666;
 }
 
+/* Trainer links (LinkedIn, personal page, Google Scholar, etc.) - icon
+   only on the short card, icon + label once expanded in the modal. */
+.ss-trainer-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.ss-trainer-links a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--primary-color-lightest);
+    flex-shrink: 0;
+}
+
+.ss-trainer-links a svg {
+    width: 16px;
+    height: 16px;
+    fill: var(--primary-color);
+    stroke: transparent;
+}
+
+.ss-trainer-links-full {
+    justify-content: flex-start;
+    margin-top: 16px;
+}
+
+.ss-trainer-links-full a {
+    width: auto;
+    height: auto;
+    border-radius: 999px;
+    background: var(--primary-color-lightest);
+    padding: 6px 14px 6px 6px;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.ss-trainer-links-full a .ss-icon-badge {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #fff;
+}
+
+.ss-trainer-links-full a .ss-icon-badge svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* "View bio" affordance on the (short-info) card - the full bio itself
+   only ever renders inside .ss-trainer-modal-content below. */
+.ss-trainer-view-bio {
+    display: inline-block;
+    margin-top: auto;
+    padding-top: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
 @media (max-width: 1280px) {
     .ss-trainer-figure { width: 110px; height: 110px; }
+}
+
+/* Popup shown when a trainer card is clicked - full bio + details,
+   same recipe as staff_page.html's .staff-modal-content. */
+@media (min-width: 769px) {
+    .ss-trainer-modal-content {
+        min-width: 50rem;
+    }
+}
+
+.ss-trainer-modal-content .ss-trainer-figure {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    border-radius: 12px;
 }
 
 /* ------------------------------------------------------------
@@ -582,13 +686,80 @@
     gap: 1.5rem;
 }
 
-.ss-schedule-date-heading {
-    font-size: 15px;
-    font-weight: 700;
+/* Day-tab nav — same tab/panel behaviour as events'
+   event_sessions_include.html (.tabs li / .content-tab), toggled by
+   the shared handler in summer_school.js. Bulma's .tabs component
+   supplies the base look; these rules only add the active-state
+   accent and the show/hide panel mechanics Bulma doesn't provide. */
+.ss-schedule-tabs li {
+    font-size: 16px;
+}
+
+.ss-schedule-tabs li.is-active a {
+    border-bottom-color: var(--primary-color);
+    border-width: 2px;
+    color: inherit;
+}
+
+.content-tab {
+    display: none;
+}
+
+.content-tab.is-active {
+    display: block;
+}
+
+/* Capped preview of a day's sessions — summer_school.js measures the
+   real content height against this cap on load/tab-switch and only
+   reveals .ss-schedule-view-full (+ the fade) when it actually
+   overflows, so a light day never shows a pointless "view full" button. */
+.ss-schedule-day-content {
+    max-height: 820px;
+    overflow: hidden;
+    position: relative;
+}
+
+.ss-schedule-day-content.is-truncated::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 90px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 1) 85%);
+    pointer-events: none;
+}
+
+.ss-schedule-view-full {
+    display: none; /* toggled on by summer_school.js only when the day above is truncated */
+    margin: 1.25rem auto 0;
+    padding: 10px 24px;
+    border-radius: var(--border-radius, 8px);
+    border: 2px solid var(--primary-color);
+    background: transparent;
     color: var(--primary-color);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin-bottom: 0.75rem;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.ss-schedule-view-full:hover {
+    background: var(--primary-color);
+    color: #fff;
+}
+
+/* Full-day modal — same recipe as the trainer bio modal. */
+@media (min-width: 769px) {
+    .ss-schedule-modal-content {
+        min-width: 55rem;
+    }
+}
+
+.ss-schedule-modal-heading {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 1rem;
 }
 
 .ss-schedule-time-heading {
@@ -820,6 +991,13 @@
    CONCEPT NOTE
    ------------------------------------------------------------ */
 
+/* Plain flexbox, not Bulma .columns/.column-% classes - mixing Bulma's
+   width percentages with this component's own `gap` used to make the
+   two children's combined width exceed 100% (33% + 67% + gap), which
+   silently forced them onto separate wrapped lines (i.e. stacked
+   instead of side-by-side) despite looking like a two-column layout
+   in the markup. Fixed-width media + flex:1 content (same recipe as
+   .ss-session-card below) avoids that entirely. */
 .ss-concept-note-card {
     background: #fff;
     border: 1px solid #eee;
@@ -827,8 +1005,16 @@
     padding: 2rem;
     display: flex;
     gap: 2rem;
-    flex-wrap: wrap;
-    align-items: center;
+    align-items: flex-start;
+}
+
+.ss-concept-note-media {
+    flex: 0 0 160px;
+}
+
+.ss-concept-note-content {
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .ss-concept-note-thumbnail {
@@ -844,9 +1030,8 @@
    icon dependency needed, matches the "checkmark bullets" spec. */
 .ss-concept-note-checklist {
     list-style: none;
-    margin: 0;
+    margin: 0.75rem 0;
     padding: 0;
-    flex: 1 1 260px;
 }
 
 .ss-concept-note-checklist li {
@@ -888,7 +1073,6 @@
     font-size: 13px;
     font-weight: 700;
     text-decoration: none;
-    flex-basis: 100%; /* forces the button onto its own line under the checklist */
 }
 
 .ss-concept-note-download-btn:hover {
@@ -897,8 +1081,52 @@
 }
 
 @media (max-width: 768px) {
-    .ss-concept-note-card { padding: 1.5rem; gap: 1.25rem; }
+    .ss-concept-note-card { flex-direction: column; padding: 1.5rem; gap: 1.25rem; }
+    .ss-concept-note-media { flex-basis: auto; }
     .ss-concept-note-thumbnail { width: 120px; height: 158px; }
+}
+
+/* ------------------------------------------------------------
+   ADDITIONAL MATERIALS — same AdditionalMaterialBlock events uses,
+   styled as a card link to match this page's own visual language
+   rather than events' plain coloured-text link.
+   ------------------------------------------------------------ */
+
+.ss-additional-material {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    background: #fff;
+    color: var(--text-color, #1a1a1a);
+    font-weight: 600;
+    font-size: 14px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ss-additional-material:hover {
+    border-color: var(--primary-color-medium);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+    color: var(--text-color, #1a1a1a);
+}
+
+.ss-additional-material .icon {
+    margin-left: auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--primary-color-lightest);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ss-additional-material .icon img {
+    width: 14px;
+    height: 14px;
 }
 
 /* ------------------------------------------------------------

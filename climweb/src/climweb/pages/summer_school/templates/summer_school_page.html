@@ -58,6 +58,12 @@
                 {% include 'summer_school_concept_note_include.html' %}
             </section>
 
+            {% if page.additional_materials %}
+                <section id="materials">
+                    {% include 'summer_school_materials_include.html' %}
+                </section>
+            {% endif %}
+
             {% if page.partners %}
                 <section id="partners">
                     {% include 'summer_school_partners_include.html' %}

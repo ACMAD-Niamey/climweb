@@ -257,6 +257,11 @@ class SummerSchoolPage(MetadataPageMixin, Page):
         related_name='+',
     )
 
+    # --- Additional Materials --- (same block events uses, see event_header.html)
+    additional_materials = StreamField([
+        ('additional_material', base_blocks.AdditionalMaterialBlock()),
+    ], null=True, blank=True, use_json_field=True, verbose_name=_("Additional Materials"))
+
     # --- Sponsors, Organizers & Partners ---
     partners = StreamField([
         ('partner', SummerSchoolPartnerBlock()),
@@ -343,6 +348,9 @@ class SummerSchoolPage(MetadataPageMixin, Page):
             FieldPanel('concept_note_checklist'),
             FieldPanel('concept_note_document'),
         ], heading=_("Concept Note")),
+        MultiFieldPanel([
+            FieldPanel('additional_materials'),
+        ], heading=_("Additional Materials")),
         MultiFieldPanel([
             FieldPanel('partners'),
         ], heading=_("Sponsors, Organizers & Partners")),

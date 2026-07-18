@@ -117,3 +117,12 @@
 
 </main>
 {% endblock content %}
+
+{% block extra_js %}
+    {# The Bulma "file" widget's visible label only updates to show the #}
+    {# chosen filename via this script's change listener (see datarequest.html #}
+    {# for the same pattern) - without it, the underlying <input type="file"> #}
+    {# does receive the picked PDF and submits fine, but the label keeps #}
+    {# reading "Please select a file", making it look like nothing was chosen. #}
+    <script src="{% static 'base/js/bulma-file.js' %}"></script>
+{% endblock %}

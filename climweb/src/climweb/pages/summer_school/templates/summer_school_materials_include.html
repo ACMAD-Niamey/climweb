@@ -1,0 +1,23 @@
+{% load static i18n %}
+
+{# Same block/field events uses (AdditionalMaterialBlock, see event_header.html) - #}
+{# markup here mirrors events' but with this app's own ss- prefixed classes. #}
+
+<div class="ss-section-heading">
+    <h2>{% translate "Additional Materials" %}</h2>
+</div>
+
+<div class="columns is-multiline is-mobile">
+    {% for material in page.additional_materials %}
+        <div class="column is-one-third-desktop is-half-tablet is-full-mobile">
+            <a class="ss-additional-material"
+               href="{% if material.value.document %}{{ material.value.document.url }}{% else %}{{ material.value.image.file.url }}{% endif %}"
+               download="{{ material.value.title }}">
+                {{ material.value.title }}
+                <span class="icon">
+                    <img src="{% static 'images/download.svg' %}" alt="">
+                </span>
+            </a>
+        </div>
+    {% endfor %}
+</div>
