@@ -11,12 +11,12 @@ from wagtailcaptcha.forms import remove_captcha_field
 from wagtailcaptcha.models import WagtailCaptchaEmailForm
 
 from climweb.base.mail import send_mail, get_default_from_email
-from climweb.base.mixins import MetadataPageMixin, FormPageReviewSettingsMixin
+from climweb.base.mixins import MetadataPageMixin, FormPageReviewSettingsMixin, FormPageClosingDateMixin
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import get_duplicates
 
 
-class FeedbackPage(MetadataPageMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
+class FeedbackPage(MetadataPageMixin, FormPageClosingDateMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
     required_css_class = 'required'
     
     template = 'feedback.html'
@@ -54,7 +54,7 @@ class FeedbackPage(MetadataPageMixin, FormPageReviewSettingsMixin, WagtailCaptch
             ]),
             FieldPanel('subject'),
         ], _("Email")),
-    ] + FormPageReviewSettingsMixin.submission_review_settings_panels
+    ] + FormPageReviewSettingsMixin.submission_review_settings_panels + FormPageClosingDateMixin.closing_date_panels
 
     def get_meta_image(self):
         meta_image = super().get_meta_image()

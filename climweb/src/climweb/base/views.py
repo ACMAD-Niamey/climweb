@@ -10,6 +10,7 @@ from wagtail.admin import messages
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
+from django.core.mail import get_connection
 from django.db.models import Avg
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -259,7 +260,18 @@ def _get_submission_field_rows(page, submission):
     for name, label in page.get_data_fields():
         value = form_data.get(name)
         field_type = fields_by_type.get(name)
-        row = {"label": label, "field_type": field_type, "value": value, "file_url": None}
+
+        # Checkboxes/multiselect fields store a list - join it for display,
+        # matching Wagtail's own SubmissionsListView and this project's
+        # existing ContactPage.send_suspicious_form_to_admin convention.
+        if isinstance(value, list):
+            value = ", ".join(value)
+
+        # has_value tracks "was this field genuinely answered" separately
+        # from the value's own truthiness, so a real False/0 answer (e.g.
+        # an unchecked checkbox) isn't shown identically to a blank field.
+        row = {"label": label, "field_type": field_type, "value": value,
+               "has_value": value is not None and value != "", "file_url": None}
 
         if field_type in ("image", "document") and value:
             try:
@@ -268,6 +280,7 @@ def _get_submission_field_rows(page, submission):
                 row["file_name"] = file_submission.file.name.split("/")[-1]
             except (FormFileSubmission.DoesNotExist, ValueError, TypeError):
                 row["value"] = None
+                row["has_value"] = False
 
         rows.append(row)
 
@@ -430,28 +443,39 @@ def compose_submission_email_view(request, page_id):
         else:
             sent_to = []
             skipped = 0
-            for submission in submissions:
-                data = submission.get_data()
-                recipient = data.get(email_field) if email_field else None
-                if not recipient:
-                    skipped += 1
-                    continue
-                name = (data.get(name_field) or "") if name_field else ""
-                personalized_body = body.replace("{{ name }}", name).replace("{{name}}", name)
-                send_mail(subject, personalized_body, [recipient], attachments=attachments)
-                sent_to.append(recipient)
-
-            SubmissionEmailLog.objects.create(
-                content_type=content_type,
-                submission_ids=[s.pk for s in submissions],
-                recipients=sent_to,
-                subject=subject,
-                body=body,
-                attachment_names=[f.name for f in attachments],
-                sent_by=request.user,
-            )
+            # One shared SMTP connection for the whole batch instead of a
+            # fresh connection per recipient (send_mail's connection= kwarg
+            # exists precisely for this).
+            connection = get_connection()
+            connection.open()
+            try:
+                for submission in submissions:
+                    data = submission.get_data()
+                    recipient = data.get(email_field) if email_field else None
+                    if not recipient:
+                        skipped += 1
+                        continue
+                    name = (data.get(name_field) or "") if name_field else ""
+                    personalized_body = body.replace("{{ name }}", name).replace("{{name}}", name)
+                    send_mail(subject, personalized_body, [recipient], attachments=attachments,
+                             connection=connection)
+                    sent_to.append(recipient)
+            finally:
+                connection.close()
 
             if sent_to:
+                # Only log a batch as "sent" if at least one email actually
+                # went out - otherwise this would leave a misleading audit
+                # row claiming a send that never happened.
+                SubmissionEmailLog.objects.create(
+                    content_type=content_type,
+                    submission_ids=[s.pk for s in submissions],
+                    recipients=sent_to,
+                    subject=subject,
+                    body=body,
+                    attachment_names=[f.name for f in attachments],
+                    sent_by=request.user,
+                )
                 messages.success(
                     request,
                     _("Email sent to %(count)d recipient(s).") % {"count": len(sent_to)},

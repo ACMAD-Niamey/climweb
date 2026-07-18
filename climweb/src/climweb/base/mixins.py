@@ -42,14 +42,16 @@ class MetadataPageMixin(BaseMetadataPageMixin, WagtailCacheMixin):
 class FormPageReviewSettingsMixin(models.Model):
     """Adds submission-review settings to any Wagtail form page sitewide:
     whether staff can rate/comment on submissions (see SubmissionReview +
-    submission_review_view in climweb.base), who receives the automated
-    weekly submission-count digest and (if a closing date is set) the
-    pre-deadline summary email, and that closing date itself.
+    submission_review_view in climweb.base), and who receives the automated
+    weekly submission-count digest.
 
-    A page type that already has its own deadline-like field (e.g.
-    SummerSchoolApplicationPage.application_deadline) should override
-    get_submissions_closing_date() to return that field instead of adding
-    a second, redundant one - see that model for the pattern.
+    Deliberately does NOT carry a closing-date field itself - a page type
+    that wants the pre-deadline summary email either already has its own
+    deadline-like field (e.g. SummerSchoolApplicationPage.application_deadline,
+    which overrides get_submissions_closing_date() directly - see that model)
+    or mixes in FormPageClosingDateMixin below for a generic one. Baking the
+    field into this mixin unconditionally left it as a dead, unusable DB
+    column on any page that took the "already has a field" path.
     """
     class Meta:
         abstract = True
@@ -65,8 +67,36 @@ class FormPageReviewSettingsMixin(models.Model):
         blank=True, use_json_field=True,
         verbose_name=_("Notification emails"),
         help_text=_("Receives a weekly submission-count digest, and (if a closing "
-                    "date is set below) a summary the day before it closes."),
+                    "date is configured) a summary the day before it closes."),
     )
+
+    submission_review_settings_panels = [
+        MultiFieldPanel([
+            FieldPanel('enable_submission_ratings'),
+            FieldPanel('notification_emails'),
+        ], heading=_("Submission Review & Notifications")),
+    ]
+
+    def get_submissions_closing_date(self):
+        """None by default (pre-deadline summary email disabled) - override
+        directly (see SummerSchoolApplicationPage) or mix in
+        FormPageClosingDateMixin for a generic field-backed implementation."""
+        return None
+
+    def get_notification_emails(self):
+        return [block.value for block in self.notification_emails if block.value]
+
+
+class FormPageClosingDateMixin(models.Model):
+    """Generic 'submissions closing date' field for form pages that don't
+    already have their own deadline-like field. Pages that DO (e.g.
+    SummerSchoolApplicationPage.application_deadline) should override
+    get_submissions_closing_date() on FormPageReviewSettingsMixin instead of
+    also mixing this in, to avoid a second, redundant date field.
+    """
+    class Meta:
+        abstract = True
+
     submissions_closing_date = models.DateField(
         null=True, blank=True,
         verbose_name=_("Submissions closing date"),
@@ -74,16 +104,9 @@ class FormPageReviewSettingsMixin(models.Model):
                     "the notification emails above one day before this date."),
     )
 
-    submission_review_settings_panels = [
-        MultiFieldPanel([
-            FieldPanel('enable_submission_ratings'),
-            FieldPanel('notification_emails'),
-            FieldPanel('submissions_closing_date'),
-        ], heading=_("Submission Review & Notifications")),
+    closing_date_panels = [
+        FieldPanel('submissions_closing_date'),
     ]
 
     def get_submissions_closing_date(self):
         return self.submissions_closing_date
-
-    def get_notification_emails(self):
-        return [block.value for block in self.notification_emails if block.value]

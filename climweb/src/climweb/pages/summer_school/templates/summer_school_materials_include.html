@@ -9,15 +9,20 @@
 
 <div class="columns is-multiline is-mobile">
     {% for material in page.additional_materials %}
-        <div class="column is-one-third-desktop is-half-tablet is-full-mobile">
-            <a class="ss-additional-material"
-               href="{% if material.value.document %}{{ material.value.document.url }}{% else %}{{ material.value.image.file.url }}{% endif %}"
-               download="{{ material.value.title }}">
-                {{ material.value.title }}
-                <span class="icon">
-                    <img src="{% static 'images/download.svg' %}" alt="">
-                </span>
-            </a>
-        </div>
+        {# Skip entries an editor saved with neither file set - AdditionalMaterialBlock #}
+        {# allows both document and image to be left blank regardless of type, and #}
+        {# rendering anyway would produce a dead, empty download link. #}
+        {% if material.value.document or material.value.image %}
+            <div class="column is-one-third-desktop is-half-tablet is-full-mobile">
+                <a class="ss-additional-material"
+                   href="{% if material.value.document %}{{ material.value.document.url }}{% else %}{{ material.value.image.file.url }}{% endif %}"
+                   download="{{ material.value.title }}">
+                    {{ material.value.title }}
+                    <span class="icon">
+                        <img src="{% static 'images/download.svg' %}" alt="">
+                    </span>
+                </a>
+            </div>
+        {% endif %}
     {% endfor %}
 </div>
