@@ -93,6 +93,7 @@ jobs:
           # restarted production with the new build, it only built the image and
           # separately brought up the unrelated *dev* profile.
           make build-prod
+          make down-prod
           make up-prod
 
           docker builder prune -af
