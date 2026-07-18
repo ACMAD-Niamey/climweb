@@ -537,9 +537,7 @@
     margin-bottom: 2px;
 }
 
-/* Only present when a profile_url is set on the trainer block - link
-   inherits the card's text colour so it doesn't look like a stray blue
-   link, but still underlines on hover to signal it's clickable. */
+/* Trainer name may sometimes be rendered as a link; keep it styled like the surrounding heading (inherit color, underline on hover). */
 .ss-trainer-name a {
     color: inherit;
     text-decoration: none;
