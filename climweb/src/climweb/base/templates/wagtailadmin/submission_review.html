@@ -1,0 +1,257 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n l10n %}
+
+{% block titletag %}{% translate "Review submission" %}{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .sr-columns {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+        }
+
+        .sr-fields-col {
+            flex: 1 1 60%;
+            min-width: 0;
+        }
+
+        .sr-fields-col-full {
+            flex-basis: 100%;
+        }
+
+        .sr-reviews-col {
+            flex: 1 1 40%;
+            min-width: 0;
+        }
+
+        .sr-panel {
+            background: var(--color-surface-menus);
+            border: 1px solid var(--color-input-border);
+            border-radius: 4px;
+            padding: 20px 24px;
+            margin-bottom: 20px;
+        }
+
+        .sr-field-row {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--color-input-border);
+        }
+
+        .sr-field-row:last-child {
+            border-bottom: none;
+        }
+
+        .sr-field-label {
+            font-weight: bold;
+            font-size: 13px;
+            color: var(--color-text-meta);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-bottom: 4px;
+        }
+
+        .sr-field-value {
+            font-size: 15px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .sr-file-preview iframe {
+            width: 100%;
+            height: 70vh;
+            border: 1px solid var(--color-input-border);
+            border-radius: 4px;
+        }
+
+        .sr-file-preview img {
+            max-width: 100%;
+            max-height: 70vh;
+            border-radius: 4px;
+        }
+
+        .sr-file-open-link {
+            display: inline-block;
+            margin-top: 8px;
+            font-size: 13px;
+        }
+
+        .sr-avg-rating {
+            font-size: 15px;
+            margin-bottom: 16px;
+        }
+
+        .sr-review {
+            padding: 14px 0;
+            border-bottom: 1px solid var(--color-input-border);
+        }
+
+        .sr-review:last-child {
+            border-bottom: none;
+        }
+
+        .sr-review-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .sr-review-reviewer {
+            font-weight: bold;
+        }
+
+        .sr-review-date {
+            font-size: 12px;
+            color: var(--color-text-meta);
+        }
+
+        .sr-stars-readonly {
+            color: var(--color-text-meta);
+            letter-spacing: 2px;
+        }
+
+        .sr-stars-readonly .is-filled {
+            color: #f5a623;
+        }
+
+        .sr-review-comment {
+            font-size: 14px;
+            margin-top: 4px;
+            white-space: pre-wrap;
+        }
+
+        .sr-no-reviews {
+            color: var(--color-text-meta);
+            font-size: 14px;
+        }
+
+        /* Star-rating input - visually reversed via row-reverse so the CSS
+           sibling combinator (which only looks at *following* DOM siblings)
+           can highlight a star plus every star before it on hover/checked. */
+        .sr-star-input {
+            display: flex;
+            flex-direction: row-reverse;
+            justify-content: flex-end;
+            gap: 2px;
+            font-size: 28px;
+            margin-bottom: 16px;
+        }
+
+        .sr-star-input input {
+            display: none;
+        }
+
+        .sr-star-input label {
+            color: var(--color-input-border);
+            cursor: pointer;
+        }
+
+        .sr-star-input input:checked ~ label,
+        .sr-star-input label:hover,
+        .sr-star-input label:hover ~ label {
+            color: #f5a623;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    {% trans "Review submission" as header_str %}
+    {% include "wagtailadmin/shared/header.html" with title=header_str subtitle=page.get_admin_display_title icon="form" %}
+
+    <div class="nice-padding">
+        <p>
+            <a href="{% url 'wagtailforms:list_submissions' page.id %}">
+                {% translate "← Back to all submissions" %}
+            </a>
+        </p>
+
+        <div class="sr-columns">
+            <div class="sr-fields-col{% if not ratings_enabled %} sr-fields-col-full{% endif %}">
+                <div class="sr-panel">
+                    {% for field in fields %}
+                        <div class="sr-field-row">
+                            <div class="sr-field-label">{{ field.label }}</div>
+                            {% if field.file_url %}
+                                <div class="sr-file-preview">
+                                    {% if field.field_type == 'image' %}
+                                        <img src="{{ field.file_url }}" alt="{{ field.label }}">
+                                    {% else %}
+                                        <iframe src="{{ field.file_url }}" title="{{ field.label }}"></iframe>
+                                    {% endif %}
+                                    <div>
+                                        <a class="sr-file-open-link" href="{{ field.file_url }}" target="_blank" rel="noopener">
+                                            {% translate "Open" %} {{ field.file_name }} {% translate "in a new tab" %} ↗
+                                        </a>
+                                    </div>
+                                </div>
+                            {% elif field.has_value %}
+                                <div class="sr-field-value">{{ field.value }}</div>
+                            {% else %}
+                                <div class="sr-field-value">—</div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% if ratings_enabled %}
+            <div class="sr-reviews-col">
+                <div class="sr-panel">
+                    <h3>{% translate "Comments & Rating" %}</h3>
+
+                    {% if avg_rating %}
+                        <div class="sr-avg-rating">
+                            {% translate "Average rating" %}:
+                            <strong>{{ avg_rating|floatformat:1 }} / 5</strong>
+                            ({{ reviews.count }} {% translate "review" %}{{ reviews.count|pluralize }})
+                        </div>
+                    {% endif %}
+
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="sr-star-input">
+                            {% for i in star_range reversed %}
+                                <input type="radio" id="sr-star{{ i }}" name="rating" value="{{ i }}">
+                                <label for="sr-star{{ i }}" title="{{ i }}">★</label>
+                            {% endfor %}
+                        </div>
+                        <div>
+                            <textarea name="comment" rows="3" style="width:100%"
+                                      placeholder="{% translate 'Add a comment…' %}"></textarea>
+                        </div>
+                        <div style="margin-top:10px">
+                            <button type="submit" class="button">{% translate "Add review" %}</button>
+                        </div>
+                    </form>
+
+                    <hr>
+
+                    {% if reviews %}
+                        {% for review in reviews %}
+                            <div class="sr-review">
+                                <div class="sr-review-meta">
+                                    <span class="sr-review-reviewer">{{ review.reviewer.get_full_name|default:review.reviewer.username }}</span>
+                                    <span class="sr-review-date">{{ review.created_at|date:"d M Y, H:i" }}</span>
+                                </div>
+                                {% if review.rating %}
+                                    <div class="sr-stars-readonly">
+                                        {% for i in star_range %}
+                                            <span class="{% if i <= review.rating %}is-filled{% endif %}">★</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                {% if review.comment %}
+                                    <div class="sr-review-comment">{{ review.comment }}</div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="sr-no-reviews">{% translate "No reviews yet — be the first to comment or rate this application." %}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

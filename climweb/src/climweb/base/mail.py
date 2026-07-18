@@ -49,7 +49,16 @@ def send_mail(subject, message, recipient_list, from_email=None, **kwargs):
     html_message = kwargs.get('html_message', None)
     if html_message:
         mail.attach_alternative(html_message, 'text/html')
-    
+
+    # list of (filename, content_bytes, mimetype) tuples, or Django UploadedFile
+    # objects (read via .name/.read()/.content_type) - either works with .attach()
+    for attachment in kwargs.get('attachments', None) or []:
+        if isinstance(attachment, tuple):
+            mail.attach(*attachment)
+        else:
+            attachment.seek(0)
+            mail.attach(attachment.name, attachment.read(), getattr(attachment, 'content_type', None))
+
     return mail.send()
 
 

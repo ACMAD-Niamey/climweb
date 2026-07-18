@@ -1,4 +1,4 @@
-{% load wagtailcore_tags wagtailimages_tags lazyimages_tags static i18n %}
+{% load wagtailcore_tags wagtailimages_tags wagtailiconchooser_tags lazyimages_tags static i18n %}
 
 <div class="ss-section-heading">
     <h2>{% translate "Trainers" %}</h2>
@@ -7,7 +7,7 @@
 <div class="columns is-multiline ss-trainer-grid">
     {% for trainer in page.trainers %}
         <div class="column is-one-quarter-desktop is-half-tablet is-full-mobile">
-            <div class="ss-trainer-card">
+            <div data-target="ss-trainer-modal-{{ forloop.counter0 }}" class="js-modal-trigger ss-trainer-card">
                 <figure class="ss-trainer-figure image">
                     {% if trainer.value.image %}
                         {% image trainer.value.image original as trainer_img %}
@@ -41,18 +41,108 @@
                     </span>
                 {% endif %}
 
-                {% if trainer.value.module_taught %}
-                    <h5 class="ss-trainer-module">
-                        <b>{% translate "Module" %}:</b> {{ trainer.value.module_taught }}
-                    </h5>
+                {% if trainer.value.links %}
+                    <div class="ss-trainer-links">
+                        {% for link in trainer.value.links %}
+                            {% if link.url %}
+                                {% if link.icon %}
+                                    <a href="{{ link.url }}" target="_blank" rel="noopener"
+                                       title="{{ link.text|default:link.url }}" aria-label="{{ link.text|default:link.url }}"
+                                       onclick="event.stopPropagation()">
+                                        {% svg_icon link.icon %}
+                                    </a>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    </div>
                 {% endif %}
 
                 {% if trainer.value.bio %}
-                    <div class="ss-trainer-bio format-text">
-                        {{ trainer.value.bio|richtext }}
-                    </div>
+                    <span class="ss-trainer-view-bio">{% translate "View bio" %}</span>
                 {% endif %}
             </div>
+
+            {% if trainer.value.bio %}
+                <div id="ss-trainer-modal-{{ forloop.counter0 }}" class="modal">
+                    <div class="modal-background"></div>
+                    <div class="modal-content ss-trainer-modal-content">
+                        <div class="box">
+                            <div class="columns">
+                                <div class="column is-one-third-desktop is-full-tablet is-full-mobile">
+                                    <figure class="ss-trainer-figure image">
+                                        {% if trainer.value.image %}
+                                            {# progressively.js only upgrades images visible at render time - this modal #}
+                                            {# starts display:none, so it never gets spliced out of that pending queue.  #}
+                                            {# The "lazy_load" class is a marker read by summer_school.js's modal-open   #}
+                                            {# handler, which force-swaps src from data-progressive itself instead.     #}
+                                            <img class="progressive__img progressive--not-loaded lazy_load"
+                                                 data-progressive="{{ trainer_img.url }}"
+                                                 src="{% lazy_image_url trainer_img %}"
+                                                 alt="{{ trainer.value.name }}"/>
+                                        {% else %}
+                                            <img src="{% static 'images/person.svg' %}" alt="{{ trainer.value.name }}"/>
+                                        {% endif %}
+                                    </figure>
+                                </div>
+                                <div class="column">
+                                    <h3 class="ss-trainer-name">{{ trainer.value.name }}</h3>
+
+                                    {% if trainer.value.position %}
+                                        <span class="ss-trainer-position">{{ trainer.value.position }}</span>
+                                    {% endif %}
+                                    {% if trainer.value.organisation %}
+                                        <span class="ss-trainer-org">{{ trainer.value.organisation }}</span>
+                                    {% endif %}
+
+                                    {% if trainer.value.role %}
+                                        <span class="ss-trainer-badge">
+                                            {% if trainer.value.role == "lead_facilitator" %}
+                                                {% translate "Lead Facilitator" %}
+                                            {% elif trainer.value.role == "instructor" %}
+                                                {% translate "Instructor" %}
+                                            {% elif trainer.value.role == "guest_trainer" %}
+                                                {% translate "Guest Trainer" %}
+                                            {% endif %}
+                                        </span>
+                                    {% endif %}
+
+                                    {% if trainer.value.module_taught %}
+                                        <h5 class="ss-trainer-module">
+                                            <b>{% translate "Module" %}:</b> {{ trainer.value.module_taught }}
+                                        </h5>
+                                    {% endif %}
+
+                                    <div class="ss-trainer-bio format-text">
+                                        {{ trainer.value.bio|richtext }}
+                                    </div>
+
+                                    {% if trainer.value.links %}
+                                        <div class="ss-trainer-links ss-trainer-links-full">
+                                            {% for link in trainer.value.links %}
+                                                {% if link.url %}
+                                                    {% if link.icon or link.text %}
+                                                        <a href="{{ link.url }}" target="_blank" rel="noopener">
+                                                            {% if link.icon %}
+                                                                <span class="ss-icon-badge">
+                                                                    {% svg_icon link.icon %}
+                                                                </span>
+                                                            {% endif %}
+                                                            {% if link.text %}
+                                                                <span>{{ link.text }}</span>
+                                                            {% endif %}
+                                                        </a>
+                                                    {% endif %}
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="modal-close is-large" aria-label="close"></button>
+                </div>
+            {% endif %}
         </div>
     {% endfor %}
 </div>

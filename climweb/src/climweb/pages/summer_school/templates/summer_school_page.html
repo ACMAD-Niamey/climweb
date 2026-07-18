@@ -14,7 +14,7 @@
 {% block body_class %}summer-school-page{% endblock %}
 
 {% block content %}
-    {% include 'breadcrumbs_include.html' with page=page %}
+    <!-- {% include 'breadcrumbs_include.html' with page=page %} -->
 
     {% include 'summer_school_hero_include.html' %}
 
@@ -57,6 +57,12 @@
             <section id="concept-note">
                 {% include 'summer_school_concept_note_include.html' %}
             </section>
+
+            {% if page.additional_materials %}
+                <section id="materials">
+                    {% include 'summer_school_materials_include.html' %}
+                </section>
+            {% endif %}
 
             {% if page.partners %}
                 <section id="partners">
