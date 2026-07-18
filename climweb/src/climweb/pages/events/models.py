@@ -31,7 +31,9 @@ from wagtailmailchimp.models import AbstractMailchimpIntegrationForm
 from wagtailzoom.models import AbstractZoomIntegrationForm
 
 from climweb.base import blocks
-from climweb.base.mixins import MetadataPageMixin
+from climweb.base.forms import CustomWagtailCaptchaFormBuilder
+from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin, FormPageClosingDateMixin,
+                                 FormFieldMaxLengthMixin)
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import (
     get_pytz_gmt_offset_str,
@@ -485,9 +487,10 @@ class EventPageCustomForm(WagtailAdminFormPageForm):
             self.fields.pop('audience_list_id', None)
 
 
-class EventRegistrationPage(MetadataPageMixin, WagtailCaptchaEmailForm, AbstractMailchimpIntegrationForm,
-                            AbstractZoomIntegrationForm):
+class EventRegistrationPage(MetadataPageMixin, FormPageClosingDateMixin, FormPageReviewSettingsMixin,
+                            WagtailCaptchaEmailForm, AbstractMailchimpIntegrationForm, AbstractZoomIntegrationForm):
     base_form_class = EventPageCustomForm
+    form_builder = CustomWagtailCaptchaFormBuilder
     
     template = 'event_registration_page.html'
     landing_page_template = 'form_thank_you_landing.html'
@@ -545,7 +548,7 @@ class EventRegistrationPage(MetadataPageMixin, WagtailCaptchaEmailForm, Abstract
         FieldPanel('send_confirmation_email'),
         FieldPanel('email_field'),
         FieldPanel('email_confirmation_message'),
-    ]
+    ] + FormPageReviewSettingsMixin.submission_review_settings_panels + FormPageClosingDateMixin.closing_date_panels
     
     class Meta:
         verbose_name = _("Event Registration Page")
@@ -740,7 +743,7 @@ class EventRegistrationPage(MetadataPageMixin, WagtailCaptchaEmailForm, Abstract
         return super().save(*args, **kwargs)
 
 
-class EventRegistrationFormField(AbstractFormField):
+class EventRegistrationFormField(FormFieldMaxLengthMixin, AbstractFormField):
     page = ParentalKey(EventRegistrationPage,
                        on_delete=models.CASCADE,
                        related_name="registration_form_fields")
@@ -761,7 +764,7 @@ class EventRegistrationFormTemplate(ClusterableModel):
         return self.template_name
 
 
-class EventRegistrationFormTemplateField(AbstractFormField):
+class EventRegistrationFormTemplateField(FormFieldMaxLengthMixin, AbstractFormField):
     form_template = ParentalKey(EventRegistrationFormTemplate, on_delete=models.CASCADE, related_name="form_fields")
     
     EXCLUDE = ['id', 'clean_name', 'form_template']

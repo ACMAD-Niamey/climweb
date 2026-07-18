@@ -22,7 +22,7 @@ from wagtailiconchooser.widgets import IconChooserWidget
 from climweb.base import blocks as base_blocks
 from climweb.base.forms import (FormImageField, FormDocumentField, CustomSubmissionsListView,
                                 CustomWagtailCaptchaFormBuilder)
-from climweb.base.mixins import MetadataPageMixin
+from climweb.base.mixins import MetadataPageMixin, FormPageReviewSettingsMixin, FormFieldMaxLengthMixin
 from climweb.base.models import FormFileSubmission
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import get_duplicates, generate_title_from_filename
@@ -257,6 +257,11 @@ class SummerSchoolPage(MetadataPageMixin, Page):
         related_name='+',
     )
 
+    # --- Additional Materials --- (same block events uses, see event_header.html)
+    additional_materials = StreamField([
+        ('additional_material', base_blocks.AdditionalMaterialBlock()),
+    ], null=True, blank=True, use_json_field=True, verbose_name=_("Additional Materials"))
+
     # --- Sponsors, Organizers & Partners ---
     partners = StreamField([
         ('partner', SummerSchoolPartnerBlock()),
@@ -343,6 +348,9 @@ class SummerSchoolPage(MetadataPageMixin, Page):
             FieldPanel('concept_note_checklist'),
             FieldPanel('concept_note_document'),
         ], heading=_("Concept Note")),
+        MultiFieldPanel([
+            FieldPanel('additional_materials'),
+        ], heading=_("Additional Materials")),
         MultiFieldPanel([
             FieldPanel('partners'),
         ], heading=_("Sponsors, Organizers & Partners")),
@@ -458,7 +466,7 @@ class SummerSchoolPage(MetadataPageMixin, Page):
         return grouped
 
 
-class SummerSchoolApplicationPage(MetadataPageMixin, WagtailCaptchaEmailForm):
+class SummerSchoolApplicationPage(MetadataPageMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
     required_css_class = 'required'
     form_builder = CustomWagtailCaptchaFormBuilder
     submissions_list_view_class = CustomSubmissionsListView
@@ -514,10 +522,20 @@ class SummerSchoolApplicationPage(MetadataPageMixin, WagtailCaptchaEmailForm):
             ]),
             FieldPanel('subject'),
         ], "Email"),
+        MultiFieldPanel([
+            FieldPanel('enable_submission_ratings'),
+            FieldPanel('notification_emails'),
+        ], heading=_("Submission Review & Notifications")),
     ]
 
     class Meta:
         verbose_name = _("Summer School Application Page")
+
+    def get_submissions_closing_date(self):
+        # This page already collects a deadline for its own public-facing
+        # display (application_deadline) - reuse it instead of asking
+        # editors to fill in the mixin's generic date a second time.
+        return self.application_deadline
 
     def get_meta_image(self):
         meta_image = super().get_meta_image()
@@ -688,7 +706,7 @@ class SummerSchoolApplicationPage(MetadataPageMixin, WagtailCaptchaEmailForm):
         return super(SummerSchoolApplicationPage, self).process_form_submission(form)
 
 
-class SummerSchoolApplicationFormField(AbstractFormField):
+class SummerSchoolApplicationFormField(FormFieldMaxLengthMixin, AbstractFormField):
     FILE_SUBMISSION_FIELD_CHOICES = (
         ("image", _("Upload Image")),
         ("document", _("Upload PDF Document")),

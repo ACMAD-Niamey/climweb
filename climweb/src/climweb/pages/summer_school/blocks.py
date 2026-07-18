@@ -1,7 +1,18 @@
 from wagtail import blocks
 from wagtail.images.blocks import ImageChooserBlock
+from wagtailiconchooser.blocks import IconChooserBlock
 
 from climweb.config.settings.base import SUMMARY_RICHTEXT_FEATURES
+
+
+class TrainerLinkBlock(blocks.StructBlock):
+    icon = IconChooserBlock(required=False, label="Icon")
+    text = blocks.CharBlock(max_length=60, required=False, help_text="e.g. LinkedIn, Personal website, Google Scholar")
+    url = blocks.URLBlock(help_text="Link URL")
+
+    class Meta:
+        icon = "link"
+        label = "Link"
 
 
 class TrainerBlock(blocks.StructBlock):
@@ -15,10 +26,14 @@ class TrainerBlock(blocks.StructBlock):
     organisation = blocks.CharBlock(max_length=255, required=False,
                                     help_text="Organisation working for or representing")
     position = blocks.CharBlock(max_length=255, required=False, help_text="Position in organisation")
-    bio = blocks.RichTextBlock(required=False, help_text="Short bio", label="Short bio")
+    bio = blocks.RichTextBlock(required=False, help_text="Full bio, shown in a popup when a visitor "
+                                                          "clicks the trainer's card", label="Full bio")
     role = blocks.ChoiceBlock(choices=TRAINER_ROLE_CHOICES, required=False,
                               help_text="Select Role. Leave blank if normal trainer")
     module_taught = blocks.CharBlock(max_length=255, required=False, help_text="Trainer's session/module focus")
+    links = blocks.ListBlock(TrainerLinkBlock(), required=False, label="Links",
+                             help_text="LinkedIn, personal page, Google Scholar, etc. - each with its own icon, "
+                                       "label and URL.")
 
     class Meta:
         icon = "placeholder"

@@ -4,8 +4,8 @@
     <h2>{{ page.concept_note_title }}</h2>
 </div>
 
-<div class="columns ss-concept-note-card">
-    <div class="column is-one-third-desktop is-full-mobile">
+<div class="ss-concept-note-card">
+    <div class="ss-concept-note-media">
         {% if page.concept_note_thumbnail %}
             {% image page.concept_note_thumbnail original as concept_note_img %}
             <figure class="ss-concept-note-thumbnail image">
@@ -29,7 +29,7 @@
         {% endif %}
     </div>
 
-    <div class="column is-two-thirds-desktop is-full-mobile">
+    <div class="ss-concept-note-content">
         {% if page.concept_note_description %}
             <div class="format-text">
                 {{ page.concept_note_description|richtext }}
