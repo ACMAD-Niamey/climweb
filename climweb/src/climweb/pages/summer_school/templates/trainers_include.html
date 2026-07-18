@@ -120,16 +120,18 @@
                                         <div class="ss-trainer-links ss-trainer-links-full">
                                             {% for link in trainer.value.links %}
                                                 {% if link.url %}
-                                                    <a href="{{ link.url }}" target="_blank" rel="noopener">
-                                                        {% if link.icon %}
-                                                            <span class="ss-icon-badge">
-                                                                {% svg_icon link.icon %}
-                                                            </span>
-                                                        {% endif %}
-                                                        {% if link.text %}
-                                                            <span>{{ link.text }}</span>
-                                                        {% endif %}
-                                                    </a>
+                                                    {% if link.icon or link.text %}
+                                                        <a href="{{ link.url }}" target="_blank" rel="noopener">
+                                                            {% if link.icon %}
+                                                                <span class="ss-icon-badge">
+                                                                    {% svg_icon link.icon %}
+                                                                </span>
+                                                            {% endif %}
+                                                            {% if link.text %}
+                                                                <span>{{ link.text }}</span>
+                                                            {% endif %}
+                                                        </a>
+                                                    {% endif %}
                                                 {% endif %}
                                             {% endfor %}
                                         </div>
