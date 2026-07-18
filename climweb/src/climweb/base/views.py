@@ -8,14 +8,22 @@ from django.shortcuts import render, redirect
 from django.utils.translation import gettext as _
 from wagtail.admin import messages
 
-from django.core.exceptions import ObjectDoesNotExist
+from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
+from django.db.models import Avg
+from django.http import Http404
+from django.shortcuts import get_object_or_404
+from wagtail.contrib.forms.models import FormMixin
+from wagtail.contrib.forms.utils import get_forms_for_user
+from wagtail.models import Page
 
 from climweb import __version__
+from climweb.base.mail import send_mail
 from climweb.base.utils import get_latest_cms_release, send_upgrade_command, send_plugin_remove, get_installed_plugins, \
     mix_with_white
 from climweb.utils.version import check_version_greater_than_current, get_main_version
 from .forms import CMSUpgradeForm
-from .models import Theme, OrganisationSetting
+from .models import Theme, OrganisationSetting, FormFileSubmission, SubmissionReview, SubmissionEmailLog
 
 
 def handler500(request):
@@ -232,5 +240,242 @@ def cms_upgrade_status_view(request):
         cache.set("cms_upgrade_pending", False)
     
     status_data["cms_upgrade_pending"] = cache.get("cms_upgrade_pending", False)
-    
+
     return JsonResponse(status_data)
+
+
+def _get_submission_field_rows(page, submission):
+    """Build a label/value row per submitted field, resolving image/document
+    fields to their actual FormFileSubmission so the review page can render
+    them inline (img/iframe) instead of linking out to a download.
+
+    Mirrors the field_type lookup CustomSubmissionsListView already uses
+    (climweb/base/forms.py) so both views agree on which fields are files.
+    """
+    fields_by_type = {field.clean_name: field.field_type for field in page.get_form_fields()}
+    form_data = submission.get_data()
+    rows = []
+
+    for name, label in page.get_data_fields():
+        value = form_data.get(name)
+        field_type = fields_by_type.get(name)
+        row = {"label": label, "field_type": field_type, "value": value, "file_url": None}
+
+        if field_type in ("image", "document") and value:
+            try:
+                file_submission = FormFileSubmission.objects.get(pk=value)
+                row["file_url"] = file_submission.file.url
+                row["file_name"] = file_submission.file.name.split("/")[-1]
+            except (FormFileSubmission.DoesNotExist, ValueError, TypeError):
+                row["value"] = None
+
+        rows.append(row)
+
+    return rows
+
+
+def submission_review_view(request, page_id, submission_id):
+    """Detail + review view for a single form submission, for any Wagtail
+    form page sitewide (events, data requests, summer school applications,
+    ...) - submission models are generated per page type, so the page and
+    submission are resolved generically here rather than via one shared
+    submissions table.
+
+    Uses the same page-level "change" permission Wagtail's own
+    SubmissionsListView requires to view the submissions list at all, so
+    any staff member who can already see the list can also review entries
+    in it - not gated to superusers.
+    """
+    if not get_forms_for_user(request.user).filter(pk=page_id).exists():
+        raise PermissionDenied
+
+    page = get_object_or_404(Page, id=page_id).specific
+    if not isinstance(page, FormMixin):
+        raise Http404
+
+    submission = get_object_or_404(page.get_submission_class(), pk=submission_id, page=page)
+    content_type = ContentType.objects.get_for_model(submission)
+    ratings_enabled = getattr(page, "enable_submission_ratings", False)
+
+    if request.method == "POST":
+        if not ratings_enabled:
+            raise PermissionDenied
+
+        rating = request.POST.get("rating") or None
+        comment = request.POST.get("comment", "").strip()
+
+        if rating or comment:
+            SubmissionReview.objects.create(
+                content_type=content_type,
+                object_id=submission.pk,
+                reviewer=request.user,
+                rating=int(rating) if rating else None,
+                comment=comment,
+            )
+            messages.success(request, _("Review added."))
+        else:
+            messages.error(request, _("Add a rating or a comment before submitting."))
+
+        return redirect("form_submission_review", page_id=page.id, submission_id=submission.id)
+
+    reviews = SubmissionReview.objects.none()
+    avg_rating = None
+    if ratings_enabled:
+        reviews = SubmissionReview.objects.filter(
+            content_type=content_type, object_id=submission.pk,
+        ).select_related("reviewer")
+        avg_rating = reviews.exclude(rating=None).aggregate(Avg("rating"))["rating__avg"]
+
+    return render(request, "wagtailadmin/submission_review.html", {
+        "page": page,
+        "submission": submission,
+        "ratings_enabled": ratings_enabled,
+        "fields": _get_submission_field_rows(page, submission),
+        "reviews": reviews,
+        "avg_rating": avg_rating,
+        "star_range": range(1, 6),
+    })
+
+
+def submissions_ratings_view(request, page_id):
+    """Lists a form page's submissions sorted by average rating (highest
+    first), with checkboxes to select a batch and send them an email (see
+    compose_submission_email_view below). Only meaningful when the page has
+    ratings enabled at all.
+    """
+    if not get_forms_for_user(request.user).filter(pk=page_id).exists():
+        raise PermissionDenied
+
+    page = get_object_or_404(Page, id=page_id).specific
+    if not isinstance(page, FormMixin):
+        raise Http404
+
+    if not getattr(page, "enable_submission_ratings", False):
+        messages.error(request, _("Ratings are not enabled for this form."))
+        return redirect("wagtailforms:list_submissions", page_id=page.id)
+
+    submissions = list(page.get_submissions())
+    content_type = ContentType.objects.get_for_model(page.get_submission_class())
+
+    reviews_by_submission = {}
+    for review in SubmissionReview.objects.filter(
+        content_type=content_type, object_id__in=[s.pk for s in submissions]
+    ):
+        reviews_by_submission.setdefault(review.object_id, []).append(review)
+
+    # Heuristic used across every form on this site so far: the applicant's
+    # display name lives in a field whose clean_name is literally "name".
+    name_field = next((n for n, label in page.get_data_fields() if n == "name"), None)
+
+    rows = []
+    for submission in submissions:
+        data = submission.get_data()
+        reviews = reviews_by_submission.get(submission.pk, [])
+        ratings = [r.rating for r in reviews if r.rating]
+        avg = sum(ratings) / len(ratings) if ratings else None
+        rows.append({
+            "submission": submission,
+            "name": data.get(name_field) if name_field else None,
+            "avg_rating": avg,
+            "avg_rating_rounded": round(avg) if avg else 0,
+            "review_count": len(reviews),
+        })
+
+    rows.sort(key=lambda r: (r["avg_rating"] is None, -(r["avg_rating"] or 0)))
+
+    return render(request, "wagtailadmin/submissions_ratings.html", {
+        "page": page,
+        "rows": rows,
+        "star_range": range(1, 6),
+    })
+
+
+def compose_submission_email_view(request, page_id):
+    """Two-step POST flow reached from submissions_ratings_view's selection
+    form: first POST (no "subject" key yet) just renders the compose form
+    for the selected submissions; the compose form's own POST (has
+    "subject") actually mail-merges {{ name }} per recipient, sends, and
+    logs the batch to SubmissionEmailLog.
+    """
+    if not get_forms_for_user(request.user).filter(pk=page_id).exists():
+        raise PermissionDenied
+
+    page = get_object_or_404(Page, id=page_id).specific
+    if not isinstance(page, FormMixin):
+        raise Http404
+
+    if request.method != "POST":
+        raise Http404
+
+    submission_ids = request.POST.getlist("submission_ids")
+    if not submission_ids:
+        messages.error(request, _("No submissions selected."))
+        return redirect("submissions_ratings", page_id=page.id)
+
+    submission_class = page.get_submission_class()
+    submissions = list(submission_class.objects.filter(pk__in=submission_ids, page=page))
+    content_type = ContentType.objects.get_for_model(submission_class)
+
+    fields_by_type = {f.clean_name: f.field_type for f in page.get_form_fields()}
+    email_field = next((n for n, t in fields_by_type.items() if t == "email"), None)
+    name_field = "name" if "name" in fields_by_type else None
+
+    if "subject" in request.POST:
+        subject = request.POST.get("subject", "").strip()
+        body = request.POST.get("body", "")
+        attachments = request.FILES.getlist("attachments")
+
+        if not subject or not body:
+            messages.error(request, _("Subject and message body are required."))
+        else:
+            sent_to = []
+            skipped = 0
+            for submission in submissions:
+                data = submission.get_data()
+                recipient = data.get(email_field) if email_field else None
+                if not recipient:
+                    skipped += 1
+                    continue
+                name = (data.get(name_field) or "") if name_field else ""
+                personalized_body = body.replace("{{ name }}", name).replace("{{name}}", name)
+                send_mail(subject, personalized_body, [recipient], attachments=attachments)
+                sent_to.append(recipient)
+
+            SubmissionEmailLog.objects.create(
+                content_type=content_type,
+                submission_ids=[s.pk for s in submissions],
+                recipients=sent_to,
+                subject=subject,
+                body=body,
+                attachment_names=[f.name for f in attachments],
+                sent_by=request.user,
+            )
+
+            if sent_to:
+                messages.success(
+                    request,
+                    _("Email sent to %(count)d recipient(s).") % {"count": len(sent_to)},
+                )
+            if skipped:
+                messages.warning(
+                    request,
+                    _("%(count)d submission(s) skipped — no email address found.") % {"count": skipped},
+                )
+
+            return redirect("submissions_ratings", page_id=page.id)
+
+    recipient_rows = []
+    for submission in submissions:
+        data = submission.get_data()
+        recipient_rows.append({
+            "name": (data.get(name_field) if name_field else None) or "—",
+            "email": (data.get(email_field) if email_field else None),
+        })
+
+    return render(request, "wagtailadmin/compose_submission_email.html", {
+        "page": page,
+        "submission_ids": submission_ids,
+        "recipient_rows": recipient_rows,
+        "email_field": email_field,
+        "name_field": name_field,
+    })

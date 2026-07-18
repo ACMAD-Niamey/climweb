@@ -1,0 +1,107 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n %}
+
+{% block titletag %}{% translate "Email selected applicants" %}{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .sr-compose-panel {
+            background: var(--color-surface-menus);
+            border: 1px solid var(--color-input-border);
+            border-radius: 4px;
+            padding: 20px 24px;
+            max-width: 46rem;
+        }
+
+        .sr-compose-panel label {
+            display: block;
+            font-weight: bold;
+            margin: 16px 0 6px;
+        }
+
+        .sr-compose-panel label:first-child {
+            margin-top: 0;
+        }
+
+        .sr-compose-panel input[type="text"],
+        .sr-compose-panel textarea {
+            width: 100%;
+        }
+
+        .sr-compose-hint {
+            font-size: 12px;
+            color: var(--color-text-meta);
+            margin-top: 4px;
+        }
+
+        .sr-compose-hint code {
+            background: var(--color-surface-field-inactive, rgba(0, 0, 0, 0.06));
+            padding: 1px 5px;
+            border-radius: 3px;
+        }
+
+        .sr-compose-recipients {
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+
+        .sr-compose-recipients ul {
+            margin: 6px 0 0;
+            padding-left: 20px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    {% trans "Email selected applicants" as header_str %}
+    {% include "wagtailadmin/shared/header.html" with title=header_str subtitle=page.get_admin_display_title icon="mail" %}
+
+    <div class="nice-padding">
+        <div class="sr-compose-panel">
+            <div class="sr-compose-recipients">
+                {% translate "Sending to" %} {{ recipient_rows|length }} {% translate "recipient(s)" %}:
+                <ul>
+                    {% for recipient in recipient_rows %}
+                        <li>{{ recipient.name }} ({{ recipient.email|default:"no email address found" }})</li>
+                    {% endfor %}
+                </ul>
+                {% if not email_field %}
+                    <p class="sr-compose-hint">
+                        {% translate "Warning: this form has no field of type 'email' - no recipients can be emailed." %}
+                    </p>
+                {% endif %}
+            </div>
+
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                {% for submission_id in submission_ids %}
+                    <input type="hidden" name="submission_ids" value="{{ submission_id }}">
+                {% endfor %}
+
+                <label for="id_subject">{% translate "Subject" %}</label>
+                <input type="text" id="id_subject" name="subject" required>
+
+                <label for="id_body">{% translate "Message" %}</label>
+                <textarea id="id_body" name="body" rows="10" required></textarea>
+                <div class="sr-compose-hint">
+                    {# {{ name }} must stay outside {% blocktranslate %} - inside it, Django's #}
+                    {# own {{ }} interpolation would try to resolve it as a template variable #}
+                    {# (there is no "name" in this view's context) and silently render blank. #}
+                    {% translate "Use" %}
+                    <code>{% templatetag openbrace %}{% templatetag openbrace %} name {% templatetag closebrace %}{% templatetag closebrace %}</code>
+                    {% translate "anywhere in the message and it will be replaced with each recipient's own name." %}
+                </div>
+
+                <label for="id_attachments">{% translate "Attachments" %}</label>
+                <input type="file" id="id_attachments" name="attachments" multiple>
+
+                <div style="margin-top:20px">
+                    <button type="submit" class="button">{% translate "Send email" %}</button>
+                    <a class="button button-secondary" href="{% url 'submissions_ratings' page.id %}">
+                        {% translate "Cancel" %}
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}

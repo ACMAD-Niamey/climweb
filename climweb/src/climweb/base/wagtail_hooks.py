@@ -27,7 +27,8 @@ from climweb.utils.version import get_main_version, check_version_greater_than_c
 from .cap import create_cap_geomanager_dataset
 from .models import Theme, ServiceCategory, CAPGeomanagerSettings
 from .utils import get_latest_cms_release
-from .views import cms_version_view, plugin_manager_view, cms_upgrade_status_view
+from .views import (cms_version_view, plugin_manager_view, cms_upgrade_status_view, submission_review_view,
+                    submissions_ratings_view, compose_submission_email_view)
 
 
 class ModelAdminGroupWithHiddenItems(ModelAdminGroup):
@@ -52,6 +53,12 @@ def urlconf_base():
         path('cms-version', cms_version_view, name='cms-version'),
         path('cms-upgrade-status', cms_upgrade_status_view, name='cms-upgrade-status'),
         path('plugins', plugin_manager_view, name='plugin-manager'),
+        path('forms/submissions/<int:page_id>/<int:submission_id>/review/',
+             submission_review_view, name='form_submission_review'),
+        path('forms/submissions/<int:page_id>/ratings/',
+             submissions_ratings_view, name='submissions_ratings'),
+        path('forms/submissions/<int:page_id>/email/',
+             compose_submission_email_view, name='compose_submission_email'),
     ]
 
 

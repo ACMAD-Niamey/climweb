@@ -31,7 +31,7 @@ from wagtailmailchimp.models import AbstractMailchimpIntegrationForm
 from wagtailzoom.models import AbstractZoomIntegrationForm
 
 from climweb.base import blocks
-from climweb.base.mixins import MetadataPageMixin
+from climweb.base.mixins import MetadataPageMixin, FormPageReviewSettingsMixin
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import (
     get_pytz_gmt_offset_str,
@@ -485,8 +485,8 @@ class EventPageCustomForm(WagtailAdminFormPageForm):
             self.fields.pop('audience_list_id', None)
 
 
-class EventRegistrationPage(MetadataPageMixin, WagtailCaptchaEmailForm, AbstractMailchimpIntegrationForm,
-                            AbstractZoomIntegrationForm):
+class EventRegistrationPage(MetadataPageMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm,
+                            AbstractMailchimpIntegrationForm, AbstractZoomIntegrationForm):
     base_form_class = EventPageCustomForm
     
     template = 'event_registration_page.html'
@@ -545,7 +545,7 @@ class EventRegistrationPage(MetadataPageMixin, WagtailCaptchaEmailForm, Abstract
         FieldPanel('send_confirmation_email'),
         FieldPanel('email_field'),
         FieldPanel('email_confirmation_message'),
-    ]
+    ] + FormPageReviewSettingsMixin.submission_review_settings_panels
     
     class Meta:
         verbose_name = _("Event Registration Page")

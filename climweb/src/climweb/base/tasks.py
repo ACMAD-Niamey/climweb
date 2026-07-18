@@ -95,6 +95,98 @@ if "climweb_wdqms" in settings.INSTALLED_APPS:
         call_command('wdqms_stats', '-var', variable)
 
 
+def _iter_review_enabled_pages():
+    """Every live page of every form-page type that carries
+    FormPageReviewSettingsMixin (see climweb.base.mixins) - discovered via
+    __subclasses__() rather than a hardcoded import list, so a new form page
+    type picks up the weekly digest / pre-deadline summary automatically
+    the moment it adds the mixin, with no change needed here.
+    """
+    from climweb.base.mixins import FormPageReviewSettingsMixin
+
+    for model in FormPageReviewSettingsMixin.__subclasses__():
+        yield from model.objects.live()
+
+
+def _submissions_admin_url(page):
+    from django.conf import settings
+    from django.urls import reverse
+
+    path = reverse('wagtailforms:list_submissions', args=[page.id])
+    base_url = settings.WAGTAILADMIN_BASE_URL or page.get_site().root_url
+    return base_url.rstrip('/') + path
+
+
+@app.task(base=Singleton)
+def send_weekly_submission_digest():
+    """Every Monday: email each notification address a submission-count
+    summary for its form page (see setup_periodic_tasks below)."""
+    from datetime import timedelta
+    from django.utils import timezone
+    from climweb.base.mail import send_mail
+
+    week_ago = timezone.now() - timedelta(days=7)
+
+    for page in _iter_review_enabled_pages():
+        recipients = page.get_notification_emails()
+        if not recipients:
+            continue
+
+        submissions = page.get_submissions()
+        total = submissions.count()
+        this_week = submissions.filter(submit_time__gte=week_ago).count()
+
+        logger.info(f"[SUBMISSION_DIGEST] Weekly digest for '{page.title}': "
+                   f"{this_week} new, {total} total")
+
+        send_mail(
+            f"Weekly submissions digest: {page.title}",
+            (
+                f"Weekly submissions summary for '{page.title}':\n\n"
+                f"New submissions this week: {this_week}\n"
+                f"Total submissions: {total}\n\n"
+                f"View submissions: {_submissions_admin_url(page)}\n"
+            ),
+            recipients,
+        )
+
+
+@app.task(base=Singleton)
+def send_pre_deadline_submission_summary():
+    """Every day: for any form page whose closing date is tomorrow, email
+    the notification addresses a summary + link to view submissions before
+    it closes (see setup_periodic_tasks below)."""
+    from datetime import timedelta
+    from django.utils import timezone
+    from climweb.base.mail import send_mail
+
+    tomorrow = timezone.now().date() + timedelta(days=1)
+
+    for page in _iter_review_enabled_pages():
+        closing_date = page.get_submissions_closing_date()
+        if closing_date != tomorrow:
+            continue
+
+        recipients = page.get_notification_emails()
+        if not recipients:
+            continue
+
+        total = page.get_submissions().count()
+
+        logger.info(f"[SUBMISSION_DIGEST] Pre-deadline summary for '{page.title}' "
+                   f"(closes {closing_date}): {total} total submissions")
+
+        send_mail(
+            f"Closing tomorrow: {page.title} — {total} submission(s) so far",
+            (
+                f"'{page.title}' closes to new submissions tomorrow ({closing_date}).\n\n"
+                f"Total submissions so far: {total}\n\n"
+                f"View submissions: {_submissions_admin_url(page)}\n"
+            ),
+            recipients,
+        )
+
+
 @app.on_after_finalize.connect
 def setup_periodic_tasks(sender, **kwargs):
     # run_backup every day at midnight
@@ -102,6 +194,20 @@ def setup_periodic_tasks(sender, **kwargs):
         crontab(hour=0, minute=0),
         run_backup.s(),
         name="run-backup-every-day-midnight",
+    )
+
+    # weekly submissions digest every Monday at 07:00
+    sender.add_periodic_task(
+        crontab(hour=7, minute=0, day_of_week=1),
+        send_weekly_submission_digest.s(),
+        name="send-weekly-submission-digest-every-monday",
+    )
+
+    # pre-deadline submissions summary every day at 07:00
+    sender.add_periodic_task(
+        crontab(hour=7, minute=0),
+        send_pre_deadline_submission_summary.s(),
+        name="send-pre-deadline-submission-summary-every-day",
     )
 
     if "forecastmanager" in settings.INSTALLED_APPS:

@@ -79,7 +79,7 @@ class CustomSubmissionsListView(SubmissionsListView):
             for data_row in data_rows:
                 fields = data_row['fields']
                 for idx, (value, field_type) in enumerate(zip(fields, field_types)):
-                    if field_type == 'image' or field_type == 'document' and value:
+                    if (field_type == 'image' or field_type == 'document') and value:
                         file_submission = FormFileSubmission.objects.get(pk=value)
                         full_url = get_full_url(self.request, file_submission.file.url)
                         
