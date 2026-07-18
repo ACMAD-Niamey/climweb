@@ -20,7 +20,8 @@ from climweb.base.forms import (
     CustomSubmissionsListView, CustomWagtailCaptchaFormBuilder
 )
 from climweb.base.mail import get_default_from_email
-from climweb.base.mixins import MetadataPageMixin, FormPageReviewSettingsMixin, FormPageClosingDateMixin
+from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin, FormPageClosingDateMixin,
+                                 FormFieldMaxLengthMixin)
 from climweb.base.models import FormFileSubmission
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import get_duplicates
@@ -203,7 +204,7 @@ class DataRequestPage(MetadataPageMixin, FormPageClosingDateMixin, FormPageRevie
             logger.error(f"[DATA_REQUEST_PAGE] Error sending email: {e}")
 
 
-class DataRequestFormField(AbstractFormField):
+class DataRequestFormField(FormFieldMaxLengthMixin, AbstractFormField):
     FILE_SUBMISSION_FIELD_CHOICES = (
         ("image", _("Upload Image")),
         ("document", _("Upload PDF Document")),

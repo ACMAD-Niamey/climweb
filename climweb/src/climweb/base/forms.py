@@ -123,9 +123,21 @@ class CustomSubmissionsListView(SubmissionsListView):
 class CustomFormBuilder(FormBuilder):
     def create_image_field(self, field, options):
         return FormImageField(**options)
-    
+
     def create_document_field(self, field, options):
         return FormDocumentField(**options)
+
+    def create_multiline_field(self, field, options):
+        # field is the AbstractFormField (+ FormFieldMaxLengthMixin) instance
+        # being built - max_length is only ever set via that mixin's admin
+        # panel, so a plain FormBuilder-managed field without it is unaffected.
+        max_length = getattr(field, 'max_length', None)
+        if max_length:
+            options['max_length'] = max_length
+            max_length_note = _("Maximum %(max_length)d characters.") % {"max_length": max_length}
+            options['help_text'] = f"{options.get('help_text') or ''} {max_length_note}".strip()
+        options.setdefault('widget', forms.Textarea)
+        return forms.CharField(**options)
 
 
 class CustomWagtailCaptchaFormBuilder(CustomFormBuilder, WagtailCaptchaFormBuilder):

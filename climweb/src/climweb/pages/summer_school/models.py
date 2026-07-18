@@ -22,7 +22,7 @@ from wagtailiconchooser.widgets import IconChooserWidget
 from climweb.base import blocks as base_blocks
 from climweb.base.forms import (FormImageField, FormDocumentField, CustomSubmissionsListView,
                                 CustomWagtailCaptchaFormBuilder)
-from climweb.base.mixins import MetadataPageMixin, FormPageReviewSettingsMixin
+from climweb.base.mixins import MetadataPageMixin, FormPageReviewSettingsMixin, FormFieldMaxLengthMixin
 from climweb.base.models import FormFileSubmission
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import get_duplicates, generate_title_from_filename
@@ -706,7 +706,7 @@ class SummerSchoolApplicationPage(MetadataPageMixin, FormPageReviewSettingsMixin
         return super(SummerSchoolApplicationPage, self).process_form_submission(form)
 
 
-class SummerSchoolApplicationFormField(AbstractFormField):
+class SummerSchoolApplicationFormField(FormFieldMaxLengthMixin, AbstractFormField):
     FILE_SUBMISSION_FIELD_CHOICES = (
         ("image", _("Upload Image")),
         ("document", _("Upload PDF Document")),

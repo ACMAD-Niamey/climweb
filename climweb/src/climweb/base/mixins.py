@@ -5,6 +5,7 @@ from wagtail import blocks
 from wagtail.admin.panels import MultiFieldPanel, FieldPanel
 from wagtail.admin.widgets.slug import SlugInput
 from wagtail.api.v2.utils import get_full_url
+from wagtail.contrib.forms.models import AbstractFormField
 from wagtail.fields import StreamField
 from wagtailcache.cache import WagtailCacheMixin
 from wagtailmetadata.models import MetadataPageMixin as BaseMetadataPageMixin
@@ -110,3 +111,25 @@ class FormPageClosingDateMixin(models.Model):
 
     def get_submissions_closing_date(self):
         return self.submissions_closing_date
+
+
+class FormFieldMaxLengthMixin(models.Model):
+    """Adds an optional character-limit to a Wagtail form-field model
+    (an AbstractFormField subclass, defined per form page - e.g.
+    ContactFormField, SummerSchoolApplicationFormField). Only takes effect
+    for the "Multi-line text" field type: CustomFormBuilder.create_multiline_field
+    (climweb.base.forms) reads it and, when set, passes it through to Django's
+    CharField(max_length=...), which enforces it both server-side (on submit)
+    and client-side (the browser's native maxlength attribute on the textarea).
+    """
+    class Meta:
+        abstract = True
+
+    max_length = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name=_("Maximum characters"),
+        help_text=_("Only applies to the \"Multi-line text\" field type - leave "
+                    "blank for no limit."),
+    )
+
+    panels = AbstractFormField.panels + [FieldPanel('max_length')]
