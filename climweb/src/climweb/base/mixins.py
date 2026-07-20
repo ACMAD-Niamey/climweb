@@ -122,7 +122,14 @@ class FormFieldMaxLengthMixin(models.Model):
     CharField(max_length=...), which enforces it both server-side (on submit)
     and client-side (the browser's native maxlength attribute on the textarea).
     """
-    class Meta:
+    class Meta(AbstractFormField.Meta):
+        # Without explicitly inheriting AbstractFormField.Meta here, Python's
+        # plain attribute lookup on a concrete subclass with no Meta of its
+        # own (e.g. `class ContactFormField(FormFieldMaxLengthMixin,
+        # AbstractFormField)`) resolves `Meta` to whichever base lists this
+        # mixin first - silently dropping AbstractFormField's
+        # `ordering = ['sort_order']` and leaving field order to whatever a
+        # given query happens to return.
         abstract = True
 
     max_length = models.PositiveIntegerField(
