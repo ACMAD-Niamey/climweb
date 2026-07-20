@@ -11,57 +11,37 @@ ensure that NMHSs have a modern, responsive, and user-friendly website.
 
 ClimWeb is open-source software, recognised as a Digital Public Good by the Digital Public Goods Alliance. It strengthens the delivery of climate services, contributing to the Sustainable Development Goals, including SDG 13 (Climate Action). 
 
+## ACMAD Fork
+
+This is [ACMAD](https://www.acmad.org/)'s fork of ClimWeb, deployed at [new.acmad.org](https://new.acmad.org). For
+the base CMS platform, its full feature set, and general documentation, see the upstream project at
+[wmo-raf/nmhs-cms](https://github.com/wmo-raf/nmhs-cms) (reference Docker deployment:
+[wmo-raf/climweb-docker](https://github.com/wmo-raf/climweb-docker)).
+
+### What's implemented in this fork
+
+- **Summer School module** - dedicated page types for the programme index, yearly editions, and applications, with
+  eligibility, application journey, CV upload, and partners sections, plus the featured edition surfaced on the
+  main homepage.
+- **Summer School on its own subdomain** - `summerschool.acmad.org` serves the module directly at `/`, sharing the
+  same application and database as the main site via Wagtail multi-site. See
+  [docs/_docs/technical/subdomain-deployment.md](docs/_docs/technical/subdomain-deployment.md) for how it's wired
+  up and the gotchas involved.
+- **Submission review & rating system** - staff can rate and comment on form submissions, with bulk email and a
+  weekly submission-count digest, for any form page sitewide.
+- **Max-length option for multi-line form fields** - optional character limit, enforced both server-side and via
+  the browser's native `maxlength`.
+
+See [docs/_docs/technical/deployment.md](docs/_docs/technical/deployment.md) for how this fork's instance is
+actually built and deployed (CI/CD pipeline, production host setup).
+
 ## Live Instances
 
-NMHSs that have adopted ClimWeb across Africa:
-
-1. 🇧🇯 [Benin](https://www.meteobenin.bj/)
-2. 🇧🇫 [Burkina Faso](https://www.meteoburkina.bf/)
-3. 🇧🇮 [Burundi](https://www.igebu.bi/)
-4. 🇹🇩 [Chad](https://www.meteotchad.org/)
-5. 🇪🇹 [Ethiopia](https://www.ethiomet.gov.et/)
-6. 🇬🇭 [Ghana](https://www.meteo.gov.gh/)
-7. 🇲🇼 [Malawi](https://www.metmalawi.gov.mw/)
-8. 🇲🇱 [Mali](https://www.malimeteo.ml/)
-9. 🇳🇪 [Niger](https://www.niger-meteo.ne/)
-10. 🇸🇨 [Seychelles](https://www.meteo.sc/)
-11. 🇸🇸 [South Sudan](https://meteosouthsudan.com.ss/)
-12. 🇸🇩 [Sudan](https://meteosudan.sd/)
-13. 🇹🇬 [Togo](https://meteotogo.tg/)
-14. 🇿🇼 [Zimbabwe](https://www.weatherzw.org.zw/)
-15. 🇬🇲 [The Gambia](https://meteogambia.gm/)
-16. 🇬🇼 [Guinea Bissau](https://meteoguinebissau.gw/)
-17. 🇨🇩 [Democratic Republic of Congo](https://www.meteordcongo.cd/)
-18. 🇨🇬 [Republic of Congo](http://dirmet.cg/)
-19. 🇧🇫 [Hydrology Department of Burkina Faso](https://dgre.gov.bf/)
-20. 🇬🇳 [Guinea](https://anmeteo.gov.gn/)
-21. 🇰🇲 [Comoros](https://meteocomores.km/)
-22. 🇰🇪 [Kenya](https://meteo.go.ke)
-23. 🇱🇷 [Liberia](https://meteoliberia.com/)
-24. 🇿🇲 [Zambia](http://zmd.gov.zm/)
-25. 🇩🇯 [Djibouti](https://meteodjibouti.dj/)
-26. 🇸🇱 [Sierra Leone](https://slmet.gov.sl/)
-27. 🇸🇴 [Somalia](https://meteosomalia.so/)
-28. 🇲🇿 [Mozambique](https://inam.gov.mz/)
-29. 🇿🇲 [Mauritania](https://meteomauritanie.mr/)
-30. 🇨🇫 [Central African Republic](https://meteocentrafrique.com/)
-31. 🇱🇸 [Lesotho](https://lesmet.gov.ls)
-32. 🇸🇩 [General Administration for Nile Waters Affairs](https://wre.gov.sd/)
-33. 🇲🇿 Mozambique Hydrology Department
-
-#### In progress
-
-33. 🇺🇬 Uganda
-34. 🇳🇦 Namibia
-35. 🇸🇹 Sao Tome Principe
-36. 🇲🇬 Madagascar
-37. 🇸🇿 Eswatini
-41. 🇨🇲 Cameroon
-42. 🇨🇲 RCC Douala
-43. 🇨🇲 RSMC Yaounde
-
-## 🌍 Other regions
-44. 🇸🇾 [Syria](https://climweb.med.gov.sy)
+This fork only tracks ACMAD's own deployment ([new.acmad.org](https://new.acmad.org) and
+[summerschool.acmad.org](https://summerschool.acmad.org)) - it doesn't track adoption elsewhere, so a copied list
+here would just go stale. For the current, maintained list of NMHSs and other organizations running ClimWeb across
+Africa and beyond, see the
+[Live Instances section of the upstream README](https://github.com/wmo-raf/nmhs-cms#live-instances).
 
 ## 🌟 Core Features
 
