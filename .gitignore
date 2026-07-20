@@ -186,7 +186,7 @@ climweb/src/climweb/static
 climweb/src/climweb/media
 .env.local
 .env.dev
- .claude/settings.local.json
+.claude/settings.local.json
 
 backup/
 .vscode/
