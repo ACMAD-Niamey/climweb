@@ -1230,19 +1230,18 @@ a.ss-partner-card:hover {
 }
 
 .ss-application-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 3rem;
-    align-items: start;
+    max-width: 720px;
+    margin: 0 auto;
 }
 
-/* ── LEFT: intro column ── */
+/* ── Intro (title, journey, illustration) - now stacks above the form ── */
 .ss-application-intro-col {
     display: flex;
     flex-direction: column;
     gap: 2rem;
-    position: sticky;
-    top: 2rem;
 }
 
 .ss-application-eyebrow {
@@ -1367,7 +1366,7 @@ a.ss-partner-card:hover {
     line-height: 1.5;
 }
 
-/* ── RIGHT: form column ── */
+/* ── Form (below the intro) ── */
 .ss-application-form-col {
     display: flex;
     flex-direction: column;
@@ -1542,15 +1541,9 @@ a.ss-partner-card:hover {
     .ss-application-page { background: #fff; }
     .ss-application-section { padding: 1.5rem 0 3rem; }
 
-    .ss-application-layout {
-        grid-template-columns: 1fr;
-        gap: 1.5rem;
-    }
+    .ss-application-layout { gap: 1.5rem; }
 
-    .ss-application-intro-col {
-        position: static;
-        gap: 1.25rem;
-    }
+    .ss-application-intro-col { gap: 1.25rem; }
 
     .ss-application-illustration {
         max-height: 220px;
