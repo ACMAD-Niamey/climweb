@@ -83,16 +83,24 @@ class SummerSchoolIndexPage(MetadataPageMixin, Page):
         if not meta_image:
             meta_image = self.hero_background_image
 
-        if not meta_image:
-            meta_image = get_homepage_meta_image(self.get_site())
+        # Falling back to the site's homepage image only makes sense when this
+        # page isn't itself that homepage — otherwise it calls back into this
+        # same method and recurses forever (e.g. when this page is set as a
+        # Wagtail Site's root page, as on the dedicated summer school subdomain).
+        site = self.get_site()
+        if not meta_image and site and site.root_page_id != self.pk:
+            meta_image = get_homepage_meta_image(site)
 
         return meta_image
 
     def get_meta_description(self):
         meta_description = super().get_meta_description()
 
-        if not meta_description:
-            meta_description = get_homepage_meta_description(self.get_site())
+        # See get_meta_image() above for why the homepage fallback is skipped
+        # when this page is its own site's root page.
+        site = self.get_site()
+        if not meta_description and site and site.root_page_id != self.pk:
+            meta_description = get_homepage_meta_description(site)
 
         return meta_description
 
