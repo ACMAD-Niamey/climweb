@@ -17,9 +17,11 @@
                     <a class="ss-nav-link" href="#eligibility">{% translate "Eligibility" %}</a>
                 </li>
             {% endif %}
-            <li>
-                <a class="ss-nav-link" href="#structure">{% translate "Structure" %}</a>
-            </li>
+            {% if page.structure_items %}
+                <li>
+                    <a class="ss-nav-link" href="#structure">{% translate "Structure" %}</a>
+                </li>
+            {% endif %}
             {% if page.trainers %}
                 <li>
                     <a class="ss-nav-link" href="#trainers">{% translate "Trainers" %}</a>
