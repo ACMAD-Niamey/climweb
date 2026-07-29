@@ -45,6 +45,11 @@
     <main class="is-index">
         <div class="container">
 
+            {% if page.featured_edition %}
+                <h2 class="ss-section-heading">{% translate "Featured Programme" %}</h2>
+                {% include 'summer_school_featured_edition_include.html' %}
+            {% endif %}
+
             {% if page.editions %}
                 <div class="ss-index-toolbar">
                     <div class="ss-index-search">
@@ -106,11 +111,11 @@
                 </div>
             {% endif %}
 
-            <h2 class="ss-section-heading" id="ss-programmes-heading">{% translate "Summer School Programmes" %}</h2>
+            {% if page.other_editions %}
+                <h2 class="ss-section-heading" id="ss-programmes-heading">{% translate "Summer School Programmes" %}</h2>
 
-            {% if page.editions %}
                 <div class="columns is-multiline ss-index-grid" id="ss-cards-grid">
-                    {% for edition in page.editions %}
+                    {% for edition in page.other_editions %}
                         <div class="column is-one-third-desktop is-half-tablet is-full-mobile ss-index-card-col {% if edition.featured %}is-featured{% endif %}"
                              data-search="{{ edition.title|lower }} {{ edition.program_tagline|lower }} {{ edition.key_info_location|lower }}"
                              data-upcoming="{{ edition.is_upcoming|yesno:'1,0' }}"
@@ -186,7 +191,7 @@
                 <p class="ss-index-empty-filtered" id="ss-no-results" hidden>
                     {% translate "No programmes match your search." %}
                 </p>
-            {% else %}
+            {% elif not page.featured_edition %}
                 <p class="ss-index-empty">{% translate "No summer school editions are available yet." %}</p>
             {% endif %}
         </div>
