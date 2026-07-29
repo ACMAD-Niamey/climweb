@@ -32,9 +32,11 @@
                 </section>
             {% endif %}
 
-            <section id="structure">
-                {% include 'summer_school_structure_include.html' %}
-            </section>
+            {% if page.structure_items %}
+                <section id="structure">
+                    {% include 'summer_school_structure_include.html' %}
+                </section>
+            {% endif %}
 
             {% if page.trainers %}
                 <section id="trainers">

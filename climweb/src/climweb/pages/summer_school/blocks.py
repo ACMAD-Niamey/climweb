@@ -18,8 +18,10 @@ class TrainerLinkBlock(blocks.StructBlock):
 class TrainerBlock(blocks.StructBlock):
     TRAINER_ROLE_CHOICES = (
         ("lead_facilitator", "Lead Facilitator"),
+        ("facilitator", "Facilitator"),
         ("instructor", "Instructor"),
         ("guest_trainer", "Guest Trainer"),
+        ("other", "Other"),
     )
     name = blocks.CharBlock(max_length=255, help_text="Name of trainer")
     image = ImageChooserBlock(required=False, help_text="Select/upload image")
@@ -30,6 +32,8 @@ class TrainerBlock(blocks.StructBlock):
                                                           "clicks the trainer's card", label="Full bio")
     role = blocks.ChoiceBlock(choices=TRAINER_ROLE_CHOICES, required=False,
                               help_text="Select Role. Leave blank if normal trainer")
+    custom_role_name = blocks.CharBlock(max_length=100, required=False, label="Custom role name",
+                                        help_text="Only used when Role above is set to \"Other\"")
     module_taught = blocks.CharBlock(max_length=255, required=False, help_text="Trainer's session/module focus")
     links = blocks.ListBlock(TrainerLinkBlock(), required=False, label="Links",
                              help_text="LinkedIn, personal page, Google Scholar, etc. - each with its own icon, "

@@ -109,6 +109,19 @@ class SummerSchoolIndexPage(MetadataPageMixin, Page):
         return SummerSchoolPage.objects.live().child_of(self).order_by('-featured', '-edition_start_date')
 
     @cached_property
+    def featured_edition(self):
+        # editions is already ordered '-featured', '-edition_start_date', so
+        # the first result is the featured one if any edition is marked as
+        # such, or just the most recent/upcoming edition otherwise - same
+        # "featured, falling back to most relevant" contract as events'
+        # EventIndexPage.get_featured_event().
+        return self.editions.first()
+
+    @cached_property
+    def other_editions(self):
+        return self.editions[1:]
+
+    @cached_property
     def programmes_count(self):
         return self.editions.count()
 
@@ -199,6 +212,16 @@ class SummerSchoolPage(MetadataPageMixin, Page):
     status_badge_text = models.CharField(max_length=60, blank=True, verbose_name=_("Status Badge Text"),
                                          help_text=_("e.g. 'Applications opening soon', 'Applications open'. "
                                                      "Leave blank to hide the badge."))
+    featured_image = models.ForeignKey(
+        'wagtailimages.Image',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        verbose_name=_("Featured Image"),
+        help_text=_("Shown in the spotlight card when this edition is featured on the index page. "
+                    "Leave blank to use the Hero Background Image instead."),
+    )
 
     # --- Background ---
     background_intro = RichTextField(blank=True, features=SUMMARY_RICHTEXT_FEATURES,
@@ -326,6 +349,7 @@ class SummerSchoolPage(MetadataPageMixin, Page):
         MultiFieldPanel([
             FieldPanel('card_icon', widget=IconChooserWidget),
             FieldPanel('status_badge_text'),
+            FieldPanel('featured_image'),
         ], heading=_("Index Card Display")),
         MultiFieldPanel([
             FieldPanel('background_intro'),
@@ -414,6 +438,10 @@ class SummerSchoolPage(MetadataPageMixin, Page):
     @cached_property
     def application_page(self):
         return self.get_first_child()
+
+    @cached_property
+    def featured_display_image(self):
+        return self.featured_image or self.hero_background_image
 
     @cached_property
     def card_props(self):
