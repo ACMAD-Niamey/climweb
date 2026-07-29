@@ -90,10 +90,8 @@ services:
       args:
         - UID=${UID}
         - GID=${GID}
-    expose:
-      - 8000
     ports:
-      - "${CLIMWEB_DEV_PORT:-8000}:8000"
+      - :8000
     environment:
       <<: *climweb-variables
       WAIT_HOSTS: climweb_db_dev:5432,climweb_redis_dev:6379

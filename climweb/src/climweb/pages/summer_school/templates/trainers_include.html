@@ -33,10 +33,18 @@
                     <span class="ss-trainer-badge">
                         {% if trainer.value.role == "lead_facilitator" %}
                             {% translate "Lead Facilitator" %}
+                        {% elif trainer.value.role == "facilitator" %}
+                            {% translate "Facilitator" %}
                         {% elif trainer.value.role == "instructor" %}
                             {% translate "Instructor" %}
                         {% elif trainer.value.role == "guest_trainer" %}
                             {% translate "Guest Trainer" %}
+                        {% elif trainer.value.role == "other" %}
+                            {% if trainer.value.custom_role_name %}
+                                {{ trainer.value.custom_role_name }}
+                            {% else %}
+                                {% translate "Other" %}
+                            {% endif %}
                         {% endif %}
                     </span>
                 {% endif %}
@@ -98,10 +106,14 @@
                                         <span class="ss-trainer-badge">
                                             {% if trainer.value.role == "lead_facilitator" %}
                                                 {% translate "Lead Facilitator" %}
+                                            {% elif trainer.value.role == "facilitator" %}
+                                                {% translate "Facilitator" %}
                                             {% elif trainer.value.role == "instructor" %}
                                                 {% translate "Instructor" %}
                                             {% elif trainer.value.role == "guest_trainer" %}
                                                 {% translate "Guest Trainer" %}
+                                            {% elif trainer.value.role == "other" %}
+                                                {{ trainer.value.custom_role_name }}
                                             {% endif %}
                                         </span>
                                     {% endif %}

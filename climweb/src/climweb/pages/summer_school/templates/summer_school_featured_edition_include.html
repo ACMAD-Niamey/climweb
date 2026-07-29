@@ -1,0 +1,67 @@
+{% load wagtailcore_tags wagtailimages_tags lazyimages_tags wagtailiconchooser_tags i18n %}
+
+{% with edition=page.featured_edition %}
+    <div class="ss-index-featured-card">
+        <div class="ss-index-featured-media">
+            {% if edition.featured_display_image %}
+                {% image edition.featured_display_image fill-500x400 as featured_img %}
+                <img class="progressive__img progressive--not-loaded"
+                     data-progressive="{{ featured_img.url }}"
+                     src="{% lazy_image_url featured_img %}"
+                     alt="{{ edition.hero_heading|default:edition.title }}"/>
+                <span class="ss-index-featured-icon">
+                    {% svg_icon name=edition.card_icon %}
+                </span>
+            {% endif %}
+        </div>
+
+        <div class="ss-index-featured-body">
+            <div class="ss-index-featured-top-row">
+                <span class="ss-index-featured-tag">{% translate "Featured" %}</span>
+                {% if edition.status_badge_text %}
+                    <span class="ss-index-edition-status">{{ edition.status_badge_text }}</span>
+                {% endif %}
+            </div>
+
+            {% if edition.program_tagline %}
+                <p class="ss-index-edition-tagline">{{ edition.program_tagline }}</p>
+            {% endif %}
+
+            <h2 class="ss-index-featured-title">{{ edition.hero_heading|default:edition.title }}</h2>
+
+            <div class="ss-index-edition-meta">
+                {% if edition.key_info_dates %}
+                    <span class="ss-index-edition-meta-item">
+                        <span class="icon">{% svg_icon name="calendar-alt" %}</span>
+                        {{ edition.key_info_dates }}
+                    </span>
+                {% endif %}
+                {% if edition.key_info_location %}
+                    <span class="ss-index-edition-meta-item">
+                        <span class="icon">{% svg_icon name="location" %}</span>
+                        {{ edition.key_info_location }}
+                    </span>
+                {% endif %}
+            </div>
+
+            {% if edition.hero_badges %}
+                <div class="ss-index-edition-tags">
+                    {% for badge in edition.hero_badges %}
+                        <span class="ss-index-edition-tag">{{ badge.value }}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <div class="ss-index-featured-actions">
+                <a href="{{ edition.url }}" class="ss-index-featured-btn is-secondary">
+                    {% translate "View details" %}
+                </a>
+                {% if edition.application_open and edition.application_page and edition.application_page.live %}
+                    <a href="{{ edition.application_page.url }}" class="ss-index-featured-btn is-primary">
+                        {{ edition.apply_button_text }}
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endwith %}

@@ -8,22 +8,44 @@
     <div class="ss-concept-note-media">
         {% if page.concept_note_thumbnail %}
             {% image page.concept_note_thumbnail original as concept_note_img %}
-            <figure class="ss-concept-note-thumbnail image">
+            <button type="button" class="ss-concept-note-thumbnail image js-modal-trigger" data-target="ss-concept-note-modal" aria-haspopup="dialog">
                 <img class="progressive__img progressive--not-loaded"
                      data-progressive="{{ concept_note_img.url }}"
                      src="{% lazy_image_url concept_note_img %}"
                      alt="{{ page.concept_note_title }}"/>
-            </figure>
+            </button>
+            <div id="ss-concept-note-modal" class="modal">
+                <div class="modal-background"></div>
+                <div class="modal-content ss-concept-note-modal-content">
+                    {# lazy_load: see trainers_include.html's modal image for why - #}
+                    {# progressively.js never sees images inside a closed modal.     #}
+                    <img class="progressive__img progressive--not-loaded lazy_load"
+                         data-progressive="{{ concept_note_img.url }}"
+                         src="{% lazy_image_url concept_note_img %}"
+                         alt="{{ page.concept_note_title }}"/>
+                </div>
+                <button class="modal-close is-large" aria-label="close"></button>
+            </div>
         {% elif page.concept_note_document %}
             {% with thumb=page.concept_note_document.get_thumbnail %}
                 {% if thumb %}
                     {% image thumb original as concept_note_img %}
-                    <figure class="ss-concept-note-thumbnail image">
+                    <figure class="ss-concept-note-thumbnail image js-modal-trigger" data-target="ss-concept-note-modal">
                         <img class="progressive__img progressive--not-loaded"
                              data-progressive="{{ concept_note_img.url }}"
                              src="{% lazy_image_url concept_note_img %}"
                              alt="{{ page.concept_note_title }}"/>
                     </figure>
+                    <div id="ss-concept-note-modal" class="modal">
+                        <div class="modal-background"></div>
+                        <div class="modal-content ss-concept-note-modal-content">
+                            <img class="progressive__img progressive--not-loaded lazy_load"
+                                 data-progressive="{{ concept_note_img.url }}"
+                                 src="{% lazy_image_url concept_note_img %}"
+                                 alt="{{ page.concept_note_title }}"/>
+                        </div>
+                        <button class="modal-close is-large" aria-label="close"></button>
+                    </div>
                 {% endif %}
             {% endwith %}
         {% endif %}

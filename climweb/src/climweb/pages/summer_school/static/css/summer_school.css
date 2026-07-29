@@ -1022,6 +1022,27 @@
     border-radius: 10px;
     box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
     flex-shrink: 0;
+    cursor: pointer;
+    transition: box-shadow 0.15s;
+}
+
+.ss-concept-note-thumbnail:hover {
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.2);
+}
+
+/* Enlarged view when the thumbnail above is clicked - same modal recipe
+   as .ss-trainer-modal-content, just sized for a single image instead. */
+.ss-concept-note-modal-content {
+    max-width: 900px;
+}
+
+.ss-concept-note-modal-content img {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    max-height: 85vh;
+    margin: 0 auto;
+    border-radius: 6px;
 }
 
 /* Checklist with a checkmark bullet drawn via ::before — no new
@@ -1874,6 +1895,145 @@ a.ss-partner-card:hover {
     width: 12px;
     height: 12px;
     fill: var(--primary-color);
+}
+
+/* Spotlight card for the index page's top-ranked edition (featured, or
+   the most relevant one if none is marked) - same "large hero card,
+   pulled out of the regular listing" idea as events' featured-item
+   spotlight, sized/styled for this page's own card language instead of
+   reusing that shared component (different field set: tagline, status
+   badge, dates/location, tags - not a blog-style title+snippet+date). */
+.ss-index-featured-card {
+    display: flex;
+    align-items: stretch;
+    gap: 2.5rem;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: var(--border-radius, 16px);
+    overflow: hidden;
+    margin-bottom: 2.5rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.ss-index-featured-media {
+    flex: 0 0 260px;
+    margin: 0;
+}
+
+.ss-index-featured-media img {
+    width: 100%;
+    height: 100%;
+    min-height: 220px;
+    object-fit: cover;
+    display: block;
+}
+
+.ss-index-featured-icon {
+    width: 100%;
+    height: 100%;
+    min-height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-color-lightest, #eef4ff);
+}
+
+.ss-index-featured-icon svg {
+    width: 56px;
+    height: 56px;
+    fill: var(--primary-color);
+}
+
+.ss-index-featured-body {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+    padding: 2rem 2.5rem;
+}
+
+.ss-index-featured-top-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.ss-index-featured-tag {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: var(--primary-color);
+    color: #fff;
+}
+
+.ss-index-featured-title {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text-color, #14213d);
+    line-height: 1.25;
+}
+
+.ss-index-featured-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.ss-index-featured-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 11px 24px;
+    border-radius: var(--border-radius, 8px);
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    border: 2px solid transparent;
+    transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.ss-index-featured-btn.is-primary {
+    background: var(--primary-color);
+    color: #fff;
+}
+
+.ss-index-featured-btn.is-primary:hover {
+    opacity: 0.9;
+    color: #fff;
+}
+
+.ss-index-featured-btn.is-secondary {
+    background: transparent;
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.ss-index-featured-btn.is-secondary:hover {
+    background: var(--primary-color-lightest);
+}
+
+@media (max-width: 768px) {
+    .ss-index-featured-card {
+        flex-direction: column;
+    }
+
+    .ss-index-featured-media,
+    .ss-index-featured-icon {
+        min-height: 200px;
+    }
+
+    .ss-index-featured-body {
+        padding: 1.5rem;
+    }
+
+    .ss-index-featured-title {
+        font-size: 22px;
+    }
 }
 
 /* Bulma's `.column { display: block; }` is an author-stylesheet rule,
