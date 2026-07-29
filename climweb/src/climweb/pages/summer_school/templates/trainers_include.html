@@ -40,7 +40,11 @@
                         {% elif trainer.value.role == "guest_trainer" %}
                             {% translate "Guest Trainer" %}
                         {% elif trainer.value.role == "other" %}
-                            {{ trainer.value.custom_role_name }}
+                            {% if trainer.value.custom_role_name %}
+                                {{ trainer.value.custom_role_name }}
+                            {% else %}
+                                {% translate "Other" %}
+                            {% endif %}
                         {% endif %}
                     </span>
                 {% endif %}
