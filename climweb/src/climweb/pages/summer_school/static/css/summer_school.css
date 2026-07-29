@@ -1637,64 +1637,25 @@ a.ss-partner-card:hover {
     margin-bottom: 0;
 }
 
-/* ── SEARCH + FILTER TOOLBAR ── */
-.ss-index-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    margin: 1.25rem 0 1rem;
+/* ── PROGRAMME LISTING (filter sidebar + results) ── */
+.ss-listing-section {
+    margin-top: 1rem;
 }
 
-.ss-index-search {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    border-radius: 999px;
-    padding: 8px 16px;
-    min-width: 260px;
-    background: #fff;
-}
-
-.ss-index-search .icon svg {
-    width: 14px;
-    height: 14px;
-    opacity: 0.5;
-}
-
-.ss-index-search-input {
-    border: none;
+/* .pub-filter-body (publication.css) is designed around checkbox rows -
+   this is the one plain text input dropped into that sidebar, so it
+   needs its own basic field styling. */
+.ss-filter-search-input {
+    width: 100%;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
     outline: none;
-    font-size: 13px;
-    flex: 1;
-    background: transparent;
 }
 
-.ss-index-filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.ss-filter-pill {
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    background: #fff;
-    border-radius: 999px;
-    padding: 6px 16px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-color, #333);
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-
-.ss-filter-pill.is-active,
-.ss-filter-pill:hover {
-    background: var(--primary-color);
+.ss-filter-search-input:focus {
     border-color: var(--primary-color);
-    color: #fff;
 }
 
 /* ── STATS ROW ── */
@@ -2036,15 +1997,6 @@ a.ss-partner-card:hover {
     }
 }
 
-/* Bulma's `.column { display: block; }` is an author-stylesheet rule,
-   which overrides the browser's default `[hidden] { display: none }`
-   UA rule regardless of selector specificity (author styles always
-   beat UA styles). Without this, summer_school_index.js's `card.hidden
-   = true` sets the attribute but the card stays visually visible. */
-.ss-index-card-col[hidden] {
-    display: none !important;
-}
-
 .ss-index-empty,
 .ss-index-empty-filtered {
     text-align: center;
@@ -2097,16 +2049,6 @@ a.ss-partner-card:hover {
 @media (max-width: 768px) {
     .ss-index-hero {
         padding: 1.5rem 0 1.25rem;
-    }
-
-    .ss-index-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-        margin: 1rem 0 0.75rem;
-    }
-
-    .ss-index-search {
-        min-width: 0;
     }
 
     .ss-index-stats {

@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib import messages
 from django.core.mail import mail_admins
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.template.defaultfilters import truncatechars
 from django.template.response import TemplateResponse
@@ -25,7 +26,7 @@ from climweb.base.forms import (FormImageField, FormDocumentField, CustomSubmiss
 from climweb.base.mixins import MetadataPageMixin, FormPageReviewSettingsMixin, FormFieldMaxLengthMixin
 from climweb.base.models import FormFileSubmission
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
-from climweb.base.utils import get_duplicates, generate_title_from_filename
+from climweb.base.utils import get_duplicates, generate_title_from_filename, query_param_to_list, paginate
 from .blocks import CohortBlock, ScheduleSessionBlock, SummerSchoolPartnerBlock, TrainerBlock
 
 SUMMARY_RICHTEXT_FEATURES = getattr(settings, "SUMMARY_RICHTEXT_FEATURES")
@@ -60,6 +61,12 @@ class SummerSchoolIndexPage(MetadataPageMixin, Page):
     banner_description = RichTextField(blank=True, features=SUMMARY_RICHTEXT_FEATURES,
                                        verbose_name=_("Banner Description"))
 
+    editions_per_page = models.PositiveIntegerField(default=6, validators=[
+        MinValueValidator(3),
+        MaxValueValidator(20),
+    ], help_text=_("How many editions should be visible per page in the programme listing below the spotlight ?"),
+                                                     verbose_name=_("Editions per page"))
+
     content_panels = Page.content_panels + [
         MultiFieldPanel([
             FieldPanel('hero_heading'),
@@ -72,6 +79,9 @@ class SummerSchoolIndexPage(MetadataPageMixin, Page):
             FieldPanel('banner_heading'),
             FieldPanel('banner_description'),
         ], heading=_("Bottom Banner")),
+        MultiFieldPanel([
+            FieldPanel('editions_per_page'),
+        ], heading=_("Other Settings")),
     ]
 
     class Meta:
@@ -118,8 +128,56 @@ class SummerSchoolIndexPage(MetadataPageMixin, Page):
         return self.editions.first()
 
     @cached_property
-    def other_editions(self):
-        return self.editions[1:]
+    def other_editions_base(self):
+        # base queryset for the filterable/paginated listing below the
+        # spotlight - every live edition except whichever one is currently
+        # pinned as featured_edition above, so it's never shown twice.
+        featured = self.featured_edition
+        qs = SummerSchoolPage.objects.live().child_of(self).order_by('-edition_start_date')
+        if featured:
+            qs = qs.exclude(pk=featured.pk)
+        return qs
+
+    @property
+    def filters(self):
+        return {'year': self.other_editions_base.dates('edition_start_date', 'year')}
+
+    def filter_editions(self, request):
+        editions = self.other_editions_base
+
+        years = query_param_to_list(request.GET.get('year'))
+        archive = request.GET.get('archive')
+        search = (request.GET.get('q') or '').strip()
+
+        today = timezone.now().date()
+        if archive == 'True':
+            editions = editions.filter(edition_start_date__lt=today)
+        else:
+            editions = editions.filter(
+                models.Q(edition_start_date__gte=today) | models.Q(edition_start_date__isnull=True)
+            )
+
+        if years:
+            editions = editions.filter(edition_start_date__year__in=years)
+
+        if search:
+            editions = editions.filter(
+                models.Q(hero_heading__icontains=search) |
+                models.Q(program_tagline__icontains=search) |
+                models.Q(key_info_location__icontains=search)
+            )
+
+        return editions
+
+    def filter_and_paginate_editions(self, request):
+        page = request.GET.get('page')
+        filtered_editions = self.filter_editions(request)
+        return paginate(filtered_editions, page, self.editions_per_page)
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        context['editions_page'] = self.filter_and_paginate_editions(request)
+        return context
 
     @cached_property
     def programmes_count(self):
