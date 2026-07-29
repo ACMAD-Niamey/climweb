@@ -8,8 +8,7 @@
                 <img class="progressive__img progressive--not-loaded"
                      data-progressive="{{ featured_img.url }}"
                      src="{% lazy_image_url featured_img %}"
-                     alt="{{ edition.hero_heading }}"/>
-            {% elif edition.card_icon %}
+                     alt="{{ edition.hero_heading|default:edition.title }}"/>
                 <span class="ss-index-featured-icon">
                     {% svg_icon name=edition.card_icon %}
                 </span>
