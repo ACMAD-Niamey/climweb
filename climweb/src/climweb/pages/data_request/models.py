@@ -38,7 +38,14 @@ class DataRequestPage(MetadataPageMixin, FormPageClosingDateMixin, FormPageRevie
     max_count = 1
     show_in_menus_default = True
     landing_page_template = 'form_thank_you_landing.html'
-    
+
+    # don't cache this page because it has a form - a cached response bakes
+    # in one visitor's CSRF token with no matching cookie for anyone else,
+    # so every other visitor's submission fails CSRF verification. See the
+    # other form pages (contact, feedback, events registration, summer
+    # school application) for the same protection.
+    cache_control = 'no-cache'
+
     introduction_title = models.CharField(max_length=255, verbose_name=_("Introduction Title"))
     introduction_subtitle = models.TextField(blank=True, null=True)
     illustration_image = models.ForeignKey(
