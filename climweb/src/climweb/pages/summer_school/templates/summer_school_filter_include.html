@@ -1,0 +1,62 @@
+{% load i18n %}
+
+<div class="pub-filter">
+
+  <div class="pub-filter-group">
+    <div class="pub-filter-header">
+      <span>{% translate "Search" %}</span>
+    </div>
+    <div class="pub-filter-body">
+      <input type="text"
+             id="ss-search-input"
+             class="ss-filter-search-input"
+             placeholder="{% translate 'Search summer schools' %}"
+             aria-label="{% translate 'Search summer schools' %}">
+    </div>
+  </div>
+
+  {% if filters.year %}
+    <div class="pub-filter-group">
+      <div class="pub-filter-header">
+        <span>{% translate "Year" %}</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+      <div class="pub-filter-body">
+        {% for date in filters.year reversed %}
+          <label class="pub-filter-check" for="ss-yr-{{ date.year }}">
+            <input type="checkbox"
+                   id="ss-yr-{{ date.year }}"
+                   name="year"
+                   value="{{ date.year }}"
+                   class="ss-filter year">
+            <span class="pub-checkmark"></span>
+            <span class="pub-filter-label">{{ date.year }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="pub-filter-group">
+    <div class="pub-filter-header">
+      <span>{% translate "Status" %}</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="6 9 12 15 18 9"/>
+      </svg>
+    </div>
+    <div class="pub-filter-body">
+      <label class="pub-filter-check" for="ss-status-past">
+        <input type="checkbox"
+               id="ss-status-past"
+               name="archive"
+               value="True"
+               class="ss-filter archive">
+        <span class="pub-checkmark"></span>
+        <span class="pub-filter-label">{% translate "Past programmes" %}</span>
+      </label>
+    </div>
+  </div>
+
+</div>
