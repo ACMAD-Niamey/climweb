@@ -31,9 +31,9 @@ from wagtailmailchimp.models import AbstractMailchimpIntegrationForm
 from wagtailzoom.models import AbstractZoomIntegrationForm
 
 from climweb.base import blocks
-from climweb.base.forms import CustomWagtailCaptchaFormBuilder
+from climweb.base.forms import CustomWagtailCaptchaFormBuilder, effective_clean_name
 from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin, FormPageClosingDateMixin,
-                                 FormFieldMaxLengthMixin)
+                                 FormFieldMaxLengthMixin, FormCleanNameFallbackMixin)
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import (
     get_pytz_gmt_offset_str,
@@ -487,7 +487,7 @@ class EventPageCustomForm(WagtailAdminFormPageForm):
             self.fields.pop('audience_list_id', None)
 
 
-class EventRegistrationPage(MetadataPageMixin, FormPageClosingDateMixin, FormPageReviewSettingsMixin,
+class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageClosingDateMixin, FormPageReviewSettingsMixin,
                             WagtailCaptchaEmailForm, AbstractMailchimpIntegrationForm, AbstractZoomIntegrationForm):
     base_form_class = EventPageCustomForm
     form_builder = CustomWagtailCaptchaFormBuilder
@@ -706,7 +706,7 @@ class EventRegistrationPage(MetadataPageMixin, FormPageClosingDateMixin, FormPag
             # the configured field must actually be an email field - a field
             # that was relabeled in the CMS (e.g. a Gender dropdown) keeps its
             # original clean_name, so name alone isn't enough to trust it.
-            fields_by_name = {field.clean_name: field.field_type for field in self.get_form_fields()}
+            fields_by_name = {effective_clean_name(field): field.field_type for field in self.get_form_fields()}
             form_validation_value = form_data.get(validation_field) if fields_by_name.get(validation_field) == 'email' else None
 
             # try getting email using email or email_address

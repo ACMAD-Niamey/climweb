@@ -192,3 +192,50 @@ class TestSummerSchoolShouldProcessForm(WagtailPageTestCase):
         )
 
         self.assertTrue(should_process)
+
+
+class TestFormCleanNameFallback(WagtailPageTestCase):
+    """
+    A field row created without going through AbstractFormField.save() (e.g.
+    bulk_create, a data migration) can end up with clean_name="" in the DB.
+    Wagtail's own FormBuilder.formfields already tolerates this when
+    rendering/submitting the form (it falls back to
+    field.get_field_clean_name()), so real applicant data ends up stored
+    under that recomputed key - e.g. a "Full Name" field ends up storing to
+    "full_name". get_data_fields() must resolve the field the same way, or
+    admin submission views look up the empty key and show that real,
+    already-stored data as blank.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        home_page = get_or_create_homepage()
+        index_page = SummerSchoolIndexPageFactory(parent=home_page)
+        edition = SummerSchoolPageFactory(parent=index_page)
+        cls.application_page = SummerSchoolApplicationPageFactory(parent=edition)
+
+        cls.name_field = cls.application_page.application_form_fields.create(
+            label="Full Name", field_type="singleline", required=True, sort_order=0,
+        )
+        cls.application_page.save()
+
+        # Simulate the live-site bug: a field row whose clean_name never got
+        # generated (bulk_create/migration bypasses AbstractFormField.save()).
+        SummerSchoolApplicationFormField.objects.filter(pk=cls.name_field.pk).update(
+            clean_name=""
+        )
+
+    def test_get_data_fields_resolves_blank_clean_name(self):
+        data_fields = dict(self.application_page.get_data_fields())
+        self.assertIn("full_name", data_fields)
+        self.assertEqual(data_fields["full_name"], "Full Name")
+
+    def test_stored_data_under_the_fallback_key_is_not_lost(self):
+        submission_class = self.application_page.get_submission_class()
+        submission = submission_class.objects.create(
+            page=self.application_page, form_data={"full_name": "Jane Doe"}
+        )
+
+        data_fields = dict(self.application_page.get_data_fields())
+        clean_name = next(k for k, label in data_fields.items() if label == "Full Name")
+        self.assertEqual(submission.form_data.get(clean_name), "Jane Doe")
