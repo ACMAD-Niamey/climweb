@@ -114,12 +114,18 @@ class ContactPage(MetadataPageMixin, FormPageClosingDateMixin, FormPageReviewSet
         
         context = self.get_context(request)
         context['form'] = form
-        return TemplateResponse(
+        response = TemplateResponse(
             request,
             self.get_template(request),
             context
         )
-    
+        # This serve() override skips WagtailCacheMixin.serve(), so the
+        # cache_control opt-out above is never applied unless set here too -
+        # otherwise wagtail-cache stores this page (CSRF token baked into the
+        # HTML) and serves it to later visitors, whose cookie won't match it.
+        response['Cache-Control'] = self.cache_control
+        return response
+
     def send_confirmation_email(self, form):
         from_email = self.from_address or get_default_from_email()
         email = form.get('email')

@@ -96,6 +96,14 @@ jobs:
           make down-prod
           make up-prod
 
-          docker builder prune -af
+          # Clean up dangling images/containers only - NOT build cache.
+          # `docker builder prune -af` here was wiping the pip cache mount
+          # (see Dockerfile PIP_CACHE_DIR) on every single deploy, forcing a
+          # full re-download of the ~1000 base.txt packages from PyPI each
+          # time and making the build both slow and prone to read timeouts
+          # on files.pythonhosted.org. Prune build cache on a separate,
+          # infrequent schedule instead if disk usage becomes a problem.
+          docker image prune -f
+          docker container prune -f
         EOF
 
