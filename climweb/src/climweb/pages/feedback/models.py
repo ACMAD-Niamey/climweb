@@ -13,12 +13,12 @@ from wagtailcaptcha.models import WagtailCaptchaEmailForm
 from climweb.base.forms import CustomWagtailCaptchaFormBuilder
 from climweb.base.mail import send_mail, get_default_from_email
 from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin, FormPageClosingDateMixin,
-                                 FormFieldMaxLengthMixin)
+                                 FormFieldMaxLengthMixin, FormCleanNameFallbackMixin)
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import get_duplicates
 
 
-class FeedbackPage(MetadataPageMixin, FormPageClosingDateMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
+class FeedbackPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageClosingDateMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
     form_builder = CustomWagtailCaptchaFormBuilder
     required_css_class = 'required'
     
@@ -119,12 +119,18 @@ class FeedbackPage(MetadataPageMixin, FormPageClosingDateMixin, FormPageReviewSe
         
         context = self.get_context(request)
         context['form'] = form
-        return TemplateResponse(
+        response = TemplateResponse(
             request,
             self.get_template(request),
             context
         )
-    
+        # This serve() override skips WagtailCacheMixin.serve(), so the
+        # cache_control opt-out above is never applied unless set here too -
+        # otherwise wagtail-cache stores this page (CSRF token baked into the
+        # HTML) and serves it to later visitors, whose cookie won't match it.
+        response['Cache-Control'] = self.cache_control
+        return response
+
     def process_suspicious_form(self, form):
         remove_captcha_field(form)
         try:

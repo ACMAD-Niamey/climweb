@@ -21,13 +21,13 @@ from climweb.base.forms import (
 )
 from climweb.base.mail import get_default_from_email
 from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin, FormPageClosingDateMixin,
-                                 FormFieldMaxLengthMixin)
+                                 FormFieldMaxLengthMixin, FormCleanNameFallbackMixin)
 from climweb.base.models import FormFileSubmission
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import get_duplicates
 
 
-class DataRequestPage(MetadataPageMixin, FormPageClosingDateMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
+class DataRequestPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageClosingDateMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
     required_css_class = 'required'
     form_builder = CustomWagtailCaptchaFormBuilder
     submissions_list_view_class = CustomSubmissionsListView
@@ -38,7 +38,14 @@ class DataRequestPage(MetadataPageMixin, FormPageClosingDateMixin, FormPageRevie
     max_count = 1
     show_in_menus_default = True
     landing_page_template = 'form_thank_you_landing.html'
-    
+
+    # don't cache this page because it has a form - a cached response bakes
+    # in one visitor's CSRF token with no matching cookie for anyone else,
+    # so every other visitor's submission fails CSRF verification. See the
+    # other form pages (contact, feedback, events registration, summer
+    # school application) for the same protection.
+    cache_control = 'no-cache'
+
     introduction_title = models.CharField(max_length=255, verbose_name=_("Introduction Title"))
     introduction_subtitle = models.TextField(blank=True, null=True)
     illustration_image = models.ForeignKey(
@@ -127,12 +134,18 @@ class DataRequestPage(MetadataPageMixin, FormPageClosingDateMixin, FormPageRevie
         
         context = self.get_context(request)
         context['form'] = form
-        return TemplateResponse(
+        response = TemplateResponse(
             request,
             self.get_template(request),
             context
         )
-    
+        # This serve() override skips WagtailCacheMixin.serve(), so the
+        # cache_control opt-out above is never applied unless set here too -
+        # otherwise wagtail-cache stores this page (CSRF token baked into the
+        # HTML) and serves it to later visitors, whose cookie won't match it.
+        response['Cache-Control'] = self.cache_control
+        return response
+
     def process_suspicious_form(self, form):
         remove_captcha_field(form)
         

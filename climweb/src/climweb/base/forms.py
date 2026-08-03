@@ -9,6 +9,7 @@ from wagtail.contrib.forms.views import SubmissionsListView
 from wagtail.images.fields import WagtailImageField
 from wagtailcaptcha.forms import WagtailCaptchaFormBuilder
 
+from climweb.base.form_utils import effective_clean_name
 from climweb.base.models import FormFileSubmission
 
 
@@ -107,7 +108,9 @@ class CustomSubmissionsListView(SubmissionsListView):
         return context
     
     def get_preprocess_function(self, field, value, export_format):
-        fields_by_type = {field.clean_name: field.field_type for field in self.form_page.get_form_fields()}
+        fields_by_type = {
+            effective_clean_name(f): f.field_type for f in self.form_page.get_form_fields()
+        }
         field_type = fields_by_type.get(field)
         
         # If the field_type is an image or document, we need to return a function that will return

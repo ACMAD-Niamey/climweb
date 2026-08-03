@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib import messages
 from django.core.mail import mail_admins
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.template.defaultfilters import truncatechars
 from django.template.response import TemplateResponse
@@ -21,11 +22,12 @@ from wagtailiconchooser.widgets import IconChooserWidget
 
 from climweb.base import blocks as base_blocks
 from climweb.base.forms import (FormImageField, FormDocumentField, CustomSubmissionsListView,
-                                CustomWagtailCaptchaFormBuilder)
-from climweb.base.mixins import MetadataPageMixin, FormPageReviewSettingsMixin, FormFieldMaxLengthMixin
+                                CustomWagtailCaptchaFormBuilder, effective_clean_name)
+from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin, FormFieldMaxLengthMixin,
+                                 FormCleanNameFallbackMixin)
 from climweb.base.models import FormFileSubmission
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
-from climweb.base.utils import get_duplicates, generate_title_from_filename
+from climweb.base.utils import get_duplicates, generate_title_from_filename, query_param_to_list, paginate
 from .blocks import CohortBlock, ScheduleSessionBlock, SummerSchoolPartnerBlock, TrainerBlock
 
 SUMMARY_RICHTEXT_FEATURES = getattr(settings, "SUMMARY_RICHTEXT_FEATURES")
@@ -60,6 +62,12 @@ class SummerSchoolIndexPage(MetadataPageMixin, Page):
     banner_description = RichTextField(blank=True, features=SUMMARY_RICHTEXT_FEATURES,
                                        verbose_name=_("Banner Description"))
 
+    editions_per_page = models.PositiveIntegerField(default=6, validators=[
+        MinValueValidator(3),
+        MaxValueValidator(20),
+    ], help_text=_("How many editions should be visible per page in the programme listing below the spotlight ?"),
+                                                     verbose_name=_("Editions per page"))
+
     content_panels = Page.content_panels + [
         MultiFieldPanel([
             FieldPanel('hero_heading'),
@@ -72,6 +80,9 @@ class SummerSchoolIndexPage(MetadataPageMixin, Page):
             FieldPanel('banner_heading'),
             FieldPanel('banner_description'),
         ], heading=_("Bottom Banner")),
+        MultiFieldPanel([
+            FieldPanel('editions_per_page'),
+        ], heading=_("Other Settings")),
     ]
 
     class Meta:
@@ -118,8 +129,56 @@ class SummerSchoolIndexPage(MetadataPageMixin, Page):
         return self.editions.first()
 
     @cached_property
-    def other_editions(self):
-        return self.editions[1:]
+    def other_editions_base(self):
+        # base queryset for the filterable/paginated listing below the
+        # spotlight - every live edition except whichever one is currently
+        # pinned as featured_edition above, so it's never shown twice.
+        featured = self.featured_edition
+        qs = SummerSchoolPage.objects.live().child_of(self).order_by('-edition_start_date')
+        if featured:
+            qs = qs.exclude(pk=featured.pk)
+        return qs
+
+    @property
+    def filters(self):
+        return {'year': self.other_editions_base.dates('edition_start_date', 'year')}
+
+    def filter_editions(self, request):
+        editions = self.other_editions_base
+
+        years = query_param_to_list(request.GET.get('year'))
+        archive = request.GET.get('archive')
+        search = (request.GET.get('q') or '').strip()
+
+        today = timezone.now().date()
+        if archive == 'True':
+            editions = editions.filter(edition_start_date__lt=today)
+        else:
+            editions = editions.filter(
+                models.Q(edition_start_date__gte=today) | models.Q(edition_start_date__isnull=True)
+            )
+
+        if years:
+            editions = editions.filter(edition_start_date__year__in=years)
+
+        if search:
+            editions = editions.filter(
+                models.Q(hero_heading__icontains=search) |
+                models.Q(program_tagline__icontains=search) |
+                models.Q(key_info_location__icontains=search)
+            )
+
+        return editions
+
+    def filter_and_paginate_editions(self, request):
+        page = request.GET.get('page')
+        filtered_editions = self.filter_editions(request)
+        return paginate(filtered_editions, page, self.editions_per_page)
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        context['editions_page'] = self.filter_and_paginate_editions(request)
+        return context
 
     @cached_property
     def programmes_count(self):
@@ -502,7 +561,7 @@ class SummerSchoolPage(MetadataPageMixin, Page):
         return grouped
 
 
-class SummerSchoolApplicationPage(MetadataPageMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
+class SummerSchoolApplicationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
     required_css_class = 'required'
     form_builder = CustomWagtailCaptchaFormBuilder
     submissions_list_view_class = CustomSubmissionsListView
@@ -624,21 +683,34 @@ class SummerSchoolApplicationPage(MetadataPageMixin, FormPageReviewSettingsMixin
 
         validation_field = self.validation_field.replace('-', '_')
         submission_class = self.get_submission_class()
-        form_validation_value = form_data.get(validation_field)
+
+        # the configured field must actually be an email field - a field that
+        # was relabeled in the CMS (e.g. a Gender dropdown) keeps its original
+        # clean_name, so name alone isn't enough to trust it holds an email.
+        fields_by_name = {effective_clean_name(field): field.field_type for field in self.get_form_fields()}
+        form_validation_value = form_data.get(validation_field) if fields_by_name.get(validation_field) == 'email' else None
 
         # try getting email using email or email_address
         if not form_validation_value:
-            form_validation_value = form_data.get("email") or form_data.get("email_address")
+            for fallback_field in ("email", "email_address"):
+                if fields_by_name.get(fallback_field) == 'email':
+                    form_validation_value = form_data.get(fallback_field)
+                    if form_validation_value:
+                        break
 
         if form_validation_value:
-            queryset = submission_class.objects.filter(form_data__icontains=form_validation_value, page=self)
+            queryset = submission_class.objects.filter(
+                form_data__icontains=f'"{validation_field}": "{form_validation_value}"', page=self
+            )
             if queryset.exists():
-                message = "An application with {} - {} had already been submitted. " \
-                          "This means you have already applied. " \
-                          "Contact us if you think this is a mistake.".format(
-                    validation_field.replace('_', ' '),
-                    form_validation_value)
-                messages.add_message(request, messages.ERROR, message)
+                # keep the field/value pairing out of the public message - it's
+                # only safe to expose in the admin alert/logs below.
+                messages.add_message(
+                    request, messages.ERROR,
+                    "An application with this email address has already been submitted. "
+                    "This means you have already applied. "
+                    "Contact us if you think this is a mistake."
+                )
 
                 # We have a duplicate. Do not continue to process form
                 should_process = False
@@ -689,11 +761,17 @@ class SummerSchoolApplicationPage(MetadataPageMixin, FormPageReviewSettingsMixin
 
         context = self.get_context(request)
         context['form'] = form
-        return TemplateResponse(
+        response = TemplateResponse(
             request,
             self.get_template(request),
             context
         )
+        # This serve() override skips WagtailCacheMixin.serve(), so the
+        # cache_control opt-out above is never applied unless set here too -
+        # otherwise wagtail-cache stores this page (CSRF token baked into the
+        # HTML) and serves it to later visitors, whose cookie won't match it.
+        response['Cache-Control'] = self.cache_control
+        return response
 
     def process_suspicious_form(self, form):
         remove_captcha_field(form)
