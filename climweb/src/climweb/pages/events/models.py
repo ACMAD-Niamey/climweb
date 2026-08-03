@@ -707,7 +707,12 @@ class EventRegistrationPage(MetadataPageMixin, FormPageClosingDateMixin, FormPag
             # that was relabeled in the CMS (e.g. a Gender dropdown) keeps its
             # original clean_name, so name alone isn't enough to trust it.
             fields_by_name = {field.clean_name: field.field_type for field in self.get_form_fields()}
-            form_validation_value = form_data.get(validation_field) if fields_by_name.get(validation_field) == 'email' else None
+            matched_email_field = None
+            form_validation_value = None
+            if fields_by_name.get(validation_field) == 'email':
+                form_validation_value = form_data.get(validation_field)
+                if form_validation_value:
+                    matched_email_field = validation_field
 
             # try getting email using email or email_address
             if not form_validation_value:
@@ -715,11 +720,12 @@ class EventRegistrationPage(MetadataPageMixin, FormPageClosingDateMixin, FormPag
                     if fields_by_name.get(fallback_field) == 'email':
                         form_validation_value = form_data.get(fallback_field)
                         if form_validation_value:
+                            matched_email_field = fallback_field
                             break
 
             if form_validation_value:
                 queryset = submission_class.objects.filter(
-                    form_data__icontains=f'"{validation_field}": "{form_validation_value}"', page=self
+                    **{f'form_data__{matched_email_field}': form_validation_value}, page=self
                 )
                 if queryset.exists():
                     # keep the field/value pairing out of the public message -
