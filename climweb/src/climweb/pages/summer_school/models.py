@@ -22,8 +22,9 @@ from wagtailiconchooser.widgets import IconChooserWidget
 
 from climweb.base import blocks as base_blocks
 from climweb.base.forms import (FormImageField, FormDocumentField, CustomSubmissionsListView,
-                                CustomWagtailCaptchaFormBuilder)
-from climweb.base.mixins import MetadataPageMixin, FormPageReviewSettingsMixin, FormFieldMaxLengthMixin
+                                CustomWagtailCaptchaFormBuilder, effective_clean_name)
+from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin, FormFieldMaxLengthMixin,
+                                 FormCleanNameFallbackMixin)
 from climweb.base.models import FormFileSubmission
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import get_duplicates, generate_title_from_filename, query_param_to_list, paginate
@@ -560,7 +561,7 @@ class SummerSchoolPage(MetadataPageMixin, Page):
         return grouped
 
 
-class SummerSchoolApplicationPage(MetadataPageMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
+class SummerSchoolApplicationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
     required_css_class = 'required'
     form_builder = CustomWagtailCaptchaFormBuilder
     submissions_list_view_class = CustomSubmissionsListView
@@ -686,7 +687,7 @@ class SummerSchoolApplicationPage(MetadataPageMixin, FormPageReviewSettingsMixin
         # the configured field must actually be an email field - a field that
         # was relabeled in the CMS (e.g. a Gender dropdown) keeps its original
         # clean_name, so name alone isn't enough to trust it holds an email.
-        fields_by_name = {field.clean_name: field.field_type for field in self.get_form_fields()}
+        fields_by_name = {effective_clean_name(field): field.field_type for field in self.get_form_fields()}
         form_validation_value = form_data.get(validation_field) if fields_by_name.get(validation_field) == 'email' else None
 
         # try getting email using email or email_address

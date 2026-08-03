@@ -10,6 +10,8 @@ from wagtail.fields import StreamField
 from wagtailcache.cache import WagtailCacheMixin
 from wagtailmetadata.models import MetadataPageMixin as BaseMetadataPageMixin
 
+from climweb.base.form_utils import effective_clean_name
+
 
 class MetadataPageMixin(BaseMetadataPageMixin, WagtailCacheMixin):
     class Meta:
@@ -38,6 +40,27 @@ class MetadataPageMixin(BaseMetadataPageMixin, WagtailCacheMixin):
         if meta_image:
             return get_full_url(request, meta_image.url)
         return None
+
+
+class FormCleanNameFallbackMixin(models.Model):
+    """Makes admin-side submission display resilient to a blank clean_name
+    on a form field (see effective_clean_name in climweb.base.forms for why
+    that happens) by overriding Wagtail's FormMixin.get_data_fields() - the
+    shared source every submissions list/review/export view in this project
+    builds its columns from - to resolve fields the same way the live form
+    itself already does. Without this, such a field's submitted data is
+    real and stored, but every admin view looks it up under the wrong (empty)
+    key and shows it as blank.
+    """
+    class Meta:
+        abstract = True
+
+    def get_data_fields(self):
+        data_fields = [("submit_time", _("Submission date"))]
+        data_fields += [
+            (effective_clean_name(field), field.label) for field in self.get_form_fields()
+        ]
+        return data_fields
 
 
 class FormPageReviewSettingsMixin(models.Model):

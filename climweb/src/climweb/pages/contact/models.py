@@ -19,12 +19,12 @@ from wagtailgeowidget.panels import LeafletPanel, GeoAddressPanel
 from climweb.base.forms import CustomWagtailCaptchaFormBuilder
 from climweb.base.mail import send_mail, get_default_from_email
 from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin, FormPageClosingDateMixin,
-                                 FormFieldMaxLengthMixin)
+                                 FormFieldMaxLengthMixin, FormCleanNameFallbackMixin)
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import get_duplicates
 
 
-class ContactPage(MetadataPageMixin, FormPageClosingDateMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
+class ContactPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageClosingDateMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
     form_builder = CustomWagtailCaptchaFormBuilder
     template = 'contact/contact_page.html'
     parent_page_types = ['home.HomePage']

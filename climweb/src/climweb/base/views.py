@@ -23,7 +23,7 @@ from climweb.base.mail import send_mail
 from climweb.base.utils import get_latest_cms_release, send_upgrade_command, send_plugin_remove, get_installed_plugins, \
     mix_with_white
 from climweb.utils.version import check_version_greater_than_current, get_main_version
-from .forms import CMSUpgradeForm
+from .forms import CMSUpgradeForm, effective_clean_name
 from .models import Theme, OrganisationSetting, FormFileSubmission, SubmissionReview, SubmissionEmailLog
 
 
@@ -253,7 +253,7 @@ def _get_submission_field_rows(page, submission):
     Mirrors the field_type lookup CustomSubmissionsListView already uses
     (climweb/base/forms.py) so both views agree on which fields are files.
     """
-    fields_by_type = {field.clean_name: field.field_type for field in page.get_form_fields()}
+    fields_by_type = {effective_clean_name(field): field.field_type for field in page.get_form_fields()}
     form_data = submission.get_data()
     rows = []
 
@@ -429,7 +429,7 @@ def compose_submission_email_view(request, page_id):
     submissions = list(submission_class.objects.filter(pk__in=submission_ids, page=page))
     content_type = ContentType.objects.get_for_model(submission_class)
 
-    fields_by_type = {f.clean_name: f.field_type for f in page.get_form_fields()}
+    fields_by_type = {effective_clean_name(f): f.field_type for f in page.get_form_fields()}
     email_field = next((n for n, t in fields_by_type.items() if t == "email"), None)
     name_field = "name" if "name" in fields_by_type else None
 
