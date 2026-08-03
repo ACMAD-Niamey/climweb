@@ -80,6 +80,12 @@ COPY ./climweb/requirements/base.txt /climweb/requirements/
 RUN python3 -m venv /climweb/venv
 
 ENV PIP_CACHE_DIR=/tmp/climweb_pip_cache
+# Large geospatial wheels (cartopy, netcdf4, rasterio, matplotlib, ...) can
+# stall mid-download on a slow/flaky connection to files.pythonhosted.org.
+# pip's default 15s read timeout is too tight for that, so raise it and
+# retry a few times before giving up.
+ENV PIP_DEFAULT_TIMEOUT=100
+ENV PIP_RETRIES=10
 # hadolint ignore=SC1091,DL3042
 RUN --mount=type=cache,mode=777,target=$PIP_CACHE_DIR,uid=$UID,gid=$GID . /climweb/venv/bin/activate && \
      pip3 install  -r /climweb/requirements/base.txt
