@@ -134,12 +134,18 @@ class DataRequestPage(MetadataPageMixin, FormPageClosingDateMixin, FormPageRevie
         
         context = self.get_context(request)
         context['form'] = form
-        return TemplateResponse(
+        response = TemplateResponse(
             request,
             self.get_template(request),
             context
         )
-    
+        # This serve() override skips WagtailCacheMixin.serve(), so the
+        # cache_control opt-out above is never applied unless set here too -
+        # otherwise wagtail-cache stores this page (CSRF token baked into the
+        # HTML) and serves it to later visitors, whose cookie won't match it.
+        response['Cache-Control'] = self.cache_control
+        return response
+
     def process_suspicious_form(self, form):
         remove_captcha_field(form)
         
