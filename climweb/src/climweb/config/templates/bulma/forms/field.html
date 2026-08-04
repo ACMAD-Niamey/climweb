@@ -1,4 +1,4 @@
-{% load bulma_tags wagtailiconchooser_tags i18n %}
+{% load bulma_tags wagtailiconchooser_tags i18n static %}
 <div class="field">
     {% if field|is_checkbox %}
         <div class="control {{ classes.single_value }}">
@@ -57,6 +57,19 @@
                 </p>
             {% endif %}
         </div>
+        {% if 'datepicker-field' in field.field.widget.attrs.class %}
+            <link rel="stylesheet" href="{% static 'css/datepicker.min.css' %}">
+            <link rel="stylesheet" href="{% static 'css/datepicker-bulma.min.css' %}">
+            <script src="{% static 'js/datepicker.min.js' %}"></script>
+            <script>
+                new Datepicker(document.getElementById('{{ field.auto_id }}'), {
+                    format: 'yyyy-mm-dd',
+                    autohide: true,
+                    todayHighlight: true,
+                    clearBtn: true,
+                });
+            </script>
+        {% endif %}
 
     {% elif field|is_textarea %}
 
