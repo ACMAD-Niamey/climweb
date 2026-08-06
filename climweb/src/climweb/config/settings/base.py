@@ -648,6 +648,20 @@ CELERY_SINGLETON_BACKEND_CLASS = (
 # Set max memory per child process (in kilobytes, e.g., 200000 KB = 200 MB)
 CELERY_WORKER_MAX_MEMORY_PER_CHILD = env.int("CELERY_WORKER_MAX_MEMORY_PER_CHILD", default=200000)
 
+# ACMAD's public Continental Multi-Hazard Outlook archive can be polled by the
+# products Celery worker. It is opt-in so upstream ClimWeb installations do not
+# unexpectedly fetch ACMAD-specific content.
+ACMAD_MULTIHAZARD_AUTO_IMPORT = env.bool("ACMAD_MULTIHAZARD_AUTO_IMPORT", default=False)
+ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS", default=6
+)
+ACMAD_MULTIHAZARD_IMPORT_LIMIT = env.int("ACMAD_MULTIHAZARD_IMPORT_LIMIT", default=10)
+ACMAD_RAINFALL_AUTO_IMPORT = env.bool("ACMAD_RAINFALL_AUTO_IMPORT", default=False)
+ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS", default=6
+)
+ACMAD_RAINFALL_IMPORT_LIMIT = env.int("ACMAD_RAINFALL_IMPORT_LIMIT", default=7)
+
 CELERY_APP = 'climweb.config.celery:app'
 
 CACHES = {

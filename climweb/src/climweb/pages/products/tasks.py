@@ -6,6 +6,8 @@ import uuid
 from datetime import date, datetime, timedelta
 
 from celery_singleton import Singleton
+from django.conf import settings
+from django.core.management import call_command
 from django.core.files import File
 from django.utils.text import slugify
 from loguru import logger
@@ -330,10 +332,56 @@ def ingest_product_files(self):
     logger.info("[INGESTION] Scan complete.")
 
 
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_multihazard_import(self):
+    """Fetch and publish new Continental Multi-Hazard Outlook issues."""
+    if not settings.ACMAD_MULTIHAZARD_AUTO_IMPORT:
+        logger.info("[ACMAD MULTI-HAZARD] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_MULTIHAZARD_IMPORT_LIMIT
+    logger.info(
+        f"[ACMAD MULTI-HAZARD] Checking the newest {limit} archive issue(s)."
+    )
+    call_command(
+        "import_acmad_multihazard",
+        limit=limit,
+        continue_on_error=True,
+    )
+    logger.info("[ACMAD MULTI-HAZARD] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_daily_rainfall_import(self):
+    """Fetch and publish new daily GSMaP rainfall observation images."""
+    if not settings.ACMAD_RAINFALL_AUTO_IMPORT:
+        logger.info("[ACMAD RAINFALL] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_RAINFALL_IMPORT_LIMIT
+    logger.info(f"[ACMAD RAINFALL] Checking the newest {limit} archive issue(s).")
+    call_command(
+        "import_acmad_daily_rainfall",
+        limit=limit,
+        continue_on_error=True,
+    )
+    logger.info("[ACMAD RAINFALL] Automatic import complete.")
+
+
 @app.on_after_finalize.connect
 def setup_product_ingestion_tasks(sender, **kwargs):
     sender.add_periodic_task(
         60 * 5,  # every 15 minutes
         ingest_product_files.s(),
         name='ingest-product-files-every-5-minutes',
+    )
+    sender.add_periodic_task(
+        60 * 60 * settings.ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS,
+        run_acmad_multihazard_import.s(),
+        name="import-acmad-multihazard-automatically",
+    )
+    sender.add_periodic_task(
+        60 * 60 * settings.ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS,
+        run_acmad_daily_rainfall_import.s(),
+        name="import-acmad-daily-rainfall-automatically",
     )
