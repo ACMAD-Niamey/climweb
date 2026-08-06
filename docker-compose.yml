@@ -49,6 +49,8 @@ x-climweb-variables: &climweb-variables
   ACMAD_RAINFALL_AUTO_IMPORT: ${ACMAD_RAINFALL_AUTO_IMPORT:-False}
   ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS: ${ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS:-6}
   ACMAD_RAINFALL_IMPORT_LIMIT: ${ACMAD_RAINFALL_IMPORT_LIMIT:-7}
+  ACMAD_DEKADAL_AUTO_IMPORT: ${ACMAD_DEKADAL_AUTO_IMPORT:-False}
+  ACMAD_DEKADAL_IMPORT_INTERVAL_HOURS: ${ACMAD_DEKADAL_IMPORT_INTERVAL_HOURS:-24}
 
 # Same variables as above, but pointed at the prod-profile services (climweb_db_prod /
 # climweb_redis_prod) instead of the dev ones, and defaulting CLIMWEB_DEPLOYMENT_ENV to

@@ -368,6 +368,21 @@ def run_acmad_daily_rainfall_import(self):
     logger.info("[ACMAD RAINFALL] Automatic import complete.")
 
 
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_dekadal_import(self):
+    """Fetch and publish the current Dekadal Climate Bulletin document set."""
+    if not settings.ACMAD_DEKADAL_AUTO_IMPORT:
+        logger.info("[ACMAD DEKADAL] Automatic import is disabled.")
+        return
+
+    logger.info("[ACMAD DEKADAL] Checking the current bulletin document set.")
+    call_command(
+        "import_acmad_dekadal_bulletin",
+        continue_on_error=True,
+    )
+    logger.info("[ACMAD DEKADAL] Automatic import complete.")
+
+
 @app.on_after_finalize.connect
 def setup_product_ingestion_tasks(sender, **kwargs):
     sender.add_periodic_task(
@@ -384,4 +399,9 @@ def setup_product_ingestion_tasks(sender, **kwargs):
         60 * 60 * settings.ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS,
         run_acmad_daily_rainfall_import.s(),
         name="import-acmad-daily-rainfall-automatically",
+    )
+    sender.add_periodic_task(
+        60 * 60 * settings.ACMAD_DEKADAL_IMPORT_INTERVAL_HOURS,
+        run_acmad_dekadal_import.s(),
+        name="import-acmad-dekadal-bulletin-automatically",
     )
