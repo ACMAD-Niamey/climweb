@@ -651,6 +651,9 @@ CELERY_WORKER_MAX_MEMORY_PER_CHILD = env.int("CELERY_WORKER_MAX_MEMORY_PER_CHILD
 # ACMAD's public Continental Multi-Hazard Outlook archive can be polled by the
 # products Celery worker. It is opt-in so upstream ClimWeb installations do not
 # unexpectedly fetch ACMAD-specific content.
+ACMAD_INITIAL_IMPORT_ON_STARTUP = env.bool(
+    "ACMAD_INITIAL_IMPORT_ON_STARTUP", default=False
+)
 ACMAD_MULTIHAZARD_AUTO_IMPORT = env.bool("ACMAD_MULTIHAZARD_AUTO_IMPORT", default=False)
 ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS = env.int(
     "ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS", default=6

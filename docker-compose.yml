@@ -56,6 +56,10 @@ x-climweb-variables: &climweb-variables
   ACMAD_POLICY_BRIEFS_IMPORT_LIMIT: ${ACMAD_POLICY_BRIEFS_IMPORT_LIMIT:-5}
   ACMAD_ATMOSPHERIC_ANALYSIS_AUTO_IMPORT: ${ACMAD_ATMOSPHERIC_ANALYSIS_AUTO_IMPORT:-False}
   ACMAD_ATMOSPHERIC_ANALYSIS_IMPORT_INTERVAL_HOURS: ${ACMAD_ATMOSPHERIC_ANALYSIS_IMPORT_INTERVAL_HOURS:-6}
+  ACMAD_HEAT_STRESS_AUTO_IMPORT: ${ACMAD_HEAT_STRESS_AUTO_IMPORT:-False}
+  ACMAD_HEAT_STRESS_IMPORT_INTERVAL_HOURS: ${ACMAD_HEAT_STRESS_IMPORT_INTERVAL_HOURS:-6}
+  ACMAD_HEAT_STRESS_IMPORT_LIMIT: ${ACMAD_HEAT_STRESS_IMPORT_LIMIT:-3}
+  ACMAD_INITIAL_IMPORT_ON_STARTUP: ${ACMAD_INITIAL_IMPORT_ON_STARTUP:-False}
 
 # Same variables as above, but pointed at the prod-profile services (climweb_db_prod /
 # climweb_redis_prod) instead of the dev ones, and defaulting CLIMWEB_DEPLOYMENT_ENV to
@@ -249,6 +253,22 @@ services:
     container_name: climweb_celery_beat_prod
     command: celery-beat
     restart: unless-stopped
+    profiles: ["prod"]
+    environment:
+      <<: *climweb-variables-prod
+    volumes:
+      - static_prod:/climweb/web/src/climweb/static
+      - media_prod:/climweb/web/src/climweb/media
+      - ${BACKUP_VOLUME_PROD:-./cms/backup-prod}:/climweb/web/src/climweb/backup
+    depends_on:
+      climweb_prod:
+        condition: service_healthy
+
+  climweb_acmad_seed_prod:
+    image: climweb_prod
+    container_name: climweb_acmad_seed_prod
+    command: manage bootstrap_acmad_products
+    restart: "no"
     profiles: ["prod"]
     environment:
       <<: *climweb-variables-prod
