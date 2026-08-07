@@ -1,0 +1,241 @@
+from django.test import RequestFactory
+from django.contrib.messages.storage.fallback import FallbackStorage
+from django.contrib.sessions.backends.db import SessionStore
+from wagtail.test.utils import WagtailPageTestCase
+
+from climweb.pages.home.tests.factories import get_or_create_homepage
+from ..models import SummerSchoolApplicationFormField
+from .factories import (
+    SummerSchoolIndexPageFactory,
+    SummerSchoolPageFactory,
+    SummerSchoolApplicationPageFactory,
+)
+
+# NOTE: This is Wave 0 - only models/blocks/migrations are built here. Templates
+# (summer_school_index_page.html, summer_school_page.html,
+# summer_school_application_page.html) are built in a later wave and do not exist
+# yet, so `assertPageIsRenderable()` would fail with TemplateDoesNotExist. These
+# tests instead confirm the page tree can be built and saved correctly with the
+# frozen field/block contract. Once templates land, rendering + meta-tag tests
+# (mirroring climweb/pages/events/tests/test_models.py) should be added here.
+
+
+class TestSummerSchoolPages(WagtailPageTestCase):
+    @classmethod
+    def setUpTestData(cls):
+        home_page = get_or_create_homepage()
+        cls.index_page = SummerSchoolIndexPageFactory(parent=home_page)
+
+        cls.edition1 = SummerSchoolPageFactory(parent=cls.index_page)
+        cls.edition2 = SummerSchoolPageFactory(parent=cls.index_page)
+
+        cls.application_page = SummerSchoolApplicationPageFactory(parent=cls.edition1)
+
+    def test_index_page_created(self):
+        self.assertTrue(self.index_page.id)
+        self.assertTrue(self.index_page.live)
+
+    def test_index_page_max_count_enforced(self):
+        # max_count = 1 is enforced by Wagtail; a second index page under the same
+        # parent should not be creatable since one already exists.
+        self.assertFalse(type(self.index_page).can_create_at(self.index_page.get_parent()))
+
+    def test_edition_pages_created_under_index(self):
+        self.assertTrue(self.edition1.id)
+        self.assertTrue(self.edition2.id)
+        self.assertEqual(self.edition1.get_parent().specific, self.index_page)
+
+    def test_editions_property_orders_by_start_date(self):
+        self.edition1.edition_start_date = "2025-06-01"
+        self.edition1.save()
+        self.edition2.edition_start_date = "2026-06-01"
+        self.edition2.save()
+
+        editions = list(self.index_page.editions)
+        self.assertIn(self.edition1.specific, editions)
+        self.assertIn(self.edition2.specific, editions)
+
+    def test_application_page_created_under_edition(self):
+        self.assertTrue(self.application_page.id)
+        self.assertEqual(self.application_page.get_parent().specific, self.edition1)
+
+    def test_application_page_is_edition_first_child(self):
+        self.assertEqual(self.edition1.application_page.specific, self.application_page)
+
+    def test_schedule_data_empty_by_default(self):
+        self.assertEqual(self.edition1.schedule_data, {})
+
+    def test_cohorts_blank_by_default(self):
+        self.assertEqual(len(self.edition1.cohorts), 0)
+
+    def test_application_page_default_validation_field(self):
+        self.assertEqual(self.application_page.validation_field, "email_address")
+
+    def test_get_response_sets_no_cache_header(self):
+        # serve() renders its own TemplateResponse instead of calling
+        # super().serve(), so WagtailCacheMixin never runs - the header must
+        # be set explicitly or wagtail-cache will store a page with a CSRF
+        # token baked in and serve it to later visitors (see should_process_form
+        # tests below for the related duplicate-check bug).
+        response = self.client.get(self.application_page.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Cache-Control"], "no-cache")
+
+
+class TestSummerSchoolShouldProcessForm(WagtailPageTestCase):
+    """
+    should_process_form() must only treat validation_field's value as an
+    email if the field it resolves to is actually an email field - otherwise
+    a field that was relabeled in the CMS (label changed, clean_name kept)
+    can silently be used for the duplicate check.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        home_page = get_or_create_homepage()
+        index_page = SummerSchoolIndexPageFactory(parent=home_page)
+        edition = SummerSchoolPageFactory(parent=index_page)
+        cls.application_page = SummerSchoolApplicationPageFactory(parent=edition)
+
+        cls.email_field = cls.application_page.application_form_fields.create(
+            label="Email address", field_type="email", required=True, sort_order=0,
+        )
+        cls.gender_field = cls.application_page.application_form_fields.create(
+            label="Gender", field_type="dropdown", required=True, sort_order=1,
+        )
+        # application_form_fields.create() only stages the child on the
+        # in-memory cluster - clean_name is generated by
+        # AbstractFormField.save(), which only runs once the parent page is
+        # actually saved and commits the child cluster to the DB.
+        cls.application_page.save()
+        cls.email_field.refresh_from_db()
+        cls.gender_field.refresh_from_db()
+
+    def _build_request(self):
+        request = RequestFactory().post(self.application_page.url)
+        request.session = SessionStore()
+        request._messages = FallbackStorage(request)
+        return request
+
+    def test_flags_duplicate_when_field_is_a_real_email_field(self):
+        submission_class = self.application_page.get_submission_class()
+        submission_class.objects.create(
+            page=self.application_page, form_data={"email_address": "applicant@example.com"}
+        )
+
+        request = self._build_request()
+        should_process = self.application_page.should_process_form(
+            request, form_data={"email_address": "applicant@example.com"}
+        )
+
+        self.assertFalse(should_process)
+
+    def test_public_message_does_not_leak_the_matched_value(self):
+        submission_class = self.application_page.get_submission_class()
+        submission_class.objects.create(
+            page=self.application_page, form_data={"email_address": "applicant@example.com"}
+        )
+
+        request = self._build_request()
+        self.application_page.should_process_form(
+            request, form_data={"email_address": "applicant@example.com"}
+        )
+
+        message_texts = [m.message for m in request._messages]
+        self.assertEqual(len(message_texts), 1)
+        self.assertNotIn("applicant@example.com", message_texts[0])
+
+    def test_ignores_validation_field_that_is_no_longer_an_email_field(self):
+        # Simulate the live-page bug: validation_field still says
+        # "email_address", but that clean_name now belongs to a relabeled
+        # Gender field (clean_name is only set once, on field creation - see
+        # wagtail.contrib.forms.models.AbstractFormField.save()).
+        SummerSchoolApplicationFormField.objects.filter(page=self.application_page).delete()
+        relabeled_field = self.application_page.application_form_fields.create(
+            label="Gender", field_type="dropdown", required=True, sort_order=0,
+        )
+        self.application_page.save()
+        SummerSchoolApplicationFormField.objects.filter(pk=relabeled_field.pk).update(
+            clean_name="email_address"
+        )
+
+        submission_class = self.application_page.get_submission_class()
+        submission_class.objects.create(
+            page=self.application_page, form_data={"email_address": "Male"}
+        )
+
+        request = self._build_request()
+        should_process = self.application_page.should_process_form(
+            request, form_data={"email_address": "Male"}
+        )
+
+        # Must NOT be flagged as a duplicate off the gender value - falls
+        # through to the "field misconfigured" admin-alert path instead.
+        self.assertTrue(should_process)
+
+    def test_does_not_false_positive_on_substring_match_across_fields(self):
+        # A previous applicant's unrelated field value happens to contain
+        # this applicant's email as a substring - the query must be scoped to
+        # the specific field's key, not a blob-wide substring search.
+        submission_class = self.application_page.get_submission_class()
+        submission_class.objects.create(
+            page=self.application_page,
+            form_data={
+                "email_address": "someone-else@example.com",
+                "motivation": "Referred by applicant@example.com, a past cohort member.",
+            },
+        )
+
+        request = self._build_request()
+        should_process = self.application_page.should_process_form(
+            request, form_data={"email_address": "applicant@example.com"}
+        )
+
+        self.assertTrue(should_process)
+
+
+class TestFormCleanNameFallback(WagtailPageTestCase):
+    """
+    A field row created without going through AbstractFormField.save() (e.g.
+    bulk_create, a data migration) can end up with clean_name="" in the DB.
+    Wagtail's own FormBuilder.formfields already tolerates this when
+    rendering/submitting the form (it falls back to
+    field.get_field_clean_name()), so real applicant data ends up stored
+    under that recomputed key - e.g. a "Full Name" field ends up storing to
+    "full_name". get_data_fields() must resolve the field the same way, or
+    admin submission views look up the empty key and show that real,
+    already-stored data as blank.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        home_page = get_or_create_homepage()
+        index_page = SummerSchoolIndexPageFactory(parent=home_page)
+        edition = SummerSchoolPageFactory(parent=index_page)
+        cls.application_page = SummerSchoolApplicationPageFactory(parent=edition)
+
+        cls.name_field = cls.application_page.application_form_fields.create(
+            label="Full Name", field_type="singleline", required=True, sort_order=0,
+        )
+        cls.application_page.save()
+
+        # Simulate the live-site bug: a field row whose clean_name never got
+        # generated (bulk_create/migration bypasses AbstractFormField.save()).
+        SummerSchoolApplicationFormField.objects.filter(pk=cls.name_field.pk).update(
+            clean_name=""
+        )
+
+    def test_get_data_fields_resolves_blank_clean_name(self):
+        data_fields = dict(self.application_page.get_data_fields())
+        self.assertIn("full_name", data_fields)
+        self.assertEqual(data_fields["full_name"], "Full Name")
+
+    def test_stored_data_under_the_fallback_key_is_not_lost(self):
+        submission_class = self.application_page.get_submission_class()
+        submission = submission_class.objects.create(
+            page=self.application_page, form_data={"full_name": "Jane Doe"}
+        )
+
+        data_fields = dict(self.application_page.get_data_fields())
+        clean_name = next(k for k, label in data_fields.items() if label == "Full Name")
+        self.assertEqual(submission.form_data.get(clean_name), "Jane Doe")

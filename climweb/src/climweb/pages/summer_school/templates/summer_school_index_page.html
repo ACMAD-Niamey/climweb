@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% load wagtailcore_tags wagtailimages_tags wagtailiconchooser_tags static i18n %}
+
+{% block extra_css %}
+    {# shared filter-sidebar/results-list visual system, also used by events/publications #}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/publication.css' %}">
+    {# cache-bust: see summer_school_page.html for why #}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/summer_school.css' %}?v={% now 'U' %}">
+{% endblock %}
+
+{% block body_class %}summer-school-index{% endblock %}
+
+{% block content %}
+    <!-- {% include 'breadcrumbs_include.html' with page=page %} -->
+
+    <section class="ss-index-hero">
+        {% if page.hero_background_image %}
+            {% image page.hero_background_image fill-1600x900 as hero_bg_img %}
+            <div class="ss-hero-bg" style="background-image:url('{{ hero_bg_img.url }}');"></div>
+        {% endif %}
+
+        <div class="container">
+            {% if page.hero_heading %}
+                <h1 class="ss-hero-heading">{{ page.hero_heading }}</h1>
+            {% endif %}
+
+            {% if page.hero_subtitle %}
+                <p class="ss-index-hero-subtitle">{{ page.hero_subtitle }}</p>
+            {% endif %}
+
+            {% if page.hero_description %}
+                <div class="ss-hero-description format-text">
+                    {{ page.hero_description|richtext }}
+                </div>
+            {% endif %}
+
+            {% if page.hero_badges %}
+                <div class="ss-hero-badges">
+                    {% for badge in page.hero_badges %}
+                        <span class="ss-pill is-filled">{{ badge.value }}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <main class="is-index">
+        <div class="container">
+
+            {% if page.featured_edition %}
+                <h2 class="ss-section-heading">{% translate "Featured Programme" %}</h2>
+                {% include 'summer_school_featured_edition_include.html' %}
+            {% endif %}
+
+            {% if page.editions %}
+                <div class="ss-index-stats">
+                    <div class="ss-index-stat">
+                        <span class="ss-icon-badge">{% svg_icon name="school" %}</span>
+                        <div class="ss-index-stat-body">
+                            <div class="ss-index-stat-value">{{ page.programmes_count }}</div>
+                            <div class="ss-index-stat-label">{% translate "programmes" %}</div>
+                        </div>
+                    </div>
+                    <div class="ss-index-stat">
+                        <span class="ss-icon-badge">{% svg_icon name="group" %}</span>
+                        <div class="ss-index-stat-body">
+                            <div class="ss-index-stat-value">{{ page.past_cohorts_count }}</div>
+                            <div class="ss-index-stat-label">{% translate "past cohorts" %}</div>
+                        </div>
+                    </div>
+                    <div class="ss-index-stat">
+                        <span class="ss-icon-badge">{% svg_icon name="calendar-alt" %}</span>
+                        <div class="ss-index-stat-body">
+                            <div class="ss-index-stat-value">{{ page.upcoming_count }}</div>
+                            <div class="ss-index-stat-label">{% translate "upcoming" %}</div>
+                        </div>
+                    </div>
+                    <div class="ss-index-stat">
+                        <span class="ss-icon-badge">{% svg_icon name="globe" %}</span>
+                        <div class="ss-index-stat-body">
+                            <div class="ss-index-stat-label ss-index-stat-label-only">
+                                {% translate "Across Africa" %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if page.other_editions_base %}
+                <section class="ss-listing-section">
+                    <h2 class="ss-section-heading" id="results">{% translate "Summer School Programmes" %}</h2>
+                    <div class="columns">
+                        <div class="column is-3 is-full-mobile">
+                            {% include 'summer_school_filter_include.html' with filters=page.filters %}
+                        </div>
+                        <div class="column is-9 is-full-mobile">
+                            {% include 'summer_school_results_include.html' with editions=editions_page %}
+                        </div>
+                    </div>
+                </section>
+            {% elif not page.featured_edition %}
+                <p class="ss-index-empty">{% translate "No summer school editions are available yet." %}</p>
+            {% endif %}
+        </div>
+    </main>
+
+    {% if page.banner_heading or page.banner_description %}
+        <section class="ss-index-banner">
+            <div class="container ss-index-banner-inner">
+                <span class="ss-icon-badge ss-index-banner-icon">{% svg_icon name="group" %}</span>
+                <div>
+                    {% if page.banner_heading %}
+                        <h3 class="ss-index-banner-heading">{{ page.banner_heading }}</h3>
+                    {% endif %}
+                    {% if page.banner_description %}
+                        <div class="ss-index-banner-description format-text">
+                            {{ page.banner_description|richtext }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+    {% endif %}
+{% endblock content %}
+
+{% block extra_js %}
+    <script>
+        // Same reload-on-change recipe as event_index_page.html, using the
+        // shared getParams/markCheckboxesFromUrlParams/filterChangeListener
+        // helpers from common_cms.js - text search added on top, since
+        // those helpers only handle checkboxes/buttons, not free text.
+        document.addEventListener('DOMContentLoaded', function () {
+            var searchInput = document.getElementById('ss-search-input');
+            var baseUrl = "{{ page.url }}";
+            var params = getParams(window.location.href);
+
+            if (searchInput && params.q) {
+                searchInput.value = params.q;
+            }
+
+            markCheckboxesFromUrlParams('ss-filter', params);
+
+            filterChangeListener('ss-filter', params, function (clickedEl, url_params) {
+                window.location.href = baseUrl + '?' + url_params + '#results';
+            });
+
+            if (searchInput) {
+                searchInput.addEventListener('keydown', function (event) {
+                    if (event.key !== 'Enter') {
+                        return;
+                    }
+                    var query = searchInput.value.trim();
+                    if (query) {
+                        params.q = query;
+                    } else {
+                        delete params.q;
+                    }
+                    window.location.href = baseUrl + '?' + urlParamsFromObject(params) + '#results';
+                });
+            }
+        });
+    </script>
+{% endblock %}

@@ -37,6 +37,16 @@ operation and maintenance.
 
 The management commands section provides an overview of these commands and their usage.
 
+### Deployment
+
+The deployment section documents ACMAD's actual CI/CD pipeline and production deployment process - the concrete
+build/deploy commands, as opposed to a generic Docker installation guide.
+
+### Subdomain Deployment
+
+The subdomain deployment section documents an ACMAD-fork-specific customization for serving a section of the site
+(e.g. Summer School) on its own subdomain, sharing the same application and database as the main site.
+
 ```{toctree}
 ---
 maxdepth: 1
@@ -46,4 +56,6 @@ general-architecture
 backup-restore
 management-commands
 extending-climweb/index
+deployment
+subdomain-deployment
 ```

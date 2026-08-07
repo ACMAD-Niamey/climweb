@@ -9,6 +9,7 @@ from wagtail.contrib.forms.views import SubmissionsListView
 from wagtail.images.fields import WagtailImageField
 from wagtailcaptcha.forms import WagtailCaptchaFormBuilder
 
+from climweb.base.form_utils import effective_clean_name
 from climweb.base.models import FormFileSubmission
 
 
@@ -79,7 +80,7 @@ class CustomSubmissionsListView(SubmissionsListView):
             for data_row in data_rows:
                 fields = data_row['fields']
                 for idx, (value, field_type) in enumerate(zip(fields, field_types)):
-                    if field_type == 'image' or field_type == 'document' and value:
+                    if (field_type == 'image' or field_type == 'document') and value:
                         file_submission = FormFileSubmission.objects.get(pk=value)
                         full_url = get_full_url(self.request, file_submission.file.url)
                         
@@ -107,7 +108,9 @@ class CustomSubmissionsListView(SubmissionsListView):
         return context
     
     def get_preprocess_function(self, field, value, export_format):
-        fields_by_type = {field.clean_name: field.field_type for field in self.form_page.get_form_fields()}
+        fields_by_type = {
+            effective_clean_name(f): f.field_type for f in self.form_page.get_form_fields()
+        }
         field_type = fields_by_type.get(field)
         
         # If the field_type is an image or document, we need to return a function that will return
@@ -123,9 +126,21 @@ class CustomSubmissionsListView(SubmissionsListView):
 class CustomFormBuilder(FormBuilder):
     def create_image_field(self, field, options):
         return FormImageField(**options)
-    
+
     def create_document_field(self, field, options):
         return FormDocumentField(**options)
+
+    def create_multiline_field(self, field, options):
+        # field is the AbstractFormField (+ FormFieldMaxLengthMixin) instance
+        # being built - max_length is only ever set via that mixin's admin
+        # panel, so a plain FormBuilder-managed field without it is unaffected.
+        max_length = getattr(field, 'max_length', None)
+        if max_length:
+            options['max_length'] = max_length
+            max_length_note = _("Maximum %(max_length)d characters.") % {"max_length": max_length}
+            options['help_text'] = f"{options.get('help_text') or ''} {max_length_note}".strip()
+        options.setdefault('widget', forms.Textarea)
+        return forms.CharField(**options)
 
 
 class CustomWagtailCaptchaFormBuilder(CustomFormBuilder, WagtailCaptchaFormBuilder):

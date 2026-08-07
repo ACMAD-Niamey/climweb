@@ -9,7 +9,7 @@ from django.db.models import CharField, TextField
 from django.http import HttpResponseRedirect
 from django.templatetags.static import static
 from django.urls import path, reverse
-from django.utils.html import format_html
+from django.utils.html import format_html, strip_tags
 from django.utils.translation import gettext_lazy as _
 from better_profanity import profanity
 from wagtail import hooks
@@ -27,7 +27,8 @@ from climweb.utils.version import get_main_version, check_version_greater_than_c
 from .cap import create_cap_geomanager_dataset
 from .models import Theme, ServiceCategory, CAPGeomanagerSettings
 from .utils import get_latest_cms_release
-from .views import cms_version_view, plugin_manager_view, cms_upgrade_status_view
+from .views import (cms_version_view, plugin_manager_view, cms_upgrade_status_view, submission_review_view,
+                    submissions_ratings_view, compose_submission_email_view)
 
 
 class ModelAdminGroupWithHiddenItems(ModelAdminGroup):
@@ -52,6 +53,12 @@ def urlconf_base():
         path('cms-version', cms_version_view, name='cms-version'),
         path('cms-upgrade-status', cms_upgrade_status_view, name='cms-upgrade-status'),
         path('plugins', plugin_manager_view, name='plugin-manager'),
+        path('forms/submissions/<int:page_id>/<int:submission_id>/review/',
+             submission_review_view, name='form_submission_review'),
+        path('forms/submissions/<int:page_id>/ratings/',
+             submissions_ratings_view, name='submissions_ratings'),
+        path('forms/submissions/<int:page_id>/email/',
+             compose_submission_email_view, name='compose_submission_email'),
     ]
 
 
@@ -116,7 +123,17 @@ if _EXTRA_TERMS:
 
 
 def _page_text(page):
-    """Collect all text from every CharField, TextField, RichTextField, and StreamField on the specific page type."""
+    """Collect all author-facing text from every CharField, TextField, RichTextField, and
+    StreamField on the specific page type.
+
+    StreamField values are walked via each block's `get_searchable_content()` (the same API
+    Wagtail's own search indexing uses) rather than naively stringifying the StreamValue -
+    a plain str() would include non-text block markup (e.g. an IconChooserBlock's stored
+    value can be raw inline SVG such as `stroke="currentColor"`, and "stroke" happens to be
+    profanity-listed, so a page merely choosing an icon would false-positive on publish).
+    RichTextField HTML is tag-stripped for the same reason (attribute values, not authored
+    text, shouldn't feed the profanity check).
+    """
     specific = page.specific
     parts = [specific.title or ""]
     for field in specific._meta.get_fields():
@@ -125,7 +142,13 @@ def _page_text(page):
         if field.name == "title":
             continue
         value = getattr(specific, field.name, None)
-        if value:
+        if not value:
+            continue
+        if isinstance(field, StreamField):
+            parts.extend(str(item) for item in field.stream_block.get_searchable_content(value))
+        elif isinstance(field, RichTextField):
+            parts.append(strip_tags(str(value)))
+        else:
             parts.append(str(value))
     return " ".join(parts)
 

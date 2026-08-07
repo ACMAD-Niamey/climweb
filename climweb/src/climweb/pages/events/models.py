@@ -31,7 +31,9 @@ from wagtailmailchimp.models import AbstractMailchimpIntegrationForm
 from wagtailzoom.models import AbstractZoomIntegrationForm
 
 from climweb.base import blocks
-from climweb.base.mixins import MetadataPageMixin
+from climweb.base.forms import CustomWagtailCaptchaFormBuilder, effective_clean_name
+from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin, FormPageClosingDateMixin,
+                                 FormFieldMaxLengthMixin, FormCleanNameFallbackMixin)
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import (
     get_pytz_gmt_offset_str,
@@ -485,9 +487,10 @@ class EventPageCustomForm(WagtailAdminFormPageForm):
             self.fields.pop('audience_list_id', None)
 
 
-class EventRegistrationPage(MetadataPageMixin, WagtailCaptchaEmailForm, AbstractMailchimpIntegrationForm,
-                            AbstractZoomIntegrationForm):
+class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageClosingDateMixin, FormPageReviewSettingsMixin,
+                            WagtailCaptchaEmailForm, AbstractMailchimpIntegrationForm, AbstractZoomIntegrationForm):
     base_form_class = EventPageCustomForm
+    form_builder = CustomWagtailCaptchaFormBuilder
     
     template = 'event_registration_page.html'
     landing_page_template = 'form_thank_you_landing.html'
@@ -545,7 +548,7 @@ class EventRegistrationPage(MetadataPageMixin, WagtailCaptchaEmailForm, Abstract
         FieldPanel('send_confirmation_email'),
         FieldPanel('email_field'),
         FieldPanel('email_confirmation_message'),
-    ]
+    ] + FormPageReviewSettingsMixin.submission_review_settings_panels + FormPageClosingDateMixin.closing_date_panels
     
     class Meta:
         verbose_name = _("Event Registration Page")
@@ -594,7 +597,13 @@ class EventRegistrationPage(MetadataPageMixin, WagtailCaptchaEmailForm, Abstract
         
         context = self.get_context(request)
         context["form"] = form
-        return TemplateResponse(request, self.get_template(request), context)
+        response = TemplateResponse(request, self.get_template(request), context)
+        # This serve() override skips WagtailCacheMixin.serve(), so the
+        # cache_control opt-out above is never applied unless set here too -
+        # otherwise wagtail-cache stores this page (CSRF token baked into the
+        # HTML) and serves it to later visitors, whose cookie won't match it.
+        response['Cache-Control'] = self.cache_control
+        return response
 
     def send_confirmation_email_to_submitter(self, cleaned_data):
         """
@@ -693,22 +702,35 @@ class EventRegistrationPage(MetadataPageMixin, WagtailCaptchaEmailForm, Abstract
         if self.validation_field:
             validation_field = self.validation_field.replace('-', '_')
             submission_class = self.get_submission_class()
-            form_validation_value = form_data.get(validation_field)
-            
+
+            # the configured field must actually be an email field - a field
+            # that was relabeled in the CMS (e.g. a Gender dropdown) keeps its
+            # original clean_name, so name alone isn't enough to trust it.
+            fields_by_name = {effective_clean_name(field): field.field_type for field in self.get_form_fields()}
+            form_validation_value = form_data.get(validation_field) if fields_by_name.get(validation_field) == 'email' else None
+
             # try getting email using email or email_address
             if not form_validation_value:
-                form_validation_value = form_data.get("email") or form_data.get("email_address")
-            
+                for fallback_field in ("email", "email_address"):
+                    if fields_by_name.get(fallback_field) == 'email':
+                        form_validation_value = form_data.get(fallback_field)
+                        if form_validation_value:
+                            break
+
             if form_validation_value:
-                queryset = submission_class.objects.filter(form_data__icontains=form_validation_value, page=self)
+                queryset = submission_class.objects.filter(
+                    form_data__icontains=f'"{validation_field}": "{form_validation_value}"', page=self
+                )
                 if queryset.exists():
-                    message = "The registration with {} - {} had already been submitted. " \
-                              "This means you are already registered. " \
-                              "Contact us if you think this is a mistake.".format(
-                        validation_field.replace('_', ' '),
-                        form_validation_value)
-                    messages.add_message(request, messages.ERROR, message)
-                    
+                    # keep the field/value pairing out of the public message -
+                    # it's only safe to expose in the admin alert/logs below.
+                    messages.add_message(
+                        request, messages.ERROR,
+                        "The registration with this email address has already been submitted. "
+                        "This means you are already registered. "
+                        "Contact us if you think this is a mistake."
+                    )
+
                     # We have a duplicate. Do not continue to process form
                     should_process = False
             else:
@@ -740,7 +762,7 @@ class EventRegistrationPage(MetadataPageMixin, WagtailCaptchaEmailForm, Abstract
         return super().save(*args, **kwargs)
 
 
-class EventRegistrationFormField(AbstractFormField):
+class EventRegistrationFormField(FormFieldMaxLengthMixin, AbstractFormField):
     page = ParentalKey(EventRegistrationPage,
                        on_delete=models.CASCADE,
                        related_name="registration_form_fields")
@@ -761,7 +783,7 @@ class EventRegistrationFormTemplate(ClusterableModel):
         return self.template_name
 
 
-class EventRegistrationFormTemplateField(AbstractFormField):
+class EventRegistrationFormTemplateField(FormFieldMaxLengthMixin, AbstractFormField):
     form_template = ParentalKey(EventRegistrationFormTemplate, on_delete=models.CASCADE, related_name="form_fields")
     
     EXCLUDE = ['id', 'clean_name', 'form_template']

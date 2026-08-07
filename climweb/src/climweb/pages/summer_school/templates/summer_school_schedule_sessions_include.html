@@ -1,0 +1,87 @@
+{% load wagtailcore_tags wagtailimages_tags lazyimages_tags static i18n %}
+
+{# Renders one day's time-grouped session cards. Included twice per day #}
+{# from summer_school_schedule_include.html: once into the height-capped #}
+{# preview, once (with in_modal=True) into that day's "full schedule"    #}
+{# modal - so pass sessions_by_time (and in_modal, when applicable) as   #}
+{# include context rather than editing this file directly. #}
+
+{% for time, sessions in sessions_by_time.items %}
+    <div class="ss-schedule-time-heading">{{ time }}</div>
+    <div class="columns is-multiline is-mobile">
+        {% for session in sessions %}
+            <div class="column is-full">
+                <div class="ss-session-card">
+                    {% if session.value.image %}
+                        {% image session.value.image original as session_img %}
+                        <div class="ss-session-image">
+                            {% if in_modal %}
+                                {# see trainers_include.html for why modal-embedded images need this: #}
+                                {# progressively.js never upgrades images inside a closed (display:none) #}
+                                {# modal, so the "lazy_load" marker + summer_school.js's force-swap on   #}
+                                {# open is used here instead of relying on the normal scroll/viewport check. #}
+                                <img class="progressive__img progressive--not-loaded lazy_load"
+                                     data-progressive="{{ session_img.url }}"
+                                     src="{% lazy_image_url session_img %}"
+                                     alt="{{ session.value.title }}"/>
+                            {% else %}
+                                <img class="progressive__img progressive--not-loaded"
+                                     data-progressive="{{ session_img.url }}"
+                                     src="{% lazy_image_url session_img %}"
+                                     alt="{{ session.value.title }}"/>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                    <div class="ss-session-content">
+                        <div class="ss-session-card-time">
+                            {{ session.value.start_time|date:"h:i A" }}
+                            - {{ session.value.end_time|date:"h:i A" }}
+                        </div>
+
+                        {% if session.value.session_type %}
+                            <span class="ss-session-type-badge">
+                                {% if session.value.session_type == "foundation" %}
+                                    {% translate "Foundation" %}
+                                {% elif session.value.session_type == "sectoral" %}
+                                    {% translate "Sectoral" %}
+                                {% endif %}
+                            </span>
+                        {% endif %}
+
+                        <h3 class="ss-session-name" title="{{ session.value.title }}">
+                            {{ session.value.title }}
+                        </h3>
+
+                        {% if session.value.detail %}
+                            <div class="ss-session-detail format-text">
+                                {{ session.value.detail|richtext }}
+                            </div>
+                        {% endif %}
+
+                        {% if session.value.roles %}
+                            <div class="columns is-multiline is-mobile">
+                                {% for role in session.value.roles %}
+                                    <div class="column is-one-third-desktop is-full-mobile ss-session-role">
+                                        {% if role.image %}
+                                            {% image role.image original as role_image %}
+                                            <img class="progressive__img progressive--not-loaded{% if in_modal %} lazy_load{% endif %}"
+                                                 data-progressive="{{ role_image.url }}"
+                                                 src="{% lazy_image_url role_image %}"
+                                                 alt="{{ role.name }}"/>
+                                        {% else %}
+                                            <img src="{% static 'images/person.svg' %}" alt="{{ role.name }}"/>
+                                        {% endif %}
+                                        <div class="ss-session-role-detail">
+                                            <span class="ss-session-role-name">{{ role.name }}</span>
+                                            <span class="ss-session-role-title">{{ role.role }}</span>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endfor %}

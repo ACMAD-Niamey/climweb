@@ -1,0 +1,19 @@
+{% load wagtailcore_tags i18n %}
+
+<div class="ss-section-heading">
+    <h2>{% translate "FAQ" %}</h2>
+</div>
+
+<div class="ss-faq-list">
+    {% for block in page.faq %}
+        {% include_block block %}
+    {% endfor %}
+</div>
+
+{% if page.faq_view_all_page %}
+    <div class="ss-faq-view-all">
+        <a href="{{ page.faq_view_all_page.url }}">
+            {{ page.faq_view_all_text }}
+        </a>
+    </div>
+{% endif %}

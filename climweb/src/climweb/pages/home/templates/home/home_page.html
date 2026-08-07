@@ -8,10 +8,23 @@
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/home.css' %}">
     <link href="{% static 'css/hero.css' %}" type="text/css" rel="stylesheet"/>
-    <link href='{% static "css/maplibre-gl.css" %}' rel='stylesheet'/>
     <link rel="stylesheet" type="text/css" href="{% static 'css/partners.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'css/project_detail.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'css/zoom-to-location-control.css' %}">
+    {% if IS_METEOROLOGICAL %}
+        {# met homepage redesign — card row + services strip styles #}
+        <link rel="stylesheet" href="{% static 'css/home_redesign.css' %}">
+    {% endif %}
+    {% if page.show_weather_watch %}
+        {# map-only styles — loaded only when the weather watch map section is enabled #}
+        <link href='{% static "css/maplibre-gl.css" %}' rel='stylesheet'/>
+        {% if IS_METEOROLOGICAL %}
+            {# met mode uses the vanilla multi-hazard map card #}
+            <link rel="stylesheet" type="text/css" href="{% static 'css/multi_hazard_map.css' %}">
+        {% else %}
+            {# non-met mode uses the Vue home-map, which owns this control #}
+            <link rel="stylesheet" type="text/css" href="{% static 'css/zoom-to-location-control.css' %}">
+        {% endif %}
+    {% endif %}
     {% if page.youtube_playlist %}
         <link rel="stylesheet" type="text/css" href="{% static 'css/jquery.skeleton.css' %}">
         <link rel="stylesheet" type="text/css" href="{% static 'css/video_include.css' %}">
@@ -31,11 +44,17 @@
     </div>
     <main class="is-index">
         {% if IS_METEOROLOGICAL %}
-        {% include 'home/section/met_weather_section.html' %}
+        {% include 'home/section/met_cards_section.html' %}
         {% endif %}
 
-        {% include 'home/section/services_include.html' %}
-        {% include 'home/section/updates_include.html' %}
+        {% if not IS_METEOROLOGICAL %}
+            {# in met mode these are replaced by the services strip and the
+               latest-updates card inside met_cards_section.html #}
+            {% include 'home/section/services_include.html' %}
+            {% include 'home/section/updates_include.html' %}
+        {% endif %}
+
+        {% include 'home/section/summer_school_include.html' %}
 
         {% if page.youtube_playlist %}
             <section class="section videos" id="videoSection">
@@ -118,11 +137,21 @@
 {% endblock content %}
 
 {% block extra_js %}
-    <script src="{% static 'js/maplibre-gl.js' %}"></script>
-    <script src="{% static 'js/turf.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'js/bulmahead.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/zoom-to-location-control.js' %}"></script>
-    <script type="module" crossorigin src="{% vue_bundle_url 'home-map' %}"></script>
+    {% if page.show_weather_watch %}
+        {# map-only scripts — loaded only when the weather watch map section is enabled #}
+        {% if IS_METEOROLOGICAL %}
+            {# met mode: vanilla maplibre multi-hazard map card #}
+            <script defer src="{% static 'js/maplibre-gl.js' %}"></script>
+            <script defer src="{% static 'js/multi_hazard_map.js' %}"></script>
+        {% else %}
+            {# non-met mode: Vue home-map bundle and its helpers #}
+            <script src="{% static 'js/maplibre-gl.js' %}"></script>
+            <script src="{% static 'js/turf.min.js' %}"></script>
+            <script type="text/javascript" src="{% static 'js/zoom-to-location-control.js' %}"></script>
+            <script type="module" crossorigin src="{% vue_bundle_url 'home-map' %}"></script>
+        {% endif %}
+    {% endif %}
 
     {% if page.youtube_playlist %}
         <script src="{% static 'js/jquery.scheletrone.js' %}"></script>

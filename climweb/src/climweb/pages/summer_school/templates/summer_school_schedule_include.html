@@ -1,0 +1,50 @@
+{% load wagtailcore_tags i18n %}
+
+<div class="ss-section-heading">
+    <h2>{% translate "Schedule" %}</h2>
+</div>
+
+<div class="ss-schedule">
+    <div class="tabs ss-schedule-tabs">
+        <ul>
+            {% for session_date, sessions_by_time in page.schedule_data.items %}
+                <li class="{% if forloop.first %}is-active{% endif %}"
+                    data-id="ss-day-{{ session_date|date:'D-M-d-Y' }}">
+                    <a style="font-weight: bold">{{ session_date|date:"D M, d Y" }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    {% for session_date, sessions_by_time in page.schedule_data.items %}
+        <div id="ss-day-{{ session_date|date:'D-M-d-Y' }}"
+             class="content-tab {% if forloop.first %}is-active{% endif %}">
+
+            {# Height-capped preview - summer_school.js measures this after each #}
+            {# tab switch and only reveals ss-schedule-view-full when it overflows. #}
+            <div class="ss-schedule-day-content">
+                {% include 'summer_school_schedule_sessions_include.html' with sessions_by_time=sessions_by_time %}
+            </div>
+
+            <button type="button"
+                    class="ss-schedule-view-full js-modal-trigger"
+                    data-target="ss-day-modal-{{ session_date|date:'D-M-d-Y' }}">
+                {% translate "View full day schedule" %}
+            </button>
+        </div>
+    {% endfor %}
+</div>
+
+{# One modal per day, holding that day's full (uncapped) schedule. #}
+{% for session_date, sessions_by_time in page.schedule_data.items %}
+    <div id="ss-day-modal-{{ session_date|date:'D-M-d-Y' }}" class="modal">
+        <div class="modal-background"></div>
+        <div class="modal-content ss-schedule-modal-content">
+            <div class="box">
+                <h3 class="ss-schedule-modal-heading">{{ session_date|date:"D, d M Y" }}</h3>
+                {% include 'summer_school_schedule_sessions_include.html' with sessions_by_time=sessions_by_time in_modal=True %}
+            </div>
+        </div>
+        <button class="modal-close is-large" aria-label="close"></button>
+    </div>
+{% endfor %}

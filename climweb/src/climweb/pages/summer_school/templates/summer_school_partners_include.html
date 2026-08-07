@@ -1,0 +1,34 @@
+{% load wagtailimages_tags lazyimages_tags i18n %}
+
+<div class="ss-section-heading">
+    <h2>{% translate "Sponsors, Organizers & Partners" %}</h2>
+</div>
+
+{% with grouped=page.partners_by_role %}
+    {% if grouped.sponsor %}
+        <p class="ss-partners-group-heading">{% translate "Sponsors" %}</p>
+        <div class="ss-partners-grid">
+            {% for item in grouped.sponsor %}
+                {% include 'summer_school_partner_card_include.html' with item=item %}
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if grouped.organizer %}
+        <p class="ss-partners-group-heading">{% translate "Organizers" %}</p>
+        <div class="ss-partners-grid">
+            {% for item in grouped.organizer %}
+                {% include 'summer_school_partner_card_include.html' with item=item %}
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if grouped.partner %}
+        <p class="ss-partners-group-heading">{% translate "Partners" %}</p>
+        <div class="ss-partners-grid">
+            {% for item in grouped.partner %}
+                {% include 'summer_school_partner_card_include.html' with item=item %}
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}

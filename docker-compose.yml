@@ -22,7 +22,6 @@ x-climweb-variables: &climweb-variables
   RECAPTCHA_PRIVATE_KEY: ${RECAPTCHA_PRIVATE_KEY:-}
   RECAPTCHA_DOMAIN: ${RECAPTCHA_DOMAIN:-www.google.com}
   RECAPTCHA_VERIFY_REQUEST_TIMEOUT: ${RECAPTCHA_VERIFY_REQUEST_TIMEOUT:-60}
-  NEXTJS_SERVER_URL: http://climweb_mapviewer_dev:3000
   CMS_UPGRADE_HOOK_URL: ${CMS_UPGRADE_HOOK_URL:-}
   WAGTAILADMIN_BASE_URL: ${CMS_BASE_URL:-}
   LANGUAGE_CODE: ${CMS_DEFAULT_LANGUAGE_CODE:-en}
@@ -44,32 +43,54 @@ x-climweb-variables: &climweb-variables
   WAGTAIL_NEWSLETTER_MAILCHIMP_API_KEY: ${WAGTAIL_NEWSLETTER_MAILCHIMP_API_KEY:-}
   WAGTAIL_NEWSLETTER_FROM_NAME: ${WAGTAIL_NEWSLETTER_FROM_NAME:-}
   WAGTAIL_NEWSLETTER_REPLY_TO: ${WAGTAIL_NEWSLETTER_REPLY_TO:-}
+  ACMAD_MULTIHAZARD_AUTO_IMPORT: ${ACMAD_MULTIHAZARD_AUTO_IMPORT:-False}
+  ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS: ${ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS:-6}
+  ACMAD_MULTIHAZARD_IMPORT_LIMIT: ${ACMAD_MULTIHAZARD_IMPORT_LIMIT:-10}
+  ACMAD_RAINFALL_AUTO_IMPORT: ${ACMAD_RAINFALL_AUTO_IMPORT:-False}
+  ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS: ${ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS:-6}
+  ACMAD_RAINFALL_IMPORT_LIMIT: ${ACMAD_RAINFALL_IMPORT_LIMIT:-7}
+  ACMAD_DEKADAL_AUTO_IMPORT: ${ACMAD_DEKADAL_AUTO_IMPORT:-False}
+  ACMAD_DEKADAL_IMPORT_INTERVAL_HOURS: ${ACMAD_DEKADAL_IMPORT_INTERVAL_HOURS:-24}
+
+# Same variables as above, but pointed at the prod-profile services (climweb_db_prod /
+# climweb_redis_prod) instead of the dev ones, and defaulting CLIMWEB_DEPLOYMENT_ENV to
+# "production". Everything else is identical, so this merges the dev anchor and only
+# overrides what actually differs.
+x-climweb-variables-prod: &climweb-variables-prod
+  <<: *climweb-variables
+  DATABASE_URL: postgis://${CMS_DB_USER:-climweb}:${CMS_DB_PASSWORD}@climweb_db_prod:5432/${CMS_DB_NAME:-climweb}
+  REDIS_URL: redis://:${REDIS_PASSWORD}@climweb_redis_prod:6379/0
+  CLIMWEB_DEPLOYMENT_ENV: ${CLIMWEB_DEPLOYMENT_ENV:-production}
 
 services:
+  # ── dev profile (`docker compose --profile dev ...`, i.e. `make up`/`./dev.sh`) ──
   climweb_db_dev:
     container_name: climweb_db_dev
-    image: postgis/postgis:15-master
+    image: postgis/postgis:${POSTGRES_VERSION:-15}-master
     platform: linux/x86_64
     restart: no
+    profiles: ["dev"]
     environment:
       - POSTGRES_USER=${CMS_DB_USER:-climweb}
       - POSTGRES_DB=${CMS_DB_NAME:-climweb}
-      - POSTGRES_PASSWORD=${CMS_DB_PASSWORD:-?}
+      - POSTGRES_PASSWORD=${CMS_DB_PASSWORD:-climweb}
     ports:
       - "5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data/
+      - ${CMS_DB_VOLUME:-./cms/db-data}:/var/lib/postgresql/data/
 
   climweb_redis_dev:
     image: redis:alpine
     container_name: climweb_redis_dev
-    command: redis-server --requirepass ${REDIS_PASSWORD:?}
+    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
     restart: no
+    profiles: ["dev"]
 
   climweb_dev:
     image: climweb_dev
     container_name: climweb_dev
     restart: no
+    profiles: ["dev"]
     build:
       context: .
       dockerfile: Dockerfile
@@ -77,45 +98,194 @@ services:
       args:
         - UID=${UID}
         - GID=${GID}
-    expose:
-      - 8000
+    ports:
+      - :8000
     environment:
       <<: *climweb-variables
       WAIT_HOSTS: climweb_db_dev:5432,climweb_redis_dev:6379
-    ports:
-      - "80:8000"
     volumes:
+      - ./climweb:/climweb/web
       - static:/climweb/web/src/climweb/static
       - media:/climweb/web/src/climweb/media
-      - ${BACKUP_VOLUME}:/climweb/web/src/climweb/backup
+      - ${BACKUP_VOLUME:-./cms/backup}:/climweb/web/src/climweb/backup
 
   climweb_celery_worker_dev:
     image: climweb_dev
     container_name: climweb_celery_worker_dev
     command: celery-worker
     restart: no
+    profiles: ["dev"]
     environment:
       <<: *climweb-variables
       WAIT_HOSTS: climweb_db_dev:5432,climweb_redis_dev:6379,climweb_dev:8000
     volumes:
+      - ./climweb:/climweb/web
       - static:/climweb/web/src/climweb/static
       - media:/climweb/web/src/climweb/media
-      - ${BACKUP_VOLUME}:/climweb/web/src/climweb/backup
+      - ${BACKUP_VOLUME:-./cms/backup}:/climweb/web/src/climweb/backup
 
   climweb_celery_beat_dev:
     image: climweb_dev
     container_name: climweb_celery_beat_dev
     restart: no
+    profiles: ["dev"]
     command: celery-beat
     environment:
       <<: *climweb-variables
       WAIT_HOSTS: climweb_db_dev:5432,climweb_redis_dev:6379,climweb_dev:8000
     volumes:
+      - ./climweb:/climweb/web
       - static:/climweb/web/src/climweb/static
       - media:/climweb/web/src/climweb/media
-      - ${BACKUP_VOLUME}:/climweb/web/src/climweb/backup
+      - ${BACKUP_VOLUME:-./cms/backup}:/climweb/web/src/climweb/backup
+
+  climweb_nginx:
+    image: nginx:alpine
+    container_name: climweb_nginx
+    restart: no
+    profiles: ["dev"]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx/${NGINX_CONFIG:-nginx.conf}:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/ssl:/etc/nginx/ssl:ro
+      - ${LETSENCRYPT_DIR:-/etc/letsencrypt}:/etc/letsencrypt:ro
+      # Shared with certbot's webroot plugin for HTTP-01 renewal (nginx.conf serves this path at /.well-known/acme-challenge/ before the HTTPS redirect).
+      - ${CERTBOT_WEBROOT_DIR:-./deploy/certbot/www}:/var/www/certbot:ro
+      - static:/wagtail_static:ro
+      - media:/wagtail_media:ro
+    depends_on:
+      - climweb_dev
+
+  # ── prod profile (`docker compose --profile prod ...`) ──
+  # Builds the Dockerfile's `base` stage locally (gunicorn, production settings,
+  # no dev tooling) rather than pulling a published image. Kept in this same file
+  # rather than a separate compose file, per the existing single-compose-file setup.
+  climweb_db_prod:
+    container_name: climweb_db_prod
+    image: postgis/postgis:${POSTGRES_VERSION:-15}-master
+    restart: unless-stopped
+    profiles: ["prod"]
+    environment:
+      - POSTGRES_USER=${CMS_DB_USER:-climweb}
+      - POSTGRES_DB=${CMS_DB_NAME:-climweb}
+      - POSTGRES_PASSWORD=${CMS_DB_PASSWORD:-climweb}
+    volumes:
+      - ${CMS_DB_VOLUME_PROD:-./cms/db-data-prod}:/var/lib/postgresql/data/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${CMS_DB_USER:-climweb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  climweb_redis_prod:
+    image: redis:alpine
+    container_name: climweb_redis_prod
+    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
+    restart: unless-stopped
+    profiles: ["prod"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  climweb_prod:
+    image: climweb_prod
+    container_name: climweb_prod
+    restart: unless-stopped
+    profiles: ["prod"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: base
+      args:
+        - UID=${UID}
+        - GID=${GID}
+    expose:
+      - 8000
+    environment:
+      <<: *climweb-variables-prod
+    volumes:
+      - static_prod:/climweb/web/src/climweb/static
+      - media_prod:/climweb/web/src/climweb/media
+      - ${BACKUP_VOLUME_PROD:-./cms/backup-prod}:/climweb/web/src/climweb/backup
+    depends_on:
+      climweb_db_prod:
+        condition: service_healthy
+      climweb_redis_prod:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  climweb_celery_worker_prod:
+    image: climweb_prod
+    container_name: climweb_celery_worker_prod
+    command: celery-worker
+    restart: unless-stopped
+    profiles: ["prod"]
+    environment:
+      <<: *climweb-variables-prod
+    volumes:
+      - static_prod:/climweb/web/src/climweb/static
+      - media_prod:/climweb/web/src/climweb/media
+      - ${BACKUP_VOLUME_PROD:-./cms/backup-prod}:/climweb/web/src/climweb/backup
+    depends_on:
+      climweb_prod:
+        condition: service_healthy
+
+  climweb_celery_beat_prod:
+    image: climweb_prod
+    container_name: climweb_celery_beat_prod
+    command: celery-beat
+    restart: unless-stopped
+    profiles: ["prod"]
+    environment:
+      <<: *climweb-variables-prod
+    volumes:
+      - static_prod:/climweb/web/src/climweb/static
+      - media_prod:/climweb/web/src/climweb/media
+      - ${BACKUP_VOLUME_PROD:-./cms/backup-prod}:/climweb/web/src/climweb/backup
+    depends_on:
+      climweb_prod:
+        condition: service_healthy
+
+  climweb_nginx_prod:
+    image: nginx:alpine
+    container_name: climweb_nginx_prod
+    restart: unless-stopped
+    profiles: ["prod"]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Set NGINX_CONFIG_PROD=nginx.prod.ssl.conf in .env to serve over HTTPS
+      # (after copying deploy/nginx/ssl/ssl.conf.sample to ssl.conf and editing
+      # in your real domain/certificate paths).
+      - ./deploy/nginx/${NGINX_CONFIG_PROD:-nginx.prod.conf}:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/ssl:/etc/nginx/ssl:ro
+      - ${LETSENCRYPT_DIR:-/etc/letsencrypt}:/etc/letsencrypt:ro
+      # Shared with certbot's webroot plugin for HTTP-01 renewal (nginx.prod.ssl.conf
+      # serves this path at /.well-known/acme-challenge/ before the HTTPS redirect).
+      - ${CERTBOT_WEBROOT_DIR:-./deploy/certbot/www}:/var/www/certbot:ro
+      - static_prod:/wagtail_static:ro
+      - media_prod:/wagtail_media:ro
+    depends_on:
+      climweb_prod:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
-  pgdata:
   static:
   media:
+  static_prod:
+  media_prod:

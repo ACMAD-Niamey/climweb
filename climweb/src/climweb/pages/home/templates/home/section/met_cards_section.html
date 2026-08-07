@@ -1,0 +1,53 @@
+{% load static wagtailcore_tags i18n %}
+
+<section class="met-section section">
+  <div class="container">
+
+    <!-- City Forecast Panel -->
+    {% if page.show_city_forecast and home_weather_widget_url and not home_weather_widget_no_data %}
+    <div class="">
+
+      <div id="weather-widget-wrapper" style="background-position: center; min-height: 300px; padding-bottom:1em">
+        {% comment %}
+          Always render the skeleton first. The widget is then fetched and
+          rendered client-side (renderWeatherWidgetForCity in home_page.html),
+          which mounts the Glide sliders before revealing it. Injecting the
+          pre-rendered (SSR) widget here instead makes the page paint the widget
+          with its sliders un-mounted, so the first forecast shows stretched out
+          until JS mounts it. We want the skeleton shown during loading.
+        {% endcomment %}
+        {% if home_weather_widget_url %}
+          {% include "weather/forecast_widget_skeleton_include.html" %}
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% comment %}
+      3-column card row. Column 1 is either the interactive multi-hazard map
+      (when the weather watch toggle is on) or the static Weather Watch text
+      card — never both. Columns 2/3 render only when they have content, so
+      the grid uses auto-fit and gracefully collapses to 2 or 1 columns.
+    {% endcomment %}
+    <div class="hc-card-row">
+      {% if page.show_weather_watch %}
+        {% include 'home/section/multi_hazard_card.html' %}
+      {% elif page.weather_watch_card %}
+        {% include 'home/section/weather_watch_card.html' with card=page.weather_watch_card %}
+      {% endif %}
+
+      {% if page.featured_products_list %}
+        {% include 'home/section/featured_products_card.html' %}
+      {% endif %}
+
+      {% if page.latest_updates %}
+        {% include 'home/section/latest_updates_card.html' %}
+      {% endif %}
+    </div>
+
+    {% if page.services_strip_items %}
+      {% include 'home/section/services_strip_include.html' %}
+    {% endif %}
+
+  </div>
+</section>

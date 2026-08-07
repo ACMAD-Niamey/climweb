@@ -1,0 +1,118 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n %}
+
+{% block titletag %}{% translate "Submissions by rating" %}{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .sr-ratings-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .sr-ratings-table th,
+        .sr-ratings-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--color-input-border);
+            text-align: left;
+        }
+
+        .sr-ratings-stars {
+            color: var(--color-text-meta);
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        .sr-ratings-stars .is-filled {
+            color: #f5a623;
+        }
+
+        .sr-ratings-none {
+            color: var(--color-text-meta);
+            font-size: 13px;
+        }
+
+        .sr-ratings-actions {
+            margin-top: 16px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    {% trans "Submissions by rating" as header_str %}
+    {% include "wagtailadmin/shared/header.html" with title=header_str subtitle=page.get_admin_display_title icon="thumbtack" %}
+
+    <div class="nice-padding">
+        <p>
+            <a href="{% url 'wagtailforms:list_submissions' page.id %}">
+                {% translate "← Back to all submissions" %}
+            </a>
+        </p>
+
+        {% if not rows %}
+            <p>{% translate "There are no submissions for this form yet." %}</p>
+        {% else %}
+            <form method="POST" action="{% url 'compose_submission_email' page.id %}">
+                {% csrf_token %}
+                <table class="sr-ratings-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" data-select-all></th>
+                            <th>{% translate "Name" %}</th>
+                            <th>{% translate "Submitted" %}</th>
+                            <th>{% translate "Rating" %}</th>
+                            <th>{% translate "Reviews" %}</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="submission_ids" value="{{ row.submission.pk }}">
+                                </td>
+                                <td>{{ row.name|default:"—" }}</td>
+                                <td>{{ row.submission.submit_time|date:"d M Y, H:i" }}</td>
+                                <td>
+                                    {% if row.avg_rating %}
+                                        <span class="sr-ratings-stars">
+                                            {% for i in star_range %}
+                                                <span class="{% if i <= row.avg_rating_rounded %}is-filled{% endif %}">★</span>
+                                            {% endfor %}
+                                        </span>
+                                        {{ row.avg_rating|floatformat:1 }}
+                                    {% else %}
+                                        <span class="sr-ratings-none">{% translate "Not rated" %}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ row.review_count }}</td>
+                                <td>
+                                    <a class="button button-small button-secondary"
+                                       href="{% url 'form_submission_review' page.id row.submission.pk %}">
+                                        {% translate "Review" %}
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <div class="sr-ratings-actions">
+                    <button type="submit" class="button">{% translate "Email selected" %}</button>
+                </div>
+            </form>
+        {% endif %}
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var selectAll = document.querySelector('[data-select-all]');
+            if (!selectAll) return;
+            selectAll.addEventListener('change', function () {
+                document.querySelectorAll('input[name="submission_ids"]').forEach(function (cb) {
+                    cb.checked = selectAll.checked;
+                });
+            });
+        });
+    </script>
+{% endblock %}

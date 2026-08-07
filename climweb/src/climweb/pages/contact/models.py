@@ -16,13 +16,16 @@ from wagtailgeowidget import geocoders
 from wagtailgeowidget.helpers import geosgeometry_str_to_struct
 from wagtailgeowidget.panels import LeafletPanel, GeoAddressPanel
 
+from climweb.base.forms import CustomWagtailCaptchaFormBuilder
 from climweb.base.mail import send_mail, get_default_from_email
-from climweb.base.mixins import MetadataPageMixin
+from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin, FormPageClosingDateMixin,
+                                 FormFieldMaxLengthMixin, FormCleanNameFallbackMixin)
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import get_duplicates
 
 
-class ContactPage(MetadataPageMixin, WagtailCaptchaEmailForm):
+class ContactPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageClosingDateMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
+    form_builder = CustomWagtailCaptchaFormBuilder
     template = 'contact/contact_page.html'
     parent_page_types = ['home.HomePage']
     subpage_types = []
@@ -63,8 +66,8 @@ class ContactPage(MetadataPageMixin, WagtailCaptchaEmailForm):
             ]),
             FieldPanel('subject'),
         ], _("Email")),
-    ]
-    
+    ] + FormPageReviewSettingsMixin.submission_review_settings_panels + FormPageClosingDateMixin.closing_date_panels
+
     def get_meta_image(self):
         return get_homepage_meta_image(self.get_site())
     
@@ -111,12 +114,18 @@ class ContactPage(MetadataPageMixin, WagtailCaptchaEmailForm):
         
         context = self.get_context(request)
         context['form'] = form
-        return TemplateResponse(
+        response = TemplateResponse(
             request,
             self.get_template(request),
             context
         )
-    
+        # This serve() override skips WagtailCacheMixin.serve(), so the
+        # cache_control opt-out above is never applied unless set here too -
+        # otherwise wagtail-cache stores this page (CSRF token baked into the
+        # HTML) and serves it to later visitors, whose cookie won't match it.
+        response['Cache-Control'] = self.cache_control
+        return response
+
     def send_confirmation_email(self, form):
         from_email = self.from_address or get_default_from_email()
         email = form.get('email')
@@ -169,7 +178,7 @@ class ContactPage(MetadataPageMixin, WagtailCaptchaEmailForm):
         verbose_name = _("Contact Page")
 
 
-class ContactFormField(AbstractFormField):
+class ContactFormField(FormFieldMaxLengthMixin, AbstractFormField):
     page = ParentalKey(ContactPage,
                        on_delete=models.CASCADE,
                        related_name="contact_us_form_fields")

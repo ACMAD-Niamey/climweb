@@ -8,6 +8,7 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 media
+ssl.conf
 
 # If your build process includes running collectstatic, then you probably don't need or want to include staticfiles/
 # in your Git repository. Update and uncomment the following line accordingly.
@@ -185,6 +186,7 @@ climweb/src/climweb/static
 climweb/src/climweb/media
 .env.local
 .env.dev
+.claude/settings.local.json
 
 backup/
 .vscode/
@@ -192,3 +194,15 @@ node_modules/
 tmp/
 .claude/
 climweb_dump.dump
+# Local runtime data (docker bind mounts)
+cms/
+
+# Real SSL cert-path config (contains your actual domain) — keep ssl.conf.sample tracked
+deploy/nginx/ssl/ssl.conf
+
+# Accidental root venv artifacts
+bin/
+share/
+pyvenv.cfg
+*.dylib
+include/

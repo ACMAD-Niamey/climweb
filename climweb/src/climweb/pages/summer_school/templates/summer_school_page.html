@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% load static wagtailcore_tags %}
+
+{# Page shell only - every section below is owned by a sibling include file. #}
+{# Do not inline section markup here; add new sections as new includes.     #}
+
+{% block extra_css %}
+    {# cache-bust: this stylesheet has no content-hashed filename (ManifestStaticFilesStorage #}
+    {# is disabled sitewide), so a plain browser reload can silently serve a stale cached copy #}
+    {# during active development - a timestamp query string forces a fresh fetch every load. #}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/summer_school.css' %}?v={% now 'U' %}">
+{% endblock %}
+
+{% block body_class %}summer-school-page{% endblock %}
+
+{% block content %}
+    <!-- {% include 'breadcrumbs_include.html' with page=page %} -->
+
+    {% include 'summer_school_hero_include.html' %}
+
+    {% include 'summer_school_nav_include.html' %}
+
+    <main>
+        <div class="container ss-main-container">
+            <section id="background">
+                {% include 'summer_school_background_include.html' %}
+            </section>
+
+            {% if page.has_eligibility_content %}
+                <section id="eligibility">
+                    {% include 'summer_school_eligibility_include.html' %}
+                </section>
+            {% endif %}
+
+            {% if page.structure_items %}
+                <section id="structure">
+                    {% include 'summer_school_structure_include.html' %}
+                </section>
+            {% endif %}
+
+            {% if page.trainers %}
+                <section id="trainers">
+                    {% include 'trainers_include.html' %}
+                </section>
+            {% endif %}
+
+            {% if page.schedule_sessions %}
+                <section id="schedule">
+                    {% include 'summer_school_schedule_include.html' %}
+                </section>
+            {% endif %}
+
+            {% if page.cohorts %}
+                <section id="previous-schools">
+                    {% include 'summer_school_cohorts_include.html' %}
+                </section>
+            {% endif %}
+
+            <section id="concept-note">
+                {% include 'summer_school_concept_note_include.html' %}
+            </section>
+
+            {% if page.additional_materials %}
+                <section id="materials">
+                    {% include 'summer_school_materials_include.html' %}
+                </section>
+            {% endif %}
+
+            {% if page.partners %}
+                <section id="partners">
+                    {% include 'summer_school_partners_include.html' %}
+                </section>
+            {% endif %}
+
+            {% if page.faq %}
+                <section id="faq">
+                    {% include 'summer_school_faq_include.html' %}
+                </section>
+            {% endif %}
+        </div>
+    </main>
+{% endblock content %}
+
+{% block extra_js %}
+    <script src="{% static 'js/summer_school.js' %}?v={% now 'U' %}"></script>
+{% endblock %}

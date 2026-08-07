@@ -1,0 +1,202 @@
+.mhz-card {
+  min-height: 100%;
+}
+
+.mhz-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 14px 16px;
+  border-block-end: 1px solid #f0f0f0;
+}
+
+.mhz-card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #1a1a1a;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.mhz-title-icon {
+  color: var(--primary-color, #0a2240);
+  flex-shrink: 0;
+}
+
+.mhz-viewer-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  border: 1px solid var(--primary-color-light, #d8e3ef);
+  border-radius: calc(var(--border-radius, 8px) / 2);
+  padding: 7px 10px;
+  color: var(--primary-color, #0a2240);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.mhz-viewer-btn:hover {
+  color: #fff;
+  background: var(--primary-color, #0a2240);
+  border-color: var(--primary-color, #0a2240);
+}
+
+.mhz-map {
+  position: relative;
+  width: 100%;
+  min-height: 380px;
+  flex: 1;
+  overflow: hidden;
+  background: #edf2f7;
+}
+
+.mhz-map .maplibregl-ctrl-bottom-left,
+.mhz-map .maplibregl-ctrl-bottom-right {
+  margin-block-end: 8px;
+}
+
+/* Docked tab row — normal page flow between the header and the map
+   viewport, so it never overlaps the map's own floating legend, date
+   chip, or zoom controls (unlike the earlier floating-overlay version). */
+.mhz-tabs-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 16px;
+  border-block-end: 1px solid #f0f0f0;
+}
+
+.mhz-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(10, 34, 64, 0.14);
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: #fff;
+  color: #253040;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mhz-tab svg {
+  flex-shrink: 0;
+}
+
+.mhz-tab.is-active {
+  color: #fff;
+  background: var(--primary-color, #0a2240);
+  border-color: var(--primary-color, #0a2240);
+}
+
+.mhz-legend {
+  position: absolute;
+  inset-block-end: 12px;
+  inset-inline-end: 12px;
+  z-index: 5;
+  max-inline-size: min(240px, calc(100% - 24px));
+  padding: 10px 12px;
+  border: 1px solid rgba(10, 34, 64, 0.1);
+  border-radius: var(--border-radius, 8px);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.mhz-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #2f3b4a;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.mhz-legend-row + .mhz-legend-row {
+  margin-block-start: 7px;
+}
+
+.mhz-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  flex-shrink: 0;
+}
+
+.mhz-date-chip {
+  position: absolute;
+  inset-block-end: 12px;
+  inset-inline-start: 12px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 999px;
+  padding: 7px 11px;
+  background: rgba(10, 24, 39, 0.82);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.mhz-placeholder,
+.mhz-nodata,
+.mhz-unavailable {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  color: #687385;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.mhz-placeholder {
+  background: #edf2f7;
+}
+
+.mhz-nodata {
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.mhz-unavailable,
+.mhz-map--static {
+  min-height: 380px;
+  background: linear-gradient(135deg, #eef3f8, #f8fafc);
+}
+
+@media (max-width: 768px) {
+  .mhz-card-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .mhz-map,
+  .mhz-unavailable,
+  .mhz-map--static {
+    min-height: 330px;
+  }
+
+  .mhz-legend {
+    inset-inline: 12px;
+    inset-block-end: 48px;
+    max-inline-size: none;
+  }
+}

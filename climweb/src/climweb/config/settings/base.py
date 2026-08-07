@@ -33,6 +33,13 @@ if os.path.isfile(dev_env_path):
 
 DEBUG = env('DEBUG', False)
 
+# Needed in every settings module (not just production) whenever the app sits
+# behind an SSL-terminating reverse proxy on a real domain — e.g. dev/staging
+# instances reachable over https:// still need CSRF's Origin check to trust
+# that domain, and Django needs to know the forwarded request was secure.
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', cast=None, default=[])
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # Application definition
 INSTALLED_APPS = [
     "climweb.base",
@@ -47,6 +54,7 @@ INSTALLED_APPS = [
     "climweb.pages.contact",
     "climweb.pages.feedback",
     "climweb.pages.events",
+    "climweb.pages.summer_school",
     "climweb.pages.organisation_pages.organisation",
     "climweb.pages.organisation_pages.about",
     "climweb.pages.organisation_pages.partners",
@@ -389,6 +397,7 @@ LOCALE_PATHS = [
     'climweb/src/climweb/pages/data_request/locale',
     'climweb/src/climweb/pages/email_subscription/locale',
     'climweb/src/climweb/pages/events/locale',
+    'climweb/src/climweb/pages/summer_school/locale',
     'climweb/src/climweb/pages/feedback/locale',
     'climweb/src/climweb/pages/flex_page/locale',
     'climweb/src/climweb/pages/glossary/locale',
@@ -638,6 +647,24 @@ CELERY_SINGLETON_BACKEND_CLASS = (
 
 # Set max memory per child process (in kilobytes, e.g., 200000 KB = 200 MB)
 CELERY_WORKER_MAX_MEMORY_PER_CHILD = env.int("CELERY_WORKER_MAX_MEMORY_PER_CHILD", default=200000)
+
+# ACMAD's public Continental Multi-Hazard Outlook archive can be polled by the
+# products Celery worker. It is opt-in so upstream ClimWeb installations do not
+# unexpectedly fetch ACMAD-specific content.
+ACMAD_MULTIHAZARD_AUTO_IMPORT = env.bool("ACMAD_MULTIHAZARD_AUTO_IMPORT", default=False)
+ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS", default=6
+)
+ACMAD_MULTIHAZARD_IMPORT_LIMIT = env.int("ACMAD_MULTIHAZARD_IMPORT_LIMIT", default=10)
+ACMAD_RAINFALL_AUTO_IMPORT = env.bool("ACMAD_RAINFALL_AUTO_IMPORT", default=False)
+ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS", default=6
+)
+ACMAD_RAINFALL_IMPORT_LIMIT = env.int("ACMAD_RAINFALL_IMPORT_LIMIT", default=7)
+ACMAD_DEKADAL_AUTO_IMPORT = env.bool("ACMAD_DEKADAL_AUTO_IMPORT", default=False)
+ACMAD_DEKADAL_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_DEKADAL_IMPORT_INTERVAL_HOURS", default=24
+)
 
 CELERY_APP = 'climweb.config.celery:app'
 

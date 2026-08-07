@@ -2,6 +2,7 @@ import datetime
 import io
 import tempfile
 import xml.etree.cElementTree as et
+from os.path import splitext
 
 import pytz
 import requests
@@ -124,6 +125,8 @@ def query_param_to_list(query_param, as_int=False):
 
 
 def get_first_img_src(html):
+    if not html:
+        return None
     # parse html and get first image src
     soup = BeautifulSoup(html, 'html.parser')
     img = soup.find('img', )
@@ -133,6 +136,8 @@ def get_first_img_src(html):
 
 
 def get_first_non_empty_p_string(html, remove_tags=False):
+    if not html:
+        return None
     soup = BeautifulSoup(html, 'html.parser')
     p = soup.find(lambda tag: tag.name == 'p' and tag.text.strip())
     if p:
@@ -276,10 +281,22 @@ def get_first_page_of_pdf_as_image(file_path, title, file_name):
 
 def get_duplicates(dict_):
     rev_multidict = {}
-    
+
     for key, value in dict_.items():
         rev_multidict.setdefault(value, set()).add(key)
-    
+
     dups = [key for key, values in rev_multidict.items() if len(values) > 1]
-    
+
     return dups
+
+
+def generate_title_from_filename(filename):
+    """
+    Generates a usable title from the filename of an uploaded file.
+    Note: filename may be provided as 'path/to/file.jpg'.
+    """
+    if filename:
+        result = splitext(filename)[0]
+        result = result.replace('-', ' ').replace('_', ' ')
+        return result.title()
+    return ''

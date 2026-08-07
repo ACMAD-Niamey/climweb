@@ -1,0 +1,435 @@
+/* ============================================================================
+   Met homepage redesign — 3-column card row + compact services strip.
+   Class prefix: hc- ("home card"). Loaded only when IS_METEOROLOGICAL.
+
+   Notes:
+   - Uses CSS logical properties (inline-start/end) instead of left/right so
+     the Arabic (RTL) locale mirrors the layout without extra rules.
+   - All theme values come from the CSS custom properties defined in
+     base.html (:root): --primary-color, --primary-color-light,
+     --primary-color-lightest, --border-radius, --background-color.
+     Fallbacks are provided in case a variable is missing on a custom theme.
+   ========================================================================== */
+
+/* ── Met hero full-bleed ──────────────────────────────────────────────────
+   The full-bleed height rule itself lives inline in met_banner.html — that
+   block renders after this stylesheet in document order, so a same-selector
+   override here would lose the cascade. Nothing to declare on this end. */
+
+/* ── Card row grid ────────────────────────────────────────────────────────
+   auto-fit is deliberate: column 1 (map or weather watch) and columns 2/3
+   are each optional, so the row must reflow to 2 or 1 columns when a card
+   is absent instead of leaving an empty track. */
+.hc-card-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+  align-items: stretch;
+  margin-block-start: 1.25rem;
+}
+
+/* On wide desktops give column 1 (map / weather watch) a little more room,
+   matching the mockup's slightly dominant first column. */
+@media (min-width: 1216px) {
+  .hc-card-row {
+    grid-template-columns: 1.2fr 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .hc-card-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Card shell ─────────────────────────────────────────────────────────── */
+.hc-card {
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: var(--border-radius, 8px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: box-shadow 0.15s ease;
+}
+
+.hc-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.hc-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 14px 20px;
+  border-block-end: 1px solid #f0f0f0;
+}
+
+.hc-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.hc-card-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #777;
+  white-space: nowrap;
+}
+
+.hc-card-date svg {
+  color: var(--primary-color, #0a2240);
+  flex-shrink: 0;
+}
+
+/* Body grows so footers align across cards of different content heights. */
+.hc-card-body {
+  padding: 16px 20px;
+  flex: 1;
+}
+
+.hc-card-footer {
+  padding: 10px 20px;
+  border-block-start: 1px solid #f0f0f0;
+}
+
+.hc-card-footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary-color, #0a2240);
+  text-decoration: none;
+}
+
+.hc-card-footer-link:hover {
+  text-decoration: underline;
+  color: var(--primary-color, #0a2240);
+}
+
+/* Arrow nudges forward on hover; logical translate keeps RTL correct
+   because the SVG itself is direction-neutral horizontal movement. */
+.hc-card-footer-link svg {
+  transition: transform 0.15s ease;
+}
+
+.hc-card-footer-link:hover svg {
+  transform: translateX(2px);
+}
+
+[dir="rtl"] .hc-card-footer-link svg,
+[dir="rtl"] .hc-item-chevron svg {
+  transform: scaleX(-1);
+}
+
+/* ── Weather Watch card ─────────────────────────────────────────────────── */
+.hc-watch-heading {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #1a1a1a;
+  margin: 0 0 0.6rem 0;
+}
+
+.hc-watch-outlook {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #555;
+}
+
+.hc-watch-outlook p {
+  margin-block-end: 0.6em;
+}
+
+/* Indicator chips: "Rainfall — Above normal" style pills. Label is muted,
+   value carries the emphasis so the takeaway reads at a glance. */
+.hc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block-start: 0.75rem;
+}
+
+.hc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  font-size: 12px;
+  background: var(--primary-color-lightest, #f4f6f9);
+  border: 1px solid var(--primary-color-light, #e6ecf3);
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.hc-chip-label {
+  color: #777;
+  font-weight: 500;
+}
+
+/* em-dash separator between label and value, generated so translators never
+   have to include punctuation in the strings. */
+.hc-chip-label::after {
+  content: "\2014";
+  margin-inline-start: 6px;
+  color: #bbb;
+}
+
+.hc-chip-value {
+  color: var(--primary-color, #0a2240);
+  font-weight: 700;
+}
+
+/* ── Featured Products card ─────────────────────────────────────────────── */
+.hc-product-item {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px;
+  margin-inline: -8px; /* let the hover background bleed past the text edge */
+  border-radius: calc(var(--border-radius, 8px) / 2);
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.hc-product-item:hover {
+  background: var(--primary-color-lightest, #f4f6f9);
+}
+
+.hc-product-item + .hc-product-item {
+  border-block-start: 1px solid #f8f8f8;
+}
+
+.hc-product-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-color-light, #eef3f9);
+  border-radius: calc(var(--border-radius, 8px) / 2);
+  color: var(--primary-color, #0a2240);
+  flex-shrink: 0;
+}
+
+.hc-product-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.hc-product-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0; /* allow text to truncate instead of blowing the grid open */
+}
+
+.hc-product-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1a1a1a;
+  line-height: 1.35;
+}
+
+.hc-product-desc {
+  font-size: 12px;
+  color: #888;
+  line-height: 1.45;
+}
+
+.hc-item-chevron {
+  display: inline-flex;
+  align-items: center;
+  color: #c5c5c5;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.hc-product-item:hover .hc-item-chevron,
+.hc-strip-item:hover .hc-item-chevron {
+  color: var(--primary-color, #0a2240);
+}
+
+/* ── Latest Updates card ────────────────────────────────────────────────── */
+.hc-update-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding-block: 10px;
+}
+
+.hc-update-item + .hc-update-item {
+  border-block-start: 1px solid #f8f8f8;
+}
+
+.hc-update-thumb {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: calc(var(--border-radius, 8px) / 2);
+  overflow: hidden;
+  background: #f4f6f9; /* placeholder tone while the lazy image loads */
+  margin: 0;
+}
+
+.hc-update-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.hc-update-body {
+  min-width: 0;
+}
+
+.hc-update-meta {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #999;
+  margin: 0 0 2px 0;
+}
+
+.hc-update-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0 0 4px 0;
+}
+
+.hc-update-title a {
+  color: #1a1a1a;
+  text-decoration: none;
+}
+
+.hc-update-title a:hover {
+  color: var(--primary-color, #0a2240);
+}
+
+.hc-update-readmore {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary-color, #0a2240);
+  text-decoration: none;
+}
+
+.hc-update-readmore:hover {
+  text-decoration: underline;
+}
+
+/* ── Services strip ───────────────────────────────────────────────────────
+   Compact horizontal row of up to 5 service links below the card grid.
+   flex + flex-basis (not grid) so 4 items still fill the row evenly. */
+.hc-strip-header {
+  margin-block-start: 2.5rem;
+  margin-block-end: 1rem;
+}
+
+.hc-strip-header .title {
+  margin-block-end: 0;
+}
+
+.hc-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-block-start: 1.25rem;
+}
+
+.hc-strip-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* 5-up on desktop: basis accounts for 4 gaps across 5 items */
+  flex: 1 1 calc(20% - 1rem);
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: var(--border-radius, 8px);
+  padding: 12px 14px;
+  text-decoration: none;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.hc-strip-item:hover {
+  border-color: var(--primary-color-medium, #cdd9e6);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.hc-strip-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-color-light, #eef3f9);
+  border-radius: calc(var(--border-radius, 8px) / 2);
+  color: var(--primary-color, #0a2240);
+  flex-shrink: 0;
+}
+
+.hc-strip-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.hc-strip-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.hc-strip-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a1a;
+  line-height: 1.3;
+}
+
+.hc-strip-desc {
+  font-size: 11.5px;
+  color: #888;
+  line-height: 1.4;
+  /* one-line description per the mockup — clamp instead of wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Tablet: 2 + 3 wrap (each item takes just under half / a third). */
+@media (max-width: 1215px) {
+  .hc-strip-item {
+    flex: 1 1 calc(33.333% - 1rem);
+  }
+}
+
+@media (max-width: 1023px) {
+  .hc-strip-item {
+    flex: 1 1 calc(50% - 1rem);
+  }
+}
+
+/* Mobile: single column. */
+@media (max-width: 600px) {
+  .hc-strip {
+    flex-direction: column;
+  }
+
+  .hc-strip-item {
+    flex: 1 1 auto;
+  }
+}

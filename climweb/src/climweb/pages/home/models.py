@@ -1,9 +1,14 @@
+import logging
+from typing import Optional
+
 from adminboundarymanager.models import AdminBoundarySettings
 from django.conf import settings
 from django.contrib.gis.db import models
 from django.template.defaultfilters import truncatechars
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils import timezone
+from django.utils.formats import date_format
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 if "forecastmanager" in settings.INSTALLED_APPS:
@@ -12,11 +17,11 @@ if "forecastmanager" in settings.INSTALLED_APPS:
 from geomanager.models import RasterFileLayer, WmsLayer, VectorTileLayer
 from modelcluster.models import ClusterableModel
 from wagtail import blocks
-from wagtail.admin.panels import MultiFieldPanel, FieldPanel, TabbedInterface, ObjectList
+from wagtail.admin.panels import MultiFieldPanel, FieldPanel, TabbedInterface, ObjectList, PageChooserPanel
 from wagtail.api.v2.utils import get_full_url
 from wagtail.contrib.settings.models import BaseSiteSetting
 from wagtail.contrib.settings.registry import register_setting
-from wagtail.fields import StreamField
+from wagtail.fields import RichTextField, StreamField
 from wagtail.models import Page
 from wagtail_color_panel.fields import ColorField
 from wagtailiconchooser.blocks import IconChooserBlock
@@ -26,13 +31,18 @@ from climweb.base.choosers import register_searchable_chooser
 from climweb.base import blocks as climweb_blocks
 from climweb.base.mixins import MetadataPageMixin
 from climweb.base.registries import plugin_registry
+from climweb.config.settings.base import SUMMARY_RICHTEXT_FEATURES
 from climweb.pages.events.models import EventPage
 from climweb.pages.news.models import NewsPage
 from climweb.pages.organisation_pages.partners.models import Partner
+from climweb.pages.products.models import ProductItemPage, ProductPage
 from climweb.pages.publications.models import PublicationPage
 from climweb.pages.services.models import ServicePage
+from climweb.pages.summer_school.models import SummerSchoolPage
 from climweb.pages.videos.models import YoutubePlaylist
 from .blocks import AreaBoundaryBlock, AreaPolygonBlock
+
+logger = logging.getLogger(__name__)
 
 CLIMWEB_ADDITIONAL_APPS = getattr(settings, "CLIMWEB_ADDITIONAL_APPS", [])
 
@@ -55,7 +65,8 @@ HOME_SUBPAGE_TYPES = [
     'satellite_imagery.SatelliteImageryPage',
     'glossary.GlossaryIndexPage',
     'webstories.WebStoryListPage',
-    'dashboards.DashboardGalleryPage'
+    'dashboards.DashboardGalleryPage',
+    'summer_school.SummerSchoolIndexPage',
 ]
 
 if "forecastmanager" in settings.INSTALLED_APPS:
@@ -140,7 +151,53 @@ class HomePage(MetadataPageMixin, Page):
     mapviewer_cta_title = models.CharField(max_length=100, blank=True, null=True, default='Explore on MapViewer',
                                            verbose_name=_('MapViewer Call to Action Title'))
     mapviewer_cta_url = models.URLField(blank=True, null=True, verbose_name=_("Mapviewer URL"), )
-    
+
+    # Weather Watch card content. These are hybrid fields: editors may fill them
+    # in manually, or leave them blank to have the card derived from the latest
+    # item of the linked source product (see weather_watch_card below).
+    weather_watch_period = models.CharField(max_length=100, blank=True, null=True,
+                                            verbose_name=_("Outlook period"),
+                                            help_text=_("e.g. 10 – 16 July 2026. Leave blank to derive from the "
+                                                        "latest item of the source product below"))
+    weather_watch_outlook = RichTextField(blank=True, null=True, features=SUMMARY_RICHTEXT_FEATURES,
+                                          verbose_name=_("Outlook summary"),
+                                          help_text=_("Short outlook summary shown on the Weather Watch card. "
+                                                      "Leave blank to derive from the source product below"))
+    weather_watch_indicators = StreamField([
+        ('indicator', blocks.StructBlock([
+            ('label', blocks.CharBlock(max_length=30)),
+            ('value', blocks.CharBlock(max_length=30)),
+        ], label=_("Indicator"))),
+    ], null=True, blank=True, use_json_field=True, max_num=3, verbose_name=_("Weather Watch indicators"))
+    weather_watch_source_product = models.ForeignKey(
+        'wagtailcore.Page',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        verbose_name=_("Weather Watch source product")
+    )
+
+    featured_products = StreamField([
+        ('product', blocks.StructBlock([
+            ('page', blocks.PageChooserBlock(page_type=['products.ProductPage'])),
+            ('custom_title', blocks.CharBlock(required=False, max_length=60)),
+            ('custom_blurb', blocks.TextBlock(required=False, max_length=160)),
+            ('icon', IconChooserBlock(required=False)),
+        ], label=_("Product"))),
+    ], null=True, blank=True, use_json_field=True, max_num=3, verbose_name=_("Featured Products"))
+
+    services_strip = StreamField([
+        ('item', blocks.StructBlock([
+            ('icon', IconChooserBlock(default="layer-group")),
+            ('title', blocks.CharBlock(max_length=50)),
+            ('description', blocks.CharBlock(max_length=120)),
+            ('page', blocks.PageChooserBlock(required=False)),
+            ('external_url', blocks.URLBlock(required=False)),
+        ], label=_("Item"))),
+    ], null=True, blank=True, use_json_field=True, max_num=5, verbose_name=_("Services Strip"),
+        help_text=_("Compact link strip below the cards. Leave empty to derive from Service pages."))
+
     youtube_playlist = models.ForeignKey(
         YoutubePlaylist,
         null=True,
@@ -187,10 +244,20 @@ class HomePage(MetadataPageMixin, Page):
         MultiFieldPanel([
             FieldPanel('show_weather_watch'),
             FieldPanel('weather_watch_header'),
+            FieldPanel('weather_watch_period'),
+            FieldPanel('weather_watch_outlook'),
+            FieldPanel('weather_watch_indicators'),
+            PageChooserPanel('weather_watch_source_product', 'products.ProductPage'),
             FieldPanel('show_mapviewer_cta'),
             FieldPanel('mapviewer_cta_title'),
             FieldPanel('mapviewer_cta_url')
         ], heading=_("Weather Watch Section")),
+        MultiFieldPanel([
+            FieldPanel('featured_products'),
+        ], heading=_("Featured Products")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
+        MultiFieldPanel([
+            FieldPanel('services_strip'),
+        ], heading=_("Services Strip")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
         MultiFieldPanel([
             FieldPanel('youtube_playlist'),
         ], heading=_("Media Section")),
@@ -242,9 +309,23 @@ class HomePage(MetadataPageMixin, Page):
     
     def get_context(self, request, *args, **kwargs):
         context = super(HomePage, self).get_context(request, *args, **kwargs)
-        
-        if "capcomposer.cap" in settings.INSTALLED_APPS:
-            context["home_map_alerts_url"] = get_full_url(request, reverse("home_map_alerts"))
+
+        # Fetch once and reuse throughout — for_request caches per request, but
+        # a single explicit fetch keeps the data flow obvious.
+        home_map_settings = HomeMapSettings.for_request(request)
+
+        if settings.IS_METEOROLOGICAL:
+            # Met-mode homepage renders the Multi-Hazard map widget instead of
+            # the legacy Vue home-map, so it only needs the catalog API config.
+            if self.show_weather_watch:
+                context["multi_hazard_api_base_url"] = home_map_settings.multi_hazard_api_base_url or ""
+                context["multi_hazard_project_slug"] = home_map_settings.multi_hazard_project_slug
+        else:
+            # The alerts panel is part of the legacy weather watch map section
+            # (only mounted by the non-met hero), so only expose its url when
+            # the section is enabled in the admin.
+            if self.show_weather_watch and "capcomposer.cap" in settings.INSTALLED_APPS:
+                context["home_map_alerts_url"] = get_full_url(request, reverse("home_map_alerts"))
 
         abm_settings = AdminBoundarySettings.for_request(request)
         abm_extents = abm_settings.combined_countries_bounds
@@ -269,10 +350,13 @@ class HomePage(MetadataPageMixin, Page):
                 "city_search_url": city_search_url,
             })
         
-        map_settings_url = get_full_url(request, reverse("home-map-settings"))
-        context.update({
-            "home_map_settings_url": map_settings_url,
-        })
+        if not settings.IS_METEOROLOGICAL and self.show_weather_watch:
+            # Only the non-met hero's Vue home-map consumes this settings feed;
+            # the met homepage renders the multi-hazard widget instead.
+            map_settings_url = get_full_url(request, reverse("home-map-settings"))
+            context.update({
+                "home_map_settings_url": map_settings_url,
+            })
 
         if "forecastmanager" in settings.INSTALLED_APPS:
             context["home_weather_widget_url"] = get_full_url(request, reverse("home-weather-widget"))
@@ -340,20 +424,21 @@ class HomePage(MetadataPageMixin, Page):
         if self.youtube_playlist:
             context['youtube_playlist_url'] = self.youtube_playlist.get_playlist_items_api_url(request)
         
-        home_map_settings = HomeMapSettings.for_request(request)
-        home_map_layer_icons = [
-            "warning",
-            "heavy-rain",
-            "layer-group"
-        ]
-        
-        if home_map_settings.map_layers:
-            icons = [layer_block.value.get("icon") for layer_block in home_map_settings.map_layers]
-            home_map_layer_icons.extend(icons)
-        
-        context.update({
-            "home_map_layer_svg_sprite": get_svg_sprite_for_icons(home_map_layer_icons)
-        })
+        if not settings.IS_METEOROLOGICAL:
+            # SVG sprite for the non-met hero's Vue home-map icons only.
+            home_map_layer_icons = [
+                "warning",
+                "heavy-rain",
+                "layer-group"
+            ]
+
+            if home_map_settings.map_layers:
+                icons = [layer_block.value.get("icon") for layer_block in home_map_settings.map_layers]
+                home_map_layer_icons.extend(icons)
+
+            context.update({
+                "home_map_layer_svg_sprite": get_svg_sprite_for_icons(home_map_layer_icons)
+            })
         
         context['IS_METEOROLOGICAL'] = settings.IS_METEOROLOGICAL
         return context
@@ -384,19 +469,250 @@ class HomePage(MetadataPageMixin, Page):
         if publications is None:
             publications = PublicationPage.objects.live().order_by('-publication_date').first()
         
+        # featured summer school edition takes priority over news/events/publications
+        if self.featured_summer_school:
+            updates.append(self.featured_summer_school)
         if news:
             updates.append(news)
         if events:
             updates.append(events)
         if publications:
             updates.append(publications)
-        
+
         return updates
     
     @cached_property
     def services(self):
         services = ServicePage.objects.live()
         return services
+
+    @cached_property
+    def featured_summer_school(self):
+        # editors opt an edition into this via the "Featured" + "Is visible on
+        # homepage" checkboxes on the SummerSchoolPage itself; most recent
+        # edition wins if more than one is marked
+        return SummerSchoolPage.objects.live().filter(
+            featured=True, is_visible_on_homepage=True
+        ).order_by('-edition_start_date').first()
+
+    def _weather_watch_indicators_list(self) -> list[dict]:
+        """
+        Flatten the indicators StreamField into plain dicts so templates don't
+        need to know about StreamField internals.
+        """
+        indicators: list[dict] = []
+        if self.weather_watch_indicators:
+            for block in self.weather_watch_indicators:
+                indicators.append({
+                    "label": block.value.get("label"),
+                    "value": block.value.get("value"),
+                })
+        return indicators
+
+    @cached_property
+    def weather_watch_card(self) -> Optional[dict]:
+        """
+        Data for the homepage Weather Watch card.
+
+        Hybrid resolution: manually entered admin fields always win, so editors
+        keep full control of the card wording. If they left the fields blank,
+        we fall back to deriving the card from the latest live item of the
+        linked source product, which keeps the card fresh without manual edits.
+        Returns None when there is nothing to show, so templates can hide the card.
+        """
+        indicators = self._weather_watch_indicators_list()
+
+        source_page = None
+        source_url: Optional[str] = None
+        if self.weather_watch_source_product:
+            # Page-tree lookups can fail on unsaved previews or if the linked
+            # page was deleted/unpublished, so never let them break the homepage.
+            try:
+                source_page = self.weather_watch_source_product.specific
+                source_url = source_page.url
+            except Exception:
+                logger.warning("Failed to resolve weather watch source product for homepage %s", self.pk,
+                               exc_info=True)
+                source_page = None
+
+        # (a) Admin-entered content takes precedence
+        if self.weather_watch_period or self.weather_watch_outlook:
+            return {
+                "period": self.weather_watch_period,
+                "outlook_html": self.weather_watch_outlook,
+                "indicators": indicators,
+                "date": timezone.now().date(),
+                "link_url": source_url,
+            }
+
+        # (b) Derive from the latest live item of the source product
+        if source_page is not None:
+            latest_item = None
+            try:
+                latest_item = (
+                    ProductItemPage.objects.live().child_of(source_page).order_by("-date").first()
+                )
+            except Exception:
+                logger.warning("Failed to query latest product item for homepage weather watch card",
+                               exc_info=True)
+
+            if latest_item:
+                # Build a human friendly period such as "10 Jul – 16 Jul 2026".
+                # When there is no validity end date, show just the start date.
+                if latest_item.valid_until:
+                    period = "{start} – {end}".format(
+                        start=date_format(latest_item.date, "j M"),
+                        end=date_format(latest_item.valid_until, "j M Y"),
+                    )
+                else:
+                    period = date_format(latest_item.date, "j M Y")
+
+                return {
+                    "period": period,
+                    "outlook_html": latest_item.listing_summary or latest_item.title,
+                    "indicators": indicators,
+                    "date": latest_item.date,
+                    "link_url": source_url,
+                }
+
+        # (c) Nothing configured and nothing derivable
+        return None
+
+    @cached_property
+    def featured_products_list(self) -> list[dict]:
+        """
+        Products for the homepage Featured Products card.
+
+        Manual picks from the featured_products StreamField come first because
+        editors curated their order. Products flagged with is_featured_on_homepage
+        then fill any remaining slots, so the card stays populated even when
+        no manual curation was done. Capped at 3 to fit the card layout.
+        """
+        max_items = 3
+        items: list[dict] = []
+        seen_page_ids: set[int] = set()
+
+        def build_entry(page: ProductPage, custom_title: Optional[str] = None,
+                        custom_blurb: Optional[str] = None, icon: Optional[str] = None) -> dict:
+            description = custom_blurb
+            if not description:
+                try:
+                    # ProductPage inherits AbstractIntroPage.get_meta_description,
+                    # which falls back to introduction text/title — a good blurb source.
+                    description = truncatechars(page.get_meta_description() or "", 120)
+                except Exception:
+                    description = ""
+
+            if not icon:
+                # Fall back to the icon of the product's primary service, which
+                # gives a sensible visual without requiring per-product setup.
+                try:
+                    icon = page.service.icon or "layer-group"
+                except Exception:
+                    icon = "layer-group"
+
+            return {
+                "title": custom_title or page.title,
+                "description": description,
+                "icon": icon,
+                "url": page.url,
+            }
+
+        # 1. Manual picks, in editor-defined order
+        if self.featured_products:
+            for block in self.featured_products:
+                if len(items) >= max_items:
+                    break
+                value = block.value
+                page = value.get("page")
+                if not page or not page.live:
+                    continue
+                try:
+                    page = page.specific
+                except Exception:
+                    logger.warning("Failed to resolve featured product page for homepage %s", self.pk,
+                                   exc_info=True)
+                    continue
+                if page.pk in seen_page_ids:
+                    continue
+                seen_page_ids.add(page.pk)
+                items.append(build_entry(
+                    page,
+                    custom_title=value.get("custom_title"),
+                    custom_blurb=value.get("custom_blurb"),
+                    icon=value.get("icon"),
+                ))
+
+        # 2. Fill remaining slots with flagged products, ordered by tree path
+        #    for a stable, predictable order.
+        if len(items) < max_items:
+            try:
+                flagged = ProductPage.objects.live().filter(is_featured_on_homepage=True).order_by("path")
+                for page in flagged:
+                    if len(items) >= max_items:
+                        break
+                    if page.pk in seen_page_ids:
+                        continue
+                    seen_page_ids.add(page.pk)
+                    items.append(build_entry(page))
+            except Exception:
+                logger.warning("Failed to query flagged featured products for homepage %s", self.pk,
+                               exc_info=True)
+
+        return items
+
+    @cached_property
+    def services_strip_items(self) -> list[dict]:
+        """
+        Items for the compact services strip below the homepage cards.
+
+        The manual StreamField wins when set, so editors can fully customize
+        the strip. Otherwise we derive from the first Service pages so the
+        strip works out of the box for existing sites.
+        """
+        items: list[dict] = []
+
+        if self.services_strip:
+            for block in self.services_strip:
+                value = block.value
+                page = value.get("page")
+                url = "#"
+                if page and page.live:
+                    url = page.url or "#"
+                elif value.get("external_url"):
+                    url = value.get("external_url")
+                items.append({
+                    "icon": value.get("icon") or "layer-group",
+                    "title": value.get("title"),
+                    "description": value.get("description"),
+                    "url": url,
+                })
+            return items
+
+        # Derive from Service pages. Wrapped defensively because page-tree and
+        # related-object lookups should never take the whole homepage down.
+        try:
+            for service_page in self.services[:5]:
+                try:
+                    icon = service_page.service.icon or "layer-group"
+                except Exception:
+                    icon = "layer-group"
+
+                try:
+                    description = truncatechars(service_page.get_meta_description() or "", 90)
+                except Exception:
+                    description = ""
+
+                items.append({
+                    "icon": icon,
+                    "title": service_page.banner_title or service_page.title,
+                    "description": description,
+                    "url": service_page.url,
+                })
+        except Exception:
+            logger.warning("Failed to derive services strip items for homepage %s", self.pk, exc_info=True)
+
+        return items
 
 
 register_searchable_chooser(WmsLayer)
@@ -467,6 +783,18 @@ class HomeMapSettings(BaseSiteSetting, ClusterableModel):
     
     show_level_1_boundaries = models.BooleanField(default=False, verbose_name=_("Show Level 1 Boundaries"))
     use_geomanager_basemaps = models.BooleanField(default=False, verbose_name=_("Use Geomanager Basemaps, if set"))
+    multi_hazard_api_base_url = models.URLField(
+        blank=True,
+        null=True,
+        verbose_name=_("Multi-Hazard API base URL"),
+        help_text=_("Base URL for the Multi-Hazard catalog API, for example https://multi-hazard.acmad.org"),
+    )
+    multi_hazard_project_slug = models.CharField(
+        max_length=100,
+        blank=True,
+        default="multi-hazard",
+        verbose_name=_("Multi-Hazard project slug"),
+    )
     
     edit_handler = TabbedInterface([
         ObjectList([
@@ -477,6 +805,10 @@ class HomeMapSettings(BaseSiteSetting, ClusterableModel):
                 FieldPanel("show_level_1_boundaries"),
                 FieldPanel("use_geomanager_basemaps"),
             ], heading=_("Boundary Settings"), ),
+            MultiFieldPanel([
+                FieldPanel("multi_hazard_api_base_url"),
+                FieldPanel("multi_hazard_project_slug"),
+            ], heading=_("Multi-Hazard Map")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
             MultiFieldPanel([
                 FieldPanel("show_warnings_layer"),
                 FieldPanel("warnings_layer_display_name"),
