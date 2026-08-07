@@ -1,11 +1,13 @@
 import hashlib
 import json
 import os
+import re
 import tempfile
+import xml.etree.ElementTree as ElementTree
 from argparse import ArgumentTypeError
 from datetime import date, timedelta, timezone
 from email.utils import parsedate_to_datetime
-from urllib.parse import urlencode, urlparse, urlunparse
+from urllib.parse import quote, urlencode, urljoin, urlparse, urlunparse
 
 import requests
 from django.core.files import File
@@ -37,10 +39,25 @@ SOURCE_SYSTEM = "ACMAD Atmospheric Analysis THREDDS"
 USER_AGENT = "ACMAD-ClimWeb-Atmospheric-Analysis-Importer/1.0 (+https://new.acmad.org/)"
 MAX_IMAGE_SIZE = 10 * 1024 * 1024
 SOURCE_ROOT = "http://154.66.220.45:8080/thredds/fileServer/"
+THREDDS_NAMESPACE = (
+    "http://www.unidata.ucar.edu/namespaces/thredds/InvCatalog/v1.0"
+)
+XLINK_NAMESPACE = "http://www.w3.org/1999/xlink"
+HISTORY_CATALOGS = {
+    "ncep": (
+        "http://154.66.220.45:8080/thredds/catalog/ACMAD/CDD/"
+        "ClimateBulletin_TN/NCEP_Clim_Next_Days/catalog.xml"
+    ),
+    "gfs": (
+        "http://154.66.220.45:8080/thredds/catalog/ACMAD/CDD/"
+        "DVP_FCST_PLOT/GFS/catalog.xml"
+    ),
+}
 
 SOURCE_SPECS = (
     {
         "key": "climo-rh700",
+        "collection": "ncep",
         "name": "5-day Relative Humidity and Wind at 700 hPa",
         "category": "5-day Atmospheric Climatology",
         "valid_for_days": 5,
@@ -53,6 +70,7 @@ SOURCE_SPECS = (
     },
     {
         "key": "climo-rh850",
+        "collection": "ncep",
         "name": "5-day Relative Humidity and Wind at 850 hPa",
         "category": "5-day Atmospheric Climatology",
         "valid_for_days": 5,
@@ -65,6 +83,7 @@ SOURCE_SPECS = (
     },
     {
         "key": "climo-vorticity700",
+        "collection": "ncep",
         "name": "5-day Vorticity and Wind at 700 hPa",
         "category": "5-day Atmospheric Climatology",
         "valid_for_days": 5,
@@ -77,6 +96,7 @@ SOURCE_SPECS = (
     },
     {
         "key": "climo-vorticity850",
+        "collection": "ncep",
         "name": "5-day Vorticity and Wind at 850 hPa",
         "category": "5-day Atmospheric Climatology",
         "valid_for_days": 5,
@@ -89,6 +109,7 @@ SOURCE_SPECS = (
     },
     {
         "key": "climo-z500",
+        "collection": "ncep",
         "name": "5-day 500 hPa Geopotential",
         "category": "5-day Atmospheric Climatology",
         "valid_for_days": 5,
@@ -101,6 +122,7 @@ SOURCE_SPECS = (
     },
     {
         "key": "gfs-mslp-anomaly",
+        "collection": "gfs",
         "name": "GFS Mean Sea-level Pressure Anomaly",
         "category": "Daily Synoptic Analysis",
         "valid_for_days": 1,
@@ -113,6 +135,7 @@ SOURCE_SPECS = (
     },
     {
         "key": "gfs-integrated-rh",
+        "collection": "gfs",
         "name": "GFS Integrated Relative Humidity 925–700 hPa",
         "category": "Daily Synoptic Analysis",
         "valid_for_days": 1,
@@ -125,6 +148,7 @@ SOURCE_SPECS = (
     },
     {
         "key": "gfs-integrated-vorticity",
+        "collection": "gfs",
         "name": "GFS Integrated Vorticity and Wind 925–600 hPa",
         "category": "Daily Synoptic Analysis",
         "valid_for_days": 1,
@@ -154,8 +178,74 @@ def versioned_source_url(source_url, source_version):
     )
 
 
+def parse_history_root_catalog(xml_content, catalog_url):
+    """Return issue dates and child catalogue URLs from a THREDDS root."""
+    try:
+        root = ElementTree.fromstring(xml_content)
+    except ElementTree.ParseError as exc:
+        raise CommandError(
+            f"Invalid THREDDS catalogue {catalog_url}: {exc}"
+        ) from exc
+
+    catalogues = {}
+    title_key = f"{{{XLINK_NAMESPACE}}}title"
+    href_key = f"{{{XLINK_NAMESPACE}}}href"
+    for reference in root.findall(f".//{{{THREDDS_NAMESPACE}}}catalogRef"):
+        title = reference.get(title_key, "")
+        if not re.fullmatch(r"20\d{6}", title):
+            continue
+        try:
+            issue_date = date(
+                int(title[0:4]), int(title[4:6]), int(title[6:8])
+            )
+        except ValueError:
+            continue
+        href = reference.get(href_key)
+        if href:
+            catalogues[issue_date] = urljoin(catalog_url, href)
+    return catalogues
+
+
+def parse_history_issue_catalog(xml_content, issue_date, specs):
+    """Extract only the exact pilot files from a dated THREDDS catalogue."""
+    try:
+        root = ElementTree.fromstring(xml_content)
+    except ElementTree.ParseError as exc:
+        raise CommandError(
+            f"Invalid THREDDS issue catalogue for {issue_date}: {exc}"
+        ) from exc
+
+    specs_by_filename = {spec["filename"]: spec for spec in specs}
+    assets = []
+    for dataset in root.findall(f".//{{{THREDDS_NAMESPACE}}}dataset"):
+        filename = dataset.get("name", "")
+        spec = specs_by_filename.get(filename)
+        source_path = dataset.get("urlPath")
+        if not spec or not source_path:
+            continue
+        modified_element = dataset.find(f"{{{THREDDS_NAMESPACE}}}date")
+        source_version = (
+            modified_element.text.strip()
+            if modified_element is not None and modified_element.text
+            else issue_date.isoformat()
+        )
+        source_url = SOURCE_ROOT + quote(source_path.lstrip("/"), safe="/")
+        assets.append(
+            {
+                **spec,
+                "date": issue_date,
+                "source_url": source_url,
+                "source_version": source_version,
+                "provenance_url": versioned_source_url(
+                    source_url, source_version
+                ),
+            }
+        )
+    return assets
+
+
 class Command(BaseCommand):
-    help = "Import current ACMAD Atmospheric Analysis PNG products."
+    help = "Import current or historical ACMAD Atmospheric Analysis PNG products."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -169,12 +259,54 @@ class Command(BaseCommand):
             type=iso_date,
             help="Override the issue date inferred from Last-Modified headers.",
         )
+        parser.add_argument(
+            "--include-history",
+            action="store_true",
+            help="Also discover and import dated archive folders.",
+        )
+        parser.add_argument(
+            "--history-only",
+            action="store_true",
+            help="Import dated archive folders without importing current files.",
+        )
+        parser.add_argument("--from-date", type=iso_date)
+        parser.add_argument("--to-date", type=iso_date)
+        parser.add_argument(
+            "--limit",
+            dest="history_limit",
+            type=int,
+            default=3,
+            help="Maximum historical issue dates to inspect (default: 3).",
+        )
+        parser.add_argument(
+            "--oldest-first",
+            action="store_true",
+            help="Select the oldest matching historical dates first.",
+        )
         parser.add_argument("--inventory-only", action="store_true")
         parser.add_argument("--dry-run", action="store_true")
         parser.add_argument("--refresh", action="store_true")
         parser.add_argument("--continue-on-error", action="store_true")
 
     def handle(self, *args, **options):
+        history_requested = options["include_history"] or options["history_only"]
+        if (options["from_date"] or options["to_date"]) and not history_requested:
+            raise CommandError(
+                "--from-date and --to-date require --include-history or --history-only"
+            )
+        if options["issue_date"] and history_requested:
+            raise CommandError(
+                "--issue-date cannot be combined with historical imports"
+            )
+        if options["history_limit"] < 1:
+            raise CommandError("--limit must be at least 1")
+        if (
+            options["from_date"]
+            and options["to_date"]
+            and options["from_date"] > options["to_date"]
+        ):
+            raise CommandError("--from-date cannot be later than --to-date")
+
         selected_keys = set(options["source"] or [])
         specs = [
             spec
@@ -183,26 +315,30 @@ class Command(BaseCommand):
         ]
         assets = []
         discovery_failures = []
-        for spec in specs:
-            try:
-                source_date, source_version = self._source_metadata(spec["source_url"])
-            except CommandError as exc:
-                discovery_failures.append((spec["key"], str(exc)))
-                self.stderr.write(self.style.ERROR(f"UNAVAILABLE {spec['key']}: {exc}"))
-                if not options["continue_on_error"]:
-                    raise
-                continue
-            issue_date = options["issue_date"] or source_date
-            assets.append(
-                {
-                    **spec,
-                    "date": issue_date,
-                    "source_version": source_version,
-                    "provenance_url": versioned_source_url(
-                        spec["source_url"], source_version
-                    ),
-                }
+        if not options["history_only"]:
+            current_assets, current_failures = self._discover_current(
+                specs, options["issue_date"], options["continue_on_error"]
             )
+            assets.extend(current_assets)
+            discovery_failures.extend(current_failures)
+
+        if history_requested:
+            history_assets, history_failures = self._discover_history(
+                specs, options
+            )
+            current_dates = {
+                asset["date"]
+                for asset in assets
+                if "/current/" in asset["source_url"]
+            }
+            if not options["history_only"]:
+                history_assets = [
+                    asset
+                    for asset in history_assets
+                    if asset["date"] not in current_dates
+                ]
+            assets.extend(history_assets)
+            discovery_failures.extend(history_failures)
 
         if not assets:
             raise CommandError("No Atmospheric Analysis sources were available")
@@ -274,6 +410,106 @@ class Command(BaseCommand):
                 f"{len(failures)} source(s) failed: "
                 + ", ".join(key for key, _ in failures)
             )
+
+    def _discover_current(self, specs, issue_date_override, continue_on_error):
+        assets = []
+        failures = []
+        for spec in specs:
+            try:
+                source_date, source_version = self._source_metadata(
+                    spec["source_url"]
+                )
+            except CommandError as exc:
+                failures.append((spec["key"], str(exc)))
+                self.stderr.write(
+                    self.style.ERROR(f"UNAVAILABLE {spec['key']}: {exc}")
+                )
+                if not continue_on_error:
+                    raise
+                continue
+            issue_date = issue_date_override or source_date
+            assets.append(
+                {
+                    **spec,
+                    "date": issue_date,
+                    "source_version": source_version,
+                    "provenance_url": versioned_source_url(
+                        spec["source_url"], source_version
+                    ),
+                }
+            )
+        return assets, failures
+
+    def _discover_history(self, specs, options):
+        collections = {spec["collection"] for spec in specs}
+        root_catalogues = {}
+        failures = []
+        for collection in sorted(collections):
+            catalog_url = HISTORY_CATALOGS[collection]
+            try:
+                root_catalogues[collection] = parse_history_root_catalog(
+                    self._fetch_catalog(catalog_url), catalog_url
+                )
+            except CommandError as exc:
+                failures.append((f"{collection}-history", str(exc)))
+                self.stderr.write(self.style.ERROR(str(exc)))
+                if not options["continue_on_error"]:
+                    raise
+
+        dates = set()
+        for catalogues in root_catalogues.values():
+            dates.update(catalogues)
+        if options["from_date"]:
+            dates = {value for value in dates if value >= options["from_date"]}
+        if options["to_date"]:
+            dates = {value for value in dates if value <= options["to_date"]}
+        selected_dates = sorted(dates, reverse=not options["oldest_first"])[
+            : options["history_limit"]
+        ]
+        self.stdout.write(
+            f"Historical discovery found {len(dates)} matching issue date(s); "
+            f"inspecting {len(selected_dates)}."
+        )
+
+        assets = []
+        for issue_date in selected_dates:
+            for collection in sorted(collections):
+                catalog_url = root_catalogues.get(collection, {}).get(issue_date)
+                if not catalog_url:
+                    continue
+                collection_specs = [
+                    spec for spec in specs if spec["collection"] == collection
+                ]
+                try:
+                    assets.extend(
+                        parse_history_issue_catalog(
+                            self._fetch_catalog(catalog_url),
+                            issue_date,
+                            collection_specs,
+                        )
+                    )
+                except CommandError as exc:
+                    key = f"{collection}-{issue_date.isoformat()}"
+                    failures.append((key, str(exc)))
+                    self.stderr.write(self.style.ERROR(str(exc)))
+                    if not options["continue_on_error"]:
+                        raise
+        return assets, failures
+
+    @staticmethod
+    def _fetch_catalog(catalog_url):
+        try:
+            response = requests.get(
+                catalog_url,
+                timeout=(10, 60),
+                headers={"User-Agent": USER_AGENT},
+            )
+            response.raise_for_status()
+        except requests.RequestException as exc:
+            raise CommandError(
+                f"Could not fetch THREDDS catalogue {catalog_url}: {exc}"
+            ) from exc
+        return response.content
 
     @staticmethod
     def _source_metadata(source_url):

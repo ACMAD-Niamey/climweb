@@ -8,6 +8,8 @@ from climweb.pages.products.management.commands.import_acmad_atmospheric_analysi
     SOURCE_SPECS,
     Command,
     iso_date,
+    parse_history_issue_catalog,
+    parse_history_root_catalog,
     versioned_source_url,
 )
 from climweb.pages.products.tasks import run_acmad_atmospheric_analysis_import
@@ -57,6 +59,60 @@ class TestAtmosphericAnalysisSources(SimpleTestCase):
         )
         self.assertEqual(iso_date("2026-08-07"), date(2026, 8, 7))
         self.assertEqual(MAX_IMAGE_SIZE, 10 * 1024 * 1024)
+
+    def test_history_root_catalog_returns_only_valid_dated_folders(self):
+        xml_content = b"""<?xml version="1.0"?>
+        <catalog xmlns="http://www.unidata.ucar.edu/namespaces/thredds/InvCatalog/v1.0"
+          xmlns:xlink="http://www.w3.org/1999/xlink">
+          <catalogRef xlink:title="current" xlink:href="current/catalog.xml" />
+          <catalogRef xlink:title="20260806" xlink:href="20260806/catalog.xml" />
+          <catalogRef xlink:title="20260230" xlink:href="bad/catalog.xml" />
+        </catalog>"""
+
+        catalogues = parse_history_root_catalog(
+            xml_content, "http://example.org/archive/catalog.xml"
+        )
+
+        self.assertEqual(
+            catalogues,
+            {
+                date(2026, 8, 6): (
+                    "http://example.org/archive/20260806/catalog.xml"
+                )
+            },
+        )
+
+    def test_history_issue_catalog_selects_only_exact_pilot_files(self):
+        xml_content = b"""<?xml version="1.0"?>
+        <catalog xmlns="http://www.unidata.ucar.edu/namespaces/thredds/InvCatalog/v1.0">
+          <dataset name="folder">
+            <dataset name="gfs_MSLP_Anom_Africa_init_D0-00_daily.png"
+              urlPath="ACMAD/archive/20260806/gfs_MSLP_Anom_Africa_init_D0-00_daily.png">
+              <date type="modified">2026-08-06T09:55:14Z</date>
+            </dataset>
+            <dataset name="wcm_gfs_MSLP_Anom_Africa_init_D0-00_daily.png"
+              urlPath="ACMAD/archive/20260806/wcm_gfs_MSLP_Anom_Africa_init_D0-00_daily.png" />
+            <dataset name="gfs_MSLP_Anom_Africa_init_D1-00_daily.png"
+              urlPath="ACMAD/archive/20260806/gfs_MSLP_Anom_Africa_init_D1-00_daily.png" />
+          </dataset>
+        </catalog>"""
+        specs = [
+            spec for spec in SOURCE_SPECS if spec["key"] == "gfs-mslp-anomaly"
+        ]
+
+        assets = parse_history_issue_catalog(
+            xml_content, date(2026, 8, 6), specs
+        )
+
+        self.assertEqual(len(assets), 1)
+        self.assertEqual(assets[0]["key"], "gfs-mslp-anomaly")
+        self.assertEqual(assets[0]["date"], date(2026, 8, 6))
+        self.assertEqual(assets[0]["source_version"], "2026-08-06T09:55:14Z")
+        self.assertEqual(
+            assets[0]["source_url"],
+            "http://154.66.220.45:8080/thredds/fileServer/ACMAD/archive/"
+            "20260806/gfs_MSLP_Anom_Africa_init_D0-00_daily.png",
+        )
 
 
 class TestAutomaticAtmosphericAnalysisImport(SimpleTestCase):
