@@ -402,6 +402,21 @@ def run_acmad_policy_briefs_import(self):
     logger.info("[ACMAD POLICY BRIEFS] Automatic import complete.")
 
 
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_atmospheric_analysis_import(self):
+    """Fetch and publish current ACMAD atmospheric analysis maps."""
+    if not settings.ACMAD_ATMOSPHERIC_ANALYSIS_AUTO_IMPORT:
+        logger.info("[ACMAD ATMOSPHERIC ANALYSIS] Automatic import is disabled.")
+        return
+
+    logger.info("[ACMAD ATMOSPHERIC ANALYSIS] Checking current PNG sources.")
+    call_command(
+        "import_acmad_atmospheric_analysis",
+        continue_on_error=True,
+    )
+    logger.info("[ACMAD ATMOSPHERIC ANALYSIS] Automatic import complete.")
+
+
 @app.on_after_finalize.connect
 def setup_product_ingestion_tasks(sender, **kwargs):
     sender.add_periodic_task(
@@ -428,4 +443,9 @@ def setup_product_ingestion_tasks(sender, **kwargs):
         60 * 60 * settings.ACMAD_POLICY_BRIEFS_IMPORT_INTERVAL_HOURS,
         run_acmad_policy_briefs_import.s(),
         name="import-acmad-policy-briefs-automatically",
+    )
+    sender.add_periodic_task(
+        60 * 60 * settings.ACMAD_ATMOSPHERIC_ANALYSIS_IMPORT_INTERVAL_HOURS,
+        run_acmad_atmospheric_analysis_import.s(),
+        name="import-acmad-atmospheric-analysis-automatically",
     )
