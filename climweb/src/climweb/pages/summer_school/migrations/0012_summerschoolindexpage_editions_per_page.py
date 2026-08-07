@@ -14,6 +14,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='summerschoolindexpage',
             name='editions_per_page',
-            field=models.PositiveIntegerField(default=6, help_text='How many editions should be visible per page in the programme listing below the spotlight ?', validators=[django.core.validators.MinValueValidator(3), django.core.validators.MaxValueValidator(20)], verbose_name='Editions per page'),
+            field=models.PositiveIntegerField(default=6, help_text='How many editions should be visible per page in the programme listing below the spotlight?', validators=[django.core.validators.MinValueValidator(3), django.core.validators.MaxValueValidator(20)], verbose_name='Editions per page'),
         ),
     ]
