@@ -116,6 +116,7 @@ services:
       - ./climweb:/climweb/web
       - static:/climweb/web/src/climweb/static
       - media:/climweb/web/src/climweb/media
+      - private_exports:/climweb/web/src/climweb/private_exports
       - ${BACKUP_VOLUME:-./cms/backup}:/climweb/web/src/climweb/backup
 
   climweb_celery_worker_dev:
@@ -131,6 +132,7 @@ services:
       - ./climweb:/climweb/web
       - static:/climweb/web/src/climweb/static
       - media:/climweb/web/src/climweb/media
+      - private_exports:/climweb/web/src/climweb/private_exports
       - ${BACKUP_VOLUME:-./cms/backup}:/climweb/web/src/climweb/backup
 
   climweb_celery_beat_dev:
@@ -146,6 +148,7 @@ services:
       - ./climweb:/climweb/web
       - static:/climweb/web/src/climweb/static
       - media:/climweb/web/src/climweb/media
+      - private_exports:/climweb/web/src/climweb/private_exports
       - ${BACKUP_VOLUME:-./cms/backup}:/climweb/web/src/climweb/backup
 
   climweb_nginx:
@@ -219,6 +222,7 @@ services:
     volumes:
       - static_prod:/climweb/web/src/climweb/static
       - media_prod:/climweb/web/src/climweb/media
+      - private_exports_prod:/climweb/web/src/climweb/private_exports
       - ${BACKUP_VOLUME_PROD:-./cms/backup-prod}:/climweb/web/src/climweb/backup
     depends_on:
       climweb_db_prod:
@@ -243,6 +247,7 @@ services:
     volumes:
       - static_prod:/climweb/web/src/climweb/static
       - media_prod:/climweb/web/src/climweb/media
+      - private_exports_prod:/climweb/web/src/climweb/private_exports
       - ${BACKUP_VOLUME_PROD:-./cms/backup-prod}:/climweb/web/src/climweb/backup
     depends_on:
       climweb_prod:
@@ -259,6 +264,7 @@ services:
     volumes:
       - static_prod:/climweb/web/src/climweb/static
       - media_prod:/climweb/web/src/climweb/media
+      - private_exports_prod:/climweb/web/src/climweb/private_exports
       - ${BACKUP_VOLUME_PROD:-./cms/backup-prod}:/climweb/web/src/climweb/backup
     depends_on:
       climweb_prod:
@@ -312,5 +318,7 @@ services:
 volumes:
   static:
   media:
+  private_exports:
   static_prod:
   media_prod:
+  private_exports_prod:

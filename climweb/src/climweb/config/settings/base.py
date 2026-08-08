@@ -469,6 +469,15 @@ STATIC_URL = env.str("FORCE_SCRIPT_NAME", "") + "/static/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 MEDIA_URL = env.str("FORCE_SCRIPT_NAME", "") + "/media/"
 
+# Deliberately NOT under MEDIA_ROOT and NOT served by nginx (unlike /media/,
+# which is served directly and publicly with no auth check - see deploy/nginx/
+# nginx.conf). Generated submission-export zips can contain applicant resumes
+# and support letters, so they're only ever streamed out via
+# download_submission_export_view in climweb.base.views, which checks the
+# same form-management permission as the submissions list itself.
+PRIVATE_EXPORTS_ROOT = os.path.join(BASE_DIR, "private_exports")
+SUBMISSION_EXPORT_RETENTION_HOURS = 48
+
 # Wagtail settings
 WAGTAIL_SITE_NAME = env.str("WAGTAIL_SITE_NAME", "ClimWeb")
 

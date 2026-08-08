@@ -69,7 +69,7 @@ class TestSummerSchoolPages(WagtailPageTestCase):
         self.assertEqual(len(self.edition1.cohorts), 0)
 
     def test_application_page_default_validation_field(self):
-        self.assertEqual(self.application_page.validation_field, "email_address")
+        self.assertEqual(self.application_page.validation_field, "email")
 
     def test_get_response_sets_no_cache_header(self):
         # serve() renders its own TemplateResponse instead of calling
@@ -192,6 +192,52 @@ class TestSummerSchoolShouldProcessForm(WagtailPageTestCase):
         )
 
         self.assertTrue(should_process)
+
+    def test_fallback_match_uses_correct_key_for_duplicate_query(self):
+        # Regression test: validation_field defaults to "email" but this
+        # page's email field is clean_name "email_address", so resolving
+        # the value goes through the ("email", "email_address") fallback
+        # rather than the primary exact match. The fallback used to set
+        # form_validation_value from the matched field without also
+        # updating validation_field, so the duplicate-search query below
+        # kept searching under the original (mismatched) key and could
+        # never find the existing submission - duplicates went through
+        # silently, with no admin alert either, since a value had in fact
+        # been resolved.
+        submission_class = self.application_page.get_submission_class()
+        submission_class.objects.create(
+            page=self.application_page, form_data={"email_address": "applicant@example.com"}
+        )
+
+        request = self._build_request()
+        should_process = self.application_page.should_process_form(
+            request, form_data={"email_address": "applicant@example.com"}
+        )
+
+        self.assertFalse(should_process)
+
+    def test_falls_back_to_any_email_typed_field_when_no_name_matches(self):
+        # Simulate the "Registration 2026" production incident: the email
+        # field was relabeled from something unrelated and kept its
+        # original clean_name, so neither validation_field nor the
+        # hardcoded "email"/"email_address" fallback names match it. The
+        # duplicate check must still find it by field type instead of
+        # silently letting every submission through.
+        SummerSchoolApplicationFormField.objects.filter(pk=self.email_field.pk).update(
+            clean_name="applicant_contact"
+        )
+
+        submission_class = self.application_page.get_submission_class()
+        submission_class.objects.create(
+            page=self.application_page, form_data={"applicant_contact": "applicant@example.com"}
+        )
+
+        request = self._build_request()
+        should_process = self.application_page.should_process_form(
+            request, form_data={"applicant_contact": "applicant@example.com"}
+        )
+
+        self.assertFalse(should_process)
 
 
 class TestFormCleanNameFallback(WagtailPageTestCase):

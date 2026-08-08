@@ -8,6 +8,7 @@ from climweb.base.models.site_settings import *
 from climweb.base.models.snippets import *
 from climweb.base.models.submission_review import *
 from climweb.base.models.submission_email_log import *
+from climweb.base.models.submission_export import *
 
 
 class FormFileSubmission(models.Model):
