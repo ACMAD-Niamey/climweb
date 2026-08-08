@@ -6,6 +6,8 @@ import uuid
 from datetime import date, datetime, timedelta
 
 from celery_singleton import Singleton
+from django.conf import settings
+from django.core.management import call_command
 from django.core.files import File
 from django.utils.text import slugify
 from loguru import logger
@@ -330,10 +332,142 @@ def ingest_product_files(self):
     logger.info("[INGESTION] Scan complete.")
 
 
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_multihazard_import(self):
+    """Fetch and publish new Continental Multi-Hazard Outlook issues."""
+    if not settings.ACMAD_MULTIHAZARD_AUTO_IMPORT:
+        logger.info("[ACMAD MULTI-HAZARD] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_MULTIHAZARD_IMPORT_LIMIT
+    logger.info(
+        f"[ACMAD MULTI-HAZARD] Checking the newest {limit} archive issue(s)."
+    )
+    call_command(
+        "import_acmad_multihazard",
+        limit=limit,
+        continue_on_error=True,
+    )
+    logger.info("[ACMAD MULTI-HAZARD] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_daily_rainfall_import(self):
+    """Fetch and publish new daily GSMaP rainfall observation images."""
+    if not settings.ACMAD_RAINFALL_AUTO_IMPORT:
+        logger.info("[ACMAD RAINFALL] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_RAINFALL_IMPORT_LIMIT
+    logger.info(f"[ACMAD RAINFALL] Checking the newest {limit} archive issue(s).")
+    call_command(
+        "import_acmad_daily_rainfall",
+        limit=limit,
+        continue_on_error=True,
+    )
+    logger.info("[ACMAD RAINFALL] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_dekadal_import(self):
+    """Fetch and publish the current Dekadal Climate Bulletin document set."""
+    if not settings.ACMAD_DEKADAL_AUTO_IMPORT:
+        logger.info("[ACMAD DEKADAL] Automatic import is disabled.")
+        return
+
+    logger.info("[ACMAD DEKADAL] Checking the current bulletin document set.")
+    call_command(
+        "import_acmad_dekadal_bulletin",
+        continue_on_error=True,
+    )
+    logger.info("[ACMAD DEKADAL] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_policy_briefs_import(self):
+    """Fetch and publish current Policy and Decision Brief assets."""
+    if not settings.ACMAD_POLICY_BRIEFS_AUTO_IMPORT:
+        logger.info("[ACMAD POLICY BRIEFS] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_POLICY_BRIEFS_IMPORT_LIMIT
+    logger.info(
+        f"[ACMAD POLICY BRIEFS] Checking the newest {limit} issue date(s)."
+    )
+    call_command(
+        "import_acmad_policy_briefs",
+        limit=limit,
+        continue_on_error=True,
+    )
+    logger.info("[ACMAD POLICY BRIEFS] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_atmospheric_analysis_import(self):
+    """Fetch and publish current ACMAD atmospheric analysis maps."""
+    if not settings.ACMAD_ATMOSPHERIC_ANALYSIS_AUTO_IMPORT:
+        logger.info("[ACMAD ATMOSPHERIC ANALYSIS] Automatic import is disabled.")
+        return
+
+    logger.info("[ACMAD ATMOSPHERIC ANALYSIS] Checking current PNG sources.")
+    call_command(
+        "import_acmad_atmospheric_analysis",
+        continue_on_error=True,
+    )
+    logger.info("[ACMAD ATMOSPHERIC ANALYSIS] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_heat_stress_import(self):
+    """Fetch and publish the newest ACMAD heat-stress image products."""
+    if not settings.ACMAD_HEAT_STRESS_AUTO_IMPORT:
+        logger.info("[ACMAD HEAT STRESS] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_HEAT_STRESS_IMPORT_LIMIT
+    logger.info(f"[ACMAD HEAT STRESS] Checking the newest {limit} issue(s).")
+    call_command(
+        "import_acmad_heat_stress",
+        limit=limit,
+        continue_on_error=True,
+    )
+    logger.info("[ACMAD HEAT STRESS] Automatic import complete.")
+
+
 @app.on_after_finalize.connect
 def setup_product_ingestion_tasks(sender, **kwargs):
     sender.add_periodic_task(
         60 * 5,  # every 15 minutes
         ingest_product_files.s(),
         name='ingest-product-files-every-5-minutes',
+    )
+    sender.add_periodic_task(
+        60 * 60 * settings.ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS,
+        run_acmad_multihazard_import.s(),
+        name="import-acmad-multihazard-automatically",
+    )
+    sender.add_periodic_task(
+        60 * 60 * settings.ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS,
+        run_acmad_daily_rainfall_import.s(),
+        name="import-acmad-daily-rainfall-automatically",
+    )
+    sender.add_periodic_task(
+        60 * 60 * settings.ACMAD_DEKADAL_IMPORT_INTERVAL_HOURS,
+        run_acmad_dekadal_import.s(),
+        name="import-acmad-dekadal-bulletin-automatically",
+    )
+    sender.add_periodic_task(
+        60 * 60 * settings.ACMAD_POLICY_BRIEFS_IMPORT_INTERVAL_HOURS,
+        run_acmad_policy_briefs_import.s(),
+        name="import-acmad-policy-briefs-automatically",
+    )
+    sender.add_periodic_task(
+        60 * 60 * settings.ACMAD_ATMOSPHERIC_ANALYSIS_IMPORT_INTERVAL_HOURS,
+        run_acmad_atmospheric_analysis_import.s(),
+        name="import-acmad-atmospheric-analysis-automatically",
+    )
+    sender.add_periodic_task(
+        60 * 60 * settings.ACMAD_HEAT_STRESS_IMPORT_INTERVAL_HOURS,
+        run_acmad_heat_stress_import.s(),
+        name="import-acmad-heat-stress-automatically",
     )

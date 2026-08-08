@@ -562,6 +562,67 @@ class ProductIngestedFile(models.Model):
         return self.file_path
 
 
+class ProductSourceImport(models.Model):
+    """Provenance for a product item imported from an external catalogue."""
+
+    STATUS_IMPORTED = 'imported'
+    STATUS_FAILED = 'failed'
+    STATUS_CHOICES = [
+        (STATUS_IMPORTED, _("Imported")),
+        (STATUS_FAILED, _("Failed")),
+    ]
+
+    product = models.ForeignKey(
+        'base.Product',
+        on_delete=models.CASCADE,
+        related_name='source_imports',
+        verbose_name=_("Product"),
+    )
+    source_url = models.URLField(max_length=1000, unique=True, verbose_name=_("Source URL"))
+    source_system = models.CharField(max_length=255, verbose_name=_("Source System"))
+    source_published_date = models.DateField(verbose_name=_("Source Published Date"))
+    checksum_sha256 = models.CharField(max_length=64, verbose_name=_("SHA-256 Checksum"))
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_IMPORTED,
+        verbose_name=_("Status"),
+    )
+    error_message = models.TextField(blank=True, verbose_name=_("Error Message"))
+    attempt_count = models.PositiveIntegerField(default=1, verbose_name=_("Attempt Count"))
+    document = models.ForeignKey(
+        'base.CustomDocumentModel',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='product_source_imports',
+        verbose_name=_("Document"),
+    )
+    image = models.ForeignKey(
+        'wagtailimages.Image',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='product_source_imports',
+        verbose_name=_("Image"),
+    )
+    product_item_page = models.ForeignKey(
+        ProductItemPage,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='source_imports',
+        verbose_name=_("Product Item Page"),
+    )
+    imported_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-source_published_date', '-imported_at']
+        verbose_name = _("Product Source Import")
+        verbose_name_plural = _("Product Source Imports")
+
+    def __str__(self):
+        return f"{self.product} — {self.source_published_date}"
+
+
 class SubNationalProductsLandingPage(AbstractIntroPage, Page):
     parent_page_types = ['products.ProductIndexPage']
     subpage_types = ['products.SubNationalProductPage']
