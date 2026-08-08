@@ -28,7 +28,8 @@ from .cap import create_cap_geomanager_dataset
 from .models import Theme, ServiceCategory, CAPGeomanagerSettings
 from .utils import get_latest_cms_release
 from .views import (cms_version_view, plugin_manager_view, cms_upgrade_status_view, submission_review_view,
-                    submissions_ratings_view, compose_submission_email_view)
+                    submissions_ratings_view, compose_submission_email_view, request_submission_export_view,
+                    download_submission_export_view)
 
 
 class ModelAdminGroupWithHiddenItems(ModelAdminGroup):
@@ -59,6 +60,10 @@ def urlconf_base():
              submissions_ratings_view, name='submissions_ratings'),
         path('forms/submissions/<int:page_id>/email/',
              compose_submission_email_view, name='compose_submission_email'),
+        path('forms/submissions/<int:page_id>/export/',
+             request_submission_export_view, name='request_submission_export'),
+        path('forms/submissions/<int:page_id>/export/<str:token>/download/',
+             download_submission_export_view, name='download_submission_export'),
     ]
 
 
