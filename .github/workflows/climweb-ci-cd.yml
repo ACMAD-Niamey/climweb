@@ -36,6 +36,7 @@ jobs:
           ALLOWED_HOSTS=*
           TIME_ZONE=UTC
           CMS_DEFAULT_LANGUAGE_CODE=en
+          CMS_ADMIN_URL_PATH=cms-admin
           UID=1000
           GID=1000
           EOF
