@@ -516,7 +516,7 @@ class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormP
                                         help_text=_("A field on the form to check if is already submitted so as to "
                                                     "prevent multiple submissions by one person. This is usually the "
                                                     "email address field in snake casing format"),
-                                        default="email_address")
+                                        default="email")
     
     send_confirmation_email = models.BooleanField(default=False,
                                                   help_text=_("Should we send a confirmation/follow up email ?"),
@@ -715,6 +715,29 @@ class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormP
                     if fields_by_name.get(fallback_field) == 'email':
                         form_validation_value = form_data.get(fallback_field)
                         if form_validation_value:
+                            # the duplicate-search query below keys off
+                            # validation_field, not the fallback name -
+                            # without this, a fallback match still searches
+                            # under the original (mismatched) validation_field
+                            # and never finds the existing submission.
+                            validation_field = fallback_field
+                            break
+
+            # last resort: validation_field is stale/misconfigured (e.g. it
+            # names a field that was later relabeled - clean_name only gets
+            # set once, at field creation, and editing the label afterwards
+            # doesn't regenerate it). Fall back to whichever field is
+            # actually typed as email so duplicate-prevention keeps working
+            # while the CMS setting gets fixed, instead of silently letting
+            # every submission through.
+            if not form_validation_value:
+                for field in self.get_form_fields():
+                    if field.field_type == 'email':
+                        candidate_name = effective_clean_name(field)
+                        candidate_value = form_data.get(candidate_name)
+                        if candidate_value:
+                            validation_field = candidate_name
+                            form_validation_value = candidate_value
                             break
 
             if form_validation_value:
@@ -771,7 +794,7 @@ class EventRegistrationFormField(FormFieldMaxLengthMixin, AbstractFormField):
 @register_snippet
 class EventRegistrationFormTemplate(ClusterableModel):
     template_name = models.CharField(max_length=200)
-    validation_field = models.CharField(max_length=200, default='email_address')
+    validation_field = models.CharField(max_length=200, default='email')
     
     panels = [
         FieldPanel('template_name'),
