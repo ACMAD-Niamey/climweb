@@ -1,9 +1,27 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.response import TemplateResponse
 from wagtail.admin.auth import user_passes_test
 
 from .forms import ProductLayerForm
+from .import_monitoring import (
+    build_import_monitor_rows,
+    build_import_monitor_summary,
+)
 from .models import ProductPage
+
+
+@user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
+def product_import_monitor_view(request):
+    rows = build_import_monitor_rows()
+    return TemplateResponse(
+        request,
+        "products/import_monitor.html",
+        {
+            "rows": rows,
+            "summary": build_import_monitor_summary(rows),
+        },
+    )
 
 
 @user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))

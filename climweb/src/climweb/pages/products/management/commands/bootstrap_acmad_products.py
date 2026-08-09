@@ -2,77 +2,8 @@ from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 
+from climweb.pages.products.import_registry import PRODUCT_IMPORTS
 
-PRODUCT_IMPORTS = (
-    {
-        "key": "multihazard",
-        "label": "Continental Multi-Hazard Outlook",
-        "enabled_setting": "ACMAD_MULTIHAZARD_AUTO_IMPORT",
-        "command": "import_acmad_multihazard",
-        "limit_setting": "ACMAD_MULTIHAZARD_IMPORT_LIMIT",
-    },
-    {
-        "key": "rainfall",
-        "label": "Daily Rainfall Monitoring",
-        "enabled_setting": "ACMAD_RAINFALL_AUTO_IMPORT",
-        "command": "import_acmad_daily_rainfall",
-        "limit_setting": "ACMAD_RAINFALL_IMPORT_LIMIT",
-    },
-    {
-        "key": "dekadal",
-        "label": "Dekadal Climate Bulletin",
-        "enabled_setting": "ACMAD_DEKADAL_AUTO_IMPORT",
-        "command": "import_acmad_dekadal_bulletin",
-    },
-    {
-        "key": "policy-briefs",
-        "label": "Policy and Decision Briefs",
-        "enabled_setting": "ACMAD_POLICY_BRIEFS_AUTO_IMPORT",
-        "command": "import_acmad_policy_briefs",
-        "limit_setting": "ACMAD_POLICY_BRIEFS_IMPORT_LIMIT",
-    },
-    {
-        "key": "atmospheric-analysis",
-        "label": "Atmospheric Analysis",
-        "enabled_setting": "ACMAD_ATMOSPHERIC_ANALYSIS_AUTO_IMPORT",
-        "command": "import_acmad_atmospheric_analysis",
-    },
-    {
-        "key": "heat-stress",
-        "label": "Heat and Thermal Stress",
-        "enabled_setting": "ACMAD_HEAT_STRESS_AUTO_IMPORT",
-        "command": "import_acmad_heat_stress",
-        "limit_setting": "ACMAD_HEAT_STRESS_IMPORT_LIMIT",
-    },
-    {
-        "key": "itd-itcz",
-        "label": "ITD and ITCZ Monitoring",
-        "enabled_setting": "ACMAD_ITD_ITCZ_AUTO_IMPORT",
-        "command": "import_acmad_itd_itcz",
-        "limit_setting": "ACMAD_ITD_ITCZ_IMPORT_LIMIT",
-    },
-    {
-        "key": "thunderstorm-nowcasting",
-        "label": "Thunderstorm and Nowcasting",
-        "enabled_setting": "ACMAD_NOWCASTING_AUTO_IMPORT",
-        "command": "import_acmad_thunderstorm_nowcasting",
-        "limit_setting": "ACMAD_NOWCASTING_IMPORT_LIMIT",
-    },
-    {
-        "key": "climate-health",
-        "label": "Climate and Health",
-        "enabled_setting": "ACMAD_CLIMATE_HEALTH_AUTO_IMPORT",
-        "command": "import_acmad_climate_health",
-        "limit_setting": "ACMAD_CLIMATE_HEALTH_IMPORT_LIMIT",
-    },
-    {
-        "key": "seasonal-forecasts",
-        "label": "Seasonal and Long-Range Forecasts",
-        "enabled_setting": "ACMAD_SEASONAL_FORECAST_AUTO_IMPORT",
-        "command": "import_acmad_seasonal_forecasts",
-        "limit_setting": "ACMAD_SEASONAL_FORECAST_IMPORT_LIMIT",
-    },
-)
 
 
 class Command(BaseCommand):

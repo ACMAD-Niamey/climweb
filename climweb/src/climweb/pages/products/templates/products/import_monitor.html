@@ -1,0 +1,162 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n wagtailadmin_tags %}
+
+{% block titletag %}{% translate "Product Imports" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .import-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    .import-summary-card {
+        background: var(--w-color-surface-page);
+        border: 1px solid var(--w-color-border-furniture);
+        border-radius: 0.4rem;
+        padding: 1rem;
+    }
+    .import-summary-value {
+        display: block;
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+    .import-summary-label,
+    .import-meta {
+        color: var(--w-color-text-meta);
+        font-size: 0.85rem;
+    }
+    .import-table {
+        width: 100%;
+    }
+    .import-table th,
+    .import-table td {
+        padding: 0.75rem;
+        text-align: left;
+        vertical-align: top;
+    }
+    .import-table th {
+        border-bottom: 2px solid var(--w-color-border-furniture);
+    }
+    .import-table td {
+        border-bottom: 1px solid var(--w-color-border-furniture);
+    }
+    .import-status {
+        border-radius: 999px;
+        display: inline-block;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.25rem 0.65rem;
+    }
+    .import-status--healthy { background: #d1fae5; color: #065f46; }
+    .import-status--attention { background: #fee2e2; color: #991b1b; }
+    .import-status--disabled { background: #e5e7eb; color: #374151; }
+    .import-status--unseeded { background: #fef3c7; color: #92400e; }
+    .import-product-links {
+        margin: 0.35rem 0 0;
+        padding-left: 1rem;
+    }
+    .import-error {
+        color: #b91c1c;
+        font-size: 0.8rem;
+        margin-top: 0.35rem;
+        max-width: 28rem;
+    }
+    @media (max-width: 900px) {
+        .import-table { display: block; overflow-x: auto; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    {% translate "Product Imports" as header_title %}
+    {% include "wagtailadmin/shared/header.html" with title=header_title icon="history" %}
+
+    <div class="nice-padding">
+        <p class="help-block help-info">
+            {% translate "Read-only operational status for every configured ACMAD product importer. Manual imports and source configuration will be added in later phases." %}
+        </p>
+
+        <div class="import-summary">
+            <div class="import-summary-card">
+                <span class="import-summary-value">{{ summary.families }}</span>
+                <span class="import-summary-label">{% translate "Importer families" %}</span>
+            </div>
+            <div class="import-summary-card">
+                <span class="import-summary-value">{{ summary.enabled }}</span>
+                <span class="import-summary-label">{% translate "Automatic imports enabled" %}</span>
+            </div>
+            <div class="import-summary-card">
+                <span class="import-summary-value">{{ summary.imported }}</span>
+                <span class="import-summary-label">{% translate "Imported source files" %}</span>
+            </div>
+            <div class="import-summary-card">
+                <span class="import-summary-value">{{ summary.failed }}</span>
+                <span class="import-summary-label">{% translate "Unresolved failures" %}</span>
+            </div>
+        </div>
+
+        <table class="import-table">
+            <thead>
+                <tr>
+                    <th>{% translate "Product family" %}</th>
+                    <th>{% translate "Status" %}</th>
+                    <th>{% translate "Schedule" %}</th>
+                    <th>{% translate "Imported" %}</th>
+                    <th>{% translate "Failed" %}</th>
+                    <th>{% translate "Latest source date" %}</th>
+                    <th>{% translate "Last record activity" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                    <tr>
+                        <td>
+                            <strong>{{ row.label }}</strong>
+                            <div class="import-meta">{{ row.source_label }}</div>
+                            {% if row.product_pages %}
+                                <ul class="import-product-links">
+                                    {% for product_page in row.product_pages %}
+                                        <li>
+                                            <a href="{{ product_page.url }}" target="_blank" rel="noopener">
+                                                {{ product_page.title }}
+                                            </a>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="import-status import-status--{{ row.health }}">
+                                {{ row.health_label }}
+                            </span>
+                            {% if row.latest_failure %}
+                                <div class="import-error">
+                                    {{ row.latest_failure.error_message|truncatechars:140 }}
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if row.enabled %}
+                                {% blocktranslate with hours=row.interval_hours %}Every {{ hours }} hour(s){% endblocktranslate %}
+                            {% else %}
+                                {% translate "Not scheduled" %}
+                            {% endif %}
+                        </td>
+                        <td>{{ row.imported_count }}</td>
+                        <td>{{ row.failed_count }}</td>
+                        <td>{{ row.latest_source_date|date:"Y-m-d"|default:"—" }}</td>
+                        <td>
+                            {% if row.last_activity %}
+                                {{ row.last_activity|date:"Y-m-d H:i" }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}
