@@ -51,6 +51,13 @@ PRODUCT_IMPORTS = (
         "command": "import_acmad_itd_itcz",
         "limit_setting": "ACMAD_ITD_ITCZ_IMPORT_LIMIT",
     },
+    {
+        "key": "thunderstorm-nowcasting",
+        "label": "Thunderstorm and Nowcasting",
+        "enabled_setting": "ACMAD_NOWCASTING_AUTO_IMPORT",
+        "command": "import_acmad_thunderstorm_nowcasting",
+        "limit_setting": "ACMAD_NOWCASTING_IMPORT_LIMIT",
+    },
 )
 
 
