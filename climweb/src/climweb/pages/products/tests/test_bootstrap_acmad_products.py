@@ -21,6 +21,8 @@ ALL_IMPORTS_ENABLED = {
     "ACMAD_ITD_ITCZ_IMPORT_LIMIT": 3,
     "ACMAD_NOWCASTING_AUTO_IMPORT": True,
     "ACMAD_NOWCASTING_IMPORT_LIMIT": 3,
+    "ACMAD_CLIMATE_HEALTH_AUTO_IMPORT": True,
+    "ACMAD_CLIMATE_HEALTH_IMPORT_LIMIT": 5,
 }
 
 
@@ -40,7 +42,7 @@ class TestBootstrapAcmadProducts(SimpleTestCase):
         "climweb.pages.products.management.commands."
         "bootstrap_acmad_products.call_command"
     )
-    def test_enabled_bootstrap_runs_all_eight_importers(self, importer):
+    def test_enabled_bootstrap_runs_all_nine_importers(self, importer):
         call_command("bootstrap_acmad_products")
 
         self.assertEqual(
@@ -78,6 +80,11 @@ class TestBootstrapAcmadProducts(SimpleTestCase):
                     continue_on_error=True,
                     limit=3,
                 ),
+                call(
+                    "import_acmad_climate_health",
+                    continue_on_error=True,
+                    limit=5,
+                ),
             ],
         )
 
@@ -96,9 +103,10 @@ class TestBootstrapAcmadProducts(SimpleTestCase):
             None,
             None,
             None,
+            None,
         ]
 
         with self.assertRaises(CommandError):
             call_command("bootstrap_acmad_products")
 
-        self.assertEqual(importer.call_count, 8)
+        self.assertEqual(importer.call_count, 9)

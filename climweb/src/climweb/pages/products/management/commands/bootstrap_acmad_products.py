@@ -58,6 +58,13 @@ PRODUCT_IMPORTS = (
         "command": "import_acmad_thunderstorm_nowcasting",
         "limit_setting": "ACMAD_NOWCASTING_IMPORT_LIMIT",
     },
+    {
+        "key": "climate-health",
+        "label": "Climate and Health",
+        "enabled_setting": "ACMAD_CLIMATE_HEALTH_AUTO_IMPORT",
+        "command": "import_acmad_climate_health",
+        "limit_setting": "ACMAD_CLIMATE_HEALTH_IMPORT_LIMIT",
+    },
 )
 
 

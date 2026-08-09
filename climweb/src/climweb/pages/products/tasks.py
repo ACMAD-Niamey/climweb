@@ -468,6 +468,23 @@ def run_acmad_nowcasting_import(self):
     logger.info("[ACMAD NOWCASTING] Automatic import complete.")
 
 
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_climate_health_import(self):
+    """Fetch and publish ACMAD Climate and Health files."""
+    if not settings.ACMAD_CLIMATE_HEALTH_AUTO_IMPORT:
+        logger.info("[ACMAD CLIMATE/HEALTH] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_CLIMATE_HEALTH_IMPORT_LIMIT
+    logger.info(f"[ACMAD CLIMATE/HEALTH] Checking the newest {limit} issue(s).")
+    call_command(
+        "import_acmad_climate_health",
+        limit=limit,
+        continue_on_error=True,
+    )
+    logger.info("[ACMAD CLIMATE/HEALTH] Automatic import complete.")
+
+
 @app.on_after_finalize.connect
 def setup_product_ingestion_tasks(sender, **kwargs):
     sender.add_periodic_task(
@@ -514,4 +531,9 @@ def setup_product_ingestion_tasks(sender, **kwargs):
         60 * 60 * settings.ACMAD_NOWCASTING_IMPORT_INTERVAL_HOURS,
         run_acmad_nowcasting_import.s(),
         name="import-acmad-thunderstorm-nowcasting-automatically",
+    )
+    sender.add_periodic_task(
+        60 * 60 * settings.ACMAD_CLIMATE_HEALTH_IMPORT_INTERVAL_HOURS,
+        run_acmad_climate_health_import.s(),
+        name="import-acmad-climate-health-automatically",
     )
