@@ -65,6 +65,13 @@ PRODUCT_IMPORTS = (
         "command": "import_acmad_climate_health",
         "limit_setting": "ACMAD_CLIMATE_HEALTH_IMPORT_LIMIT",
     },
+    {
+        "key": "seasonal-forecasts",
+        "label": "Seasonal and Long-Range Forecasts",
+        "enabled_setting": "ACMAD_SEASONAL_FORECAST_AUTO_IMPORT",
+        "command": "import_acmad_seasonal_forecasts",
+        "limit_setting": "ACMAD_SEASONAL_FORECAST_IMPORT_LIMIT",
+    },
 )
 
 
