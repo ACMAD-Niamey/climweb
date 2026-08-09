@@ -1,7 +1,58 @@
+from django import forms
 from wagtail import blocks
 from wagtail.admin.forms import WagtailAdminModelForm
 
+from climweb.pages.products.import_registry import PRODUCT_IMPORTS
 from climweb.pages.products.models import ProductPage
+
+
+class ProductImportRunForm(forms.Form):
+    product_family = forms.ChoiceField(
+        label="Product family",
+        choices=[
+            (definition["key"], definition["label"])
+            for definition in PRODUCT_IMPORTS
+        ],
+    )
+    mode = forms.ChoiceField(
+        choices=(
+            ("preview", "Preview only (dry run)"),
+            ("import", "Import and publish"),
+        ),
+        initial="preview",
+    )
+    from_date = forms.DateField(
+        label="From date",
+        widget=forms.DateInput(attrs={"type": "date"}),
+    )
+    to_date = forms.DateField(
+        label="To date",
+        widget=forms.DateInput(attrs={"type": "date"}),
+    )
+    limit = forms.IntegerField(
+        min_value=1,
+        max_value=1000,
+        initial=100,
+        help_text="Maximum issue dates or records to process.",
+    )
+    refresh_existing = forms.BooleanField(
+        required=False,
+        help_text="Redownload sources that were already imported.",
+    )
+    retry_failures = forms.BooleanField(
+        required=False,
+        help_text="Retry previously failed sources when supported.",
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        from_date = cleaned_data.get("from_date")
+        to_date = cleaned_data.get("to_date")
+        if from_date and to_date and from_date > to_date:
+            raise forms.ValidationError(
+                "From date cannot be later than to date."
+            )
+        return cleaned_data
 
 
 class ProductLayerForm(WagtailAdminModelForm):

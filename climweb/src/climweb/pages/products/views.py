@@ -1,18 +1,69 @@
+from datetime import timedelta
+
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.response import TemplateResponse
+from django.utils import timezone
 from wagtail.admin.auth import user_passes_test
 
-from .forms import ProductLayerForm
+from .forms import ProductImportRunForm, ProductLayerForm
 from .import_monitoring import (
     build_import_monitor_rows,
     build_import_monitor_summary,
 )
-from .models import ProductPage
+from .models import ProductImportRun, ProductPage
 
 
 @user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
 def product_import_monitor_view(request):
+    if request.method == "POST":
+        form = ProductImportRunForm(request.POST)
+        if form.is_valid():
+            run = ProductImportRun.objects.create(
+                product_family=form.cleaned_data["product_family"],
+                mode=form.cleaned_data["mode"],
+                from_date=form.cleaned_data["from_date"],
+                to_date=form.cleaned_data["to_date"],
+                limit=form.cleaned_data["limit"],
+                refresh_existing=form.cleaned_data["refresh_existing"],
+                retry_failures=form.cleaned_data["retry_failures"],
+                requested_by=request.user,
+            )
+            from .tasks import run_manual_product_import
+
+            try:
+                task = run_manual_product_import.delay(run.pk)
+            except Exception as exc:
+                run.status = ProductImportRun.STATUS_FAILED
+                run.error_message = f"Could not queue import: {exc}"
+                run.finished_at = timezone.now()
+                run.save(
+                    update_fields=[
+                        "status",
+                        "error_message",
+                        "finished_at",
+                    ]
+                )
+                messages.error(request, run.error_message)
+            else:
+                run.task_id = task.id
+                run.save(update_fields=["task_id"])
+                messages.success(
+                    request,
+                    "Historical product import was queued.",
+                )
+            return redirect("product_import_monitor")
+    else:
+        today = timezone.localdate()
+        form = ProductImportRunForm(
+            initial={
+                "mode": ProductImportRun.MODE_PREVIEW,
+                "from_date": today - timedelta(days=30),
+                "to_date": today,
+                "limit": 100,
+            }
+        )
+
     rows = build_import_monitor_rows()
     return TemplateResponse(
         request,
@@ -20,6 +71,10 @@ def product_import_monitor_view(request):
         {
             "rows": rows,
             "summary": build_import_monitor_summary(rows),
+            "form": form,
+            "recent_runs": ProductImportRun.objects.select_related(
+                "requested_by"
+            )[:20],
         },
     )
 

@@ -4,12 +4,14 @@ import re
 import unicodedata
 import uuid
 from datetime import date, datetime, timedelta
+from io import StringIO
 
 from celery_singleton import Singleton
 from django.conf import settings
 from django.core.management import call_command
 from django.core.files import File
 from django.utils.text import slugify
+from django.utils import timezone
 from loguru import logger
 
 from climweb.config.celery import app
@@ -502,6 +504,74 @@ def run_acmad_seasonal_forecast_import(self):
         continue_on_error=True,
     )
     logger.info("[ACMAD SEASONAL FORECAST] Automatic import complete.")
+
+
+@app.task(bind=True)
+def run_manual_product_import(self, run_id):
+    """Execute a dashboard-requested historical import and retain its output."""
+    from climweb.pages.products.import_registry import PRODUCT_IMPORTS_BY_KEY
+    from climweb.pages.products.models import ProductImportRun
+
+    run = ProductImportRun.objects.get(pk=run_id)
+    definition = PRODUCT_IMPORTS_BY_KEY.get(run.product_family)
+    if definition is None:
+        run.status = ProductImportRun.STATUS_FAILED
+        run.error_message = f"Unknown product family: {run.product_family}"
+        run.finished_at = timezone.now()
+        run.save(update_fields=["status", "error_message", "finished_at"])
+        return
+
+    task_id = getattr(self.request, "id", None)
+    run.status = ProductImportRun.STATUS_RUNNING
+    run.started_at = timezone.now()
+    if task_id:
+        run.task_id = task_id
+    run.save(update_fields=["status", "started_at", "task_id"])
+
+    command_options = {
+        "from_date": run.from_date,
+        "to_date": run.to_date,
+        "limit": run.limit,
+        "oldest_first": True,
+        "continue_on_error": True,
+        "dry_run": run.mode == ProductImportRun.MODE_PREVIEW,
+        "refresh": run.refresh_existing,
+    }
+    if definition.get("include_history"):
+        command_options["include_history"] = True
+    if definition.get("history_only"):
+        command_options["history_only"] = True
+    if definition.get("supports_retry") and run.retry_failures:
+        command_options["retry_failures"] = True
+
+    output = StringIO()
+    try:
+        call_command(
+            definition["command"],
+            stdout=output,
+            stderr=output,
+            **command_options,
+        )
+    except Exception as exc:
+        run.status = ProductImportRun.STATUS_FAILED
+        run.error_message = str(exc)
+        logger.exception(
+            f"[PRODUCT IMPORT RUN {run.pk}] {definition['label']} failed: {exc}"
+        )
+    else:
+        run.status = ProductImportRun.STATUS_SUCCEEDED
+        run.error_message = ""
+    finally:
+        run.output = output.getvalue()[-100000:]
+        run.finished_at = timezone.now()
+        run.save(
+            update_fields=[
+                "status",
+                "output",
+                "error_message",
+                "finished_at",
+            ]
+        )
 
 
 @app.on_after_finalize.connect

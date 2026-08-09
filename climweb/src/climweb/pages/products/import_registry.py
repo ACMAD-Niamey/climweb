@@ -11,6 +11,8 @@ PRODUCT_IMPORTS = (
         "interval_setting": "ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS",
         "command": "import_acmad_multihazard",
         "limit_setting": "ACMAD_MULTIHAZARD_IMPORT_LIMIT",
+        "include_history": True,
+        "supports_retry": True,
     },
     {
         "key": "rainfall",
@@ -21,6 +23,8 @@ PRODUCT_IMPORTS = (
         "interval_setting": "ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS",
         "command": "import_acmad_daily_rainfall",
         "limit_setting": "ACMAD_RAINFALL_IMPORT_LIMIT",
+        "include_history": True,
+        "supports_retry": True,
     },
     {
         "key": "dekadal",
@@ -30,6 +34,8 @@ PRODUCT_IMPORTS = (
         "enabled_setting": "ACMAD_DEKADAL_AUTO_IMPORT",
         "interval_setting": "ACMAD_DEKADAL_IMPORT_INTERVAL_HOURS",
         "command": "import_acmad_dekadal_bulletin",
+        "include_history": True,
+        "history_only": True,
     },
     {
         "key": "policy-briefs",
@@ -49,6 +55,8 @@ PRODUCT_IMPORTS = (
         "enabled_setting": "ACMAD_ATMOSPHERIC_ANALYSIS_AUTO_IMPORT",
         "interval_setting": "ACMAD_ATMOSPHERIC_ANALYSIS_IMPORT_INTERVAL_HOURS",
         "command": "import_acmad_atmospheric_analysis",
+        "include_history": True,
+        "history_only": True,
     },
     {
         "key": "heat-stress",
@@ -59,6 +67,8 @@ PRODUCT_IMPORTS = (
         "interval_setting": "ACMAD_HEAT_STRESS_IMPORT_INTERVAL_HOURS",
         "command": "import_acmad_heat_stress",
         "limit_setting": "ACMAD_HEAT_STRESS_IMPORT_LIMIT",
+        "include_history": True,
+        "history_only": True,
     },
     {
         "key": "itd-itcz",
@@ -69,6 +79,8 @@ PRODUCT_IMPORTS = (
         "interval_setting": "ACMAD_ITD_ITCZ_IMPORT_INTERVAL_HOURS",
         "command": "import_acmad_itd_itcz",
         "limit_setting": "ACMAD_ITD_ITCZ_IMPORT_LIMIT",
+        "include_history": True,
+        "history_only": True,
     },
     {
         "key": "thunderstorm-nowcasting",
@@ -79,6 +91,8 @@ PRODUCT_IMPORTS = (
         "interval_setting": "ACMAD_NOWCASTING_IMPORT_INTERVAL_HOURS",
         "command": "import_acmad_thunderstorm_nowcasting",
         "limit_setting": "ACMAD_NOWCASTING_IMPORT_LIMIT",
+        "include_history": True,
+        "history_only": True,
     },
     {
         "key": "climate-health",
@@ -89,6 +103,8 @@ PRODUCT_IMPORTS = (
         "interval_setting": "ACMAD_CLIMATE_HEALTH_IMPORT_INTERVAL_HOURS",
         "command": "import_acmad_climate_health",
         "limit_setting": "ACMAD_CLIMATE_HEALTH_IMPORT_LIMIT",
+        "include_history": True,
+        "history_only": True,
     },
     {
         "key": "seasonal-forecasts",
@@ -105,6 +121,8 @@ PRODUCT_IMPORTS = (
         "interval_setting": "ACMAD_SEASONAL_FORECAST_IMPORT_INTERVAL_HOURS",
         "command": "import_acmad_seasonal_forecasts",
         "limit_setting": "ACMAD_SEASONAL_FORECAST_IMPORT_LIMIT",
+        "include_history": True,
+        "history_only": True,
     },
 )
 

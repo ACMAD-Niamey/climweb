@@ -1,5 +1,6 @@
 from adminboundarymanager.models import AdminBoundarySettings
 from django import forms
+from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.template.defaultfilters import truncatechars
@@ -621,6 +622,72 @@ class ProductSourceImport(models.Model):
 
     def __str__(self):
         return f"{self.product} — {self.source_published_date}"
+
+
+class ProductImportRun(models.Model):
+    """A dashboard-requested historical product import or preview."""
+
+    MODE_PREVIEW = 'preview'
+    MODE_IMPORT = 'import'
+    MODE_CHOICES = [
+        (MODE_PREVIEW, _("Preview")),
+        (MODE_IMPORT, _("Import")),
+    ]
+
+    STATUS_QUEUED = 'queued'
+    STATUS_RUNNING = 'running'
+    STATUS_SUCCEEDED = 'succeeded'
+    STATUS_FAILED = 'failed'
+    STATUS_CHOICES = [
+        (STATUS_QUEUED, _("Queued")),
+        (STATUS_RUNNING, _("Running")),
+        (STATUS_SUCCEEDED, _("Succeeded")),
+        (STATUS_FAILED, _("Failed")),
+    ]
+
+    product_family = models.CharField(max_length=80, verbose_name=_("Product Family"))
+    mode = models.CharField(max_length=20, choices=MODE_CHOICES)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_QUEUED,
+    )
+    from_date = models.DateField(verbose_name=_("From Date"))
+    to_date = models.DateField(verbose_name=_("To Date"))
+    limit = models.PositiveIntegerField(default=100)
+    refresh_existing = models.BooleanField(default=False)
+    retry_failures = models.BooleanField(default=False)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='product_import_runs',
+    )
+    task_id = models.CharField(max_length=255, blank=True)
+    output = models.TextField(blank=True)
+    error_message = models.TextField(blank=True)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-requested_at']
+        verbose_name = _("Product Import Run")
+        verbose_name_plural = _("Product Import Runs")
+
+    def __str__(self):
+        return (
+            f"{self.product_family}: {self.from_date}–{self.to_date} "
+            f"({self.status})"
+        )
+
+    @property
+    def product_family_label(self):
+        from climweb.pages.products.import_registry import PRODUCT_IMPORTS_BY_KEY
+
+        definition = PRODUCT_IMPORTS_BY_KEY.get(self.product_family)
+        return definition["label"] if definition else self.product_family
 
 
 class SubNationalProductsLandingPage(AbstractIntroPage, Page):

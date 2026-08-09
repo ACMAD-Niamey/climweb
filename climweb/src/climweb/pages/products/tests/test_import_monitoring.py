@@ -1,4 +1,6 @@
 from datetime import date
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
@@ -13,7 +15,8 @@ from climweb.pages.products.import_registry import (
     PRODUCT_IMPORTS,
     PRODUCT_IMPORTS_BY_KEY,
 )
-from climweb.pages.products.models import ProductSourceImport
+from climweb.pages.products.models import ProductImportRun, ProductSourceImport
+from climweb.pages.products.tasks import run_manual_product_import
 
 
 class TestProductImportRegistry(TestCase):
@@ -105,3 +108,77 @@ class TestProductImportMonitoring(TestCase):
         self.assertContains(response, "Daily Rainfall Monitoring")
         self.assertContains(response, "Seasonal and Long-Range Forecasts")
         self.assertContains(response, "Upstream source unavailable")
+        self.assertContains(response, "Manual historical import")
+
+    @patch("climweb.pages.products.tasks.run_manual_product_import.delay")
+    def test_admin_can_queue_historical_preview(self, delay):
+        delay.return_value = SimpleNamespace(id="task-123")
+        user = get_user_model().objects.create_superuser(
+            username="historical-admin",
+            email="history@example.com",
+            password="test-password",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("product_import_monitor"),
+            {
+                "product_family": "seasonal-forecasts",
+                "mode": "preview",
+                "from_date": "2024-01-01",
+                "to_date": "2024-12-31",
+                "limit": 100,
+            },
+        )
+
+        self.assertRedirects(response, reverse("product_import_monitor"))
+        run = ProductImportRun.objects.get()
+        self.assertEqual(run.product_family, "seasonal-forecasts")
+        self.assertEqual(run.mode, ProductImportRun.MODE_PREVIEW)
+        self.assertEqual(run.task_id, "task-123")
+        self.assertEqual(run.requested_by, user)
+        delay.assert_called_once_with(run.pk)
+
+    @patch("climweb.pages.products.tasks.call_command")
+    def test_manual_runner_supports_every_registered_product_family(
+        self,
+        call_command,
+    ):
+        for definition in PRODUCT_IMPORTS:
+            run = ProductImportRun.objects.create(
+                product_family=definition["key"],
+                mode=ProductImportRun.MODE_PREVIEW,
+                from_date=date(2024, 1, 1),
+                to_date=date(2024, 12, 31),
+                limit=250,
+                refresh_existing=True,
+                retry_failures=True,
+            )
+
+            run_manual_product_import.run(run.pk)
+
+            run.refresh_from_db()
+            self.assertEqual(run.status, ProductImportRun.STATUS_SUCCEEDED)
+            args, options = call_command.call_args
+            self.assertEqual(args[0], definition["command"])
+            self.assertEqual(options["from_date"], date(2024, 1, 1))
+            self.assertEqual(options["to_date"], date(2024, 12, 31))
+            self.assertEqual(options["limit"], 250)
+            self.assertTrue(options["oldest_first"])
+            self.assertTrue(options["continue_on_error"])
+            self.assertTrue(options["dry_run"])
+            self.assertTrue(options["refresh"])
+            self.assertEqual(
+                options.get("include_history", False),
+                definition.get("include_history", False),
+            )
+            self.assertEqual(
+                options.get("history_only", False),
+                definition.get("history_only", False),
+            )
+            self.assertEqual(
+                options.get("retry_failures", False),
+                definition.get("supports_retry", False),
+            )
+
+        self.assertEqual(call_command.call_count, len(PRODUCT_IMPORTS))
