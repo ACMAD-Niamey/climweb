@@ -44,6 +44,13 @@ PRODUCT_IMPORTS = (
         "command": "import_acmad_heat_stress",
         "limit_setting": "ACMAD_HEAT_STRESS_IMPORT_LIMIT",
     },
+    {
+        "key": "itd-itcz",
+        "label": "ITD and ITCZ Monitoring",
+        "enabled_setting": "ACMAD_ITD_ITCZ_AUTO_IMPORT",
+        "command": "import_acmad_itd_itcz",
+        "limit_setting": "ACMAD_ITD_ITCZ_IMPORT_LIMIT",
+    },
 )
 
 
