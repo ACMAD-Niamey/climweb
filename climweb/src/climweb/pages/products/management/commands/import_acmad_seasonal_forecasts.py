@@ -87,6 +87,47 @@ SEASONS = (
     "JFM", "FMA", "MAM", "AMJ", "MJJ", "JJA",
     "JAS", "ASO", "SON", "OND", "NDJ", "DJF",
 )
+PRODUCT_DEFINITIONS = {
+    "Seasonal Forecast Maps": {
+        "slug": "seasonal-forecast-maps",
+        "format": "jpg",
+        "introduction": (
+            "Seasonal rainfall and climate outlook maps from African regional "
+            "climate outlook forums."
+        ),
+    },
+    "Seasonal Outlook Bulletins": {
+        "slug": "seasonal-outlook-bulletins",
+        "format": "pdf",
+        "introduction": (
+            "Seasonal and long-range outlook bulletins for Africa and its regions."
+        ),
+    },
+    "Consensus Statements and Communiqués": {
+        "slug": "seasonal-consensus-statements-and-communiques",
+        "format": "pdf",
+        "introduction": (
+            "Regional climate outlook forum consensus statements and official "
+            "communiqués."
+        ),
+    },
+    "Recommendations and Summaries": {
+        "slug": "seasonal-recommendations-and-summaries",
+        "format": "pdf",
+        "introduction": (
+            "Recommendations, summaries, and decision guidance accompanying "
+            "seasonal outlooks."
+        ),
+    },
+    "Technical Notes": {
+        "slug": "seasonal-technical-notes",
+        "format": "pdf",
+        "introduction": (
+            "Technical notes documenting seasonal forecast interpretation and "
+            "supporting analysis."
+        ),
+    },
+}
 
 
 def iso_date(value):
@@ -324,19 +365,25 @@ class Command(BaseCommand):
             self._report_dry_run(assets, options["refresh"])
             return
 
-        product_page, item_types = self._get_or_create_destination(assets)
+        destinations = self._get_or_create_destinations(assets)
         counts = {"created": 0, "refreshed": 0, "skipped": 0, "failed": 0}
         failures = []
         for asset in assets:
+            product_page, item_type = destinations[asset["key"]]
             existing = ProductSourceImport.objects.filter(
                 source_url=asset["provenance_url"]
             ).first()
-            if existing and existing.status == "imported" and not options["refresh"]:
+            if (
+                existing
+                and existing.status == ProductSourceImport.STATUS_IMPORTED
+                and existing.product_id == product_page.product_id
+                and not options["refresh"]
+            ):
                 counts["skipped"] += 1
                 continue
             try:
                 action = self._import_asset(
-                    product_page, item_types[asset["key"]], asset, existing
+                    product_page, item_type, asset, existing
                 )
                 counts[action] += 1
             except CommandError as exc:
@@ -417,32 +464,60 @@ class Command(BaseCommand):
             self.stdout.write(f"{action} {asset['date']} {asset['key']}")
 
     @staticmethod
-    def _get_or_create_destination(assets):
-        product, _ = Product.objects.get_or_create(
+    def _get_or_create_destinations(assets):
+        service, _ = ServiceCategory.objects.get_or_create(
             name="Seasonal and Long-Range Forecasts",
-            defaults={
-                "variable_name": "seasonal-and-long-range-forecasts",
-                "temporal_resolution": "seasonal",
-            },
+            defaults={"icon": "calendar"},
         )
-        categories = {}
-        item_types = {}
-        for asset in assets:
-            if asset["key"] in item_types:
-                continue
-            category = categories.get(asset["category"])
-            if not category:
-                category, _ = ProductCategory.objects.get_or_create(
+        index = ProductIndexPage.objects.live().first()
+        if not index:
+            raise CommandError("A live ProductIndexPage was not found")
+
+        product_pages = {}
+        product_categories = {}
+        destinations = {}
+        for product_name, definition in PRODUCT_DEFINITIONS.items():
+            product, _ = Product.objects.get_or_create(
+                name=product_name,
+                defaults={
+                    "variable_name": definition["slug"],
+                    "temporal_resolution": "seasonal",
+                },
+            )
+            product_page = ProductPage.objects.filter(
+                slug=definition["slug"]
+            ).first()
+            if not product_page:
+                product_page = ProductPage(
+                    title=product_name,
+                    slug=definition["slug"],
+                    service=service,
                     product=product,
-                    name=asset["category"],
-                    defaults={
-                        "icon": "cloud-sun-rain",
-                        "category_format": (
-                            "jpg" if asset["kind"] == "image" else "pdf"
-                        ),
-                    },
+                    introduction_title=product_name,
+                    introduction_text=definition["introduction"],
+                    products_per_page=12,
                 )
-                categories[asset["category"]] = category
+                index.add_child(instance=product_page)
+                product_page.save_revision().publish()
+            elif product_page.service_id != service.pk:
+                product_page.service = service
+                product_page.save_revision().publish()
+            product_pages[product_name] = product_page
+            category, _ = ProductCategory.objects.get_or_create(
+                product=product_page.product,
+                name=product_name,
+                defaults={
+                    "icon": "cloud-sun-rain",
+                    "category_format": definition["format"],
+                },
+            )
+            product_categories[product_name] = category
+
+        for asset in assets:
+            if asset["key"] in destinations:
+                continue
+            product_page = product_pages[asset["category"]]
+            category = product_categories[asset["category"]]
             item_type, _ = ProductItemType.objects.get_or_create(
                 category=category,
                 name=asset["name"],
@@ -454,39 +529,8 @@ class Command(BaseCommand):
                     "valid_for_days": 120,
                 },
             )
-            item_types[asset["key"]] = item_type
-
-        product_page = ProductPage.objects.filter(
-            slug="seasonal-and-long-range-forecasts"
-        ).first()
-        if not product_page:
-            index = ProductIndexPage.objects.live().first()
-            if not index:
-                raise CommandError("A live ProductIndexPage was not found")
-            service = ServiceCategory.objects.filter(
-                name="Climate Monitoring and Assessment"
-            ).first()
-            if not service:
-                service = ServiceCategory.objects.filter(
-                    name="Weather Watch and Prediction"
-                ).first()
-            if not service:
-                raise CommandError("A suitable seasonal forecast service was not found")
-            product_page = ProductPage(
-                title="Seasonal and Long-Range Forecasts",
-                slug="seasonal-and-long-range-forecasts",
-                service=service,
-                product=product,
-                introduction_title="Seasonal and Long-Range Forecasts",
-                introduction_text=(
-                    "Regional consensus statements, outlook bulletins, technical "
-                    "notes, recommendations, and seasonal forecast maps for Africa."
-                ),
-                products_per_page=12,
-            )
-            index.add_child(instance=product_page)
-            product_page.save_revision().publish()
-        return product_page, item_types
+            destinations[asset["key"]] = (product_page, item_type)
+        return destinations
 
     @staticmethod
     def _download(asset):
@@ -525,8 +569,8 @@ class Command(BaseCommand):
     def _import_asset(self, product_page, item_type, asset, existing):
         temp_path, checksum = self._download(asset)
         issue_date = asset["date"]
-        page_slug = f"seasonal-and-long-range-forecasts-{issue_date.isoformat()}"
-        page_title = f"Seasonal and Long-Range Forecasts — {issue_date.isoformat()}"
+        page_slug = f"{product_page.slug}-{issue_date.isoformat()}"
+        page_title = f"{product_page.title} — {issue_date.isoformat()}"
         media_title = f"{asset['name']} — {issue_date.isoformat()}"
         extension = os.path.splitext(asset["filename"])[1].lower()
         filename = (

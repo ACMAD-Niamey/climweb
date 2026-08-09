@@ -1,15 +1,21 @@
 from datetime import date
 from unittest.mock import patch
 
-from django.test import SimpleTestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 
+from climweb.base.models import ServiceCategory
+from climweb.pages.home.tests.factories import get_or_create_homepage
 from climweb.pages.products.management.commands.import_acmad_seasonal_forecasts import (
+    Command,
+    PRODUCT_DEFINITIONS,
     classify_asset,
     operational_url,
     parse_media_inventory,
     parse_thredds_catalog,
 )
+from climweb.pages.products.models import ProductPage
 from climweb.pages.products.tasks import run_acmad_seasonal_forecast_import
+from climweb.pages.products.tests.factories import ProductIndexPageFactory
 
 
 class TestSeasonalForecastSources(SimpleTestCase):
@@ -118,3 +124,33 @@ class TestAutomaticSeasonalForecastImport(SimpleTestCase):
         run_acmad_seasonal_forecast_import.run()
 
         call_command.assert_not_called()
+
+
+class TestSeasonalForecastHierarchy(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        home_page = get_or_create_homepage()
+        ProductIndexPageFactory(parent=home_page)
+
+    def test_destination_creates_service_category_and_five_product_pages(self):
+        asset = {
+            "key": "sarcof-forecast-map-ond",
+            "name": "SARCOF Seasonal Forecast Map (OND)",
+            "category": "Seasonal Forecast Maps",
+            "kind": "image",
+        }
+
+        destinations = Command._get_or_create_destinations([asset])
+
+        service = ServiceCategory.objects.get(
+            name="Seasonal and Long-Range Forecasts"
+        )
+        pages = ProductPage.objects.filter(service=service).live()
+        self.assertEqual(pages.count(), 5)
+        self.assertEqual(
+            set(pages.values_list("title", flat=True)),
+            set(PRODUCT_DEFINITIONS),
+        )
+        product_page, item_type = destinations[asset["key"]]
+        self.assertEqual(product_page.title, "Seasonal Forecast Maps")
+        self.assertEqual(item_type.category.product, product_page.product)
