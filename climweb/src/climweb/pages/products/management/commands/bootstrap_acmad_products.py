@@ -44,6 +44,34 @@ PRODUCT_IMPORTS = (
         "command": "import_acmad_heat_stress",
         "limit_setting": "ACMAD_HEAT_STRESS_IMPORT_LIMIT",
     },
+    {
+        "key": "itd-itcz",
+        "label": "ITD and ITCZ Monitoring",
+        "enabled_setting": "ACMAD_ITD_ITCZ_AUTO_IMPORT",
+        "command": "import_acmad_itd_itcz",
+        "limit_setting": "ACMAD_ITD_ITCZ_IMPORT_LIMIT",
+    },
+    {
+        "key": "thunderstorm-nowcasting",
+        "label": "Thunderstorm and Nowcasting",
+        "enabled_setting": "ACMAD_NOWCASTING_AUTO_IMPORT",
+        "command": "import_acmad_thunderstorm_nowcasting",
+        "limit_setting": "ACMAD_NOWCASTING_IMPORT_LIMIT",
+    },
+    {
+        "key": "climate-health",
+        "label": "Climate and Health",
+        "enabled_setting": "ACMAD_CLIMATE_HEALTH_AUTO_IMPORT",
+        "command": "import_acmad_climate_health",
+        "limit_setting": "ACMAD_CLIMATE_HEALTH_IMPORT_LIMIT",
+    },
+    {
+        "key": "seasonal-forecasts",
+        "label": "Seasonal and Long-Range Forecasts",
+        "enabled_setting": "ACMAD_SEASONAL_FORECAST_AUTO_IMPORT",
+        "command": "import_acmad_seasonal_forecasts",
+        "limit_setting": "ACMAD_SEASONAL_FORECAST_IMPORT_LIMIT",
+    },
 )
 
 
