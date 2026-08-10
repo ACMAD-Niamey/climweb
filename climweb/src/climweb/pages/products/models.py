@@ -35,8 +35,9 @@ from .blocks import (
     ProductItemStreamContentBlock
 )
 
+from climweb.base.models.abstracts import AbstractBannerPage
 
-class ProductIndexPage(MetadataPageMixin, Page):
+class ProductIndexPage(AbstractBannerPage):
     parent_page_types = ['home.HomePage']
     subpage_types = [
         'products.ProductPage',
@@ -84,15 +85,7 @@ class ProductIndexPage(MetadataPageMixin, Page):
         
         return list(products) + list(subnational_products)
     
-    def get_meta_image(self):
-        meta_image = super().get_meta_image()
-        
-        if not meta_image:
-            parent = self.get_parent()
-            if hasattr(parent, 'get_meta_image'):
-                meta_image = parent.get_meta_image()
-        
-        return meta_image
+
     
     def get_meta_description(self):
         meta_description = super().get_meta_description()
