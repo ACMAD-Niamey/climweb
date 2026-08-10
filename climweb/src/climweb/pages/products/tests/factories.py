@@ -16,6 +16,7 @@ class ProductIndexPageFactory(wagtail_factories.PageFactory):
         model = models.ProductIndexPage
     
     title = "Products Index Page"
+    banner_title = "Explore our Products"
 
 
 class ProductItemTypeFactory(factory.django.DjangoModelFactory):
