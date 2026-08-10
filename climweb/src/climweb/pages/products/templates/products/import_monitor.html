@@ -11,37 +11,45 @@
         gap: 1rem;
         margin-bottom: 2rem;
     }
+
     .import-summary-card {
         background: var(--w-color-surface-page);
         border: 1px solid var(--w-color-border-furniture);
         border-radius: 0.4rem;
         padding: 1rem;
     }
+
     .import-summary-value {
         display: block;
         font-size: 1.8rem;
         font-weight: 700;
     }
+
     .import-summary-label,
     .import-meta {
         color: var(--w-color-text-meta);
         font-size: 0.85rem;
     }
+
     .import-table {
         width: 100%;
     }
+
     .import-table th,
     .import-table td {
         padding: 0.75rem;
         text-align: left;
         vertical-align: top;
     }
+
     .import-table th {
         border-bottom: 2px solid var(--w-color-border-furniture);
     }
+
     .import-table td {
         border-bottom: 1px solid var(--w-color-border-furniture);
     }
+
     .import-status {
         border-radius: 999px;
         display: inline-block;
@@ -49,58 +57,96 @@
         font-weight: 700;
         padding: 0.25rem 0.65rem;
     }
-    .import-status--healthy { background: #d1fae5; color: #065f46; }
-    .import-status--attention { background: #fee2e2; color: #991b1b; }
-    .import-status--disabled { background: #e5e7eb; color: #374151; }
-    .import-status--unseeded { background: #fef3c7; color: #92400e; }
+
+    .import-status--healthy {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .import-status--attention {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .import-status--disabled {
+        background: #e5e7eb;
+        color: #374151;
+    }
+
+    .import-status--unseeded {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
     .import-product-links {
         margin: 0.35rem 0 0;
         padding-left: 1rem;
     }
+
     .import-error {
         color: #b91c1c;
         font-size: 0.8rem;
         margin-top: 0.35rem;
         max-width: 28rem;
     }
+
     .manual-import-panel {
         border: 1px solid var(--w-color-border-furniture);
         border-radius: 0.4rem;
         margin-bottom: 2rem;
         padding: 1.25rem;
     }
+
     .manual-import-grid {
         display: grid;
         gap: 1rem;
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         margin: 1rem 0;
     }
+
     .manual-import-field label {
         display: block;
         font-weight: 700;
         margin-bottom: 0.35rem;
     }
+
     .manual-import-field input:not([type="checkbox"]),
     .manual-import-field select {
         width: 100%;
     }
+
     .manual-import-options {
         display: flex;
         flex-wrap: wrap;
         gap: 1.5rem;
         margin-bottom: 1rem;
     }
+
     .import-runs {
         margin-top: 2rem;
     }
-    .run-status--succeeded { color: #065f46; }
-    .run-status--failed { color: #991b1b; }
-    .run-status--running { color: #1d4ed8; }
-    .run-status--queued { color: #4b5563; }
+
+    .run-status--succeeded {
+        color: #065f46;
+    }
+
+    .run-status--failed {
+        color: #991b1b;
+    }
+
+    .run-status--running {
+        color: #1d4ed8;
+    }
+
+    .run-status--queued {
+        color: #4b5563;
+    }
+
     .run-output {
         max-width: 32rem;
         white-space: pre-wrap;
     }
+
     .run-progress-track {
         background: #e5e7eb;
         border-radius: 999px;
@@ -109,289 +155,127 @@
         min-width: 12rem;
         overflow: hidden;
     }
+
     .run-progress-bar {
         background: #2563eb;
         height: 100%;
         transition: width 0.3s ease;
     }
+
     .run-progress-counts {
         font-size: 0.8rem;
         margin-top: 0.25rem;
     }
+
     @media (max-width: 900px) {
-        .import-table { display: block; overflow-x: auto; }
+        .import-table {
+            display: block;
+            overflow-x: auto;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-    {% translate "Product Imports" as header_title %}
-    {% include "wagtailadmin/shared/header.html" with title=header_title icon="history" %}
+{% translate "Product Imports" as header_title %}
+{% include "wagtailadmin/shared/header.html" with title=header_title icon="history" %}
 
-    <div class="nice-padding">
-        <p class="help-block help-info">
-            {% translate "Operational status and historical import controls for every configured ACMAD product importer. Source configuration will be added in a later phase." %}
-        </p>
+<div class="nice-padding">
+    <p class="help-block help-info">
+        {% translate "Select a product family to run manual imports, follow its progress, and review its import
+        history." %}
+    </p>
 
-        <div class="import-summary">
-            <div class="import-summary-card">
-                <span class="import-summary-value">{{ summary.families }}</span>
-                <span class="import-summary-label">{% translate "Importer families" %}</span>
-            </div>
-            <div class="import-summary-card">
-                <span class="import-summary-value">{{ summary.enabled }}</span>
-                <span class="import-summary-label">{% translate "Automatic imports enabled" %}</span>
-            </div>
-            <div class="import-summary-card">
-                <span class="import-summary-value">{{ summary.imported }}</span>
-                <span class="import-summary-label">{% translate "Imported source files" %}</span>
-            </div>
-            <div class="import-summary-card">
-                <span class="import-summary-value">{{ summary.failed }}</span>
-                <span class="import-summary-label">{% translate "Unresolved failures" %}</span>
-            </div>
+    <div class="import-summary">
+        <div class="import-summary-card">
+            <span class="import-summary-value">{{ summary.families }}</span>
+            <span class="import-summary-label">{% translate "Importer families" %}</span>
         </div>
-
-        <section class="manual-import-panel">
-            <h2>{% translate "Manual historical import" %}</h2>
-            <p class="import-meta">
-                {% translate "Run a preview first to inspect the selected range. Import and publish executes the same importer in the background." %}
-            </p>
-            <form method="post">
-                {% csrf_token %}
-                {% if form.non_field_errors %}
-                    <div class="messages">
-                        <div class="error">{{ form.non_field_errors }}</div>
-                    </div>
-                {% endif %}
-                <div class="manual-import-grid">
-                    {% for field in form %}
-                        {% if field.name != "refresh_existing" and field.name != "retry_failures" %}
-                            <div class="manual-import-field">
-                                {{ field.label_tag }}
-                                {{ field }}
-                                {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
-                                {{ field.errors }}
-                            </div>
-                        {% endif %}
-                    {% endfor %}
-                </div>
-                <div class="manual-import-options">
-                    <label>{{ form.refresh_existing }} {{ form.refresh_existing.label }}</label>
-                    <label>{{ form.retry_failures }} {{ form.retry_failures.label }}</label>
-                </div>
-                <button type="submit" class="button button-longrunning">
-                    {% translate "Queue historical run" %}
-                </button>
-            </form>
-        </section>
-
-        <table class="import-table">
-            <thead>
-                <tr>
-                    <th>{% translate "Product family" %}</th>
-                    <th>{% translate "Status" %}</th>
-                    <th>{% translate "Schedule" %}</th>
-                    <th>{% translate "Imported" %}</th>
-                    <th>{% translate "Failed" %}</th>
-                    <th>{% translate "Latest source date" %}</th>
-                    <th>{% translate "Last record activity" %}</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in rows %}
-                    <tr>
-                        <td>
-                            <strong>{{ row.label }}</strong>
-                            <div class="import-meta">{{ row.source_label }}</div>
-                            {% if row.product_pages %}
-                                <ul class="import-product-links">
-                                    {% for product_page in row.product_pages %}
-                                        <li>
-                                            <a href="{{ product_page.url }}" target="_blank" rel="noopener">
-                                                {{ product_page.title }}
-                                            </a>
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <span class="import-status import-status--{{ row.health }}">
-                                {{ row.health_label }}
-                            </span>
-                            {% if row.latest_failure %}
-                                <div class="import-error">
-                                    {{ row.latest_failure.error_message|truncatechars:140 }}
-                                </div>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if row.enabled %}
-                                {% blocktranslate with hours=row.interval_hours %}Every {{ hours }} hour(s){% endblocktranslate %}
-                            {% else %}
-                                {% translate "Not scheduled" %}
-                            {% endif %}
-                        </td>
-                        <td>{{ row.imported_count }}</td>
-                        <td>{{ row.failed_count }}</td>
-                        <td>{{ row.latest_source_date|date:"Y-m-d"|default:"—" }}</td>
-                        <td>
-                            {% if row.last_activity %}
-                                {{ row.last_activity|date:"Y-m-d H:i" }}
-                            {% else %}
-                                —
-                            {% endif %}
-                        </td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <section class="import-runs">
-            <h2>{% translate "Recent manual runs" %}</h2>
-            <table class="import-table">
-                <thead>
-                    <tr>
-                        <th>{% translate "Product family" %}</th>
-                        <th>{% translate "Mode" %}</th>
-                        <th>{% translate "Date range" %}</th>
-                        <th>{% translate "Status" %}</th>
-                        <th>{% translate "Progress" %}</th>
-                        <th>{% translate "Requested" %}</th>
-                        <th>{% translate "Result" %}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for run in recent_runs %}
-                        <tr data-import-run="{{ run.pk }}" data-status="{{ run.status }}">
-                            <td>{{ run.product_family_label }}</td>
-                            <td>{{ run.get_mode_display }}</td>
-                            <td>{{ run.from_date }} – {{ run.to_date }}</td>
-                            <td data-run-status-cell class="run-status--{{ run.status }}">
-                                <strong data-run-status>{{ run.get_status_display }}</strong>
-                            </td>
-                            <td>
-                                <div
-                                    class="run-progress-track"
-                                    role="progressbar"
-                                    aria-valuemin="0"
-                                    aria-valuemax="100"
-                                    aria-valuenow="{{ run.progress_percent }}"
-                                    data-run-progress-track
-                                >
-                                    <div
-                                        class="run-progress-bar"
-                                        style="width: {{ run.progress_percent }}%"
-                                        data-run-progress-bar
-                                    ></div>
-                                </div>
-                                <strong data-run-progress-percent>{{ run.progress_percent }}%</strong>
-                                <div class="import-meta" data-run-phase>
-                                    {{ run.current_phase|default:"Waiting to start" }}
-                                </div>
-                                <div class="run-progress-counts" data-run-counts>
-                                    {{ run.processed_items }}/{{ run.total_items }} processed ·
-                                    {{ run.imported_items }} imported ·
-                                    {{ run.failed_items }} failed ·
-                                    {{ run.skipped_items }} skipped
-                                </div>
-                            </td>
-                            <td>
-                                {{ run.requested_at|date:"Y-m-d H:i" }}
-                                {% if run.requested_by %}
-                                    <div class="import-meta">{{ run.requested_by }}</div>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if run.error_message %}
-                                    <div class="import-error" data-run-error>{{ run.error_message }}</div>
-                                {% endif %}
-                                {% if run.output %}
-                                    <details>
-                                        <summary>{% translate "View output" %}</summary>
-                                        <pre class="run-output">{{ run.output }}</pre>
-                                    </details>
-                                {% elif run.status == "queued" or run.status == "running" %}
-                                    {% translate "Waiting for completion" %}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="7">{% translate "No manual runs yet." %}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </section>
+        <div class="import-summary-card">
+            <span class="import-summary-value">{{ summary.enabled }}</span>
+            <span class="import-summary-label">{% translate "Automatic imports enabled" %}</span>
+        </div>
+        <div class="import-summary-card">
+            <span class="import-summary-value">{{ summary.imported }}</span>
+            <span class="import-summary-label">{% translate "Imported source files" %}</span>
+        </div>
+        <div class="import-summary-card">
+            <span class="import-summary-value">{{ summary.failed }}</span>
+            <span class="import-summary-label">{% translate "Unresolved failures" %}</span>
+        </div>
     </div>
-{% endblock %}
 
-{% block extra_js %}
-    {{ block.super }}
-    <script>
-        (() => {
-            const startProgressPolling = () => {
-            const activeStatuses = new Set(["queued", "running"]);
-            const rows = [...document.querySelectorAll("[data-import-run]")];
-            if (!rows.some((row) => activeStatuses.has(row.dataset.status))) return;
+    <table class="import-table">
+        <thead>
+            <tr>
+                <th>{% translate "Product family" %}</th>
+                <th>{% translate "Status" %}</th>
+                <th>{% translate "Schedule" %}</th>
+                <th>{% translate "Imported" %}</th>
+                <th>{% translate "Failed" %}</th>
+                <!-- <th>{% translate "Latest source date" %}</th>
+                        <th>{% translate "Last record activity" %}</th> -->
+                <th>{% translate "Actions" %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td>
+                    <strong>
+                        <a href="{% url 'product_import_family' family_key=row.key %}">
+                            {{ row.label }}
+                        </a>
+                    </strong>
+                    <div class="import-meta">{{ row.source_label }}</div>
+                    {% if row.product_pages %}
+                    <ul class="import-product-links">
+                        {% for product_page in row.product_pages %}
+                        <li>
+                            <a href="{{ product_page.url }}" target="_blank" rel="noopener">
+                                {{ product_page.title }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="import-status import-status--{{ row.health }}">
+                        {{ row.health_label }}
+                    </span>
+                    {% if row.latest_failure %}
+                    <div class="import-error">
+                        {{ row.latest_failure.error_message|truncatechars:140 }}
+                    </div>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if row.enabled %}
+                    {% blocktranslate with hours=row.interval_hours %}Every {{ hours }} hour(s){% endblocktranslate %}
+                    {% else %}
+                    {% translate "Not scheduled" %}
+                    {% endif %}
+                </td>
+                <td>{{ row.imported_count }}</td>
+                <td>{{ row.failed_count }}</td>
+                <td>{{ row.latest_source_date|date:"Y-m-d"|default:"—" }}</td>
+                <td>
+                    {% if row.last_activity %}
+                    {{ row.last_activity|date:"Y-m-d H:i" }}
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+                <td>
+                    <a class="button button-small" href="{% url 'product_import_family' family_key=row.key %}">
+                        {% translate "Manage imports" %}
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 
-            const updateRow = (row, run) => {
-                const previousStatus = row.dataset.status;
-                row.dataset.status = run.status;
-
-                const statusCell = row.querySelector("[data-run-status-cell]");
-                statusCell.className = `run-status--${run.status}`;
-                row.querySelector("[data-run-status]").textContent = run.status_label;
-
-                const track = row.querySelector("[data-run-progress-track]");
-                track.setAttribute("aria-valuenow", run.progress_percent);
-                row.querySelector("[data-run-progress-bar]").style.width = `${run.progress_percent}%`;
-                row.querySelector("[data-run-progress-percent]").textContent = `${run.progress_percent}%`;
-                row.querySelector("[data-run-phase]").textContent = run.current_phase || "Waiting to start";
-                row.querySelector("[data-run-counts]").textContent =
-                    `${run.processed_items}/${run.total_items} processed · ` +
-                    `${run.imported_items} imported · ${run.failed_items} failed · ` +
-                    `${run.skipped_items} skipped`;
-
-                if (activeStatuses.has(previousStatus) && !activeStatuses.has(run.status)) {
-                    window.setTimeout(() => window.location.reload(), 500);
-                }
-            };
-
-            const poll = async () => {
-                try {
-                    const response = await fetch("{% url 'product_import_status' %}", {
-                        headers: {"Accept": "application/json"},
-                    });
-                    if (!response.ok) throw new Error("Progress request failed");
-                    const data = await response.json();
-                    const runsById = new Map(data.runs.map((run) => [String(run.id), run]));
-                    rows.forEach((row) => {
-                        const run = runsById.get(row.dataset.importRun);
-                        if (run) updateRow(row, run);
-                    });
-                } catch (error) {
-                    window.location.reload();
-                    return;
-                } finally {
-                    if (rows.some((row) => activeStatuses.has(row.dataset.status))) {
-                        window.setTimeout(poll, 2000);
-                    }
-                }
-            };
-
-            window.setTimeout(poll, 1000);
-            };
-
-            if (document.readyState === "loading") {
-                document.addEventListener("DOMContentLoaded", startProgressPolling);
-            } else {
-                startProgressPolling();
-            }
-        })();
-    </script>
+</div>
 {% endblock %}

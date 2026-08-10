@@ -109,7 +109,8 @@ class TestProductImportMonitoring(TestCase):
         self.assertContains(response, "Daily Rainfall Monitoring")
         self.assertContains(response, "Seasonal and Long-Range Forecasts")
         self.assertContains(response, "Upstream source unavailable")
-        self.assertContains(response, "Manual historical import")
+        self.assertContains(response, "Manage imports", count=10)
+        self.assertNotContains(response, "Manual historical import")
 
     @patch("climweb.pages.products.tasks.run_manual_product_import.delay")
     def test_admin_can_queue_historical_preview(self, delay):
@@ -122,9 +123,11 @@ class TestProductImportMonitoring(TestCase):
         self.client.force_login(user)
 
         response = self.client.post(
-            reverse("product_import_monitor"),
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "seasonal-forecasts"},
+            ),
             {
-                "product_family": "seasonal-forecasts",
                 "mode": "preview",
                 "from_date": "2024-01-01",
                 "to_date": "2024-12-31",
@@ -132,7 +135,13 @@ class TestProductImportMonitoring(TestCase):
             },
         )
 
-        self.assertRedirects(response, reverse("product_import_monitor"))
+        self.assertRedirects(
+            response,
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "seasonal-forecasts"},
+            ),
+        )
         run = ProductImportRun.objects.get()
         self.assertEqual(run.product_family, "seasonal-forecasts")
         self.assertEqual(run.mode, ProductImportRun.MODE_PREVIEW)
@@ -140,6 +149,90 @@ class TestProductImportMonitoring(TestCase):
         self.assertEqual(run.requested_by, user)
         self.assertEqual(run.progress_percent, 0)
         delay.assert_called_once_with(run.pk)
+
+    def test_family_page_scopes_history_and_renders_output_modal(self):
+        user = get_user_model().objects.create_superuser(
+            username="family-admin",
+            email="family@example.com",
+            password="test-password",
+        )
+        rainfall_run = ProductImportRun.objects.create(
+            product_family="rainfall",
+            mode=ProductImportRun.MODE_PREVIEW,
+            status=ProductImportRun.STATUS_SUCCEEDED,
+            from_date=date(2026, 8, 1),
+            to_date=date(2026, 8, 10),
+            progress_percent=100,
+            current_phase="Import completed",
+            output="Rainfall preview output",
+        )
+        ProductImportRun.objects.create(
+            product_family="seasonal-forecasts",
+            mode=ProductImportRun.MODE_PREVIEW,
+            status=ProductImportRun.STATUS_SUCCEEDED,
+            from_date=date(2026, 1, 1),
+            to_date=date(2026, 3, 1),
+            output="Seasonal output must not appear",
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Daily Rainfall Monitoring")
+        self.assertContains(response, "Manual historical import")
+        self.assertContains(response, "Recent import history")
+        self.assertContains(response, "Rainfall preview output")
+        self.assertNotContains(response, "Seasonal output must not appear")
+        self.assertContains(response, 'id="import-output-modal"')
+        self.assertContains(
+            response,
+            f'data-output-source="run-output-{rainfall_run.pk}"',
+        )
+        self.assertContains(response, "View output")
+
+    def test_every_registered_family_has_an_individual_import_page(self):
+        user = get_user_model().objects.create_superuser(
+            username="all-family-admin",
+            email="all-families@example.com",
+            password="test-password",
+        )
+        self.client.force_login(user)
+
+        for definition in PRODUCT_IMPORTS:
+            with self.subTest(family=definition["key"]):
+                response = self.client.get(
+                    reverse(
+                        "product_import_family",
+                        kwargs={"family_key": definition["key"]},
+                    )
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, definition["label"])
+                self.assertContains(response, "Manual historical import")
+                self.assertContains(response, "Recent import history")
+
+    def test_unknown_family_page_returns_404(self):
+        user = get_user_model().objects.create_superuser(
+            username="unknown-admin",
+            email="unknown@example.com",
+            password="test-password",
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "not-a-product"},
+            )
+        )
+
+        self.assertEqual(response.status_code, 404)
 
     def test_progress_endpoint_reports_running_counters(self):
         user = get_user_model().objects.create_superuser(
@@ -162,10 +255,24 @@ class TestProductImportMonitoring(TestCase):
         )
         self.client.force_login(user)
 
-        response = self.client.get(reverse("product_import_status"))
+        ProductImportRun.objects.create(
+            product_family="seasonal-forecasts",
+            mode=ProductImportRun.MODE_IMPORT,
+            from_date=date(2026, 1, 1),
+            to_date=date(2026, 2, 1),
+        )
+
+        response = self.client.get(
+            reverse(
+                "product_import_family_status",
+                kwargs={"family_key": "rainfall"},
+            )
+        )
 
         self.assertEqual(response.status_code, 200)
-        payload = response.json()["runs"][0]
+        runs = response.json()["runs"]
+        self.assertEqual(len(runs), 1)
+        payload = runs[0]
         self.assertEqual(payload["id"], run.pk)
         self.assertEqual(payload["status"], "running")
         self.assertEqual(payload["progress_percent"], 52)

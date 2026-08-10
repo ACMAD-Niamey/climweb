@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.response import TemplateResponse
 from django.utils import timezone
@@ -12,12 +12,18 @@ from .import_monitoring import (
     build_import_monitor_rows,
     build_import_monitor_summary,
 )
+from .import_registry import PRODUCT_IMPORTS_BY_KEY
 from .models import ProductImportRun, ProductPage
 
 
 @user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
-def product_import_status_view(request):
-    runs = ProductImportRun.objects.all()[:20]
+def product_import_status_view(request, family_key=None):
+    runs = ProductImportRun.objects.all()
+    if family_key:
+        if family_key not in PRODUCT_IMPORTS_BY_KEY:
+            raise Http404("Unknown product importer")
+        runs = runs.filter(product_family=family_key)
+    runs = runs[:20]
     return JsonResponse(
         {
             "runs": [
@@ -42,11 +48,28 @@ def product_import_status_view(request):
 
 @user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
 def product_import_monitor_view(request):
+    rows = build_import_monitor_rows()
+    return TemplateResponse(
+        request,
+        "products/import_monitor.html",
+        {
+            "rows": rows,
+            "summary": build_import_monitor_summary(rows),
+        },
+    )
+
+
+@user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
+def product_import_family_view(request, family_key):
+    definition = PRODUCT_IMPORTS_BY_KEY.get(family_key)
+    if definition is None:
+        raise Http404("Unknown product importer")
+
     if request.method == "POST":
         form = ProductImportRunForm(request.POST)
         if form.is_valid():
             run = ProductImportRun.objects.create(
-                product_family=form.cleaned_data["product_family"],
+                product_family=family_key,
                 mode=form.cleaned_data["mode"],
                 from_date=form.cleaned_data["from_date"],
                 to_date=form.cleaned_data["to_date"],
@@ -76,9 +99,9 @@ def product_import_monitor_view(request):
                 run.save(update_fields=["task_id"])
                 messages.success(
                     request,
-                    "Historical product import was queued.",
+                    f"{definition['label']} import was queued.",
                 )
-            return redirect("product_import_monitor")
+            return redirect("product_import_family", family_key=family_key)
     else:
         today = timezone.localdate()
         form = ProductImportRunForm(
@@ -90,17 +113,20 @@ def product_import_monitor_view(request):
             }
         )
 
-    rows = build_import_monitor_rows()
+    monitor_row = next(
+        row for row in build_import_monitor_rows() if row["key"] == family_key
+    )
+    recent_runs = ProductImportRun.objects.filter(
+        product_family=family_key
+    ).select_related("requested_by")[:20]
     return TemplateResponse(
         request,
-        "products/import_monitor.html",
+        "products/import_family.html",
         {
-            "rows": rows,
-            "summary": build_import_monitor_summary(rows),
+            "definition": definition,
+            "monitor_row": monitor_row,
             "form": form,
-            "recent_runs": ProductImportRun.objects.select_related(
-                "requested_by"
-            )[:20],
+            "recent_runs": recent_runs,
         },
     )
 

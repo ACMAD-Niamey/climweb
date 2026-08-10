@@ -2,18 +2,10 @@ from django import forms
 from wagtail import blocks
 from wagtail.admin.forms import WagtailAdminModelForm
 
-from climweb.pages.products.import_registry import PRODUCT_IMPORTS
 from climweb.pages.products.models import ProductPage
 
 
 class ProductImportRunForm(forms.Form):
-    product_family = forms.ChoiceField(
-        label="Product family",
-        choices=[
-            (definition["key"], definition["label"])
-            for definition in PRODUCT_IMPORTS
-        ],
-    )
     mode = forms.ChoiceField(
         choices=(
             ("preview", "Preview only (dry run)"),
