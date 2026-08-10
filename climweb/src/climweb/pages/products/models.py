@@ -52,7 +52,7 @@ class ProductIndexPage(AbstractBannerPage):
                                        verbose_name=_("Products listing Heading"))
     group_menu_items_by_service = models.BooleanField(default=True, verbose_name=_("Group menu items by service"))
     
-    content_panels = Page.content_panels + [
+    content_panels = AbstractBannerPage.content_panels + [
         FieldPanel("listing_heading"),
         FieldPanel("group_menu_items_by_service")
     ]

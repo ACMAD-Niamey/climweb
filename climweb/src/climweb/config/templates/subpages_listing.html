@@ -9,6 +9,7 @@
 
 {% block content %}
 <main class="is-index">
+  {% include 'hero.html' with page=page %}
   <section class="spl-section">
     <div class="container">
 
@@ -80,7 +81,7 @@
               {% if page.service_categories and page.service_categories|length > 0 %}
 
                 {% for category in page.service_categories %}
-                <div class="spl-cat-block" id="cat-{{ forloop.counter }}">
+                <div class="spl-cat-block" id="cat-block-{{ category.pk }}" data-category-id="{{ category.pk }}">
 
                   <div class="spl-cat-hdr">
                     {% if category.icon %}
@@ -213,6 +214,25 @@
       gridButton.addClass("active");
       wrapper.removeClass("list-view").addClass("grid-view columns is-mobile is-multiline");
       resultItem.addClass("column is-one-third-desktop is-full-mobile");
+    });
+
+    // Category filtering
+    const categoryCheckboxes = $("input[name='category']");
+    const categoryBlocks = $(".spl-cat-block");
+
+    categoryCheckboxes.on("change", function () {
+      const selectedCategories = categoryCheckboxes.filter(":checked").map(function () {
+        return $(this).val();
+      }).get();
+
+      if (selectedCategories.length === 0) {
+        categoryBlocks.show();
+      } else {
+        categoryBlocks.hide();
+        selectedCategories.forEach(function (catId) {
+          $('.spl-cat-block[data-category-id="' + catId + '"]').show();
+        });
+      }
     });
   });
 </script>
