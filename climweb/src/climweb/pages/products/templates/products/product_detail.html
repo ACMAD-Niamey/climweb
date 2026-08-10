@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
-{% load static wagtailcore_tags lazyimages_tags wagtailimages_tags nmhs_cms_tags wagtailiconchooser_tags i18n
-get_share_url %}
+{% load static wagtailcore_tags lazyimages_tags wagtailimages_tags nmhs_cms_tags wagtailiconchooser_tags i18n get_share_url %}
 
 {% block extra_css %}
 <link rel="stylesheet" type="text/css" href="{% static 'products/css/product_detail.css' %}">
@@ -23,7 +22,7 @@ get_share_url %}
         <div class="pd-sidebar">
           {% for category_id, category in categories.items %}
           <div class="pd-cat">
-            <div class="pd-cat-hdr">`
+            <div class="pd-cat-hdr">
               <div class="pd-cat-icon">{% svg_icon name=category.icon %}</div>
               <span class="pd-cat-name">{{ category.name }}</span>
             </div>
