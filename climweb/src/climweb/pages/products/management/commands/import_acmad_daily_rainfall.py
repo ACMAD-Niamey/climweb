@@ -5,7 +5,7 @@ import re
 import tempfile
 from argparse import ArgumentTypeError
 from collections import Counter
-from datetime import date
+from datetime import date, datetime
 from urllib.parse import urljoin, urlparse, urlunparse
 
 import requests
@@ -31,7 +31,9 @@ DEFAULT_ARCHIVE_URL = (
     "OBS/ARCHIVE/GSMAP/archive_gsmap.html"
 )
 SOURCE_SYSTEM = "ACMAD SGBD/THREDDS GSMaP"
-PNG_NAME_PATTERN = re.compile(r"gsmap24_(20\d{6})\.png$", re.IGNORECASE)
+PNG_NAME_PATTERN = re.compile(
+    r"gsmap24_(?P<date>20\d{6})\.png$", re.IGNORECASE
+)
 YEAR_ARCHIVE_PATTERN = re.compile(r"archive_gsmap_20\d{2}\.html$", re.IGNORECASE)
 USER_AGENT = "ACMAD-ClimWeb-Rainfall-Importer/1.0 (+https://new.acmad.org/)"
 MAX_IMAGE_SIZE = 10 * 1024 * 1024
@@ -45,19 +47,32 @@ def operational_url(url):
     return urlunparse(parsed)
 
 
-def parse_archive(html, archive_url):
+def parse_archive(
+    html,
+    archive_url,
+    filename_pattern=PNG_NAME_PATTERN,
+    date_format="%Y%m%d",
+    allowed_extensions=(".png",),
+):
     """Extract unique dated GSMaP PNGs from an ACMAD archive page."""
+    if isinstance(filename_pattern, str):
+        filename_pattern = re.compile(filename_pattern, re.IGNORECASE)
+    allowed_extensions = {extension.lower() for extension in allowed_extensions}
     soup = BeautifulSoup(html, "html.parser")
     issues_by_url = {}
     for anchor in soup.find_all("a", href=True):
         source_url = urljoin(archive_url, anchor["href"])
-        match = PNG_NAME_PATTERN.search(urlparse(source_url).path)
+        path = urlparse(source_url).path
+        if os.path.splitext(path)[1].lower() not in allowed_extensions:
+            continue
+        match = filename_pattern.search(path)
         if not match:
             continue
-        raw_date = match.group(1)
-        issue_date = date.fromisoformat(
-            f"{raw_date[:4]}-{raw_date[4:6]}-{raw_date[6:]}"
-        )
+        raw_date = match.groupdict().get("date") or match.group(1)
+        try:
+            issue_date = datetime.strptime(raw_date, date_format).date()
+        except ValueError:
+            continue
         issues_by_url[source_url] = {
             "date": issue_date,
             "source_url": source_url,
@@ -67,12 +82,18 @@ def parse_archive(html, archive_url):
     )
 
 
-def parse_year_archive_links(html, archive_url):
+def parse_year_archive_links(
+    html,
+    archive_url,
+    history_url_pattern=YEAR_ARCHIVE_PATTERN,
+):
+    if isinstance(history_url_pattern, str):
+        history_url_pattern = re.compile(history_url_pattern, re.IGNORECASE)
     soup = BeautifulSoup(html, "html.parser")
     links = {
         urljoin(archive_url, anchor["href"])
         for anchor in soup.find_all("a", href=True)
-        if YEAR_ARCHIVE_PATTERN.search(
+        if history_url_pattern and history_url_pattern.search(
             urlparse(urljoin(archive_url, anchor["href"])).path
         )
     }
@@ -92,7 +113,7 @@ class Command(BaseCommand):
     help = "Import dated daily GSMaP rainfall observation images from ACMAD."
 
     def add_arguments(self, parser):
-        parser.add_argument("--archive-url", default=DEFAULT_ARCHIVE_URL)
+        parser.add_argument("--archive-url")
         parser.add_argument(
             "--limit",
             type=int,
@@ -119,8 +140,27 @@ class Command(BaseCommand):
         ):
             raise CommandError("--from-date cannot be later than --to-date")
 
+        from climweb.pages.products.import_sources import (
+            get_product_import_source_values,
+        )
+
+        self.source_values = get_product_import_source_values("rainfall")
+        archive_url = options["archive_url"] or self.source_values.get(
+            "source_url", DEFAULT_ARCHIVE_URL
+        )
         issues, archive_count = self._discover_issues(
-            options["archive_url"], options["include_history"]
+            archive_url,
+            options["include_history"],
+            filename_pattern=self.source_values.get(
+                "filename_pattern", PNG_NAME_PATTERN
+            ),
+            date_format=self.source_values.get("date_format", "%Y%m%d"),
+            history_url_pattern=self.source_values.get(
+                "history_url_pattern", YEAR_ARCHIVE_PATTERN
+            ),
+            allowed_extensions=self.source_values.get(
+                "allowed_extensions", [".png"]
+            ),
         )
         discovered_count = len(issues)
         if options["from_date"]:
@@ -152,7 +192,7 @@ class Command(BaseCommand):
 
         issues = issues[: options["limit"]]
         if not issues:
-            raise CommandError(f"No dated GSMaP PNGs found at {options['archive_url']}")
+            raise CommandError(f"No dated GSMaP PNGs found at {archive_url}")
         self.stdout.write(
             f"Selected {len(issues)} issue(s), {issues[0]['date']} through "
             f"{issues[-1]['date']}."
@@ -226,17 +266,33 @@ class Command(BaseCommand):
                 f"attempted: {failed_dates}"
             )
 
-    def _discover_issues(self, archive_url, include_history=False):
+    def _discover_issues(
+        self,
+        archive_url,
+        include_history=False,
+        filename_pattern=PNG_NAME_PATTERN,
+        date_format="%Y%m%d",
+        history_url_pattern=YEAR_ARCHIVE_PATTERN,
+        allowed_extensions=(".png",),
+    ):
         response = self._get(operational_url(archive_url))
         archive_pages = [(archive_url, response.text)]
-        if include_history:
-            for year_url in parse_year_archive_links(response.text, archive_url):
+        if include_history and history_url_pattern:
+            for year_url in parse_year_archive_links(
+                response.text, archive_url, history_url_pattern
+            ):
                 year_response = self._get(operational_url(year_url))
                 archive_pages.append((year_url, year_response.text))
 
         issues_by_url = {}
         for page_url, html in archive_pages:
-            for issue in parse_archive(html, page_url):
+            for issue in parse_archive(
+                html,
+                page_url,
+                filename_pattern=filename_pattern,
+                date_format=date_format,
+                allowed_extensions=allowed_extensions,
+            ):
                 issues_by_url[issue["source_url"]] = issue
         return list(issues_by_url.values()), len(archive_pages)
 
@@ -297,8 +353,7 @@ class Command(BaseCommand):
             )
         return product_page, item_type
 
-    @staticmethod
-    def _record_failure(product_page, issue, existing, message):
+    def _record_failure(self, product_page, issue, existing, message):
         if existing and existing.status == ProductSourceImport.STATUS_IMPORTED:
             existing.error_message = message
             existing.attempt_count += 1
@@ -311,7 +366,9 @@ class Command(BaseCommand):
             source_url=issue["source_url"],
             defaults={
                 "product": product_page.product,
-                "source_system": SOURCE_SYSTEM,
+                "source_system": self.source_values.get(
+                    "source_system", SOURCE_SYSTEM
+                ),
                 "source_published_date": issue["date"],
                 "checksum_sha256": "",
                 "status": ProductSourceImport.STATUS_FAILED,
@@ -324,11 +381,13 @@ class Command(BaseCommand):
         )
 
     def _get(self, url):
+        headers = {"User-Agent": USER_AGENT}
+        headers.update(getattr(self, "source_values", {}).get("request_headers", {}))
         try:
             response = requests.get(
                 url,
                 timeout=(10, 60),
-                headers={"User-Agent": USER_AGENT},
+                headers=headers,
                 allow_redirects=True,
             )
             response.raise_for_status()
@@ -342,10 +401,14 @@ class Command(BaseCommand):
         size = 0
         try:
             try:
+                headers = {"User-Agent": USER_AGENT}
+                headers.update(
+                    getattr(self, "source_values", {}).get("request_headers", {})
+                )
                 response = requests.get(
                     operational_url(source_url),
                     timeout=(10, 60),
-                    headers={"User-Agent": USER_AGENT},
+                    headers=headers,
                     allow_redirects=True,
                     stream=True,
                 )
@@ -433,7 +496,9 @@ class Command(BaseCommand):
                     source_url=issue["source_url"],
                     defaults={
                         "product": product_page.product,
-                        "source_system": SOURCE_SYSTEM,
+                        "source_system": self.source_values.get(
+                            "source_system", SOURCE_SYSTEM
+                        ),
                         "source_published_date": issue_date,
                         "checksum_sha256": checksum,
                         "status": ProductSourceImport.STATUS_IMPORTED,

@@ -20,6 +20,7 @@ from climweb.pages.products.import_registry import (
 from climweb.pages.products.models import (
     ProductImportRun,
     ProductImportSchedule,
+    ProductImportSourceConfig,
     ProductSourceImport,
 )
 from climweb.pages.products.tasks import run_manual_product_import
@@ -216,6 +217,119 @@ class TestProductImportMonitoring(TestCase):
         self.assertContains(response, "Automatic import schedule")
         self.assertContains(response, "Save schedule")
 
+    def test_rainfall_page_renders_source_schema_configuration(self):
+        user = get_user_model().objects.create_superuser(
+            username="source-admin",
+            email="source@example.com",
+            password="test-password",
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Source and schema configuration")
+        self.assertContains(response, "Test connection")
+        self.assertContains(response, "Preview discovered files")
+        self.assertContains(response, "archive_gsmap.html")
+
+    def test_admin_can_save_rainfall_source_configuration(self):
+        user = get_user_model().objects.create_superuser(
+            username="save-source-admin",
+            email="save-source@example.com",
+            password="test-password",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+            {
+                "action": "save_source",
+                "source_type": "html_archive",
+                "source_url": "https://data.example.com/rainfall/index.html",
+                "source_system": "Example Rainfall Archive",
+                "allowed_extensions": ".png, .jpg",
+                "filename_pattern": r"rain_(?P<date>20\d{6})\.(png|jpg)$",
+                "date_format": "%Y%m%d",
+                "history_url_pattern": r"archive_20\d{2}\.html$",
+                "request_headers": '{"Accept": "text/html"}',
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+        )
+        config = ProductImportSourceConfig.objects.get(product_family="rainfall")
+        self.assertEqual(config.source_url, "https://data.example.com/rainfall/index.html")
+        self.assertEqual(config.allowed_extensions, [".png", ".jpg"])
+        self.assertEqual(config.request_headers, {"Accept": "text/html"})
+        self.assertEqual(config.updated_by, user)
+
+        saved_response = self.client.get(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            )
+        )
+        self.assertContains(
+            saved_response, "https://data.example.com/rainfall/index.html"
+        )
+
+    @patch("climweb.pages.products.import_sources.inspect_product_import_source")
+    def test_admin_can_preview_rainfall_source_without_saving(self, inspect_source):
+        inspect_source.return_value = {
+            "archive_count": 1,
+            "discovered_count": 1,
+            "issues": [
+                {
+                    "date": date(2026, 8, 10),
+                    "source_url": "https://data.example.com/rain_20260810.png",
+                }
+            ],
+        }
+        user = get_user_model().objects.create_superuser(
+            username="preview-source-admin",
+            email="preview-source@example.com",
+            password="test-password",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+            {
+                "action": "preview_source",
+                "source_type": "html_archive",
+                "source_url": "https://data.example.com/rainfall/index.html",
+                "source_system": "Example Rainfall Archive",
+                "allowed_extensions": ".png",
+                "filename_pattern": r"rain_(?P<date>20\d{6})\.png$",
+                "date_format": "%Y%m%d",
+                "history_url_pattern": "",
+                "request_headers": "{}",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Discovery preview")
+        self.assertContains(response, "rain_20260810.png")
+        self.assertFalse(ProductImportSourceConfig.objects.exists())
+        inspect_source.assert_called_once()
+
     def test_admin_can_update_family_automatic_import_interval(self):
         user = get_user_model().objects.create_superuser(
             username="schedule-admin",
@@ -301,6 +415,10 @@ class TestProductImportMonitoring(TestCase):
                 self.assertContains(response, definition["label"])
                 self.assertContains(response, "Manual historical import")
                 self.assertContains(response, "Automatic import schedule")
+                if definition["key"] != "rainfall":
+                    self.assertNotContains(
+                        response, "Source and schema configuration"
+                    )
                 self.assertContains(response, "Recent import history")
 
     def test_unknown_family_page_returns_404(self):

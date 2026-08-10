@@ -10,6 +10,7 @@ from wagtail.admin.auth import user_passes_test
 from .forms import (
     ProductImportRunForm,
     ProductImportScheduleForm,
+    ProductImportSourceConfigForm,
     ProductLayerForm,
 )
 from .import_monitoring import (
@@ -17,7 +18,12 @@ from .import_monitoring import (
     build_import_monitor_summary,
 )
 from .import_registry import PRODUCT_IMPORTS_BY_KEY
-from .models import ProductImportRun, ProductImportSchedule, ProductPage
+from .models import (
+    ProductImportRun,
+    ProductImportSchedule,
+    ProductImportSourceConfig,
+    ProductPage,
+)
 
 
 @user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
@@ -70,7 +76,80 @@ def product_import_family_view(request, family_key):
         raise Http404("Unknown product importer")
 
     action = request.POST.get("action", "manual_import")
-    if request.method == "POST" and action == "update_schedule":
+    source_config = None
+    source_form = None
+    source_preview = None
+    if definition.get("configurable_source"):
+        source_config = ProductImportSourceConfig.objects.filter(
+            product_family=family_key
+        ).select_related("updated_by").first()
+        source_form = ProductImportSourceConfigForm(
+            (
+                request.POST
+                if request.method == "POST"
+                and action in {"save_source", "test_source", "preview_source"}
+                else None
+            ),
+            instance=source_config,
+            initial=(
+                definition.get("source_defaults", {})
+                if source_config is None
+                else {}
+            ),
+        )
+
+    source_actions = {"save_source", "test_source", "preview_source"}
+    if request.method == "POST" and action in source_actions:
+        if source_form is None:
+            raise Http404("Source configuration is not available for this importer")
+        if source_form.is_valid():
+            if action == "save_source":
+                source_config = source_form.save(commit=False)
+                source_config.product_family = family_key
+                source_config.updated_by = request.user
+                source_config.save()
+                messages.success(
+                    request,
+                    f"{definition['label']} source configuration was saved.",
+                )
+                return redirect("product_import_family", family_key=family_key)
+
+            from .import_sources import inspect_product_import_source
+
+            try:
+                source_preview = inspect_product_import_source(
+                    family_key,
+                    source_form.cleaned_data,
+                    include_history=False,
+                )
+            except Exception as exc:
+                messages.error(request, f"Source check failed: {exc}")
+            else:
+                if action == "test_source":
+                    messages.success(
+                        request,
+                        "Connection successful. "
+                        f"Discovered {source_preview['discovered_count']} "
+                        "matching file(s) on the current archive page.",
+                    )
+                    source_preview = None
+                else:
+                    messages.success(
+                        request,
+                        f"Preview found {source_preview['discovered_count']} "
+                        "matching file(s).",
+                    )
+        today = timezone.localdate()
+        form = ProductImportRunForm(
+            initial={
+                "mode": ProductImportRun.MODE_PREVIEW,
+                "from_date": today - timedelta(days=30),
+                "to_date": today,
+                "limit": 100,
+            }
+        )
+        schedule_form = None
+    elif request.method == "POST" and action == "update_schedule":
         schedule_form = ProductImportScheduleForm(request.POST)
         if schedule_form.is_valid():
             interval_hours = schedule_form.cleaned_data["interval_hours"]
@@ -179,6 +258,9 @@ def product_import_family_view(request, family_key):
             "form": form,
             "schedule_form": schedule_form,
             "schedule": schedule,
+            "source_config": source_config,
+            "source_form": source_form,
+            "source_preview": source_preview,
             "recent_runs": recent_runs,
         },
     )

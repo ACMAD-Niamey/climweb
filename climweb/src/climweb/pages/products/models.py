@@ -728,6 +728,60 @@ class ProductImportSchedule(models.Model):
         return f"{self.product_family}: every {self.interval_hours} hour(s)"
 
 
+class ProductImportSourceConfig(models.Model):
+    """Dashboard-managed source and discovery schema for a product importer."""
+
+    TYPE_HTML_ARCHIVE = 'html_archive'
+    SOURCE_TYPE_CHOICES = [
+        (TYPE_HTML_ARCHIVE, _("HTML archive or directory listing")),
+    ]
+
+    product_family = models.CharField(
+        max_length=80,
+        unique=True,
+        verbose_name=_("Product Family"),
+    )
+    source_type = models.CharField(
+        max_length=40,
+        choices=SOURCE_TYPE_CHOICES,
+        default=TYPE_HTML_ARCHIVE,
+        verbose_name=_("Source Type"),
+    )
+    source_url = models.URLField(max_length=1000, verbose_name=_("Source URL"))
+    source_system = models.CharField(
+        max_length=255,
+        verbose_name=_("Source Name"),
+    )
+    allowed_extensions = models.JSONField(default=list)
+    filename_pattern = models.TextField(verbose_name=_("Filename Pattern"))
+    date_format = models.CharField(
+        max_length=80,
+        default='%Y%m%d',
+        verbose_name=_("Date Format"),
+    )
+    history_url_pattern = models.TextField(
+        blank=True,
+        verbose_name=_("Historical Archive Pattern"),
+    )
+    request_headers = models.JSONField(default=dict, blank=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='product_import_source_configs',
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['product_family']
+        verbose_name = _("Product Import Source Configuration")
+        verbose_name_plural = _("Product Import Source Configurations")
+
+    def __str__(self):
+        return f"{self.product_family}: {self.source_url}"
+
+
 class SubNationalProductsLandingPage(AbstractIntroPage, Page):
     parent_page_types = ['products.ProductIndexPage']
     subpage_types = ['products.SubNationalProductPage']

@@ -13,6 +13,7 @@
         margin-bottom: 2rem;
     }
     .family-card,
+    .source-panel,
     .schedule-panel,
     .manual-import-panel {
         border: 1px solid var(--w-color-border-furniture);
@@ -25,6 +26,7 @@
         font-weight: 700;
     }
     .import-meta { color: var(--w-color-text-meta); font-size: 0.85rem; }
+    .source-panel,
     .schedule-panel,
     .manual-import-panel { margin-bottom: 2rem; }
     .schedule-form {
@@ -35,6 +37,13 @@
         margin-top: 1rem;
     }
     .schedule-form .manual-import-field { max-width: 20rem; }
+    .source-config-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        margin: 1rem 0;
+    }
+    .source-config-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
     .manual-import-grid {
         display: grid;
         gap: 1rem;
@@ -120,6 +129,74 @@
                 <span class="import-meta">{{ monitor_row.source_label }}</span>
             </div>
         </div>
+
+        {% if source_form %}
+            <section class="source-panel">
+                <h2>{% translate "Source and schema configuration" %}</h2>
+                <p class="import-meta">
+                    {% translate "Configure how this importer discovers dated product files. Test or preview changes before saving them." %}
+                </p>
+                <form method="post">
+                    {% csrf_token %}
+                    {{ source_form.non_field_errors }}
+                    <div class="source-config-grid">
+                        {% for field in source_form %}
+                            <div class="manual-import-field">
+                                {{ field.label_tag }}
+                                {{ field }}
+                                {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+                                {{ field.errors }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <p class="help">
+                        {% translate "Request headers are stored in the database. Do not enter passwords, API tokens or other secrets here." %}
+                    </p>
+                    <div class="source-config-actions">
+                        <button type="submit" name="action" value="test_source" class="button">
+                            {% translate "Test connection" %}
+                        </button>
+                        <button type="submit" name="action" value="preview_source" class="button">
+                            {% translate "Preview discovered files" %}
+                        </button>
+                        <button type="submit" name="action" value="save_source" class="button button-primary">
+                            {% translate "Save source configuration" %}
+                        </button>
+                    </div>
+                </form>
+                {% if source_config %}
+                    <p class="import-meta">
+                        {% blocktranslate with updated=source_config.updated_at|date:"Y-m-d H:i" %}Last updated {{ updated }}{% endblocktranslate %}
+                        {% if source_config.updated_by %} {% blocktranslate with user=source_config.updated_by %}by {{ user }}{% endblocktranslate %}{% endif %}
+                    </p>
+                {% endif %}
+
+                {% if source_preview %}
+                    <h3>{% translate "Discovery preview" %}</h3>
+                    <p class="import-meta">
+                        {% blocktranslate with count=source_preview.discovered_count archives=source_preview.archive_count %}Found {{ count }} matching file(s) across {{ archives }} archive page(s). Showing up to 20.{% endblocktranslate %}
+                    </p>
+                    <table class="import-table">
+                        <thead>
+                            <tr>
+                                <th>{% translate "Issue date" %}</th>
+                                <th>{% translate "Source file" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for issue in source_preview.issues %}
+                                <tr>
+                                    <td>{{ issue.date }}</td>
+                                    <td><a href="{{ issue.source_url }}" target="_blank" rel="noopener noreferrer">{{ issue.source_url }}</a></td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="2">{% translate "No matching files were discovered." %}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            </section>
+        {% endif %}
 
         <section class="schedule-panel">
             <h2>{% translate "Automatic import schedule" %}</h2>

@@ -29,6 +29,20 @@ PRODUCT_IMPORTS = (
         "limit_setting": "ACMAD_RAINFALL_IMPORT_LIMIT",
         "include_history": True,
         "supports_retry": True,
+        "configurable_source": True,
+        "source_defaults": {
+            "source_type": "html_archive",
+            "source_url": (
+                "https://sgbd.acmad.org/thredds/fileServer/ACMAD/WWFD/"
+                "verificationservice/OBS/ARCHIVE/GSMAP/archive_gsmap.html"
+            ),
+            "source_system": "ACMAD SGBD/THREDDS GSMaP",
+            "allowed_extensions": [".png"],
+            "filename_pattern": r"gsmap24_(?P<date>20\d{6})\.png$",
+            "date_format": "%Y%m%d",
+            "history_url_pattern": r"archive_gsmap_20\d{2}\.html$",
+            "request_headers": {},
+        },
     },
     {
         "key": "dekadal",
