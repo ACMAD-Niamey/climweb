@@ -6,6 +6,7 @@ from wagtail.admin.menu import MenuItem
 from .models import ProductPage
 from .views import (
     product_import_monitor_view,
+    product_import_status_view,
     product_layers_integration_view,
     trigger_product_ingestion_view,
 )
@@ -28,6 +29,11 @@ def urlconf_products():
             'product-imports/',
             product_import_monitor_view,
             name="product_import_monitor",
+        ),
+        path(
+            'product-imports/status/',
+            product_import_status_view,
+            name="product_import_status",
         ),
     ]
 

@@ -4,7 +4,6 @@ import re
 import unicodedata
 import uuid
 from datetime import date, datetime, timedelta
-from io import StringIO
 
 from celery_singleton import Singleton
 from django.conf import settings
@@ -509,6 +508,10 @@ def run_acmad_seasonal_forecast_import(self):
 @app.task(bind=True)
 def run_manual_product_import(self, run_id):
     """Execute a dashboard-requested historical import and retain its output."""
+    from climweb.pages.products.import_progress import (
+        ImportProgressOutput,
+        activate_import_run,
+    )
     from climweb.pages.products.import_registry import PRODUCT_IMPORTS_BY_KEY
     from climweb.pages.products.models import ProductImportRun
 
@@ -524,9 +527,19 @@ def run_manual_product_import(self, run_id):
     task_id = getattr(self.request, "id", None)
     run.status = ProductImportRun.STATUS_RUNNING
     run.started_at = timezone.now()
+    run.progress_percent = 5
+    run.current_phase = "Discovering sources"
     if task_id:
         run.task_id = task_id
-    run.save(update_fields=["status", "started_at", "task_id"])
+    run.save(
+        update_fields=[
+            "status",
+            "started_at",
+            "task_id",
+            "progress_percent",
+            "current_phase",
+        ]
+    )
 
     command_options = {
         "from_date": run.from_date,
@@ -544,23 +557,31 @@ def run_manual_product_import(self, run_id):
     if definition.get("supports_retry") and run.retry_failures:
         command_options["retry_failures"] = True
 
-    output = StringIO()
+    output = ImportProgressOutput(
+        run.pk,
+        preview=run.mode == ProductImportRun.MODE_PREVIEW,
+    )
     try:
-        call_command(
-            definition["command"],
-            stdout=output,
-            stderr=output,
-            **command_options,
-        )
+        with activate_import_run(run.pk):
+            call_command(
+                definition["command"],
+                stdout=output,
+                stderr=output,
+                **command_options,
+            )
     except Exception as exc:
         run.status = ProductImportRun.STATUS_FAILED
         run.error_message = str(exc)
+        run.current_phase = "Import failed"
         logger.exception(
             f"[PRODUCT IMPORT RUN {run.pk}] {definition['label']} failed: {exc}"
         )
     else:
         run.status = ProductImportRun.STATUS_SUCCEEDED
         run.error_message = ""
+        run.progress_percent = 100
+        run.current_phase = "Import completed"
+        run.save(update_fields=["progress_percent"])
     finally:
         run.output = output.getvalue()[-100000:]
         run.finished_at = timezone.now()
@@ -570,6 +591,7 @@ def run_manual_product_import(self, run_id):
                 "output",
                 "error_message",
                 "finished_at",
+                "current_phase",
             ]
         )
 

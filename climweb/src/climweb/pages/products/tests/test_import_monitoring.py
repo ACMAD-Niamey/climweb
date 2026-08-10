@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -137,7 +138,108 @@ class TestProductImportMonitoring(TestCase):
         self.assertEqual(run.mode, ProductImportRun.MODE_PREVIEW)
         self.assertEqual(run.task_id, "task-123")
         self.assertEqual(run.requested_by, user)
+        self.assertEqual(run.progress_percent, 0)
         delay.assert_called_once_with(run.pk)
+
+    def test_progress_endpoint_reports_running_counters(self):
+        user = get_user_model().objects.create_superuser(
+            username="progress-admin",
+            email="progress@example.com",
+            password="test-password",
+        )
+        run = ProductImportRun.objects.create(
+            product_family="rainfall",
+            mode=ProductImportRun.MODE_IMPORT,
+            status=ProductImportRun.STATUS_RUNNING,
+            from_date=date(2026, 8, 1),
+            to_date=date(2026, 8, 10),
+            progress_percent=52,
+            total_items=10,
+            processed_items=5,
+            imported_items=4,
+            failed_items=1,
+            current_phase="Processed 5 of 10 item(s)",
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("product_import_status"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["runs"][0]
+        self.assertEqual(payload["id"], run.pk)
+        self.assertEqual(payload["status"], "running")
+        self.assertEqual(payload["progress_percent"], 52)
+        self.assertEqual(payload["processed_items"], 5)
+        self.assertEqual(payload["failed_items"], 1)
+
+    @patch("climweb.pages.products.tasks.call_command")
+    def test_manual_import_tracks_real_provenance_progress(self, call_command):
+        def simulate_import(command, stdout, **options):
+            stdout.write("Selected 2 image(s).\n")
+            ProductSourceImport.objects.create(
+                product=self.product,
+                source_url="https://example.com/progress-imported.jpg",
+                source_system="Progress test",
+                source_published_date=date(2026, 8, 10),
+                checksum_sha256="b" * 64,
+                status=ProductSourceImport.STATUS_IMPORTED,
+            )
+            stdout.write("SKIP 2026-08-09 already imported\n")
+
+        call_command.side_effect = simulate_import
+        run = ProductImportRun.objects.create(
+            product_family="rainfall",
+            mode=ProductImportRun.MODE_IMPORT,
+            from_date=date(2026, 8, 1),
+            to_date=date(2026, 8, 10),
+            limit=10,
+        )
+
+        run_manual_product_import.run(run.pk)
+
+        run.refresh_from_db()
+        self.assertEqual(run.status, ProductImportRun.STATUS_SUCCEEDED)
+        self.assertEqual(run.progress_percent, 100)
+        self.assertEqual(run.total_items, 2)
+        self.assertEqual(run.processed_items, 2)
+        self.assertEqual(run.imported_items, 1)
+        self.assertEqual(run.skipped_items, 1)
+        self.assertEqual(run.current_phase, "Import completed")
+
+    @patch("climweb.pages.products.tasks.call_command")
+    def test_failed_manual_import_retains_partial_progress(self, call_command):
+        def simulate_failure(command, stdout, **options):
+            stdout.write("Selected 2 file(s).\n")
+            ProductSourceImport.objects.create(
+                product=self.product,
+                source_url="https://example.com/progress-failed.jpg",
+                source_system="Progress test",
+                source_published_date=date(2026, 8, 10),
+                checksum_sha256="",
+                status=ProductSourceImport.STATUS_FAILED,
+                error_message="Download failed",
+            )
+            raise CommandError("Import stopped")
+
+        call_command.side_effect = simulate_failure
+        run = ProductImportRun.objects.create(
+            product_family="rainfall",
+            mode=ProductImportRun.MODE_IMPORT,
+            from_date=date(2026, 8, 1),
+            to_date=date(2026, 8, 10),
+            limit=10,
+        )
+
+        run_manual_product_import.run(run.pk)
+
+        run.refresh_from_db()
+        self.assertEqual(run.status, ProductImportRun.STATUS_FAILED)
+        self.assertEqual(run.total_items, 2)
+        self.assertEqual(run.processed_items, 1)
+        self.assertEqual(run.failed_items, 1)
+        self.assertEqual(run.progress_percent, 52)
+        self.assertEqual(run.current_phase, "Import failed")
+        self.assertEqual(run.error_message, "Import stopped")
 
     @patch("climweb.pages.products.tasks.call_command")
     def test_manual_runner_supports_every_registered_product_family(

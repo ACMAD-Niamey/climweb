@@ -101,6 +101,23 @@
         max-width: 32rem;
         white-space: pre-wrap;
     }
+    .run-progress-track {
+        background: #e5e7eb;
+        border-radius: 999px;
+        height: 0.65rem;
+        margin-bottom: 0.4rem;
+        min-width: 12rem;
+        overflow: hidden;
+    }
+    .run-progress-bar {
+        background: #2563eb;
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+    .run-progress-counts {
+        font-size: 0.8rem;
+        margin-top: 0.25rem;
+    }
     @media (max-width: 900px) {
         .import-table { display: block; overflow-x: auto; }
     }
@@ -240,18 +257,45 @@
                         <th>{% translate "Mode" %}</th>
                         <th>{% translate "Date range" %}</th>
                         <th>{% translate "Status" %}</th>
+                        <th>{% translate "Progress" %}</th>
                         <th>{% translate "Requested" %}</th>
                         <th>{% translate "Result" %}</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for run in recent_runs %}
-                        <tr>
+                        <tr data-import-run="{{ run.pk }}" data-status="{{ run.status }}">
                             <td>{{ run.product_family_label }}</td>
                             <td>{{ run.get_mode_display }}</td>
                             <td>{{ run.from_date }} – {{ run.to_date }}</td>
-                            <td class="run-status--{{ run.status }}">
-                                <strong>{{ run.get_status_display }}</strong>
+                            <td data-run-status-cell class="run-status--{{ run.status }}">
+                                <strong data-run-status>{{ run.get_status_display }}</strong>
+                            </td>
+                            <td>
+                                <div
+                                    class="run-progress-track"
+                                    role="progressbar"
+                                    aria-valuemin="0"
+                                    aria-valuemax="100"
+                                    aria-valuenow="{{ run.progress_percent }}"
+                                    data-run-progress-track
+                                >
+                                    <div
+                                        class="run-progress-bar"
+                                        style="width: {{ run.progress_percent }}%"
+                                        data-run-progress-bar
+                                    ></div>
+                                </div>
+                                <strong data-run-progress-percent>{{ run.progress_percent }}%</strong>
+                                <div class="import-meta" data-run-phase>
+                                    {{ run.current_phase|default:"Waiting to start" }}
+                                </div>
+                                <div class="run-progress-counts" data-run-counts>
+                                    {{ run.processed_items }}/{{ run.total_items }} processed ·
+                                    {{ run.imported_items }} imported ·
+                                    {{ run.failed_items }} failed ·
+                                    {{ run.skipped_items }} skipped
+                                </div>
                             </td>
                             <td>
                                 {{ run.requested_at|date:"Y-m-d H:i" }}
@@ -261,7 +305,7 @@
                             </td>
                             <td>
                                 {% if run.error_message %}
-                                    <div class="import-error">{{ run.error_message }}</div>
+                                    <div class="import-error" data-run-error>{{ run.error_message }}</div>
                                 {% endif %}
                                 {% if run.output %}
                                     <details>
@@ -277,11 +321,77 @@
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="6">{% translate "No manual runs yet." %}</td>
+                            <td colspan="7">{% translate "No manual runs yet." %}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </section>
     </div>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <script>
+        (() => {
+            const startProgressPolling = () => {
+            const activeStatuses = new Set(["queued", "running"]);
+            const rows = [...document.querySelectorAll("[data-import-run]")];
+            if (!rows.some((row) => activeStatuses.has(row.dataset.status))) return;
+
+            const updateRow = (row, run) => {
+                const previousStatus = row.dataset.status;
+                row.dataset.status = run.status;
+
+                const statusCell = row.querySelector("[data-run-status-cell]");
+                statusCell.className = `run-status--${run.status}`;
+                row.querySelector("[data-run-status]").textContent = run.status_label;
+
+                const track = row.querySelector("[data-run-progress-track]");
+                track.setAttribute("aria-valuenow", run.progress_percent);
+                row.querySelector("[data-run-progress-bar]").style.width = `${run.progress_percent}%`;
+                row.querySelector("[data-run-progress-percent]").textContent = `${run.progress_percent}%`;
+                row.querySelector("[data-run-phase]").textContent = run.current_phase || "Waiting to start";
+                row.querySelector("[data-run-counts]").textContent =
+                    `${run.processed_items}/${run.total_items} processed · ` +
+                    `${run.imported_items} imported · ${run.failed_items} failed · ` +
+                    `${run.skipped_items} skipped`;
+
+                if (activeStatuses.has(previousStatus) && !activeStatuses.has(run.status)) {
+                    window.setTimeout(() => window.location.reload(), 500);
+                }
+            };
+
+            const poll = async () => {
+                try {
+                    const response = await fetch("{% url 'product_import_status' %}", {
+                        headers: {"Accept": "application/json"},
+                    });
+                    if (!response.ok) throw new Error("Progress request failed");
+                    const data = await response.json();
+                    const runsById = new Map(data.runs.map((run) => [String(run.id), run]));
+                    rows.forEach((row) => {
+                        const run = runsById.get(row.dataset.importRun);
+                        if (run) updateRow(row, run);
+                    });
+                } catch (error) {
+                    window.location.reload();
+                    return;
+                } finally {
+                    if (rows.some((row) => activeStatuses.has(row.dataset.status))) {
+                        window.setTimeout(poll, 2000);
+                    }
+                }
+            };
+
+            window.setTimeout(poll, 1000);
+            };
+
+            if (document.readyState === "loading") {
+                document.addEventListener("DOMContentLoaded", startProgressPolling);
+            } else {
+                startProgressPolling();
+            }
+        })();
+    </script>
 {% endblock %}

@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from django.contrib import messages
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.response import TemplateResponse
 from django.utils import timezone
@@ -12,6 +13,31 @@ from .import_monitoring import (
     build_import_monitor_summary,
 )
 from .models import ProductImportRun, ProductPage
+
+
+@user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
+def product_import_status_view(request):
+    runs = ProductImportRun.objects.all()[:20]
+    return JsonResponse(
+        {
+            "runs": [
+                {
+                    "id": run.pk,
+                    "status": run.status,
+                    "status_label": run.get_status_display(),
+                    "progress_percent": run.progress_percent,
+                    "total_items": run.total_items,
+                    "processed_items": run.processed_items,
+                    "imported_items": run.imported_items,
+                    "failed_items": run.failed_items,
+                    "skipped_items": run.skipped_items,
+                    "current_phase": run.current_phase,
+                    "error_message": run.error_message,
+                }
+                for run in runs
+            ]
+        }
+    )
 
 
 @user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
