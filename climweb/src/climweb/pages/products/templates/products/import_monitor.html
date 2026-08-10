@@ -213,8 +213,8 @@
                 <th>{% translate "Schedule" %}</th>
                 <th>{% translate "Imported" %}</th>
                 <th>{% translate "Failed" %}</th>
-                <!-- <th>{% translate "Latest source date" %}</th>
-                        <th>{% translate "Last record activity" %}</th> -->
+                <th>{% translate "Latest source date" %}</th>
+                <th>{% translate "Last record activity" %}</th>
                 <th>{% translate "Actions" %}</th>
             </tr>
         </thead>
@@ -244,11 +244,11 @@
                     <span class="import-status import-status--{{ row.health }}">
                         {{ row.health_label }}
                     </span>
-                    {% if row.latest_failure %}
+                    <!-- {% if row.latest_failure %}
                     <div class="import-error">
                         {{ row.latest_failure.error_message|truncatechars:140 }}
                     </div>
-                    {% endif %}
+                    {% endif %} -->
                 </td>
                 <td>
                     {% if row.enabled %}
