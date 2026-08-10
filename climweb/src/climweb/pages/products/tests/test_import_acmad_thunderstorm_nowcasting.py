@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from unittest.mock import patch
 
-from django.test import SimpleTestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 
 from climweb.pages.products.management.commands.import_acmad_thunderstorm_nowcasting import (
     MAX_IMAGE_SIZE,
@@ -114,7 +114,7 @@ class TestNowcastingSources(SimpleTestCase):
         self.assertEqual(MAX_IMAGE_SIZE, 10 * 1024 * 1024)
 
 
-class TestAutomaticNowcastingImport(SimpleTestCase):
+class TestAutomaticNowcastingImport(TestCase):
     @override_settings(
         ACMAD_NOWCASTING_AUTO_IMPORT=True,
         ACMAD_NOWCASTING_IMPORT_LIMIT=2,

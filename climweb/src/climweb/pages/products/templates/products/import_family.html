@@ -25,6 +25,7 @@
         font-size: 1.6rem;
         font-weight: 700;
     }
+    .importer-status-form { margin-top: 0.75rem; }
     .import-meta { color: var(--w-color-text-meta); font-size: 0.85rem; }
     .source-panel,
     .schedule-panel,
@@ -109,6 +110,25 @@
             <div class="family-card">
                 <span class="family-card-value">{{ monitor_row.health_label }}</span>
                 <span class="import-meta">{% translate "Importer status" %}</span>
+                <form method="post" class="importer-status-form">
+                    {% csrf_token %}
+                    {% if monitor_row.enabled %}
+                        <input type="hidden" name="action" value="disable_importer">
+                        <button type="submit" class="button button-small button-secondary">
+                            {% translate "Disable importer" %}
+                        </button>
+                    {% else %}
+                        <input type="hidden" name="action" value="enable_importer">
+                        <button type="submit" class="button button-small button-primary">
+                            {% translate "Enable importer" %}
+                        </button>
+                    {% endif %}
+                </form>
+                {% if monitor_row.enabled_is_custom %}
+                    <span class="import-meta">{% translate "Dashboard override" %}</span>
+                {% else %}
+                    <span class="import-meta">{% translate "Deployment default" %}</span>
+                {% endif %}
             </div>
             <div class="family-card">
                 <span class="family-card-value">{{ monitor_row.imported_count }}</span>
@@ -169,6 +189,13 @@
                         {% blocktranslate with updated=source_config.updated_at|date:"Y-m-d H:i" %}Last updated {{ updated }}{% endblocktranslate %}
                         {% if source_config.updated_by %} {% blocktranslate with user=source_config.updated_by %}by {{ user }}{% endblocktranslate %}{% endif %}
                     </p>
+                    <form method="post" data-restore-source-form>
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="restore_source_defaults">
+                        <button type="submit" class="button button-secondary">
+                            {% translate "Restore default configuration" %}
+                        </button>
+                    </form>
                 {% endif %}
 
                 {% if source_preview %}
@@ -203,6 +230,8 @@
             <p class="import-meta">
                 {% if monitor_row.enabled %}
                     {% translate "Automatic imports are enabled. Change how often this product source is checked for new files." %}
+                {% elif monitor_row.enabled_is_custom %}
+                    {% translate "Automatic imports are disabled from this dashboard. The saved interval will be retained if the importer is enabled again." %}
                 {% else %}
                     {% translate "Automatic imports are disabled by the deployment configuration. You can save the interval now; it will be used when automatic imports are enabled." %}
                 {% endif %}
@@ -346,6 +375,14 @@
     <script>
         (() => {
             const startImportPage = () => {
+                const restoreForm = document.querySelector("[data-restore-source-form]");
+                if (restoreForm) {
+                    restoreForm.addEventListener("submit", (event) => {
+                        if (!window.confirm("Restore the default source configuration? Your saved source settings will be removed.")) {
+                            event.preventDefault();
+                        }
+                    });
+                }
                 const modal = document.getElementById("import-output-modal");
                 const modalTitle = document.getElementById("import-output-title");
                 const modalContent = document.getElementById("import-output-content");

@@ -10,11 +10,16 @@ from climweb.pages.products.models import (
 
 
 def build_import_monitor_rows():
-    saved_intervals = dict(
-        ProductImportSchedule.objects.values_list(
-            "product_family", "interval_hours"
-        )
+    schedule_values = ProductImportSchedule.objects.values_list(
+        "product_family", "interval_hours", "enabled_override"
     )
+    saved_schedules = {
+        family: {
+            "interval_hours": interval_hours,
+            "enabled_override": enabled_override,
+        }
+        for family, interval_hours, enabled_override in schedule_values
+    }
     rows = []
     for definition in PRODUCT_IMPORTS:
         imports = ProductSourceImport.objects.filter(
@@ -35,12 +40,17 @@ def build_import_monitor_rows():
             ),
             last_activity=Max("updated_at"),
         )
-        enabled = getattr(settings, definition["enabled_setting"], False)
+        default_enabled = getattr(settings, definition["enabled_setting"], False)
+        saved_schedule = saved_schedules.get(definition["key"], {})
+        enabled_override = saved_schedule.get("enabled_override")
+        enabled = (
+            default_enabled if enabled_override is None else enabled_override
+        )
         default_interval_hours = getattr(
             settings, definition["interval_setting"], None
         )
-        interval_hours = saved_intervals.get(
-            definition["key"], default_interval_hours
+        interval_hours = saved_schedule.get(
+            "interval_hours", default_interval_hours
         )
         latest_failure = (
             imports.filter(status=ProductSourceImport.STATUS_FAILED)
@@ -74,7 +84,8 @@ def build_import_monitor_rows():
                 **stats,
                 "enabled": enabled,
                 "interval_hours": interval_hours,
-                "interval_is_custom": definition["key"] in saved_intervals,
+                "interval_is_custom": definition["key"] in saved_schedules,
+                "enabled_is_custom": enabled_override is not None,
                 "health": health,
                 "health_label": health_label,
                 "latest_failure": latest_failure,

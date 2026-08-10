@@ -710,6 +710,12 @@ class ProductImportSchedule(models.Model):
         validators=[MinValueValidator(1), MaxValueValidator(720)],
         verbose_name=_("Interval Hours"),
     )
+    enabled_override = models.BooleanField(
+        null=True,
+        blank=True,
+        verbose_name=_("Enabled Override"),
+        help_text=_("Leave empty to use the deployment configuration."),
+    )
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

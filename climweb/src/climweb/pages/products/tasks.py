@@ -16,6 +16,12 @@ from loguru import logger
 from climweb.config.celery import app
 
 
+def _product_import_is_enabled(family_key, deployment_default):
+    from .import_scheduling import get_product_import_enabled
+
+    return get_product_import_enabled(family_key, fallback=deployment_default)
+
+
 def _convention_to_regex(convention):
     """
     Convert a filename convention pattern to a named-group regex.
@@ -336,7 +342,9 @@ def ingest_product_files(self):
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_multihazard_import(self):
     """Fetch and publish new Continental Multi-Hazard Outlook issues."""
-    if not settings.ACMAD_MULTIHAZARD_AUTO_IMPORT:
+    if not _product_import_is_enabled(
+        "multihazard", settings.ACMAD_MULTIHAZARD_AUTO_IMPORT
+    ):
         logger.info("[ACMAD MULTI-HAZARD] Automatic import is disabled.")
         return
 
@@ -355,7 +363,9 @@ def run_acmad_multihazard_import(self):
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_daily_rainfall_import(self):
     """Fetch and publish new daily GSMaP rainfall observation images."""
-    if not settings.ACMAD_RAINFALL_AUTO_IMPORT:
+    if not _product_import_is_enabled(
+        "rainfall", settings.ACMAD_RAINFALL_AUTO_IMPORT
+    ):
         logger.info("[ACMAD RAINFALL] Automatic import is disabled.")
         return
 
@@ -372,7 +382,9 @@ def run_acmad_daily_rainfall_import(self):
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_dekadal_import(self):
     """Fetch and publish the current Dekadal Climate Bulletin document set."""
-    if not settings.ACMAD_DEKADAL_AUTO_IMPORT:
+    if not _product_import_is_enabled(
+        "dekadal", settings.ACMAD_DEKADAL_AUTO_IMPORT
+    ):
         logger.info("[ACMAD DEKADAL] Automatic import is disabled.")
         return
 
@@ -387,7 +399,9 @@ def run_acmad_dekadal_import(self):
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_policy_briefs_import(self):
     """Fetch and publish current Policy and Decision Brief assets."""
-    if not settings.ACMAD_POLICY_BRIEFS_AUTO_IMPORT:
+    if not _product_import_is_enabled(
+        "policy-briefs", settings.ACMAD_POLICY_BRIEFS_AUTO_IMPORT
+    ):
         logger.info("[ACMAD POLICY BRIEFS] Automatic import is disabled.")
         return
 
@@ -406,7 +420,9 @@ def run_acmad_policy_briefs_import(self):
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_atmospheric_analysis_import(self):
     """Fetch and publish current ACMAD atmospheric analysis maps."""
-    if not settings.ACMAD_ATMOSPHERIC_ANALYSIS_AUTO_IMPORT:
+    if not _product_import_is_enabled(
+        "atmospheric-analysis", settings.ACMAD_ATMOSPHERIC_ANALYSIS_AUTO_IMPORT
+    ):
         logger.info("[ACMAD ATMOSPHERIC ANALYSIS] Automatic import is disabled.")
         return
 
@@ -421,7 +437,9 @@ def run_acmad_atmospheric_analysis_import(self):
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_heat_stress_import(self):
     """Fetch and publish the newest ACMAD heat-stress image products."""
-    if not settings.ACMAD_HEAT_STRESS_AUTO_IMPORT:
+    if not _product_import_is_enabled(
+        "heat-stress", settings.ACMAD_HEAT_STRESS_AUTO_IMPORT
+    ):
         logger.info("[ACMAD HEAT STRESS] Automatic import is disabled.")
         return
 
@@ -438,7 +456,9 @@ def run_acmad_heat_stress_import(self):
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_itd_itcz_import(self):
     """Fetch and publish the current ACMAD ITD/ITCZ monitoring bulletin."""
-    if not settings.ACMAD_ITD_ITCZ_AUTO_IMPORT:
+    if not _product_import_is_enabled(
+        "itd-itcz", settings.ACMAD_ITD_ITCZ_AUTO_IMPORT
+    ):
         logger.info("[ACMAD ITD/ITCZ] Automatic import is disabled.")
         return
 
@@ -455,7 +475,9 @@ def run_acmad_itd_itcz_import(self):
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_nowcasting_import(self):
     """Fetch and publish current ACMAD nowcasting satellite imagery."""
-    if not settings.ACMAD_NOWCASTING_AUTO_IMPORT:
+    if not _product_import_is_enabled(
+        "thunderstorm-nowcasting", settings.ACMAD_NOWCASTING_AUTO_IMPORT
+    ):
         logger.info("[ACMAD NOWCASTING] Automatic import is disabled.")
         return
 
@@ -472,7 +494,9 @@ def run_acmad_nowcasting_import(self):
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_climate_health_import(self):
     """Fetch and publish ACMAD Climate and Health files."""
-    if not settings.ACMAD_CLIMATE_HEALTH_AUTO_IMPORT:
+    if not _product_import_is_enabled(
+        "climate-health", settings.ACMAD_CLIMATE_HEALTH_AUTO_IMPORT
+    ):
         logger.info("[ACMAD CLIMATE/HEALTH] Automatic import is disabled.")
         return
 
@@ -489,7 +513,9 @@ def run_acmad_climate_health_import(self):
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_seasonal_forecast_import(self):
     """Fetch and publish ACMAD Seasonal and Long-Range Forecast files."""
-    if not settings.ACMAD_SEASONAL_FORECAST_AUTO_IMPORT:
+    if not _product_import_is_enabled(
+        "seasonal-forecasts", settings.ACMAD_SEASONAL_FORECAST_AUTO_IMPORT
+    ):
         logger.info("[ACMAD SEASONAL FORECAST] Automatic import is disabled.")
         return
 

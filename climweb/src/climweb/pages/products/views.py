@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib import messages
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -99,7 +100,54 @@ def product_import_family_view(request, family_key):
         )
 
     source_actions = {"save_source", "test_source", "preview_source"}
-    if request.method == "POST" and action in source_actions:
+    if request.method == "POST" and action == "restore_source_defaults":
+        if source_form is None:
+            raise Http404("Source configuration is not available for this importer")
+        ProductImportSourceConfig.objects.filter(product_family=family_key).delete()
+        messages.success(
+            request,
+            f"{definition['label']} source configuration was restored to defaults.",
+        )
+        return redirect("product_import_family", family_key=family_key)
+    elif request.method == "POST" and action in {
+        "enable_importer",
+        "disable_importer",
+    }:
+        enabled = action == "enable_importer"
+        default_interval = getattr(
+            settings, definition["interval_setting"], 24
+        )
+        schedule, _ = ProductImportSchedule.objects.get_or_create(
+            product_family=family_key,
+            defaults={"interval_hours": default_interval},
+        )
+        schedule.enabled_override = enabled
+        schedule.updated_by = request.user
+        schedule.save(
+            update_fields=["enabled_override", "updated_by", "updated_at"]
+        )
+        from .import_scheduling import sync_product_import_schedule
+
+        try:
+            sync_product_import_schedule(
+                family_key,
+                schedule.interval_hours,
+                enabled=enabled,
+            )
+        except Exception as exc:
+            messages.warning(
+                request,
+                "The importer status was saved, but the live scheduler could "
+                f"not be updated: {exc}",
+            )
+        else:
+            status_label = "enabled" if enabled else "disabled"
+            messages.success(
+                request,
+                f"{definition['label']} automatic importer was {status_label}.",
+            )
+        return redirect("product_import_family", family_key=family_key)
+    elif request.method == "POST" and action in source_actions:
         if source_form is None:
             raise Http404("Source configuration is not available for this importer")
         if source_form.is_valid():

@@ -1,7 +1,7 @@
 from datetime import date
 from unittest.mock import patch
 
-from django.test import SimpleTestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 
 from climweb.pages.products.management.commands.import_acmad_climate_health import (
     MAX_FILE_SIZE,
@@ -137,7 +137,7 @@ class TestClimateHealthSources(SimpleTestCase):
         self.assertEqual(MAX_FILE_SIZE, 50 * 1024 * 1024)
 
 
-class TestAutomaticClimateHealthImport(SimpleTestCase):
+class TestAutomaticClimateHealthImport(TestCase):
     @override_settings(
         ACMAD_CLIMATE_HEALTH_AUTO_IMPORT=True,
         ACMAD_CLIMATE_HEALTH_IMPORT_LIMIT=4,

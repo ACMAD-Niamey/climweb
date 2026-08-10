@@ -103,7 +103,7 @@ class TestSeasonalForecastSources(SimpleTestCase):
         )
 
 
-class TestAutomaticSeasonalForecastImport(SimpleTestCase):
+class TestAutomaticSeasonalForecastImport(TestCase):
     @override_settings(
         ACMAD_SEASONAL_FORECAST_AUTO_IMPORT=True,
         ACMAD_SEASONAL_FORECAST_IMPORT_LIMIT=4,

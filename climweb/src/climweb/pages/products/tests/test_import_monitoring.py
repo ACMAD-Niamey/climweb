@@ -286,6 +286,49 @@ class TestProductImportMonitoring(TestCase):
         self.assertContains(
             saved_response, "https://data.example.com/rainfall/index.html"
         )
+        self.assertContains(saved_response, "Restore default configuration")
+
+    def test_admin_can_restore_default_rainfall_source_configuration(self):
+        user = get_user_model().objects.create_superuser(
+            username="restore-source-admin",
+            email="restore-source@example.com",
+            password="test-password",
+        )
+        ProductImportSourceConfig.objects.create(
+            product_family="rainfall",
+            source_type="html_archive",
+            source_url="https://tampered.example.com/index.html",
+            source_system="Changed source",
+            allowed_extensions=[".jpg"],
+            filename_pattern=r"changed_(?P<date>20\d{6})\.jpg$",
+            date_format="%Y%m%d",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+            {"action": "restore_source_defaults"},
+        )
+
+        self.assertRedirects(
+            response,
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+        )
+        self.assertFalse(ProductImportSourceConfig.objects.exists())
+        restored_response = self.client.get(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            )
+        )
+        self.assertContains(restored_response, "archive_gsmap.html")
+        self.assertNotContains(restored_response, "tampered.example.com")
 
     @patch("climweb.pages.products.import_sources.inspect_product_import_source")
     def test_admin_can_preview_rainfall_source_without_saving(self, inspect_source):
@@ -330,6 +373,7 @@ class TestProductImportMonitoring(TestCase):
         self.assertFalse(ProductImportSourceConfig.objects.exists())
         inspect_source.assert_called_once()
 
+    @override_settings(ACMAD_RAINFALL_AUTO_IMPORT=True)
     def test_admin_can_update_family_automatic_import_interval(self):
         user = get_user_model().objects.create_superuser(
             username="schedule-admin",
@@ -369,6 +413,46 @@ class TestProductImportMonitoring(TestCase):
         self.assertEqual(periodic_task.interval.every, 12)
         self.assertEqual(periodic_task.interval.period, IntervalSchedule.HOURS)
         self.assertTrue(periodic_task.enabled)
+
+    @override_settings(ACMAD_RAINFALL_AUTO_IMPORT=True)
+    def test_admin_can_disable_family_automatic_importer(self):
+        user = get_user_model().objects.create_superuser(
+            username="disable-importer-admin",
+            email="disable-importer@example.com",
+            password="test-password",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+            {"action": "disable_importer"},
+        )
+
+        self.assertRedirects(
+            response,
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+        )
+        schedule = ProductImportSchedule.objects.get(product_family="rainfall")
+        self.assertFalse(schedule.enabled_override)
+        self.assertEqual(schedule.updated_by, user)
+        periodic_task = PeriodicTask.objects.get(
+            name="import-acmad-daily-rainfall-automatically"
+        )
+        self.assertFalse(periodic_task.enabled)
+        page = self.client.get(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            )
+        )
+        self.assertContains(page, "Enable importer")
+        self.assertContains(page, "Dashboard override")
 
     def test_invalid_interval_is_shown_without_changing_schedule(self):
         user = get_user_model().objects.create_superuser(
@@ -415,6 +499,7 @@ class TestProductImportMonitoring(TestCase):
                 self.assertContains(response, definition["label"])
                 self.assertContains(response, "Manual historical import")
                 self.assertContains(response, "Automatic import schedule")
+                self.assertContains(response, "importer")
                 if definition["key"] != "rainfall":
                     self.assertNotContains(
                         response, "Source and schema configuration"

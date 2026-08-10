@@ -1,7 +1,7 @@
 from datetime import date
 from unittest.mock import Mock, patch
 
-from django.test import SimpleTestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 
 from climweb.pages.products.management.commands.import_acmad_heat_stress import (
     MAX_IMAGE_SIZE,
@@ -99,7 +99,7 @@ class TestHeatStressSources(SimpleTestCase):
         self.assertIn("acmad_version=", asset["provenance_url"])
 
 
-class TestAutomaticHeatStressImport(SimpleTestCase):
+class TestAutomaticHeatStressImport(TestCase):
     @override_settings(
         ACMAD_HEAT_STRESS_AUTO_IMPORT=True,
         ACMAD_HEAT_STRESS_IMPORT_LIMIT=2,
