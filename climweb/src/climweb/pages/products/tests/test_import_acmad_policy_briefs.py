@@ -1,7 +1,7 @@
 from datetime import date
 from unittest.mock import patch
 
-from django.test import SimpleTestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 
 from climweb.pages.products.management.commands.import_acmad_policy_briefs import (
     MAX_IMAGE_SIZE,
@@ -80,7 +80,7 @@ class TestPolicyBriefCatalogParsing(SimpleTestCase):
         self.assertEqual(MAX_PDF_SIZE, 50 * 1024 * 1024)
 
 
-class TestAutomaticPolicyBriefImport(SimpleTestCase):
+class TestAutomaticPolicyBriefImport(TestCase):
     @override_settings(
         ACMAD_POLICY_BRIEFS_AUTO_IMPORT=True,
         ACMAD_POLICY_BRIEFS_IMPORT_LIMIT=4,

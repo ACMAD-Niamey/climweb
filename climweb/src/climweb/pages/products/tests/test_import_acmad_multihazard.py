@@ -2,7 +2,7 @@ from argparse import ArgumentTypeError
 from datetime import date
 from unittest.mock import patch
 
-from django.test import SimpleTestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 
 from climweb.pages.products.management.commands.import_acmad_multihazard import (
     RANGE_CHUNK_SIZE,
@@ -15,6 +15,7 @@ from climweb.pages.products.tasks import (
     run_acmad_daily_rainfall_import,
     run_acmad_multihazard_import,
 )
+from climweb.pages.products.models import ProductImportSchedule
 
 
 class TestMultiHazardArchiveParsing(SimpleTestCase):
@@ -91,7 +92,7 @@ class TestMultiHazardArchiveParsing(SimpleTestCase):
         return self.archive_url.rsplit("/", 1)[0] + "/" + filename
 
 
-class TestAutomaticMultiHazardImport(SimpleTestCase):
+class TestAutomaticMultiHazardImport(TestCase):
     @override_settings(
         ACMAD_MULTIHAZARD_AUTO_IMPORT=True,
         ACMAD_MULTIHAZARD_IMPORT_LIMIT=12,
@@ -114,7 +115,7 @@ class TestAutomaticMultiHazardImport(SimpleTestCase):
         call_command.assert_not_called()
 
 
-class TestAutomaticDailyRainfallImport(SimpleTestCase):
+class TestAutomaticDailyRainfallImport(TestCase):
     @override_settings(
         ACMAD_RAINFALL_AUTO_IMPORT=True,
         ACMAD_RAINFALL_IMPORT_LIMIT=9,
@@ -132,6 +133,19 @@ class TestAutomaticDailyRainfallImport(SimpleTestCase):
     @override_settings(ACMAD_RAINFALL_AUTO_IMPORT=False)
     @patch("climweb.pages.products.tasks.call_command")
     def test_disabled_task_does_not_run_import_command(self, call_command):
+        run_acmad_daily_rainfall_import.run()
+
+        call_command.assert_not_called()
+
+    @override_settings(ACMAD_RAINFALL_AUTO_IMPORT=True)
+    @patch("climweb.pages.products.tasks.call_command")
+    def test_dashboard_override_can_disable_enabled_deployment(self, call_command):
+        ProductImportSchedule.objects.create(
+            product_family="rainfall",
+            interval_hours=6,
+            enabled_override=False,
+        )
+
         run_acmad_daily_rainfall_import.run()
 
         call_command.assert_not_called()

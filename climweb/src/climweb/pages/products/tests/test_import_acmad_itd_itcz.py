@@ -1,7 +1,7 @@
 from datetime import date
 from unittest.mock import patch
 
-from django.test import SimpleTestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 
 from climweb.pages.products.management.commands.import_acmad_itd_itcz import (
     MAX_FILE_SIZE,
@@ -77,7 +77,7 @@ class TestItdItczSources(SimpleTestCase):
         )
 
 
-class TestAutomaticItdItczImport(SimpleTestCase):
+class TestAutomaticItdItczImport(TestCase):
     @override_settings(
         ACMAD_ITD_ITCZ_AUTO_IMPORT=True,
         ACMAD_ITD_ITCZ_IMPORT_LIMIT=2,
