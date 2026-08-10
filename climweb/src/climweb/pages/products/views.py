@@ -7,13 +7,17 @@ from django.template.response import TemplateResponse
 from django.utils import timezone
 from wagtail.admin.auth import user_passes_test
 
-from .forms import ProductImportRunForm, ProductLayerForm
+from .forms import (
+    ProductImportRunForm,
+    ProductImportScheduleForm,
+    ProductLayerForm,
+)
 from .import_monitoring import (
     build_import_monitor_rows,
     build_import_monitor_summary,
 )
 from .import_registry import PRODUCT_IMPORTS_BY_KEY
-from .models import ProductImportRun, ProductPage
+from .models import ProductImportRun, ProductImportSchedule, ProductPage
 
 
 @user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
@@ -65,7 +69,45 @@ def product_import_family_view(request, family_key):
     if definition is None:
         raise Http404("Unknown product importer")
 
-    if request.method == "POST":
+    action = request.POST.get("action", "manual_import")
+    if request.method == "POST" and action == "update_schedule":
+        schedule_form = ProductImportScheduleForm(request.POST)
+        if schedule_form.is_valid():
+            interval_hours = schedule_form.cleaned_data["interval_hours"]
+            ProductImportSchedule.objects.update_or_create(
+                product_family=family_key,
+                defaults={
+                    "interval_hours": interval_hours,
+                    "updated_by": request.user,
+                },
+            )
+            from .import_scheduling import sync_product_import_schedule
+
+            try:
+                sync_product_import_schedule(family_key, interval_hours)
+            except Exception as exc:
+                messages.warning(
+                    request,
+                    "The interval was saved, but the live scheduler could not "
+                    f"be updated: {exc}",
+                )
+            else:
+                messages.success(
+                    request,
+                    f"{definition['label']} will now be checked every "
+                    f"{interval_hours} hour(s).",
+                )
+            return redirect("product_import_family", family_key=family_key)
+        today = timezone.localdate()
+        form = ProductImportRunForm(
+            initial={
+                "mode": ProductImportRun.MODE_PREVIEW,
+                "from_date": today - timedelta(days=30),
+                "to_date": today,
+                "limit": 100,
+            }
+        )
+    elif request.method == "POST":
         form = ProductImportRunForm(request.POST)
         if form.is_valid():
             run = ProductImportRun.objects.create(
@@ -102,6 +144,7 @@ def product_import_family_view(request, family_key):
                     f"{definition['label']} import was queued.",
                 )
             return redirect("product_import_family", family_key=family_key)
+        schedule_form = None
     else:
         today = timezone.localdate()
         form = ProductImportRunForm(
@@ -112,10 +155,18 @@ def product_import_family_view(request, family_key):
                 "limit": 100,
             }
         )
+        schedule_form = None
 
     monitor_row = next(
         row for row in build_import_monitor_rows() if row["key"] == family_key
     )
+    if schedule_form is None:
+        schedule_form = ProductImportScheduleForm(
+            initial={"interval_hours": monitor_row["interval_hours"]}
+        )
+    schedule = ProductImportSchedule.objects.filter(
+        product_family=family_key
+    ).select_related("updated_by").first()
     recent_runs = ProductImportRun.objects.filter(
         product_family=family_key
     ).select_related("requested_by")[:20]
@@ -126,6 +177,8 @@ def product_import_family_view(request, family_key):
             "definition": definition,
             "monitor_row": monitor_row,
             "form": form,
+            "schedule_form": schedule_form,
+            "schedule": schedule,
             "recent_runs": recent_runs,
         },
     )

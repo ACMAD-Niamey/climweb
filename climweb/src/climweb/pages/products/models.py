@@ -697,6 +697,37 @@ class ProductImportRun(models.Model):
         return definition["label"] if definition else self.product_family
 
 
+class ProductImportSchedule(models.Model):
+    """Dashboard-managed automatic import interval for a product family."""
+
+    product_family = models.CharField(
+        max_length=80,
+        unique=True,
+        verbose_name=_("Product Family"),
+    )
+    interval_hours = models.PositiveIntegerField(
+        default=24,
+        validators=[MinValueValidator(1), MaxValueValidator(720)],
+        verbose_name=_("Interval Hours"),
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='product_import_schedules',
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['product_family']
+        verbose_name = _("Product Import Schedule")
+        verbose_name_plural = _("Product Import Schedules")
+
+    def __str__(self):
+        return f"{self.product_family}: every {self.interval_hours} hour(s)"
+
+
 class SubNationalProductsLandingPage(AbstractIntroPage, Page):
     parent_page_types = ['products.ProductIndexPage']
     subpage_types = ['products.SubNationalProductPage']

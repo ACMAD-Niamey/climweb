@@ -47,6 +47,16 @@ class ProductImportRunForm(forms.Form):
         return cleaned_data
 
 
+class ProductImportScheduleForm(forms.Form):
+    interval_hours = forms.IntegerField(
+        label="Run every (hours)",
+        min_value=1,
+        max_value=720,
+        help_text="Choose a value from 1 hour to 30 days (720 hours).",
+        widget=forms.NumberInput(attrs={"min": 1, "max": 720}),
+    )
+
+
 class ProductLayerForm(WagtailAdminModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

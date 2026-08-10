@@ -2,10 +2,19 @@ from django.conf import settings
 from django.db.models import Count, Max, Q
 
 from climweb.pages.products.import_registry import PRODUCT_IMPORTS
-from climweb.pages.products.models import ProductPage, ProductSourceImport
+from climweb.pages.products.models import (
+    ProductImportSchedule,
+    ProductPage,
+    ProductSourceImport,
+)
 
 
 def build_import_monitor_rows():
+    saved_intervals = dict(
+        ProductImportSchedule.objects.values_list(
+            "product_family", "interval_hours"
+        )
+    )
     rows = []
     for definition in PRODUCT_IMPORTS:
         imports = ProductSourceImport.objects.filter(
@@ -27,7 +36,12 @@ def build_import_monitor_rows():
             last_activity=Max("updated_at"),
         )
         enabled = getattr(settings, definition["enabled_setting"], False)
-        interval_hours = getattr(settings, definition["interval_setting"], None)
+        default_interval_hours = getattr(
+            settings, definition["interval_setting"], None
+        )
+        interval_hours = saved_intervals.get(
+            definition["key"], default_interval_hours
+        )
         latest_failure = (
             imports.filter(status=ProductSourceImport.STATUS_FAILED)
             .order_by("-updated_at")
@@ -60,6 +74,7 @@ def build_import_monitor_rows():
                 **stats,
                 "enabled": enabled,
                 "interval_hours": interval_hours,
+                "interval_is_custom": definition["key"] in saved_intervals,
                 "health": health,
                 "health_label": health_label,
                 "latest_failure": latest_failure,

@@ -598,58 +598,82 @@ def run_manual_product_import(self, run_id):
 
 @app.on_after_finalize.connect
 def setup_product_ingestion_tasks(sender, **kwargs):
+    from .import_scheduling import get_product_import_interval_hours
+
+    def interval_seconds(family_key, fallback):
+        return 60 * 60 * get_product_import_interval_hours(
+            family_key, fallback=fallback
+        )
+
     sender.add_periodic_task(
         60 * 5,  # every 15 minutes
         ingest_product_files.s(),
         name='ingest-product-files-every-5-minutes',
     )
     sender.add_periodic_task(
-        60 * 60 * settings.ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS,
+        interval_seconds(
+            "multihazard", settings.ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS
+        ),
         run_acmad_multihazard_import.s(),
         name="import-acmad-multihazard-automatically",
     )
     sender.add_periodic_task(
-        60 * 60 * settings.ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS,
+        interval_seconds("rainfall", settings.ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS),
         run_acmad_daily_rainfall_import.s(),
         name="import-acmad-daily-rainfall-automatically",
     )
     sender.add_periodic_task(
-        60 * 60 * settings.ACMAD_DEKADAL_IMPORT_INTERVAL_HOURS,
+        interval_seconds("dekadal", settings.ACMAD_DEKADAL_IMPORT_INTERVAL_HOURS),
         run_acmad_dekadal_import.s(),
         name="import-acmad-dekadal-bulletin-automatically",
     )
     sender.add_periodic_task(
-        60 * 60 * settings.ACMAD_POLICY_BRIEFS_IMPORT_INTERVAL_HOURS,
+        interval_seconds(
+            "policy-briefs", settings.ACMAD_POLICY_BRIEFS_IMPORT_INTERVAL_HOURS
+        ),
         run_acmad_policy_briefs_import.s(),
         name="import-acmad-policy-briefs-automatically",
     )
     sender.add_periodic_task(
-        60 * 60 * settings.ACMAD_ATMOSPHERIC_ANALYSIS_IMPORT_INTERVAL_HOURS,
+        interval_seconds(
+            "atmospheric-analysis",
+            settings.ACMAD_ATMOSPHERIC_ANALYSIS_IMPORT_INTERVAL_HOURS,
+        ),
         run_acmad_atmospheric_analysis_import.s(),
         name="import-acmad-atmospheric-analysis-automatically",
     )
     sender.add_periodic_task(
-        60 * 60 * settings.ACMAD_HEAT_STRESS_IMPORT_INTERVAL_HOURS,
+        interval_seconds(
+            "heat-stress", settings.ACMAD_HEAT_STRESS_IMPORT_INTERVAL_HOURS
+        ),
         run_acmad_heat_stress_import.s(),
         name="import-acmad-heat-stress-automatically",
     )
     sender.add_periodic_task(
-        60 * 60 * settings.ACMAD_ITD_ITCZ_IMPORT_INTERVAL_HOURS,
+        interval_seconds("itd-itcz", settings.ACMAD_ITD_ITCZ_IMPORT_INTERVAL_HOURS),
         run_acmad_itd_itcz_import.s(),
         name="import-acmad-itd-itcz-automatically",
     )
     sender.add_periodic_task(
-        60 * 60 * settings.ACMAD_NOWCASTING_IMPORT_INTERVAL_HOURS,
+        interval_seconds(
+            "thunderstorm-nowcasting",
+            settings.ACMAD_NOWCASTING_IMPORT_INTERVAL_HOURS,
+        ),
         run_acmad_nowcasting_import.s(),
         name="import-acmad-thunderstorm-nowcasting-automatically",
     )
     sender.add_periodic_task(
-        60 * 60 * settings.ACMAD_CLIMATE_HEALTH_IMPORT_INTERVAL_HOURS,
+        interval_seconds(
+            "climate-health", settings.ACMAD_CLIMATE_HEALTH_IMPORT_INTERVAL_HOURS
+        ),
         run_acmad_climate_health_import.s(),
         name="import-acmad-climate-health-automatically",
     )
     sender.add_periodic_task(
-        60 * 60 * settings.ACMAD_SEASONAL_FORECAST_IMPORT_INTERVAL_HOURS,
+        interval_seconds(
+            "seasonal-forecasts",
+            settings.ACMAD_SEASONAL_FORECAST_IMPORT_INTERVAL_HOURS,
+        ),
         run_acmad_seasonal_forecast_import.s(),
         name="import-acmad-seasonal-forecasts-automatically",
     )

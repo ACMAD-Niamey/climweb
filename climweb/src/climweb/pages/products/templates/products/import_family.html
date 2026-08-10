@@ -13,6 +13,7 @@
         margin-bottom: 2rem;
     }
     .family-card,
+    .schedule-panel,
     .manual-import-panel {
         border: 1px solid var(--w-color-border-furniture);
         border-radius: 0.4rem;
@@ -24,7 +25,16 @@
         font-weight: 700;
     }
     .import-meta { color: var(--w-color-text-meta); font-size: 0.85rem; }
+    .schedule-panel,
     .manual-import-panel { margin-bottom: 2rem; }
+    .schedule-form {
+        align-items: end;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    .schedule-form .manual-import-field { max-width: 20rem; }
     .manual-import-grid {
         display: grid;
         gap: 1rem;
@@ -111,6 +121,37 @@
             </div>
         </div>
 
+        <section class="schedule-panel">
+            <h2>{% translate "Automatic import schedule" %}</h2>
+            <p class="import-meta">
+                {% if monitor_row.enabled %}
+                    {% translate "Automatic imports are enabled. Change how often this product source is checked for new files." %}
+                {% else %}
+                    {% translate "Automatic imports are disabled by the deployment configuration. You can save the interval now; it will be used when automatic imports are enabled." %}
+                {% endif %}
+            </p>
+            <form method="post" class="schedule-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_schedule">
+                {{ schedule_form.non_field_errors }}
+                <div class="manual-import-field">
+                    {{ schedule_form.interval_hours.label_tag }}
+                    {{ schedule_form.interval_hours }}
+                    {% if schedule_form.interval_hours.help_text %}<div class="help">{{ schedule_form.interval_hours.help_text }}</div>{% endif %}
+                    {{ schedule_form.interval_hours.errors }}
+                </div>
+                <button type="submit" class="button button-primary">
+                    {% translate "Save schedule" %}
+                </button>
+            </form>
+            {% if schedule %}
+                <p class="import-meta">
+                    {% blocktranslate with updated=schedule.updated_at|date:"Y-m-d H:i" %}Last updated {{ updated }}{% endblocktranslate %}
+                    {% if schedule.updated_by %} {% blocktranslate with user=schedule.updated_by %}by {{ user }}{% endblocktranslate %}{% endif %}
+                </p>
+            {% endif %}
+        </section>
+
         <section class="manual-import-panel">
             <h2>{% translate "Manual historical import" %}</h2>
             <p class="import-meta">
@@ -118,6 +159,7 @@
             </p>
             <form method="post">
                 {% csrf_token %}
+                <input type="hidden" name="action" value="manual_import">
                 {{ form.non_field_errors }}
                 <div class="manual-import-grid">
                     {% for field in form %}

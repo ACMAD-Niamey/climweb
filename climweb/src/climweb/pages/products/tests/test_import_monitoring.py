@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django_celery_beat.models import IntervalSchedule, PeriodicTask
 
 from climweb.base.models import Product
 from climweb.pages.products.import_monitoring import (
@@ -16,7 +17,11 @@ from climweb.pages.products.import_registry import (
     PRODUCT_IMPORTS,
     PRODUCT_IMPORTS_BY_KEY,
 )
-from climweb.pages.products.models import ProductImportRun, ProductSourceImport
+from climweb.pages.products.models import (
+    ProductImportRun,
+    ProductImportSchedule,
+    ProductSourceImport,
+)
 from climweb.pages.products.tasks import run_manual_product_import
 
 
@@ -93,6 +98,19 @@ class TestProductImportMonitoring(TestCase):
         self.assertEqual(summary["families"], 10)
         self.assertEqual(summary["imported"], 1)
         self.assertEqual(summary["failed"], 1)
+
+    @override_settings(ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS=6)
+    def test_monitoring_uses_saved_interval_instead_of_default(self):
+        ProductImportSchedule.objects.create(
+            product_family="rainfall",
+            interval_hours=12,
+        )
+
+        rows = build_import_monitor_rows()
+        rainfall = next(row for row in rows if row["key"] == "rainfall")
+
+        self.assertEqual(rainfall["interval_hours"], 12)
+        self.assertTrue(rainfall["interval_is_custom"])
 
     def test_admin_monitor_renders_all_importer_families(self):
         user = get_user_model().objects.create_superuser(
@@ -195,6 +213,73 @@ class TestProductImportMonitoring(TestCase):
             f'data-output-source="run-output-{rainfall_run.pk}"',
         )
         self.assertContains(response, "View output")
+        self.assertContains(response, "Automatic import schedule")
+        self.assertContains(response, "Save schedule")
+
+    def test_admin_can_update_family_automatic_import_interval(self):
+        user = get_user_model().objects.create_superuser(
+            username="schedule-admin",
+            email="schedule@example.com",
+            password="test-password",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+            {
+                "action": "update_schedule",
+                "interval_hours": 12,
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+        )
+        schedule = ProductImportSchedule.objects.get(product_family="rainfall")
+        self.assertEqual(schedule.interval_hours, 12)
+        self.assertEqual(schedule.updated_by, user)
+        periodic_task = PeriodicTask.objects.get(
+            name="import-acmad-daily-rainfall-automatically"
+        )
+        self.assertEqual(
+            periodic_task.task,
+            "climweb.pages.products.tasks.run_acmad_daily_rainfall_import",
+        )
+        self.assertEqual(periodic_task.interval.every, 12)
+        self.assertEqual(periodic_task.interval.period, IntervalSchedule.HOURS)
+        self.assertTrue(periodic_task.enabled)
+
+    def test_invalid_interval_is_shown_without_changing_schedule(self):
+        user = get_user_model().objects.create_superuser(
+            username="invalid-schedule-admin",
+            email="invalid-schedule@example.com",
+            password="test-password",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+            {
+                "action": "update_schedule",
+                "interval_hours": 0,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ensure this value is greater than or equal to 1")
+        self.assertFalse(
+            ProductImportSchedule.objects.filter(product_family="rainfall").exists()
+        )
 
     def test_every_registered_family_has_an_individual_import_page(self):
         user = get_user_model().objects.create_superuser(
@@ -215,6 +300,7 @@ class TestProductImportMonitoring(TestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertContains(response, definition["label"])
                 self.assertContains(response, "Manual historical import")
+                self.assertContains(response, "Automatic import schedule")
                 self.assertContains(response, "Recent import history")
 
     def test_unknown_family_page_returns_404(self):
