@@ -76,9 +76,9 @@
 
 {% block extra_js %}
 {% if page.map_layers %}
-<script src="{% static " js/maplibre-gl.js" %}"></script>
-<script src="{% static " js/ion.rangeSlider.min.js" %}"></script>
-<script src="{% static " js/d3.min.js" %}"></script>
+<script src="{% static 'js/maplibre-gl.js' %}"></script>
+<script src="{% static 'js/ion.rangeSlider.min.js' %}"></script>
+<script src="{% static 'js/d3.min.js' %}"></script>
 
 {{ bounds|default_if_none:"[]"|json_script:"country-bounds" }}
 <script>
