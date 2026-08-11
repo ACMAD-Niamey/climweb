@@ -299,7 +299,7 @@ class TestProductImportMonitoring(TestCase):
         self.assertContains(
             saved_response, "https://data.example.com/rainfall/index.html"
         )
-        self.assertContains(saved_response, "Restore default configuration")
+        self.assertContains(saved_response, "Reset source configuration")
 
     def test_admin_can_restore_default_rainfall_source_configuration(self):
         user = get_user_model().objects.create_superuser(
@@ -514,6 +514,8 @@ class TestProductImportMonitoring(TestCase):
                 self.assertContains(response, "Automatic import schedule")
                 self.assertContains(response, "importer")
                 self.assertContains(response, "Source and schema configuration")
+                self.assertContains(response, "Reset source configuration")
+                self.assertContains(response, "data-reset-source-form")
                 self.assertContains(
                     response,
                     definition["source_defaults"]["source_url"].split("?", 1)[0],

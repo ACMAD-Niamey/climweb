@@ -189,14 +189,14 @@
                         {% blocktranslate with updated=source_config.updated_at|date:"Y-m-d H:i" %}Last updated {{ updated }}{% endblocktranslate %}
                         {% if source_config.updated_by %} {% blocktranslate with user=source_config.updated_by %}by {{ user }}{% endblocktranslate %}{% endif %}
                     </p>
-                    <form method="post" data-restore-source-form>
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="restore_source_defaults">
-                        <button type="submit" class="button button-secondary">
-                            {% translate "Restore default configuration" %}
-                        </button>
-                    </form>
                 {% endif %}
+                <form method="post" data-reset-source-form>
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="restore_source_defaults">
+                    <button type="submit" class="button button-secondary">
+                        {% translate "Reset source configuration" %}
+                    </button>
+                </form>
 
                 {% if source_preview %}
                     <h3>{% translate "Discovery preview" %}</h3>
@@ -375,10 +375,10 @@
     <script>
         (() => {
             const startImportPage = () => {
-                const restoreForm = document.querySelector("[data-restore-source-form]");
-                if (restoreForm) {
-                    restoreForm.addEventListener("submit", (event) => {
-                        if (!window.confirm("Restore the default source configuration? Your saved source settings will be removed.")) {
+                const resetForm = document.querySelector("[data-reset-source-form]");
+                if (resetForm) {
+                    resetForm.addEventListener("submit", (event) => {
+                        if (!window.confirm("Reset the source configuration to its defaults? Your saved source settings will be removed.")) {
                             event.preventDefault();
                         }
                     });
