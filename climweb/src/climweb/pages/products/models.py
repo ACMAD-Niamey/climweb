@@ -731,8 +731,12 @@ class ProductImportSourceConfig(models.Model):
     """Dashboard-managed source and discovery schema for a product importer."""
 
     TYPE_HTML_ARCHIVE = 'html_archive'
+    TYPE_THREDDS_CATALOG = 'thredds_catalog'
+    TYPE_WORDPRESS_API = 'wordpress_api'
     SOURCE_TYPE_CHOICES = [
         (TYPE_HTML_ARCHIVE, _("HTML archive or directory listing")),
+        (TYPE_THREDDS_CATALOG, _("THREDDS XML catalogue")),
+        (TYPE_WORDPRESS_API, _("WordPress media API")),
     ]
 
     product_family = models.CharField(

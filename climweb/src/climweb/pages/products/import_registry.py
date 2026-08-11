@@ -15,6 +15,23 @@ PRODUCT_IMPORTS = (
         "limit_setting": "ACMAD_MULTIHAZARD_IMPORT_LIMIT",
         "include_history": True,
         "supports_retry": True,
+        "configurable_source": True,
+        "source_option": "archive_url",
+        "source_defaults": {
+            "source_type": "html_archive",
+            "source_url": (
+                "https://sgbd.acmad.org/thredds/fileServer/FIT/BRIEFING/ARCHIVE/"
+                "Hazard_Outlook/archive_hazard_outlook.html"
+            ),
+            "source_system": "ACMAD SGBD/THREDDS",
+            "allowed_extensions": [".pdf"],
+            "filename_pattern": (
+                r"Continental_Hazard_Outlook_(?P<date>20\d{6})\.pdf$"
+            ),
+            "date_format": "%Y%m%d",
+            "history_url_pattern": r"archive_hazard_outlook_20\d{2}\.html$",
+            "request_headers": {},
+        },
     },
     {
         "key": "rainfall",
@@ -30,6 +47,7 @@ PRODUCT_IMPORTS = (
         "include_history": True,
         "supports_retry": True,
         "configurable_source": True,
+        "source_option": "archive_url",
         "source_defaults": {
             "source_type": "html_archive",
             "source_url": (
@@ -56,6 +74,18 @@ PRODUCT_IMPORTS = (
         "command": "import_acmad_dekadal_bulletin",
         "include_history": True,
         "history_only": True,
+        "configurable_source": True,
+        "source_option": "catalog_url",
+        "source_defaults": {
+            "source_type": "html_archive",
+            "source_url": "https://rcc.acmad.org/dacadebulletin.php",
+            "source_system": "ACMAD RCC / SGBD THREDDS",
+            "allowed_extensions": [".pdf"],
+            "filename_pattern": r"(?P<date>20\d{6}).*\.pdf$",
+            "date_format": "%Y%m%d",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
     },
     {
         "key": "policy-briefs",
@@ -68,6 +98,21 @@ PRODUCT_IMPORTS = (
         "celery_task": "climweb.pages.products.tasks.run_acmad_policy_briefs_import",
         "command": "import_acmad_policy_briefs",
         "limit_setting": "ACMAD_POLICY_BRIEFS_IMPORT_LIMIT",
+        "configurable_source": True,
+        "source_option": "catalog_url",
+        "source_defaults": {
+            "source_type": "thredds_catalog",
+            "source_url": (
+                "https://sgbd.acmad.org/thredds/catalog/ACMAD/PROJECTS/CLIMSA/"
+                "CDD/ACTIVITIES/SERVICES/Doc_Web/catalog.xml"
+            ),
+            "source_system": "ACMAD SGBD/THREDDS Policy Briefs",
+            "allowed_extensions": [".pdf", ".png", ".jpg", ".jpeg"],
+            "filename_pattern": r"(?P<date>20\d{6})",
+            "date_format": "%Y%m%d",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
     },
     {
         "key": "atmospheric-analysis",
@@ -81,6 +126,21 @@ PRODUCT_IMPORTS = (
         "command": "import_acmad_atmospheric_analysis",
         "include_history": True,
         "history_only": True,
+        "configurable_source": True,
+        "source_option": "history_catalog_url",
+        "source_defaults": {
+            "source_type": "thredds_catalog",
+            "source_url": (
+                "http://154.66.220.45:8080/thredds/catalog/ACMAD/CDD/"
+                "ClimateBulletin_TN/NCEP_Clim_Next_Days/catalog.xml"
+            ),
+            "source_system": "ACMAD Atmospheric Analysis THREDDS",
+            "allowed_extensions": [".png"],
+            "filename_pattern": r"(?P<date>20\d{6})",
+            "date_format": "%Y%m%d",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
     },
     {
         "key": "heat-stress",
@@ -95,6 +155,21 @@ PRODUCT_IMPORTS = (
         "limit_setting": "ACMAD_HEAT_STRESS_IMPORT_LIMIT",
         "include_history": True,
         "history_only": True,
+        "configurable_source": True,
+        "source_option": "catalog_url",
+        "source_defaults": {
+            "source_type": "thredds_catalog",
+            "source_url": (
+                "http://154.66.220.45:8080/thredds/catalog/ACMAD/WWFD/"
+                "forecastinservice/heatwave/catalog.xml"
+            ),
+            "source_system": "ACMAD Heatwave THREDDS",
+            "allowed_extensions": [".png", ".jpg", ".jpeg"],
+            "filename_pattern": r"(?P<date>20\d{6})",
+            "date_format": "%Y%m%d",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
     },
     {
         "key": "itd-itcz",
@@ -109,6 +184,21 @@ PRODUCT_IMPORTS = (
         "limit_setting": "ACMAD_ITD_ITCZ_IMPORT_LIMIT",
         "include_history": True,
         "history_only": True,
+        "configurable_source": True,
+        "source_option": "catalog_url",
+        "source_defaults": {
+            "source_type": "thredds_catalog",
+            "source_url": (
+                "https://sgbd.acmad.org/thredds/catalog/FIT/ITD_MEAN_POSITION/"
+                "catalog.xml"
+            ),
+            "source_system": "ACMAD SGBD THREDDS / CSAG archive",
+            "allowed_extensions": [".pdf", ".png", ".jpg", ".jpeg"],
+            "filename_pattern": r"(?P<date>20\d{6})",
+            "date_format": "%Y%m%d",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
     },
     {
         "key": "thunderstorm-nowcasting",
@@ -123,6 +213,20 @@ PRODUCT_IMPORTS = (
         "limit_setting": "ACMAD_NOWCASTING_IMPORT_LIMIT",
         "include_history": True,
         "history_only": True,
+        "configurable_source": True,
+        "source_option": "catalog_url",
+        "source_defaults": {
+            "source_type": "thredds_catalog",
+            "source_url": (
+                "https://sgbd.acmad.org/thredds/catalog/FIT/SATELLITE/catalog.xml"
+            ),
+            "source_system": "ACMAD Satellite THREDDS",
+            "allowed_extensions": [".jpg", ".jpeg"],
+            "filename_pattern": r"(?P<date>20\d{10})",
+            "date_format": "%Y%m%d%H%M",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
     },
     {
         "key": "climate-health",
@@ -137,6 +241,21 @@ PRODUCT_IMPORTS = (
         "limit_setting": "ACMAD_CLIMATE_HEALTH_IMPORT_LIMIT",
         "include_history": True,
         "history_only": True,
+        "configurable_source": True,
+        "source_option": "api_url",
+        "source_defaults": {
+            "source_type": "wordpress_api",
+            "source_url": (
+                "https://acmad.org/index.php/wp-json/wp/v2/media"
+                "?search=meningitis&per_page=100"
+            ),
+            "source_system": "ACMAD WordPress Media",
+            "allowed_extensions": [".pdf", ".jpg", ".jpeg", ".png"],
+            "filename_pattern": r"(?P<date>20\d{6})",
+            "date_format": "%Y%m%d",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
     },
     {
         "key": "seasonal-forecasts",
@@ -157,6 +276,22 @@ PRODUCT_IMPORTS = (
         "limit_setting": "ACMAD_SEASONAL_FORECAST_IMPORT_LIMIT",
         "include_history": True,
         "history_only": True,
+        "configurable_source": True,
+        "source_option": "api_url",
+        "source_option_multiple": True,
+        "source_defaults": {
+            "source_type": "wordpress_api",
+            "source_url": (
+                "https://acmad.org/index.php/wp-json/wp/v2/media"
+                "?search=seasonal&per_page=100"
+            ),
+            "source_system": "ACMAD WordPress Media + THREDDS",
+            "allowed_extensions": [".pdf", ".jpg", ".jpeg", ".png"],
+            "filename_pattern": r"(?P<date>20\d{6})",
+            "date_format": "%Y%m%d",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
     },
 )
 

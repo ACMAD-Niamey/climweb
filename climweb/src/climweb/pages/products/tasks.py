@@ -22,6 +22,12 @@ def _product_import_is_enabled(family_key, deployment_default):
     return get_product_import_enabled(family_key, fallback=deployment_default)
 
 
+def _configured_source_options(family_key):
+    from .import_sources import get_product_import_source_command_options
+
+    return get_product_import_source_command_options(family_key)
+
+
 def _convention_to_regex(convention):
     """
     Convert a filename convention pattern to a named-group regex.
@@ -356,6 +362,7 @@ def run_acmad_multihazard_import(self):
         "import_acmad_multihazard",
         limit=limit,
         continue_on_error=True,
+        **_configured_source_options("multihazard"),
     )
     logger.info("[ACMAD MULTI-HAZARD] Automatic import complete.")
 
@@ -375,6 +382,7 @@ def run_acmad_daily_rainfall_import(self):
         "import_acmad_daily_rainfall",
         limit=limit,
         continue_on_error=True,
+        **_configured_source_options("rainfall"),
     )
     logger.info("[ACMAD RAINFALL] Automatic import complete.")
 
@@ -392,6 +400,7 @@ def run_acmad_dekadal_import(self):
     call_command(
         "import_acmad_dekadal_bulletin",
         continue_on_error=True,
+        **_configured_source_options("dekadal"),
     )
     logger.info("[ACMAD DEKADAL] Automatic import complete.")
 
@@ -413,6 +422,7 @@ def run_acmad_policy_briefs_import(self):
         "import_acmad_policy_briefs",
         limit=limit,
         continue_on_error=True,
+        **_configured_source_options("policy-briefs"),
     )
     logger.info("[ACMAD POLICY BRIEFS] Automatic import complete.")
 
@@ -430,6 +440,7 @@ def run_acmad_atmospheric_analysis_import(self):
     call_command(
         "import_acmad_atmospheric_analysis",
         continue_on_error=True,
+        **_configured_source_options("atmospheric-analysis"),
     )
     logger.info("[ACMAD ATMOSPHERIC ANALYSIS] Automatic import complete.")
 
@@ -449,6 +460,7 @@ def run_acmad_heat_stress_import(self):
         "import_acmad_heat_stress",
         limit=limit,
         continue_on_error=True,
+        **_configured_source_options("heat-stress"),
     )
     logger.info("[ACMAD HEAT STRESS] Automatic import complete.")
 
@@ -468,6 +480,7 @@ def run_acmad_itd_itcz_import(self):
         "import_acmad_itd_itcz",
         limit=limit,
         continue_on_error=True,
+        **_configured_source_options("itd-itcz"),
     )
     logger.info("[ACMAD ITD/ITCZ] Automatic import complete.")
 
@@ -487,6 +500,7 @@ def run_acmad_nowcasting_import(self):
         "import_acmad_thunderstorm_nowcasting",
         limit=limit,
         continue_on_error=True,
+        **_configured_source_options("thunderstorm-nowcasting"),
     )
     logger.info("[ACMAD NOWCASTING] Automatic import complete.")
 
@@ -506,6 +520,7 @@ def run_acmad_climate_health_import(self):
         "import_acmad_climate_health",
         limit=limit,
         continue_on_error=True,
+        **_configured_source_options("climate-health"),
     )
     logger.info("[ACMAD CLIMATE/HEALTH] Automatic import complete.")
 
@@ -527,6 +542,7 @@ def run_acmad_seasonal_forecast_import(self):
         "import_acmad_seasonal_forecasts",
         limit=limit,
         continue_on_error=True,
+        **_configured_source_options("seasonal-forecasts"),
     )
     logger.info("[ACMAD SEASONAL FORECAST] Automatic import complete.")
 
@@ -582,6 +598,7 @@ def run_manual_product_import(self, run_id):
         command_options["history_only"] = True
     if definition.get("supports_retry") and run.retry_failures:
         command_options["retry_failures"] = True
+    command_options.update(_configured_source_options(run.product_family))
 
     output = ImportProgressOutput(
         run.pk,
