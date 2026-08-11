@@ -629,11 +629,15 @@ class ProductImportRun(models.Model):
 
     STATUS_QUEUED = 'queued'
     STATUS_RUNNING = 'running'
+    STATUS_CANCELLING = 'cancelling'
+    STATUS_CANCELLED = 'cancelled'
     STATUS_SUCCEEDED = 'succeeded'
     STATUS_FAILED = 'failed'
     STATUS_CHOICES = [
         (STATUS_QUEUED, _("Queued")),
         (STATUS_RUNNING, _("Running")),
+        (STATUS_CANCELLING, _("Stopping")),
+        (STATUS_CANCELLED, _("Stopped")),
         (STATUS_SUCCEEDED, _("Succeeded")),
         (STATUS_FAILED, _("Failed")),
     ]
@@ -650,6 +654,7 @@ class ProductImportRun(models.Model):
     limit = models.PositiveIntegerField(default=100)
     refresh_existing = models.BooleanField(default=False)
     retry_failures = models.BooleanField(default=False)
+    cancel_requested = models.BooleanField(default=False)
     requested_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -731,8 +736,12 @@ class ProductImportSourceConfig(models.Model):
     """Dashboard-managed source and discovery schema for a product importer."""
 
     TYPE_HTML_ARCHIVE = 'html_archive'
+    TYPE_THREDDS_CATALOG = 'thredds_catalog'
+    TYPE_WORDPRESS_API = 'wordpress_api'
     SOURCE_TYPE_CHOICES = [
         (TYPE_HTML_ARCHIVE, _("HTML archive or directory listing")),
+        (TYPE_THREDDS_CATALOG, _("THREDDS XML catalogue")),
+        (TYPE_WORDPRESS_API, _("WordPress media API")),
     ]
 
     product_family = models.CharField(

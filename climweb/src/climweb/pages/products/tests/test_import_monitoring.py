@@ -48,6 +48,19 @@ class TestProductImportRegistry(TestCase):
             len(PRODUCT_IMPORTS_BY_KEY["seasonal-forecasts"]["product_names"]),
             5,
         )
+        self.assertTrue(
+            all(
+                definition.get("configurable_source")
+                for definition in PRODUCT_IMPORTS
+            )
+        )
+        self.assertEqual(
+            {
+                definition["source_defaults"]["source_type"]
+                for definition in PRODUCT_IMPORTS
+            },
+            {"html_archive", "thredds_catalog", "wordpress_api"},
+        )
 
 
 class TestProductImportMonitoring(TestCase):
@@ -216,6 +229,103 @@ class TestProductImportMonitoring(TestCase):
         self.assertContains(response, "View output")
         self.assertContains(response, "Automatic import schedule")
         self.assertContains(response, "Save schedule")
+
+    def test_family_page_renders_stop_button_for_active_manual_import(self):
+        user = get_user_model().objects.create_superuser(
+            username="stop-button-admin",
+            email="stop-button@example.com",
+            password="test-password",
+        )
+        run = ProductImportRun.objects.create(
+            product_family="rainfall",
+            mode=ProductImportRun.MODE_IMPORT,
+            status=ProductImportRun.STATUS_RUNNING,
+            from_date=date(2026, 8, 1),
+            to_date=date(2026, 8, 10),
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            )
+        )
+
+        self.assertContains(response, "Stop import")
+        self.assertContains(response, 'name="run_id" value="%s"' % run.pk)
+        self.assertContains(response, "data-stop-import-form")
+
+    @patch("climweb.config.celery.app.control.revoke")
+    def test_admin_can_stop_queued_manual_import(self, revoke):
+        user = get_user_model().objects.create_superuser(
+            username="stop-queued-admin",
+            email="stop-queued@example.com",
+            password="test-password",
+        )
+        run = ProductImportRun.objects.create(
+            product_family="rainfall",
+            mode=ProductImportRun.MODE_IMPORT,
+            status=ProductImportRun.STATUS_QUEUED,
+            from_date=date(2026, 8, 1),
+            to_date=date(2026, 8, 10),
+            task_id="queued-task-123",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+            {"action": "cancel_import", "run_id": run.pk},
+        )
+
+        self.assertRedirects(
+            response,
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+        )
+        run.refresh_from_db()
+        self.assertTrue(run.cancel_requested)
+        self.assertEqual(run.status, ProductImportRun.STATUS_CANCELLED)
+        self.assertEqual(run.current_phase, "Stopped before starting")
+        self.assertIsNotNone(run.finished_at)
+        revoke.assert_called_once_with("queued-task-123", terminate=False)
+
+    @patch("climweb.config.celery.app.control.revoke")
+    def test_admin_can_request_running_manual_import_to_stop(self, revoke):
+        user = get_user_model().objects.create_superuser(
+            username="stop-running-admin",
+            email="stop-running@example.com",
+            password="test-password",
+        )
+        run = ProductImportRun.objects.create(
+            product_family="rainfall",
+            mode=ProductImportRun.MODE_IMPORT,
+            status=ProductImportRun.STATUS_RUNNING,
+            from_date=date(2026, 8, 1),
+            to_date=date(2026, 8, 10),
+            task_id="running-task-123",
+        )
+        self.client.force_login(user)
+
+        self.client.post(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+            {"action": "cancel_import", "run_id": run.pk},
+        )
+
+        run.refresh_from_db()
+        self.assertTrue(run.cancel_requested)
+        self.assertEqual(run.status, ProductImportRun.STATUS_CANCELLING)
+        self.assertEqual(run.current_phase, "Stop requested")
+        self.assertIsNone(run.finished_at)
+        revoke.assert_called_once_with("running-task-123", terminate=False)
 
     def test_rainfall_page_renders_source_schema_configuration(self):
         user = get_user_model().objects.create_superuser(
@@ -500,10 +610,11 @@ class TestProductImportMonitoring(TestCase):
                 self.assertContains(response, "Manual historical import")
                 self.assertContains(response, "Automatic import schedule")
                 self.assertContains(response, "importer")
-                if definition["key"] != "rainfall":
-                    self.assertNotContains(
-                        response, "Source and schema configuration"
-                    )
+                self.assertContains(response, "Source and schema configuration")
+                self.assertContains(
+                    response,
+                    definition["source_defaults"]["source_url"].split("?", 1)[0],
+                )
                 self.assertContains(response, "Recent import history")
 
     def test_unknown_family_page_returns_404(self):
@@ -638,6 +749,51 @@ class TestProductImportMonitoring(TestCase):
         self.assertEqual(run.error_message, "Import stopped")
 
     @patch("climweb.pages.products.tasks.call_command")
+    def test_running_manual_import_stops_at_progress_checkpoint(self, call_command):
+        run = ProductImportRun.objects.create(
+            product_family="rainfall",
+            mode=ProductImportRun.MODE_IMPORT,
+            from_date=date(2026, 8, 1),
+            to_date=date(2026, 8, 10),
+            limit=10,
+        )
+
+        def request_stop(command, stdout, **options):
+            ProductImportRun.objects.filter(pk=run.pk).update(
+                cancel_requested=True,
+                status=ProductImportRun.STATUS_CANCELLING,
+            )
+            stdout.write("Selected 10 image(s).\n")
+
+        call_command.side_effect = request_stop
+
+        run_manual_product_import.run(run.pk)
+
+        run.refresh_from_db()
+        self.assertEqual(run.status, ProductImportRun.STATUS_CANCELLED)
+        self.assertTrue(run.cancel_requested)
+        self.assertEqual(run.current_phase, "Stopped by user")
+        self.assertIsNotNone(run.finished_at)
+
+    @patch("climweb.pages.products.tasks.call_command")
+    def test_cancelled_queued_import_never_starts(self, call_command):
+        run = ProductImportRun.objects.create(
+            product_family="rainfall",
+            mode=ProductImportRun.MODE_IMPORT,
+            status=ProductImportRun.STATUS_CANCELLED,
+            cancel_requested=True,
+            from_date=date(2026, 8, 1),
+            to_date=date(2026, 8, 10),
+            limit=10,
+        )
+
+        run_manual_product_import.run(run.pk)
+
+        run.refresh_from_db()
+        self.assertEqual(run.status, ProductImportRun.STATUS_CANCELLED)
+        call_command.assert_not_called()
+
+    @patch("climweb.pages.products.tasks.call_command")
     def test_manual_runner_supports_every_registered_product_family(
         self,
         call_command,
@@ -680,3 +836,32 @@ class TestProductImportMonitoring(TestCase):
             )
 
         self.assertEqual(call_command.call_count, len(PRODUCT_IMPORTS))
+
+    @patch("climweb.pages.products.tasks.call_command")
+    def test_manual_runner_passes_saved_source_override_to_importer(
+        self, call_command
+    ):
+        ProductImportSourceConfig.objects.create(
+            product_family="policy-briefs",
+            source_type="thredds_catalog",
+            source_url="https://data.example.com/policy/catalog.xml",
+            source_system="Example Policy Catalogue",
+            allowed_extensions=[".pdf"],
+            filename_pattern=r"(?P<date>20\d{6})",
+            date_format="%Y%m%d",
+        )
+        run = ProductImportRun.objects.create(
+            product_family="policy-briefs",
+            mode=ProductImportRun.MODE_PREVIEW,
+            from_date=date(2024, 1, 1),
+            to_date=date(2024, 12, 31),
+            limit=10,
+        )
+
+        run_manual_product_import.run(run.pk)
+
+        _, options = call_command.call_args
+        self.assertEqual(
+            options["catalog_url"],
+            "https://data.example.com/policy/catalog.xml",
+        )

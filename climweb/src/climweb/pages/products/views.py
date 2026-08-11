@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib import messages
+from django.db import transaction
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.response import TemplateResponse
@@ -146,6 +147,57 @@ def product_import_family_view(request, family_key):
                 request,
                 f"{definition['label']} automatic importer was {status_label}.",
             )
+        return redirect("product_import_family", family_key=family_key)
+    elif request.method == "POST" and action == "cancel_import":
+        with transaction.atomic():
+            run = get_object_or_404(
+                ProductImportRun.objects.select_for_update(),
+                pk=request.POST.get("run_id"),
+                product_family=family_key,
+            )
+            if run.status not in {
+                ProductImportRun.STATUS_QUEUED,
+                ProductImportRun.STATUS_RUNNING,
+                ProductImportRun.STATUS_CANCELLING,
+            }:
+                messages.info(request, "This manual import has already finished.")
+                return redirect("product_import_family", family_key=family_key)
+
+            was_queued = run.status == ProductImportRun.STATUS_QUEUED
+            run.cancel_requested = True
+            run.status = (
+                ProductImportRun.STATUS_CANCELLED
+                if was_queued
+                else ProductImportRun.STATUS_CANCELLING
+            )
+            run.current_phase = (
+                "Stopped before starting" if was_queued else "Stop requested"
+            )
+            if was_queued:
+                run.finished_at = timezone.now()
+            run.save(
+                update_fields=[
+                    "cancel_requested",
+                    "status",
+                    "current_phase",
+                    "finished_at",
+                ]
+            )
+        if run.task_id:
+            from climweb.config.celery import app
+
+            try:
+                app.control.revoke(run.task_id, terminate=False)
+            except Exception as exc:
+                messages.warning(
+                    request,
+                    "The stop request was saved, but the Celery revoke signal "
+                    f"could not be sent: {exc}",
+                )
+            else:
+                messages.success(request, "The manual import is being stopped.")
+        else:
+            messages.success(request, "The manual import is being stopped.")
         return redirect("product_import_family", family_key=family_key)
     elif request.method == "POST" and action in source_actions:
         if source_form is None:

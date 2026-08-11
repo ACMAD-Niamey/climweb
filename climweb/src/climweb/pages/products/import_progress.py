@@ -16,6 +16,18 @@ _selected_count = re.compile(r"\bSelected\s+(\d+)\b", re.IGNORECASE)
 _preview_action = re.compile(r"^(CREATE|REFRESH|SKIP)\s+", re.IGNORECASE)
 
 
+class ImportCancelled(Exception):
+    """Raised at a safe progress checkpoint after a user requests a stop."""
+
+
+def raise_if_cancelled(run_id):
+    if ProductImportRun.objects.filter(
+        pk=run_id,
+        cancel_requested=True,
+    ).exists():
+        raise ImportCancelled("Manual import stopped by user")
+
+
 @contextmanager
 def activate_import_run(run_id):
     token = _active_run_id.set(run_id)
@@ -84,6 +96,7 @@ class ImportProgressOutput(StringIO):
         self.preview = preview
 
     def write(self, value):
+        raise_if_cancelled(self.run_id)
         written = super().write(value)
         for raw_line in value.splitlines():
             line = _ansi_escape.sub("", raw_line).strip()

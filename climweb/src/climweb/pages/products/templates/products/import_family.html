@@ -63,6 +63,8 @@
     .run-status--succeeded { color: #065f46; }
     .run-status--failed { color: #991b1b; }
     .run-status--running { color: #1d4ed8; }
+    .run-status--cancelling { color: #92400e; }
+    .run-status--cancelled { color: #4b5563; }
     .run-status--queued { color: #4b5563; }
     .run-progress-track {
         background: #e5e7eb;
@@ -299,6 +301,7 @@
                         <th>{% translate "Status" %}</th>
                         <th>{% translate "Progress" %}</th>
                         <th>{% translate "Requested" %}</th>
+                        <th>{% translate "Action" %}</th>
                         <th>{% translate "Output" %}</th>
                     </tr>
                 </thead>
@@ -334,6 +337,22 @@
                                 {% if run.requested_by %}<div class="import-meta">{{ run.requested_by }}</div>{% endif %}
                             </td>
                             <td>
+                                {% if run.status == "queued" or run.status == "running" %}
+                                    <form method="post" data-stop-import-form>
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="cancel_import">
+                                        <input type="hidden" name="run_id" value="{{ run.pk }}">
+                                        <button type="submit" class="button button-secondary button-small">
+                                            {% translate "Stop import" %}
+                                        </button>
+                                    </form>
+                                {% elif run.status == "cancelling" %}
+                                    <span class="import-meta">{% translate "Stop requested" %}</span>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td>
                                 {% if run.error_message %}<div class="import-error">{{ run.error_message }}</div>{% endif %}
                                 {% if run.output %}
                                     <button
@@ -354,7 +373,7 @@
                             </td>
                         </tr>
                     {% empty %}
-                        <tr><td colspan="6">{% translate "No manual imports have been run for this product." %}</td></tr>
+                        <tr><td colspan="7">{% translate "No manual imports have been run for this product." %}</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -383,6 +402,13 @@
                         }
                     });
                 }
+                document.querySelectorAll("[data-stop-import-form]").forEach((form) => {
+                    form.addEventListener("submit", (event) => {
+                        if (!window.confirm("Stop this manual import? Already imported records will be kept.")) {
+                            event.preventDefault();
+                        }
+                    });
+                });
                 const modal = document.getElementById("import-output-modal");
                 const modalTitle = document.getElementById("import-output-title");
                 const modalContent = document.getElementById("import-output-content");
@@ -399,7 +425,7 @@
                     if (event.target === modal) modal.close();
                 });
 
-                const activeStatuses = new Set(["queued", "running"]);
+                const activeStatuses = new Set(["queued", "running", "cancelling"]);
                 const rows = [...document.querySelectorAll("[data-import-run]")];
                 if (!rows.some((row) => activeStatuses.has(row.dataset.status))) return;
 
