@@ -551,6 +551,7 @@ def run_acmad_seasonal_forecast_import(self):
 def run_manual_product_import(self, run_id):
     """Execute a dashboard-requested historical import and retain its output."""
     from climweb.pages.products.import_progress import (
+        ImportCancelled,
         ImportProgressOutput,
         activate_import_run,
     )
@@ -566,22 +567,22 @@ def run_manual_product_import(self, run_id):
         run.save(update_fields=["status", "error_message", "finished_at"])
         return
 
-    task_id = getattr(self.request, "id", None)
-    run.status = ProductImportRun.STATUS_RUNNING
-    run.started_at = timezone.now()
-    run.progress_percent = 5
-    run.current_phase = "Discovering sources"
-    if task_id:
-        run.task_id = task_id
-    run.save(
-        update_fields=[
-            "status",
-            "started_at",
-            "task_id",
-            "progress_percent",
-            "current_phase",
-        ]
+    task_id = getattr(self.request, "id", None) or run.task_id
+    started_at = timezone.now()
+    started = ProductImportRun.objects.filter(
+        pk=run_id,
+        status=ProductImportRun.STATUS_QUEUED,
+        cancel_requested=False,
+    ).update(
+        status=ProductImportRun.STATUS_RUNNING,
+        started_at=started_at,
+        task_id=task_id,
+        progress_percent=5,
+        current_phase="Discovering sources",
     )
+    if not started:
+        return
+    run.refresh_from_db()
 
     command_options = {
         "from_date": run.from_date,
@@ -612,13 +613,29 @@ def run_manual_product_import(self, run_id):
                 stderr=output,
                 **command_options,
             )
-    except Exception as exc:
-        run.status = ProductImportRun.STATUS_FAILED
-        run.error_message = str(exc)
-        run.current_phase = "Import failed"
-        logger.exception(
-            f"[PRODUCT IMPORT RUN {run.pk}] {definition['label']} failed: {exc}"
+        run.refresh_from_db(fields=["cancel_requested"])
+        if run.cancel_requested:
+            raise ImportCancelled("Manual import stopped by user")
+    except ImportCancelled:
+        run.status = ProductImportRun.STATUS_CANCELLED
+        run.error_message = ""
+        run.current_phase = "Stopped by user"
+        logger.info(
+            f"[PRODUCT IMPORT RUN {run.pk}] {definition['label']} stopped by user"
         )
+    except Exception as exc:
+        run.refresh_from_db(fields=["cancel_requested"])
+        if run.cancel_requested:
+            run.status = ProductImportRun.STATUS_CANCELLED
+            run.error_message = ""
+            run.current_phase = "Stopped by user"
+        else:
+            run.status = ProductImportRun.STATUS_FAILED
+            run.error_message = str(exc)
+            run.current_phase = "Import failed"
+            logger.exception(
+                f"[PRODUCT IMPORT RUN {run.pk}] {definition['label']} failed: {exc}"
+            )
     else:
         run.status = ProductImportRun.STATUS_SUCCEEDED
         run.error_message = ""
