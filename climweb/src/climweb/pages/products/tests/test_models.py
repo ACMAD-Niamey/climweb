@@ -1,3 +1,4 @@
+import wagtail_factories
 from django.utils import timezone
 from wagtail.test.utils import WagtailPageTestCase
 
@@ -59,3 +60,37 @@ class TestProductPages(WagtailPageTestCase):
         meta_tags = get_html_meta_tags(resp.content)
         
         test_page_meta_tags(self, self.product1_page_product_item_page, meta_tags, request=resp.wsgi_request)
+
+    def test_product_listing_image_uses_introduction_image_first(self):
+        product_page = self.product1_page.__class__.objects.get(
+            pk=self.product1_page.pk
+        )
+        self.assertEqual(
+            product_page.listing_image,
+            product_page.introduction_image,
+        )
+
+    def test_product_listing_image_falls_back_to_latest_product_item(self):
+        product_page = self.product1_page.__class__.objects.get(
+            pk=self.product1_page.pk
+        )
+        product_page.introduction_image = None
+        product_page.save(update_fields=["introduction_image"])
+
+        self.assertEqual(
+            product_page.listing_image,
+            self.product1_page_product_item_page.products_listing_image,
+        )
+
+    def test_product_listing_image_uses_configured_default_when_empty(self):
+        default_thumbnail = wagtail_factories.ImageFactory()
+        product_page = self.product2_page.__class__.objects.get(
+            pk=self.product2_page.pk
+        )
+        product_page.introduction_image = None
+        product_page.default_listing_thumbnail = default_thumbnail
+        product_page.save(
+            update_fields=["introduction_image", "default_listing_thumbnail"]
+        )
+
+        self.assertEqual(product_page.listing_image, default_thumbnail)
