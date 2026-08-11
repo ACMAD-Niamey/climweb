@@ -210,7 +210,7 @@
 .product-page .intro-figure img,
 .product-page .intro-img,
 .product-page .intro-figure svg {
-    max-height: 200px !important;
+    max-height: 180px !important;
     height: 100% !important;
     width: auto !important;
     object-fit: contain;
