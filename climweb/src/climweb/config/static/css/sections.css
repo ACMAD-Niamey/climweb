@@ -736,7 +736,7 @@
 /* ── PAGE HERO ── */
 .page-hero {
   position: relative;
-  height: 300px;
+  height: 200px;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

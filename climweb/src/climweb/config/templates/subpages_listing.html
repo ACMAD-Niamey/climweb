@@ -62,13 +62,13 @@
                 </span>
                 <div class="pub-view-btns">
                   <button id="list-view-button"
-                          class="pub-view-btn event-filter view active"
+                          class="pub-view-btn event-filter view"
                           name="view" value="list"
                           title="List view">
                     <span class="icon">{% svg_icon name="table-list" %}</span>
                   </button>
                   <button id="grid-view-button"
-                          class="pub-view-btn event-filter view"
+                          class="pub-view-btn event-filter view active"
                           name="view" value="grid"
                           title="Grid view">
                     <span class="icon">{% svg_icon name="grip" %}</span>
@@ -88,11 +88,11 @@
                     <h2 class="spl-cat-name">{{ category.name }}</h2>
                   </div>
 
-                  <div class="pub-list spl-grid results-list list-view" id="products-list-wrapper-{{ forloop.counter }}">
+                  <div class="pub-list spl-grid results-list grid-view columns is-mobile is-multiline" id="products-list-wrapper-{{ forloop.counter }}">
                     {% for sub_page in page.get_children %}
                       {% if category.name == sub_page.specific.service.name %}
                         {% if sub_page.live %}
-                          <div class="result-list-item pub-item">
+                          <div class="result-list-item pub-item column is-one-third-desktop is-full-mobile">
                             <div class="pub-item-inner">
 
                               {# Thumbnail #}
@@ -145,10 +145,10 @@
             {% else %}
 
               {# Flat grid — no categories #}
-              <div class="pub-list spl-grid results-list list-view" id="products-list-wrapper-flat">
+              <div class="pub-list spl-grid results-list grid-view columns is-mobile is-multiline" id="products-list-wrapper-flat">
                 {% for sub_page in page.get_children %}
                   {% if sub_page.live %}
-                    <div class="result-list-item pub-item">
+                    <div class="result-list-item pub-item column is-one-third-desktop is-full-mobile">
                       <div class="pub-item-inner">
                         <a href="{{ sub_page.url }}" class="pub-thumb">
                           {% if sub_page.specific.listing_image %}
