@@ -145,6 +145,14 @@ class BaseProductPage(AbstractIntroPage):
     def listing_image(self):
         if self.introduction_image:
             return self.introduction_image
+
+        for product_item in self.all_products:
+            listing_image = product_item.products_listing_image
+            if listing_image:
+                return listing_image
+
+        if self.default_listing_thumbnail:
+            return self.default_listing_thumbnail
         return None
     
     @cached_property
