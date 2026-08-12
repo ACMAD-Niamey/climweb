@@ -302,6 +302,62 @@ PRODUCT_IMPORTS = (
         },
     },
     {
+        "key": "seasonal-verification",
+        "label": "Seasonal Forecast Verification",
+        "product_names": ("Seasonal Forecast Verification",),
+        "source_label": "ACMAD RCC Seasonal Forecast Verification",
+        "enabled_setting": "ACMAD_SEASONAL_VERIFICATION_AUTO_IMPORT",
+        "interval_setting": "ACMAD_SEASONAL_VERIFICATION_IMPORT_INTERVAL_HOURS",
+        "periodic_task_name": "import-acmad-seasonal-verification-automatically",
+        "celery_task": "climweb.pages.products.tasks.run_acmad_seasonal_verification_import",
+        "command": "import_acmad_seasonal_verification",
+        "limit_setting": "ACMAD_SEASONAL_VERIFICATION_IMPORT_LIMIT",
+        "include_history": True,
+        "configurable_source": True,
+        "source_option": "source_url",
+        "source_defaults": {
+            "source_type": "html_archive",
+            "source_url": (
+                "https://rcc.acmad.org/cartelongerange/cartelongrange.php"
+            ),
+            "source_system": "ACMAD RCC Seasonal Forecast Verification",
+            "allowed_extensions": [".pdf", ".jpg"],
+            "filename_pattern": (
+                r"(?P<date>20\d{2})/.*/hs_(?:hg|md)(?:1[0-2]|[1-9])\.jpg$"
+            ),
+            "date_format": "%Y",
+            "history_url_pattern": r"20\d{2}/cartelongrange\.php$",
+            "request_headers": {},
+        },
+    },
+    {
+        "key": "model-performance",
+        "label": "Seasonal Model Performance",
+        "product_names": ("Seasonal Model Performance",),
+        "source_label": "ACMAD RCC Seasonal Model Performance",
+        "enabled_setting": "ACMAD_MODEL_PERFORMANCE_AUTO_IMPORT",
+        "interval_setting": "ACMAD_MODEL_PERFORMANCE_IMPORT_INTERVAL_HOURS",
+        "periodic_task_name": "import-acmad-model-performance-automatically",
+        "celery_task": "climweb.pages.products.tasks.run_acmad_model_performance_import",
+        "command": "import_acmad_model_performance",
+        "limit_setting": "ACMAD_MODEL_PERFORMANCE_IMPORT_LIMIT",
+        "include_history": True,
+        "configurable_source": True,
+        "source_option": "source_url",
+        "source_defaults": {
+            "source_type": "html_archive",
+            "source_url": "https://rcc.acmad.org/longerange.php",
+            "source_system": "ACMAD RCC Seasonal Model Performance",
+            "allowed_extensions": [".jpg"],
+            "filename_pattern": (
+                r"(?P<date>20\d{2})/.*/hs_(?:hg|md)(?:[1-9]|[1-4]\d)\.jpg$"
+            ),
+            "date_format": "%Y",
+            "history_url_pattern": r"20\d{2}/modelstatique20\d{2}\.php$",
+            "request_headers": {},
+        },
+    },
+    {
         "key": "cryosphere",
         "label": "Cryosphere and African Mountain Glaciers",
         "product_names": ("Cryosphere and African Mountain Glaciers",),

@@ -299,6 +299,9 @@ def parse_thredds_catalog(xml_content):
 
 class Command(BaseCommand):
     help = "Import current or historical ACMAD Seasonal and Long-Range Forecasts."
+    no_files_message = "No Seasonal and Long-Range Forecast files matched"
+    completion_message = "Seasonal and Long-Range Forecast migration complete: "
+    failure_label = "seasonal forecast file(s)"
 
     def add_arguments(self, parser):
         parser.add_argument("--api-url", action="append")
@@ -348,7 +351,7 @@ class Command(BaseCommand):
         assets = [asset for asset in assets if asset["date"] in issue_dates]
         assets.sort(key=lambda asset: (asset["date"], asset["key"]))
         if not assets:
-            raise CommandError("No Seasonal and Long-Range Forecast files matched")
+            raise CommandError(self.no_files_message)
 
         self.stdout.write(
             f"Selected {len(assets)} file(s) across "
@@ -395,12 +398,12 @@ class Command(BaseCommand):
                     raise
         self.stdout.write(
             self.style.SUCCESS(
-                "Seasonal and Long-Range Forecast migration complete: "
+                self.completion_message
                 + ", ".join(f"{key}={value}" for key, value in counts.items())
             )
         )
         if failures:
-            raise CommandError(f"{len(failures)} seasonal forecast file(s) failed")
+            raise CommandError(f"{len(failures)} {self.failure_label} failed")
 
     def _collect_assets(self, options):
         assets = []
