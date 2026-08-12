@@ -220,6 +220,15 @@ def inspect_product_import_source(family_key, values, include_history=False):
             for asset in assets
         ]
         archive_count = 1
+    elif family_key == "climate-change":
+        from .management.commands.import_acmad_climate_change import Command
+
+        assets = Command()._discover_assets(values["source_url"])
+        issues = [
+            {"date": asset["date"], "source_url": asset["source_url"]}
+            for asset in assets
+        ]
+        archive_count = 1
     else:
         inspectors = {
             "html_archive": _inspect_html,
