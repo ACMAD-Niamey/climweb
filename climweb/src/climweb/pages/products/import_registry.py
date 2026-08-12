@@ -238,6 +238,36 @@ PRODUCT_IMPORTS = (
         },
     },
     {
+        "key": "rainfall-exceedance",
+        "label": "Seasonal Rainfall Probability of Exceedance",
+        "product_names": ("Seasonal Rainfall Probability of Exceedance",),
+        "source_label": "ACMAD RCC Rainfall Exceedance THREDDS",
+        "enabled_setting": "ACMAD_RAINFALL_EXCEEDANCE_AUTO_IMPORT",
+        "interval_setting": "ACMAD_RAINFALL_EXCEEDANCE_IMPORT_INTERVAL_HOURS",
+        "periodic_task_name": "import-acmad-rainfall-exceedance-automatically",
+        "celery_task": "climweb.pages.products.tasks.run_acmad_rainfall_exceedance_import",
+        "command": "import_acmad_rainfall_exceedance",
+        "limit_setting": "ACMAD_RAINFALL_EXCEEDANCE_IMPORT_LIMIT",
+        "include_history": True,
+        "history_only": True,
+        "supports_retry": True,
+        "configurable_source": True,
+        "source_option": "catalog_url",
+        "source_defaults": {
+            "source_type": "thredds_catalog",
+            "source_url": (
+                "http://sgbd.acmad.org:8080/thredds/catalog/ACMAD/CDD/"
+                "climatemonitoringservice/Probability_of_Exceedance/catalog.xml"
+            ),
+            "source_system": "ACMAD RCC Rainfall Exceedance THREDDS",
+            "allowed_extensions": [".jpeg", ".jpg"],
+            "filename_pattern": r"Excedence(?P<date>\d{3,4})mm\.jpe?g$",
+            "date_format": "%Y",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
+    },
+    {
         "key": "policy-briefs",
         "label": "Policy and Decision Briefs",
         "product_names": ("Continental Climate Policy", "Policy and Decision Briefs"),

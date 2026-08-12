@@ -510,6 +510,28 @@ def run_acmad_climate_watch_import(self):
 
 
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_rainfall_exceedance_import(self):
+    """Fetch and publish seasonal rainfall probability-of-exceedance maps."""
+    if not _product_import_is_enabled(
+        "rainfall-exceedance", settings.ACMAD_RAINFALL_EXCEEDANCE_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD RAINFALL EXCEEDANCE] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_RAINFALL_EXCEEDANCE_IMPORT_LIMIT
+    logger.info(
+        f"[ACMAD RAINFALL EXCEEDANCE] Checking the newest {limit} issue date(s)."
+    )
+    call_command(
+        "import_acmad_rainfall_exceedance",
+        limit=limit,
+        continue_on_error=True,
+        **_configured_source_options("rainfall-exceedance"),
+    )
+    logger.info("[ACMAD RAINFALL EXCEEDANCE] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_policy_briefs_import(self):
     """Fetch and publish current Policy and Decision Brief assets."""
     if not _product_import_is_enabled(
@@ -826,6 +848,14 @@ def setup_product_ingestion_tasks(sender, **kwargs):
         ),
         run_acmad_climate_watch_import.s(),
         name="import-acmad-climate-watch-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds(
+            "rainfall-exceedance",
+            settings.ACMAD_RAINFALL_EXCEEDANCE_IMPORT_INTERVAL_HOURS,
+        ),
+        run_acmad_rainfall_exceedance_import.s(),
+        name="import-acmad-rainfall-exceedance-automatically",
     )
     sender.add_periodic_task(
         interval_seconds(
