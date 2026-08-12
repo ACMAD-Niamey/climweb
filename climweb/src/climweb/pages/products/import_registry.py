@@ -208,6 +208,36 @@ PRODUCT_IMPORTS = (
         },
     },
     {
+        "key": "climate-watch",
+        "label": "Climate Watch Bulletin",
+        "product_names": ("Climate Watch Bulletin",),
+        "source_label": "ACMAD RCC Drought Monitoring THREDDS",
+        "enabled_setting": "ACMAD_CLIMATE_WATCH_AUTO_IMPORT",
+        "interval_setting": "ACMAD_CLIMATE_WATCH_IMPORT_INTERVAL_HOURS",
+        "periodic_task_name": "import-acmad-climate-watch-automatically",
+        "celery_task": "climweb.pages.products.tasks.run_acmad_climate_watch_import",
+        "command": "import_acmad_climate_watch",
+        "limit_setting": "ACMAD_CLIMATE_WATCH_IMPORT_LIMIT",
+        "include_history": True,
+        "history_only": True,
+        "supports_retry": True,
+        "configurable_source": True,
+        "source_option": "catalog_url",
+        "source_defaults": {
+            "source_type": "thredds_catalog",
+            "source_url": (
+                "http://sgbd.acmad.org:8080/thredds/catalog/ACMAD/CDD/"
+                "DroughtMonitoringService/catalog.xml"
+            ),
+            "source_system": "ACMAD RCC Drought Monitoring THREDDS",
+            "allowed_extensions": [".pdf"],
+            "filename_pattern": r"Bulletin_.*(?P<date>20\d{2})\.pdf$",
+            "date_format": "%Y",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
+    },
+    {
         "key": "policy-briefs",
         "label": "Policy and Decision Briefs",
         "product_names": ("Continental Climate Policy", "Policy and Decision Briefs"),

@@ -490,6 +490,26 @@ def run_acmad_annual_climate_import(self):
 
 
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_climate_watch_import(self):
+    """Fetch and publish ACMAD RCC Climate Watch bulletins."""
+    if not _product_import_is_enabled(
+        "climate-watch", settings.ACMAD_CLIMATE_WATCH_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD CLIMATE WATCH] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_CLIMATE_WATCH_IMPORT_LIMIT
+    logger.info(f"[ACMAD CLIMATE WATCH] Checking the newest {limit} bulletin(s).")
+    call_command(
+        "import_acmad_climate_watch",
+        limit=limit,
+        continue_on_error=True,
+        **_configured_source_options("climate-watch"),
+    )
+    logger.info("[ACMAD CLIMATE WATCH] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_policy_briefs_import(self):
     """Fetch and publish current Policy and Decision Brief assets."""
     if not _product_import_is_enabled(
@@ -799,6 +819,13 @@ def setup_product_ingestion_tasks(sender, **kwargs):
         ),
         run_acmad_annual_climate_import.s(),
         name="import-acmad-annual-climate-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds(
+            "climate-watch", settings.ACMAD_CLIMATE_WATCH_IMPORT_INTERVAL_HOURS
+        ),
+        run_acmad_climate_watch_import.s(),
+        name="import-acmad-climate-watch-automatically",
     )
     sender.add_periodic_task(
         interval_seconds(

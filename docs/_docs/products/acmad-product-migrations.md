@@ -13,7 +13,7 @@ historical imports.
 
 ## Completed product families
 
-The following fourteen importer families have been implemented.
+The following fifteen importer families have been implemented.
 
 | Priority | Product family | Imported formats | Primary source | Default automatic interval | Historical import |
 | --- | --- | --- | --- | --- | --- |
@@ -24,13 +24,14 @@ The following fourteen importer families have been implemented.
 | 5 | Rainfall and Seasonal Onset Monitoring | JPG | ACMAD RCC Season Onset THREDDS | customizable hours | Yes |
 | 6 | Climate Change and Climate Projections | PDF | ACMAD RCC Highly Recommended Functions | customizable hours | Yes |
 | 7 | Annual State of the Climate Report | PDF | ACMAD RCC archive and State of Climate THREDDS | customizable hours | Yes |
-| 8 | Policy and Decision Briefs | PDF, PNG, JPG | ACMAD SGBD/THREDDS policy-brief catalogue | customizable hours | Yes |
-| 9 | Atmospheric Analysis | PNG | ACMAD Atmospheric Analysis THREDDS | customizable hours | Yes |
-| 10 | Heat and Thermal Stress | PNG, JPG | ACMAD Heatwave THREDDS | customizable hours | Yes |
-| 11 | ITD and ITCZ Monitoring | PDF, PNG, JPG | ACMAD SGBD/THREDDS and CSAG archive | customizable hours | Yes |
-| 12 | Thunderstorm and Nowcasting | JPG | ACMAD Satellite THREDDS | customizable hours | Yes |
-| 13 | Climate and Health | PDF, PNG, JPG | Legacy ACMAD WordPress media API | customizable hours | Yes |
-| 14 | Seasonal and Long-Range Forecasts | PDF, PNG, JPG | Legacy ACMAD WordPress media API and THREDDS | customizable hours | Yes |
+| 8 | Climate Watch Bulletin | PDF | ACMAD RCC Drought Monitoring THREDDS and legacy RCC archive | customizable hours | Yes |
+| 9 | Policy and Decision Briefs | PDF, PNG, JPG | ACMAD SGBD/THREDDS policy-brief catalogue | customizable hours | Yes |
+| 10 | Atmospheric Analysis | PNG | ACMAD Atmospheric Analysis THREDDS | customizable hours | Yes |
+| 11 | Heat and Thermal Stress | PNG, JPG | ACMAD Heatwave THREDDS | customizable hours | Yes |
+| 12 | ITD and ITCZ Monitoring | PDF, PNG, JPG | ACMAD SGBD/THREDDS and CSAG archive | customizable hours | Yes |
+| 13 | Thunderstorm and Nowcasting | JPG | ACMAD Satellite THREDDS | customizable hours | Yes |
+| 14 | Climate and Health | PDF, PNG, JPG | Legacy ACMAD WordPress media API | customizable hours | Yes |
+| 15 | Seasonal and Long-Range Forecasts | PDF, PNG, JPG | Legacy ACMAD WordPress media API and THREDDS | customizable hours | Yes |
 
 Automatic importing is disabled by default. The intervals above are deployment defaults and can be changed separately
 for each family in the Wagtail administration dashboard.
@@ -49,6 +50,8 @@ for each family in the Wagtail administration dashboard.
   study. The interactive climate-change indices map remains an externally linked application.
 - **Annual State of the Climate Report** publishes final WMO State of the Climate in Africa reports, ACMAD annual
   assessments, and the available multi-year summary. Provisional editions are replaced by final editions when both exist.
+- **Climate Watch Bulletin** publishes monthly drought and seasonal-climate forecast bulletins together with the
+  archived ACMAD/MESA climate-watch assessment.
 - **Policy and Decision Briefs** separates document briefs from image-based briefs.
 - **Atmospheric Analysis** contains five 5-day atmospheric climatology maps and three daily synoptic analysis maps.
 - **Heat and Thermal Stress** contains observed temperature products, heatwave indicators, and daily heat-index
@@ -60,7 +63,8 @@ for each family in the Wagtail administration dashboard.
   and verification images discovered in the audited media collection.
 - **Seasonal and Long-Range Forecasts** is a parent category whose five distinguishable product pages are listed below.
 
-The Dekadal, Monthly Climate Diagnostic, Rainfall/Seasonal Onset, Climate Change/Projections, Annual State of the Climate, and Seasonal/Long-Range products are assigned to the exact
+The Dekadal, Monthly Climate Diagnostic, Rainfall/Seasonal Onset, Climate Change/Projections, Annual State of the Climate,
+Climate Watch, and Seasonal/Long-Range products are assigned to the exact
 **Regional Climate Center** service category. The importers reuse an existing category with that name and create it only
 when it is absent, so the same behavior works on a newly restored site and on a site where editors created the category.
 
@@ -202,7 +206,8 @@ docker compose --profile prod exec climweb_prod \
   --product seasonal-forecasts
 ```
 
-Valid family keys are `multihazard`, `rainfall`, `dekadal`, `monthly-climate`, `season-onset`, `climate-change`, `annual-climate`, `policy-briefs`,
+Valid family keys are `multihazard`, `rainfall`, `dekadal`, `monthly-climate`, `season-onset`, `climate-change`,
+`annual-climate`, `climate-watch`, `policy-briefs`,
 `atmospheric-analysis`, `heat-stress`, `itd-itcz`, `thunderstorm-nowcasting`, `climate-health`, and
 `seasonal-forecasts`.
 
