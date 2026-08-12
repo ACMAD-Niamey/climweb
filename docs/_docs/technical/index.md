@@ -47,6 +47,11 @@ build/deploy commands, as opposed to a generic Docker installation guide.
 The subdomain deployment section documents an ACMAD-fork-specific customization for serving a section of the site
 (e.g. Summer School) on its own subdomain, sharing the same application and database as the main site.
 
+### ACMAD Product Migrations
+
+The ACMAD product migrations section documents the completed file-based product importers, dashboard operations,
+automatic scheduling, historical imports, source configuration, initial production seeding, and troubleshooting.
+
 ```{toctree}
 ---
 maxdepth: 1
@@ -55,6 +60,7 @@ development/index
 general-architecture
 backup-restore
 management-commands
+acmad-product-migrations
 extending-climweb/index
 deployment
 subdomain-deployment
