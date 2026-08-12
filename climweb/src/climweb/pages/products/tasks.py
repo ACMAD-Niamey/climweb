@@ -571,6 +571,23 @@ def run_acmad_seasonal_verification_import(self):
 
 
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_model_performance_import(self):
+    """Fetch and publish ACMAD RCC seasonal model-performance maps."""
+    if not _product_import_is_enabled(
+        "model-performance", settings.ACMAD_MODEL_PERFORMANCE_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD MODEL PERFORMANCE] Automatic import is disabled.")
+        return
+    call_command(
+        "import_acmad_model_performance",
+        limit=settings.ACMAD_MODEL_PERFORMANCE_IMPORT_LIMIT,
+        continue_on_error=True,
+        **_configured_source_options("model-performance"),
+    )
+    logger.info("[ACMAD MODEL PERFORMANCE] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_cryosphere_import(self):
     """Fetch and publish ACMAD RCC cryosphere reports."""
     if not _product_import_is_enabled("cryosphere", settings.ACMAD_CRYOSPHERE_AUTO_IMPORT):
@@ -925,6 +942,14 @@ def setup_product_ingestion_tasks(sender, **kwargs):
         ),
         run_acmad_seasonal_verification_import.s(),
         name="import-acmad-seasonal-verification-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds(
+            "model-performance",
+            settings.ACMAD_MODEL_PERFORMANCE_IMPORT_INTERVAL_HOURS,
+        ),
+        run_acmad_model_performance_import.s(),
+        name="import-acmad-model-performance-automatically",
     )
     sender.add_periodic_task(
         interval_seconds("cryosphere", settings.ACMAD_CRYOSPHERE_IMPORT_INTERVAL_HOURS),
