@@ -1,0 +1,334 @@
+"""Shared metadata for ACMAD's external product importers."""
+
+
+PRODUCT_IMPORTS = (
+    {
+        "key": "multihazard",
+        "label": "Continental Multi-Hazard Outlook",
+        "product_names": ("Continental Multi-Hazard & Advisory Bulletin",),
+        "source_label": "ACMAD SGBD/THREDDS",
+        "enabled_setting": "ACMAD_MULTIHAZARD_AUTO_IMPORT",
+        "interval_setting": "ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS",
+        "periodic_task_name": "import-acmad-multihazard-automatically",
+        "celery_task": "climweb.pages.products.tasks.run_acmad_multihazard_import",
+        "command": "import_acmad_multihazard",
+        "limit_setting": "ACMAD_MULTIHAZARD_IMPORT_LIMIT",
+        "include_history": True,
+        "supports_retry": True,
+        "configurable_source": True,
+        "source_option": "archive_url",
+        "source_defaults": {
+            "source_type": "html_archive",
+            "source_url": (
+                "https://sgbd.acmad.org/thredds/fileServer/FIT/BRIEFING/ARCHIVE/"
+                "Hazard_Outlook/archive_hazard_outlook.html"
+            ),
+            "source_system": "ACMAD SGBD/THREDDS",
+            "allowed_extensions": [".pdf"],
+            "filename_pattern": (
+                r"Continental_Hazard_Outlook_(?P<date>20\d{6})\.pdf$"
+            ),
+            "date_format": "%Y%m%d",
+            "history_url_pattern": r"archive_hazard_outlook_20\d{2}\.html$",
+            "request_headers": {},
+        },
+    },
+    {
+        "key": "rainfall",
+        "label": "Daily Rainfall Monitoring",
+        "product_names": ("Daily Rainfall Monitoring",),
+        "source_label": "ACMAD SGBD/THREDDS GSMaP",
+        "enabled_setting": "ACMAD_RAINFALL_AUTO_IMPORT",
+        "interval_setting": "ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS",
+        "periodic_task_name": "import-acmad-daily-rainfall-automatically",
+        "celery_task": "climweb.pages.products.tasks.run_acmad_daily_rainfall_import",
+        "command": "import_acmad_daily_rainfall",
+        "limit_setting": "ACMAD_RAINFALL_IMPORT_LIMIT",
+        "include_history": True,
+        "supports_retry": True,
+        "configurable_source": True,
+        "source_option": "archive_url",
+        "source_defaults": {
+            "source_type": "html_archive",
+            "source_url": (
+                "https://sgbd.acmad.org/thredds/fileServer/ACMAD/WWFD/"
+                "verificationservice/OBS/ARCHIVE/GSMAP/archive_gsmap.html"
+            ),
+            "source_system": "ACMAD SGBD/THREDDS GSMaP",
+            "allowed_extensions": [".png"],
+            "filename_pattern": r"gsmap24_(?P<date>20\d{6})\.png$",
+            "date_format": "%Y%m%d",
+            "history_url_pattern": r"archive_gsmap_20\d{2}\.html$",
+            "request_headers": {},
+        },
+    },
+    {
+        "key": "dekadal",
+        "label": "Dekadal Climate Bulletin",
+        "product_names": ("Dekadal Bulletin",),
+        "source_label": "ACMAD RCC / SGBD THREDDS",
+        "enabled_setting": "ACMAD_DEKADAL_AUTO_IMPORT",
+        "interval_setting": "ACMAD_DEKADAL_IMPORT_INTERVAL_HOURS",
+        "periodic_task_name": "import-acmad-dekadal-bulletin-automatically",
+        "celery_task": "climweb.pages.products.tasks.run_acmad_dekadal_import",
+        "command": "import_acmad_dekadal_bulletin",
+        "include_history": True,
+        "history_only": True,
+        "configurable_source": True,
+        "source_option": "catalog_url",
+        "source_defaults": {
+            "source_type": "html_archive",
+            "source_url": "https://rcc.acmad.org/dacadebulletin.php",
+            "source_system": "ACMAD RCC / SGBD THREDDS",
+            "allowed_extensions": [".pdf"],
+            "filename_pattern": r"(?P<date>20\d{6}).*\.pdf$",
+            "date_format": "%Y%m%d",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
+    },
+    {
+        "key": "monthly-climate",
+        "label": "Monthly Climate Diagnostic Bulletin",
+        "product_names": ("Monthly Climate Diagnostic Bulletin",),
+        "source_label": "ACMAD RCC Monthly Climate Review THREDDS",
+        "enabled_setting": "ACMAD_MONTHLY_CLIMATE_AUTO_IMPORT",
+        "interval_setting": "ACMAD_MONTHLY_CLIMATE_IMPORT_INTERVAL_HOURS",
+        "periodic_task_name": "import-acmad-monthly-climate-automatically",
+        "celery_task": "climweb.pages.products.tasks.run_acmad_monthly_climate_import",
+        "command": "import_acmad_monthly_climate",
+        "limit_setting": "ACMAD_MONTHLY_CLIMATE_IMPORT_LIMIT",
+        "include_history": True,
+        "history_only": True,
+        "supports_retry": True,
+        "configurable_source": True,
+        "source_option": "catalog_url",
+        "source_defaults": {
+            "source_type": "thredds_catalog",
+            "source_url": (
+                "http://sgbd.acmad.org:8080/thredds/catalog/ACMAD/CDD/"
+                "ClimateBulletin_TN/Monthly_Bulletin/catalog.xml"
+            ),
+            "source_system": "ACMAD RCC Monthly Climate Review THREDDS",
+            "allowed_extensions": [".png"],
+            "filename_pattern": (
+                r"(?P<date>20\d{2}/[A-Za-z]{3})/.*/"
+                r"Africa_rev_rfe_.*\.png$"
+            ),
+            "date_format": "%Y/%b",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
+    },
+    {
+        "key": "policy-briefs",
+        "label": "Policy and Decision Briefs",
+        "product_names": ("Continental Climate Policy", "Policy and Decision Briefs"),
+        "source_label": "ACMAD SGBD/THREDDS Policy Briefs",
+        "enabled_setting": "ACMAD_POLICY_BRIEFS_AUTO_IMPORT",
+        "interval_setting": "ACMAD_POLICY_BRIEFS_IMPORT_INTERVAL_HOURS",
+        "periodic_task_name": "import-acmad-policy-briefs-automatically",
+        "celery_task": "climweb.pages.products.tasks.run_acmad_policy_briefs_import",
+        "command": "import_acmad_policy_briefs",
+        "limit_setting": "ACMAD_POLICY_BRIEFS_IMPORT_LIMIT",
+        "configurable_source": True,
+        "source_option": "catalog_url",
+        "source_defaults": {
+            "source_type": "thredds_catalog",
+            "source_url": (
+                "https://sgbd.acmad.org/thredds/catalog/ACMAD/PROJECTS/CLIMSA/"
+                "CDD/ACTIVITIES/SERVICES/Doc_Web/catalog.xml"
+            ),
+            "source_system": "ACMAD SGBD/THREDDS Policy Briefs",
+            "allowed_extensions": [".pdf", ".png", ".jpg", ".jpeg"],
+            "filename_pattern": r"(?P<date>20\d{6})",
+            "date_format": "%Y%m%d",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
+    },
+    {
+        "key": "atmospheric-analysis",
+        "label": "Atmospheric Analysis",
+        "product_names": ("Atmospheric Analysis",),
+        "source_label": "ACMAD Atmospheric Analysis THREDDS",
+        "enabled_setting": "ACMAD_ATMOSPHERIC_ANALYSIS_AUTO_IMPORT",
+        "interval_setting": "ACMAD_ATMOSPHERIC_ANALYSIS_IMPORT_INTERVAL_HOURS",
+        "periodic_task_name": "import-acmad-atmospheric-analysis-automatically",
+        "celery_task": "climweb.pages.products.tasks.run_acmad_atmospheric_analysis_import",
+        "command": "import_acmad_atmospheric_analysis",
+        "include_history": True,
+        "history_only": True,
+        "configurable_source": True,
+        "source_option": "history_catalog_url",
+        "source_defaults": {
+            "source_type": "thredds_catalog",
+            "source_url": (
+                "http://154.66.220.45:8080/thredds/catalog/ACMAD/CDD/"
+                "ClimateBulletin_TN/NCEP_Clim_Next_Days/catalog.xml"
+            ),
+            "source_system": "ACMAD Atmospheric Analysis THREDDS",
+            "allowed_extensions": [".png"],
+            "filename_pattern": r"(?P<date>20\d{6})",
+            "date_format": "%Y%m%d",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
+    },
+    {
+        "key": "heat-stress",
+        "label": "Heat and Thermal Stress",
+        "product_names": ("Heat and Thermal Stress",),
+        "source_label": "ACMAD Heatwave THREDDS",
+        "enabled_setting": "ACMAD_HEAT_STRESS_AUTO_IMPORT",
+        "interval_setting": "ACMAD_HEAT_STRESS_IMPORT_INTERVAL_HOURS",
+        "periodic_task_name": "import-acmad-heat-stress-automatically",
+        "celery_task": "climweb.pages.products.tasks.run_acmad_heat_stress_import",
+        "command": "import_acmad_heat_stress",
+        "limit_setting": "ACMAD_HEAT_STRESS_IMPORT_LIMIT",
+        "include_history": True,
+        "history_only": True,
+        "configurable_source": True,
+        "source_option": "catalog_url",
+        "source_defaults": {
+            "source_type": "thredds_catalog",
+            "source_url": (
+                "http://154.66.220.45:8080/thredds/catalog/ACMAD/WWFD/"
+                "forecastinservice/heatwave/catalog.xml"
+            ),
+            "source_system": "ACMAD Heatwave THREDDS",
+            "allowed_extensions": [".png", ".jpg", ".jpeg"],
+            "filename_pattern": r"(?P<date>20\d{6})",
+            "date_format": "%Y%m%d",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
+    },
+    {
+        "key": "itd-itcz",
+        "label": "ITD and ITCZ Monitoring",
+        "product_names": ("ITD and ITCZ Monitoring",),
+        "source_label": "ACMAD SGBD THREDDS / CSAG archive",
+        "enabled_setting": "ACMAD_ITD_ITCZ_AUTO_IMPORT",
+        "interval_setting": "ACMAD_ITD_ITCZ_IMPORT_INTERVAL_HOURS",
+        "periodic_task_name": "import-acmad-itd-itcz-automatically",
+        "celery_task": "climweb.pages.products.tasks.run_acmad_itd_itcz_import",
+        "command": "import_acmad_itd_itcz",
+        "limit_setting": "ACMAD_ITD_ITCZ_IMPORT_LIMIT",
+        "include_history": True,
+        "history_only": True,
+        "configurable_source": True,
+        "source_option": "catalog_url",
+        "source_defaults": {
+            "source_type": "thredds_catalog",
+            "source_url": (
+                "https://sgbd.acmad.org/thredds/catalog/FIT/ITD_MEAN_POSITION/"
+                "catalog.xml"
+            ),
+            "source_system": "ACMAD SGBD THREDDS / CSAG archive",
+            "allowed_extensions": [".pdf", ".png", ".jpg", ".jpeg"],
+            "filename_pattern": r"(?P<date>20\d{6})",
+            "date_format": "%Y%m%d",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
+    },
+    {
+        "key": "thunderstorm-nowcasting",
+        "label": "Thunderstorm and Nowcasting",
+        "product_names": ("Thunderstorm and Nowcasting",),
+        "source_label": "ACMAD Satellite THREDDS",
+        "enabled_setting": "ACMAD_NOWCASTING_AUTO_IMPORT",
+        "interval_setting": "ACMAD_NOWCASTING_IMPORT_INTERVAL_HOURS",
+        "periodic_task_name": "import-acmad-thunderstorm-nowcasting-automatically",
+        "celery_task": "climweb.pages.products.tasks.run_acmad_nowcasting_import",
+        "command": "import_acmad_thunderstorm_nowcasting",
+        "limit_setting": "ACMAD_NOWCASTING_IMPORT_LIMIT",
+        "include_history": True,
+        "history_only": True,
+        "configurable_source": True,
+        "source_option": "catalog_url",
+        "source_defaults": {
+            "source_type": "thredds_catalog",
+            "source_url": (
+                "https://sgbd.acmad.org/thredds/catalog/FIT/SATELLITE/catalog.xml"
+            ),
+            "source_system": "ACMAD Satellite THREDDS",
+            "allowed_extensions": [".jpg", ".jpeg"],
+            "filename_pattern": r"(?P<date>20\d{10})",
+            "date_format": "%Y%m%d%H%M",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
+    },
+    {
+        "key": "climate-health",
+        "label": "Climate and Health",
+        "product_names": ("Climate and Health",),
+        "source_label": "ACMAD WordPress Media",
+        "enabled_setting": "ACMAD_CLIMATE_HEALTH_AUTO_IMPORT",
+        "interval_setting": "ACMAD_CLIMATE_HEALTH_IMPORT_INTERVAL_HOURS",
+        "periodic_task_name": "import-acmad-climate-health-automatically",
+        "celery_task": "climweb.pages.products.tasks.run_acmad_climate_health_import",
+        "command": "import_acmad_climate_health",
+        "limit_setting": "ACMAD_CLIMATE_HEALTH_IMPORT_LIMIT",
+        "include_history": True,
+        "history_only": True,
+        "configurable_source": True,
+        "source_option": "api_url",
+        "source_defaults": {
+            "source_type": "wordpress_api",
+            "source_url": (
+                "https://acmad.org/index.php/wp-json/wp/v2/media"
+                "?search=meningitis&per_page=100"
+            ),
+            "source_system": "ACMAD WordPress Media",
+            "allowed_extensions": [".pdf", ".jpg", ".jpeg", ".png"],
+            "filename_pattern": r"(?P<date>20\d{6})",
+            "date_format": "%Y%m%d",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
+    },
+    {
+        "key": "seasonal-forecasts",
+        "label": "Seasonal and Long-Range Forecasts",
+        "product_names": (
+            "Seasonal Forecast Maps",
+            "Seasonal Outlook Bulletins",
+            "Consensus Statements and Communiqués",
+            "Recommendations and Summaries",
+            "Technical Notes",
+        ),
+        "source_label": "ACMAD WordPress Media + THREDDS",
+        "enabled_setting": "ACMAD_SEASONAL_FORECAST_AUTO_IMPORT",
+        "interval_setting": "ACMAD_SEASONAL_FORECAST_IMPORT_INTERVAL_HOURS",
+        "periodic_task_name": "import-acmad-seasonal-forecasts-automatically",
+        "celery_task": "climweb.pages.products.tasks.run_acmad_seasonal_forecast_import",
+        "command": "import_acmad_seasonal_forecasts",
+        "limit_setting": "ACMAD_SEASONAL_FORECAST_IMPORT_LIMIT",
+        "include_history": True,
+        "history_only": True,
+        "configurable_source": True,
+        "source_option": "api_url",
+        "source_option_multiple": True,
+        "source_defaults": {
+            "source_type": "wordpress_api",
+            "source_url": (
+                "https://acmad.org/index.php/wp-json/wp/v2/media"
+                "?search=seasonal&per_page=100"
+            ),
+            "source_system": "ACMAD WordPress Media + THREDDS",
+            "allowed_extensions": [".pdf", ".jpg", ".jpeg", ".png"],
+            "filename_pattern": r"(?P<date>20\d{6})",
+            "date_format": "%Y%m%d",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
+    },
+)
+
+
+PRODUCT_IMPORTS_BY_KEY = {
+    definition["key"]: definition for definition in PRODUCT_IMPORTS
+}

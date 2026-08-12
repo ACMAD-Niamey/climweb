@@ -5,6 +5,7 @@
 *.csv
 __pycache__/
 local_settings.py
+local.py
 db.sqlite3
 db.sqlite3-journal
 media
@@ -206,3 +207,9 @@ share/
 pyvenv.cfg
 *.dylib
 include/
+
+# Dev-only Docker Compose override and paired nginx config.
+# These enable live static-file serving without collectstatic and must
+# never be committed or deployed to production.
+docker-compose.override.yml
+deploy/nginx/nginx.dev.livereload.conf

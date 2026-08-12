@@ -26,6 +26,8 @@ class ProductItemStructValue(StructValue):
     def p_image(self):
         if self.get("image"):
             return self.get("image")
+        if self.get("gif"):
+            return self.get("gif")
         if self.get("thumbnail"):
             return self.get("thumbnail")
         

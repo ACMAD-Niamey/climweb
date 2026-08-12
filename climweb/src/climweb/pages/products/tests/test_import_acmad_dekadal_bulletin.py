@@ -1,7 +1,7 @@
 from datetime import date
 from unittest.mock import patch
 
-from django.test import SimpleTestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 
 from climweb.pages.products.management.commands.import_acmad_dekadal_bulletin import (
     MAX_PDF_SIZE,
@@ -124,7 +124,7 @@ class TestDekadalCatalogParsing(SimpleTestCase):
         }))
 
 
-class TestAutomaticDekadalImport(SimpleTestCase):
+class TestAutomaticDekadalImport(TestCase):
     @override_settings(ACMAD_DEKADAL_AUTO_IMPORT=True)
     @patch("climweb.pages.products.tasks.call_command")
     def test_enabled_task_runs_import(self, call_command):

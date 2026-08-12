@@ -10,9 +10,22 @@ from django.conf import settings
 from django.core.management import call_command
 from django.core.files import File
 from django.utils.text import slugify
+from django.utils import timezone
 from loguru import logger
 
 from climweb.config.celery import app
+
+
+def _product_import_is_enabled(family_key, deployment_default):
+    from .import_scheduling import get_product_import_enabled
+
+    return get_product_import_enabled(family_key, fallback=deployment_default)
+
+
+def _configured_source_options(family_key):
+    from .import_sources import get_product_import_source_command_options
+
+    return get_product_import_source_command_options(family_key)
 
 
 def _convention_to_regex(convention):
@@ -335,7 +348,9 @@ def ingest_product_files(self):
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_multihazard_import(self):
     """Fetch and publish new Continental Multi-Hazard Outlook issues."""
-    if not settings.ACMAD_MULTIHAZARD_AUTO_IMPORT:
+    if not _product_import_is_enabled(
+        "multihazard", settings.ACMAD_MULTIHAZARD_AUTO_IMPORT
+    ):
         logger.info("[ACMAD MULTI-HAZARD] Automatic import is disabled.")
         return
 
@@ -347,6 +362,7 @@ def run_acmad_multihazard_import(self):
         "import_acmad_multihazard",
         limit=limit,
         continue_on_error=True,
+        **_configured_source_options("multihazard"),
     )
     logger.info("[ACMAD MULTI-HAZARD] Automatic import complete.")
 
@@ -354,7 +370,9 @@ def run_acmad_multihazard_import(self):
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_daily_rainfall_import(self):
     """Fetch and publish new daily GSMaP rainfall observation images."""
-    if not settings.ACMAD_RAINFALL_AUTO_IMPORT:
+    if not _product_import_is_enabled(
+        "rainfall", settings.ACMAD_RAINFALL_AUTO_IMPORT
+    ):
         logger.info("[ACMAD RAINFALL] Automatic import is disabled.")
         return
 
@@ -364,6 +382,7 @@ def run_acmad_daily_rainfall_import(self):
         "import_acmad_daily_rainfall",
         limit=limit,
         continue_on_error=True,
+        **_configured_source_options("rainfall"),
     )
     logger.info("[ACMAD RAINFALL] Automatic import complete.")
 
@@ -371,7 +390,9 @@ def run_acmad_daily_rainfall_import(self):
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_dekadal_import(self):
     """Fetch and publish the current Dekadal Climate Bulletin document set."""
-    if not settings.ACMAD_DEKADAL_AUTO_IMPORT:
+    if not _product_import_is_enabled(
+        "dekadal", settings.ACMAD_DEKADAL_AUTO_IMPORT
+    ):
         logger.info("[ACMAD DEKADAL] Automatic import is disabled.")
         return
 
@@ -379,29 +400,370 @@ def run_acmad_dekadal_import(self):
     call_command(
         "import_acmad_dekadal_bulletin",
         continue_on_error=True,
+        **_configured_source_options("dekadal"),
     )
     logger.info("[ACMAD DEKADAL] Automatic import complete.")
 
 
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_monthly_climate_import(self):
+    """Fetch and publish ACMAD RCC monthly climate diagnostic maps."""
+    if not _product_import_is_enabled(
+        "monthly-climate", settings.ACMAD_MONTHLY_CLIMATE_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD MONTHLY CLIMATE] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_MONTHLY_CLIMATE_IMPORT_LIMIT
+    logger.info(
+        f"[ACMAD MONTHLY CLIMATE] Checking the newest {limit} issue date(s)."
+    )
+    call_command(
+        "import_acmad_monthly_climate",
+        limit=limit,
+        continue_on_error=True,
+        **_configured_source_options("monthly-climate"),
+    )
+    logger.info("[ACMAD MONTHLY CLIMATE] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_policy_briefs_import(self):
+    """Fetch and publish current Policy and Decision Brief assets."""
+    if not _product_import_is_enabled(
+        "policy-briefs", settings.ACMAD_POLICY_BRIEFS_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD POLICY BRIEFS] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_POLICY_BRIEFS_IMPORT_LIMIT
+    logger.info(
+        f"[ACMAD POLICY BRIEFS] Checking the newest {limit} issue date(s)."
+    )
+    call_command(
+        "import_acmad_policy_briefs",
+        limit=limit,
+        continue_on_error=True,
+        **_configured_source_options("policy-briefs"),
+    )
+    logger.info("[ACMAD POLICY BRIEFS] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_atmospheric_analysis_import(self):
+    """Fetch and publish current ACMAD atmospheric analysis maps."""
+    if not _product_import_is_enabled(
+        "atmospheric-analysis", settings.ACMAD_ATMOSPHERIC_ANALYSIS_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD ATMOSPHERIC ANALYSIS] Automatic import is disabled.")
+        return
+
+    logger.info("[ACMAD ATMOSPHERIC ANALYSIS] Checking current PNG sources.")
+    call_command(
+        "import_acmad_atmospheric_analysis",
+        continue_on_error=True,
+        **_configured_source_options("atmospheric-analysis"),
+    )
+    logger.info("[ACMAD ATMOSPHERIC ANALYSIS] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_heat_stress_import(self):
+    """Fetch and publish the newest ACMAD heat-stress image products."""
+    if not _product_import_is_enabled(
+        "heat-stress", settings.ACMAD_HEAT_STRESS_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD HEAT STRESS] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_HEAT_STRESS_IMPORT_LIMIT
+    logger.info(f"[ACMAD HEAT STRESS] Checking the newest {limit} issue(s).")
+    call_command(
+        "import_acmad_heat_stress",
+        limit=limit,
+        continue_on_error=True,
+        **_configured_source_options("heat-stress"),
+    )
+    logger.info("[ACMAD HEAT STRESS] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_itd_itcz_import(self):
+    """Fetch and publish the current ACMAD ITD/ITCZ monitoring bulletin."""
+    if not _product_import_is_enabled(
+        "itd-itcz", settings.ACMAD_ITD_ITCZ_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD ITD/ITCZ] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_ITD_ITCZ_IMPORT_LIMIT
+    logger.info(f"[ACMAD ITD/ITCZ] Checking the newest {limit} issue(s).")
+    call_command(
+        "import_acmad_itd_itcz",
+        limit=limit,
+        continue_on_error=True,
+        **_configured_source_options("itd-itcz"),
+    )
+    logger.info("[ACMAD ITD/ITCZ] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_nowcasting_import(self):
+    """Fetch and publish current ACMAD nowcasting satellite imagery."""
+    if not _product_import_is_enabled(
+        "thunderstorm-nowcasting", settings.ACMAD_NOWCASTING_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD NOWCASTING] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_NOWCASTING_IMPORT_LIMIT
+    logger.info(f"[ACMAD NOWCASTING] Checking the newest {limit} issue time(s).")
+    call_command(
+        "import_acmad_thunderstorm_nowcasting",
+        limit=limit,
+        continue_on_error=True,
+        **_configured_source_options("thunderstorm-nowcasting"),
+    )
+    logger.info("[ACMAD NOWCASTING] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_climate_health_import(self):
+    """Fetch and publish ACMAD Climate and Health files."""
+    if not _product_import_is_enabled(
+        "climate-health", settings.ACMAD_CLIMATE_HEALTH_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD CLIMATE/HEALTH] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_CLIMATE_HEALTH_IMPORT_LIMIT
+    logger.info(f"[ACMAD CLIMATE/HEALTH] Checking the newest {limit} issue(s).")
+    call_command(
+        "import_acmad_climate_health",
+        limit=limit,
+        continue_on_error=True,
+        **_configured_source_options("climate-health"),
+    )
+    logger.info("[ACMAD CLIMATE/HEALTH] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_seasonal_forecast_import(self):
+    """Fetch and publish ACMAD Seasonal and Long-Range Forecast files."""
+    if not _product_import_is_enabled(
+        "seasonal-forecasts", settings.ACMAD_SEASONAL_FORECAST_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD SEASONAL FORECAST] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_SEASONAL_FORECAST_IMPORT_LIMIT
+    logger.info(
+        f"[ACMAD SEASONAL FORECAST] Checking the newest {limit} issue(s)."
+    )
+    call_command(
+        "import_acmad_seasonal_forecasts",
+        limit=limit,
+        continue_on_error=True,
+        **_configured_source_options("seasonal-forecasts"),
+    )
+    logger.info("[ACMAD SEASONAL FORECAST] Automatic import complete.")
+
+
+@app.task(bind=True)
+def run_manual_product_import(self, run_id):
+    """Execute a dashboard-requested historical import and retain its output."""
+    from climweb.pages.products.import_progress import (
+        ImportCancelled,
+        ImportProgressOutput,
+        activate_import_run,
+    )
+    from climweb.pages.products.import_registry import PRODUCT_IMPORTS_BY_KEY
+    from climweb.pages.products.models import ProductImportRun
+
+    run = ProductImportRun.objects.get(pk=run_id)
+    definition = PRODUCT_IMPORTS_BY_KEY.get(run.product_family)
+    if definition is None:
+        run.status = ProductImportRun.STATUS_FAILED
+        run.error_message = f"Unknown product family: {run.product_family}"
+        run.finished_at = timezone.now()
+        run.save(update_fields=["status", "error_message", "finished_at"])
+        return
+
+    task_id = getattr(self.request, "id", None) or run.task_id
+    started_at = timezone.now()
+    started = ProductImportRun.objects.filter(
+        pk=run_id,
+        status=ProductImportRun.STATUS_QUEUED,
+        cancel_requested=False,
+    ).update(
+        status=ProductImportRun.STATUS_RUNNING,
+        started_at=started_at,
+        task_id=task_id,
+        progress_percent=5,
+        current_phase="Discovering sources",
+    )
+    if not started:
+        return
+    run.refresh_from_db()
+
+    command_options = {
+        "from_date": run.from_date,
+        "to_date": run.to_date,
+        "limit": run.limit,
+        "oldest_first": True,
+        "continue_on_error": True,
+        "dry_run": run.mode == ProductImportRun.MODE_PREVIEW,
+        "refresh": run.refresh_existing,
+    }
+    if definition.get("include_history"):
+        command_options["include_history"] = True
+    if definition.get("history_only"):
+        command_options["history_only"] = True
+    if definition.get("supports_retry") and run.retry_failures:
+        command_options["retry_failures"] = True
+    command_options.update(_configured_source_options(run.product_family))
+
+    output = ImportProgressOutput(
+        run.pk,
+        preview=run.mode == ProductImportRun.MODE_PREVIEW,
+    )
+    try:
+        with activate_import_run(run.pk):
+            call_command(
+                definition["command"],
+                stdout=output,
+                stderr=output,
+                **command_options,
+            )
+        run.refresh_from_db(fields=["cancel_requested"])
+        if run.cancel_requested:
+            raise ImportCancelled("Manual import stopped by user")
+    except ImportCancelled:
+        run.status = ProductImportRun.STATUS_CANCELLED
+        run.error_message = ""
+        run.current_phase = "Stopped by user"
+        logger.info(
+            f"[PRODUCT IMPORT RUN {run.pk}] {definition['label']} stopped by user"
+        )
+    except Exception as exc:
+        run.refresh_from_db(fields=["cancel_requested"])
+        if run.cancel_requested:
+            run.status = ProductImportRun.STATUS_CANCELLED
+            run.error_message = ""
+            run.current_phase = "Stopped by user"
+        else:
+            run.status = ProductImportRun.STATUS_FAILED
+            run.error_message = str(exc)
+            run.current_phase = "Import failed"
+            logger.exception(
+                f"[PRODUCT IMPORT RUN {run.pk}] {definition['label']} failed: {exc}"
+            )
+    else:
+        run.status = ProductImportRun.STATUS_SUCCEEDED
+        run.error_message = ""
+        run.progress_percent = 100
+        run.current_phase = "Import completed"
+        run.save(update_fields=["progress_percent"])
+    finally:
+        run.output = output.getvalue()[-100000:]
+        run.finished_at = timezone.now()
+        run.save(
+            update_fields=[
+                "status",
+                "output",
+                "error_message",
+                "finished_at",
+                "current_phase",
+            ]
+        )
+
+
 @app.on_after_finalize.connect
 def setup_product_ingestion_tasks(sender, **kwargs):
+    from .import_scheduling import get_product_import_interval_hours
+
+    def interval_seconds(family_key, fallback):
+        return 60 * 60 * get_product_import_interval_hours(
+            family_key, fallback=fallback
+        )
+
     sender.add_periodic_task(
         60 * 5,  # every 15 minutes
         ingest_product_files.s(),
         name='ingest-product-files-every-5-minutes',
     )
     sender.add_periodic_task(
-        60 * 60 * settings.ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS,
+        interval_seconds(
+            "multihazard", settings.ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS
+        ),
         run_acmad_multihazard_import.s(),
         name="import-acmad-multihazard-automatically",
     )
     sender.add_periodic_task(
-        60 * 60 * settings.ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS,
+        interval_seconds("rainfall", settings.ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS),
         run_acmad_daily_rainfall_import.s(),
         name="import-acmad-daily-rainfall-automatically",
     )
     sender.add_periodic_task(
-        60 * 60 * settings.ACMAD_DEKADAL_IMPORT_INTERVAL_HOURS,
+        interval_seconds("dekadal", settings.ACMAD_DEKADAL_IMPORT_INTERVAL_HOURS),
         run_acmad_dekadal_import.s(),
         name="import-acmad-dekadal-bulletin-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds(
+            "monthly-climate",
+            settings.ACMAD_MONTHLY_CLIMATE_IMPORT_INTERVAL_HOURS,
+        ),
+        run_acmad_monthly_climate_import.s(),
+        name="import-acmad-monthly-climate-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds(
+            "policy-briefs", settings.ACMAD_POLICY_BRIEFS_IMPORT_INTERVAL_HOURS
+        ),
+        run_acmad_policy_briefs_import.s(),
+        name="import-acmad-policy-briefs-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds(
+            "atmospheric-analysis",
+            settings.ACMAD_ATMOSPHERIC_ANALYSIS_IMPORT_INTERVAL_HOURS,
+        ),
+        run_acmad_atmospheric_analysis_import.s(),
+        name="import-acmad-atmospheric-analysis-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds(
+            "heat-stress", settings.ACMAD_HEAT_STRESS_IMPORT_INTERVAL_HOURS
+        ),
+        run_acmad_heat_stress_import.s(),
+        name="import-acmad-heat-stress-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds("itd-itcz", settings.ACMAD_ITD_ITCZ_IMPORT_INTERVAL_HOURS),
+        run_acmad_itd_itcz_import.s(),
+        name="import-acmad-itd-itcz-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds(
+            "thunderstorm-nowcasting",
+            settings.ACMAD_NOWCASTING_IMPORT_INTERVAL_HOURS,
+        ),
+        run_acmad_nowcasting_import.s(),
+        name="import-acmad-thunderstorm-nowcasting-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds(
+            "climate-health", settings.ACMAD_CLIMATE_HEALTH_IMPORT_INTERVAL_HOURS
+        ),
+        run_acmad_climate_health_import.s(),
+        name="import-acmad-climate-health-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds(
+            "seasonal-forecasts",
+            settings.ACMAD_SEASONAL_FORECAST_IMPORT_INTERVAL_HOURS,
+        ),
+        run_acmad_seasonal_forecast_import.s(),
+        name="import-acmad-seasonal-forecasts-automatically",
     )
