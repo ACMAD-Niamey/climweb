@@ -142,9 +142,7 @@ class TestSeasonalForecastHierarchy(TestCase):
 
         destinations = Command._get_or_create_destinations([asset])
 
-        service = ServiceCategory.objects.get(
-            name="Seasonal and Long-Range Forecasts"
-        )
+        service = ServiceCategory.objects.get(name="Regional Climate Center")
         pages = ProductPage.objects.filter(service=service).live()
         self.assertEqual(pages.count(), 5)
         self.assertEqual(

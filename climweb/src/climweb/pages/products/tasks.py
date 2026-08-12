@@ -406,6 +406,28 @@ def run_acmad_dekadal_import(self):
 
 
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_monthly_climate_import(self):
+    """Fetch and publish ACMAD RCC monthly climate diagnostic maps."""
+    if not _product_import_is_enabled(
+        "monthly-climate", settings.ACMAD_MONTHLY_CLIMATE_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD MONTHLY CLIMATE] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_MONTHLY_CLIMATE_IMPORT_LIMIT
+    logger.info(
+        f"[ACMAD MONTHLY CLIMATE] Checking the newest {limit} issue date(s)."
+    )
+    call_command(
+        "import_acmad_monthly_climate",
+        limit=limit,
+        continue_on_error=True,
+        **_configured_source_options("monthly-climate"),
+    )
+    logger.info("[ACMAD MONTHLY CLIMATE] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_policy_briefs_import(self):
     """Fetch and publish current Policy and Decision Brief assets."""
     if not _product_import_is_enabled(
@@ -686,6 +708,14 @@ def setup_product_ingestion_tasks(sender, **kwargs):
         interval_seconds("dekadal", settings.ACMAD_DEKADAL_IMPORT_INTERVAL_HOURS),
         run_acmad_dekadal_import.s(),
         name="import-acmad-dekadal-bulletin-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds(
+            "monthly-climate",
+            settings.ACMAD_MONTHLY_CLIMATE_IMPORT_INTERVAL_HOURS,
+        ),
+        run_acmad_monthly_climate_import.s(),
+        name="import-acmad-monthly-climate-automatically",
     )
     sender.add_periodic_task(
         interval_seconds(

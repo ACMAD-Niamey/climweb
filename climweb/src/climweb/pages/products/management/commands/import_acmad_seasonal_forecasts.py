@@ -20,7 +20,6 @@ from climweb.base.models import (
     Product,
     ProductCategory,
     ProductItemType,
-    ServiceCategory,
 )
 from climweb.pages.products.models import (
     ProductIndexPage,
@@ -28,6 +27,7 @@ from climweb.pages.products.models import (
     ProductPage,
     ProductSourceImport,
 )
+from climweb.pages.products.rcc import get_rcc_service_category
 from climweb.pages.products.tasks import (
     _append_document_block,
     _append_image_block,
@@ -465,10 +465,7 @@ class Command(BaseCommand):
 
     @staticmethod
     def _get_or_create_destinations(assets):
-        service, _ = ServiceCategory.objects.get_or_create(
-            name="Seasonal and Long-Range Forecasts",
-            defaults={"icon": "calendar"},
-        )
+        service = get_rcc_service_category()
         index = ProductIndexPage.objects.live().first()
         if not index:
             raise CommandError("A live ProductIndexPage was not found")
