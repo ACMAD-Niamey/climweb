@@ -121,6 +121,39 @@ PRODUCT_IMPORTS = (
         },
     },
     {
+        "key": "season-onset",
+        "label": "Rainfall and Seasonal Onset Monitoring",
+        "product_names": ("Rainfall and Seasonal Onset Monitoring",),
+        "source_label": "ACMAD RCC Season Onset THREDDS",
+        "enabled_setting": "ACMAD_SEASON_ONSET_AUTO_IMPORT",
+        "interval_setting": "ACMAD_SEASON_ONSET_IMPORT_INTERVAL_HOURS",
+        "periodic_task_name": "import-acmad-season-onset-automatically",
+        "celery_task": "climweb.pages.products.tasks.run_acmad_season_onset_import",
+        "command": "import_acmad_season_onset",
+        "limit_setting": "ACMAD_SEASON_ONSET_IMPORT_LIMIT",
+        "include_history": True,
+        "history_only": True,
+        "supports_retry": True,
+        "configurable_source": True,
+        "source_option": "catalog_url",
+        "source_defaults": {
+            "source_type": "thredds_catalog",
+            "source_url": (
+                "http://sgbd.acmad.org:8080/thredds/catalog/ACMAD/CDD/"
+                "climatemonitoringservice/Onset_Ops_Services/catalog.xml"
+            ),
+            "source_system": "ACMAD RCC Season Onset THREDDS",
+            "allowed_extensions": [".jpeg", ".jpg"],
+            "filename_pattern": (
+                r"ecowas_Seasonal_Onset_(?:Obs|Fcst)_"
+                r"(?P<date>20\d{6})\.jpe?g$"
+            ),
+            "date_format": "%Y%m%d",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
+    },
+    {
         "key": "policy-briefs",
         "label": "Policy and Decision Briefs",
         "product_names": ("Continental Climate Policy", "Policy and Decision Briefs"),

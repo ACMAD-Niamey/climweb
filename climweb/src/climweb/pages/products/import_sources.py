@@ -205,6 +205,21 @@ def inspect_product_import_source(family_key, values, include_history=False):
             for asset in assets
         ]
         archive_count = len({asset["date"].year for asset in assets})
+    elif family_key == "season-onset":
+        from .management.commands.import_acmad_season_onset import (
+            Command,
+            parse_catalog,
+        )
+
+        assets = parse_catalog(
+            Command._request(values["source_url"]).content,
+            values["source_url"],
+        )
+        issues = [
+            {"date": asset["date"], "source_url": asset["source_url"]}
+            for asset in assets
+        ]
+        archive_count = 1
     else:
         inspectors = {
             "html_archive": _inspect_html,
