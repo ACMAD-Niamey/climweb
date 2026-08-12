@@ -554,6 +554,23 @@ def run_acmad_five_day_rainfall_import(self):
 
 
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_seasonal_verification_import(self):
+    """Fetch and publish ACMAD RCC seasonal forecast verification products."""
+    if not _product_import_is_enabled(
+        "seasonal-verification", settings.ACMAD_SEASONAL_VERIFICATION_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD SEASONAL VERIFICATION] Automatic import is disabled.")
+        return
+    call_command(
+        "import_acmad_seasonal_verification",
+        limit=settings.ACMAD_SEASONAL_VERIFICATION_IMPORT_LIMIT,
+        continue_on_error=True,
+        **_configured_source_options("seasonal-verification"),
+    )
+    logger.info("[ACMAD SEASONAL VERIFICATION] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_cryosphere_import(self):
     """Fetch and publish ACMAD RCC cryosphere reports."""
     if not _product_import_is_enabled("cryosphere", settings.ACMAD_CRYOSPHERE_AUTO_IMPORT):
@@ -900,6 +917,14 @@ def setup_product_ingestion_tasks(sender, **kwargs):
         ),
         run_acmad_five_day_rainfall_import.s(),
         name="import-acmad-five-day-rainfall-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds(
+            "seasonal-verification",
+            settings.ACMAD_SEASONAL_VERIFICATION_IMPORT_INTERVAL_HOURS,
+        ),
+        run_acmad_seasonal_verification_import.s(),
+        name="import-acmad-seasonal-verification-automatically",
     )
     sender.add_periodic_task(
         interval_seconds("cryosphere", settings.ACMAD_CRYOSPHERE_IMPORT_INTERVAL_HOURS),

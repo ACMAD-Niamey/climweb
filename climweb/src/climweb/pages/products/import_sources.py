@@ -265,6 +265,15 @@ def inspect_product_import_source(family_key, values, include_history=False):
             for catalog in catalogs
         ]
         archive_count = len(catalogs)
+    elif family_key == "seasonal-verification":
+        from .management.commands.import_acmad_seasonal_verification import Command
+
+        assets = Command()._collect_assets({"source_url": values["source_url"]})
+        issues = [
+            {"date": asset["date"], "source_url": asset["source_url"]}
+            for asset in assets
+        ]
+        archive_count = len({asset["date"].year for asset in assets})
     elif family_key == "cryosphere":
         from .management.commands.import_acmad_cryosphere import Command
 
