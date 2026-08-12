@@ -1,3 +1,4 @@
+import re
 from datetime import date
 from unittest.mock import patch
 
@@ -5,6 +6,8 @@ from django.test import SimpleTestCase, TestCase, override_settings
 
 from climweb.base.models import ServiceCategory
 from climweb.pages.home.tests.factories import get_or_create_homepage
+from climweb.pages.products.forms import ProductImportSourceConfigForm
+from climweb.pages.products.import_registry import PRODUCT_IMPORTS_BY_KEY
 from climweb.pages.products.management.commands.import_acmad_monthly_climate import (
     Command,
     asset_from_dataset,
@@ -17,6 +20,24 @@ from climweb.pages.products.tests.factories import ProductIndexPageFactory
 
 
 class TestMonthlyClimateSources(SimpleTestCase):
+    def test_default_dashboard_source_schema_is_valid(self):
+        defaults = PRODUCT_IMPORTS_BY_KEY["monthly-climate"]["source_defaults"]
+        form = ProductImportSourceConfigForm(
+            data={
+                **defaults,
+                "allowed_extensions": ", ".join(defaults["allowed_extensions"]),
+                "request_headers": "{}",
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors.as_text())
+        match = re.search(
+            defaults["filename_pattern"],
+            "Monthly_Bulletin/2026/Jul/Rain_Review/spatial_maps/Africa/"
+            "Africa_rev_rfe_total_precip.png",
+        )
+        self.assertEqual(match.group("date"), "2026/Jul")
+
     def test_catalog_parser_returns_references_and_datasets(self):
         xml = b"""<?xml version="1.0"?>
         <catalog xmlns="http://www.unidata.ucar.edu/namespaces/thredds/InvCatalog/v1.0"

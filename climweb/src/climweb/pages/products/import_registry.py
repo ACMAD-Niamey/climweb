@@ -111,7 +111,10 @@ PRODUCT_IMPORTS = (
             ),
             "source_system": "ACMAD RCC Monthly Climate Review THREDDS",
             "allowed_extensions": [".png"],
-            "filename_pattern": r"Africa_rev_rfe_.*\.png$",
+            "filename_pattern": (
+                r"(?P<date>20\d{2}/[A-Za-z]{3})/.*/"
+                r"Africa_rev_rfe_.*\.png$"
+            ),
             "date_format": "%Y/%b",
             "history_url_pattern": "",
             "request_headers": {},
