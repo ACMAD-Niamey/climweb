@@ -1,7 +1,9 @@
 from argparse import ArgumentTypeError
 from datetime import date
+from unittest.mock import patch
 
-from django.test import SimpleTestCase
+from django.core.management import call_command
+from django.test import SimpleTestCase, TestCase
 
 from climweb.pages.products.management.commands.import_acmad_daily_rainfall import (
     MAX_IMAGE_SIZE,
@@ -10,6 +12,7 @@ from climweb.pages.products.management.commands.import_acmad_daily_rainfall impo
     parse_archive,
     parse_year_archive_links,
 )
+from climweb.pages.products.models import ProductImportSourceConfig
 
 
 class TestDailyRainfallArchiveParsing(SimpleTestCase):
@@ -50,6 +53,25 @@ class TestDailyRainfallArchiveParsing(SimpleTestCase):
             ],
         )
 
+    def test_parse_archive_supports_configured_schema(self):
+        html = '<a href="rainfall_2026-08-10.jpg">Rainfall</a>'
+
+        self.assertEqual(
+            parse_archive(
+                html,
+                self.archive_url,
+                filename_pattern=r"rainfall_(?P<date>20\d{2}-\d{2}-\d{2})\.jpg$",
+                date_format="%Y-%m-%d",
+                allowed_extensions=[".jpg"],
+            ),
+            [
+                {
+                    "date": date(2026, 8, 10),
+                    "source_url": self._source_url("rainfall_2026-08-10.jpg"),
+                }
+            ],
+        )
+
     def test_parse_year_archive_links_returns_only_year_indexes(self):
         html = """
             <a href="2025/archive_gsmap_2025.html">2025</a>
@@ -76,3 +98,34 @@ class TestDailyRainfallArchiveParsing(SimpleTestCase):
 
     def _source_url(self, filename):
         return self.archive_url.rsplit("/", 1)[0] + "/" + filename
+
+
+class TestDailyRainfallSourceConfiguration(TestCase):
+    @patch(
+        "climweb.pages.products.management.commands."
+        "import_acmad_daily_rainfall.Command._discover_issues"
+    )
+    def test_command_uses_saved_source_and_schema(self, discover_issues):
+        discover_issues.return_value = ([], 1)
+        ProductImportSourceConfig.objects.create(
+            product_family="rainfall",
+            source_type="html_archive",
+            source_url="https://data.example.com/rainfall/index.html",
+            source_system="Example Rainfall",
+            allowed_extensions=[".jpg"],
+            filename_pattern=r"rain_(?P<date>20\d{6})\.jpg$",
+            date_format="%Y%m%d",
+            history_url_pattern=r"archive_20\d{2}\.html$",
+            request_headers={"Accept": "text/html"},
+        )
+
+        call_command("import_acmad_daily_rainfall", inventory_only=True)
+
+        discover_issues.assert_called_once_with(
+            "https://data.example.com/rainfall/index.html",
+            False,
+            filename_pattern=r"rain_(?P<date>20\d{6})\.jpg$",
+            date_format="%Y%m%d",
+            history_url_pattern=r"archive_20\d{2}\.html$",
+            allowed_extensions=[".jpg"],
+        )

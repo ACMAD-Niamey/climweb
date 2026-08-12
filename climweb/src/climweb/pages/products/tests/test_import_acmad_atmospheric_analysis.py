@@ -1,7 +1,7 @@
 from datetime import date
 from unittest.mock import Mock, patch
 
-from django.test import SimpleTestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 
 from climweb.pages.products.management.commands.import_acmad_atmospheric_analysis import (
     MAX_IMAGE_SIZE,
@@ -115,7 +115,7 @@ class TestAtmosphericAnalysisSources(SimpleTestCase):
         )
 
 
-class TestAutomaticAtmosphericAnalysisImport(SimpleTestCase):
+class TestAutomaticAtmosphericAnalysisImport(TestCase):
     @override_settings(ACMAD_ATMOSPHERIC_ANALYSIS_AUTO_IMPORT=True)
     @patch("climweb.pages.products.tasks.call_command")
     def test_enabled_task_runs_import(self, call_command):

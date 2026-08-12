@@ -28,6 +28,7 @@ from django.utils.text import slugify
 
 from climweb.base.models import CustomDocumentModel, ProductCategory, ProductItemType
 from climweb.pages.products.models import ProductItemPage, ProductPage, ProductSourceImport
+from climweb.pages.products.rcc import get_rcc_service_category
 from climweb.pages.products.tasks import _append_document_block
 
 
@@ -598,6 +599,11 @@ class Command(BaseCommand):
                 "Neither the restored 'dekadal-weather-forecast' page nor a "
                 "'dekadal-climate-bulletin' page was found"
             )
+
+        rcc_service = get_rcc_service_category()
+        if product_page.service_id != rcc_service.pk:
+            product_page.service = rcc_service
+            product_page.save_revision().publish()
 
         product = product_page.product
         changed_fields = []

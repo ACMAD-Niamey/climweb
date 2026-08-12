@@ -1,5 +1,6 @@
 from adminboundarymanager.models import AdminBoundarySettings
 from django import forms
+from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.template.defaultfilters import truncatechars
@@ -34,8 +35,9 @@ from .blocks import (
     ProductItemStreamContentBlock
 )
 
+from climweb.base.models.abstracts import AbstractBannerPage
 
-class ProductIndexPage(MetadataPageMixin, Page):
+class ProductIndexPage(AbstractBannerPage):
     parent_page_types = ['home.HomePage']
     subpage_types = [
         'products.ProductPage',
@@ -50,7 +52,7 @@ class ProductIndexPage(MetadataPageMixin, Page):
                                        verbose_name=_("Products listing Heading"))
     group_menu_items_by_service = models.BooleanField(default=True, verbose_name=_("Group menu items by service"))
     
-    content_panels = Page.content_panels + [
+    content_panels = AbstractBannerPage.content_panels + [
         FieldPanel("listing_heading"),
         FieldPanel("group_menu_items_by_service")
     ]
@@ -83,15 +85,7 @@ class ProductIndexPage(MetadataPageMixin, Page):
         
         return list(products) + list(subnational_products)
     
-    def get_meta_image(self):
-        meta_image = super().get_meta_image()
-        
-        if not meta_image:
-            parent = self.get_parent()
-            if hasattr(parent, 'get_meta_image'):
-                meta_image = parent.get_meta_image()
-        
-        return meta_image
+
     
     def get_meta_description(self):
         meta_description = super().get_meta_description()
@@ -151,6 +145,14 @@ class BaseProductPage(AbstractIntroPage):
     def listing_image(self):
         if self.introduction_image:
             return self.introduction_image
+
+        for product_item in self.all_products:
+            listing_image = product_item.products_listing_image
+            if listing_image:
+                return listing_image
+
+        if self.default_listing_thumbnail:
+            return self.default_listing_thumbnail
         return None
     
     @cached_property
@@ -621,6 +623,179 @@ class ProductSourceImport(models.Model):
 
     def __str__(self):
         return f"{self.product} — {self.source_published_date}"
+
+
+class ProductImportRun(models.Model):
+    """A dashboard-requested historical product import or preview."""
+
+    MODE_PREVIEW = 'preview'
+    MODE_IMPORT = 'import'
+    MODE_CHOICES = [
+        (MODE_PREVIEW, _("Preview")),
+        (MODE_IMPORT, _("Import")),
+    ]
+
+    STATUS_QUEUED = 'queued'
+    STATUS_RUNNING = 'running'
+    STATUS_CANCELLING = 'cancelling'
+    STATUS_CANCELLED = 'cancelled'
+    STATUS_SUCCEEDED = 'succeeded'
+    STATUS_FAILED = 'failed'
+    STATUS_CHOICES = [
+        (STATUS_QUEUED, _("Queued")),
+        (STATUS_RUNNING, _("Running")),
+        (STATUS_CANCELLING, _("Stopping")),
+        (STATUS_CANCELLED, _("Stopped")),
+        (STATUS_SUCCEEDED, _("Succeeded")),
+        (STATUS_FAILED, _("Failed")),
+    ]
+
+    product_family = models.CharField(max_length=80, verbose_name=_("Product Family"))
+    mode = models.CharField(max_length=20, choices=MODE_CHOICES)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_QUEUED,
+    )
+    from_date = models.DateField(verbose_name=_("From Date"))
+    to_date = models.DateField(verbose_name=_("To Date"))
+    limit = models.PositiveIntegerField(default=100)
+    refresh_existing = models.BooleanField(default=False)
+    retry_failures = models.BooleanField(default=False)
+    cancel_requested = models.BooleanField(default=False)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='product_import_runs',
+    )
+    task_id = models.CharField(max_length=255, blank=True)
+    output = models.TextField(blank=True)
+    error_message = models.TextField(blank=True)
+    progress_percent = models.PositiveSmallIntegerField(default=0)
+    total_items = models.PositiveIntegerField(default=0)
+    processed_items = models.PositiveIntegerField(default=0)
+    imported_items = models.PositiveIntegerField(default=0)
+    failed_items = models.PositiveIntegerField(default=0)
+    skipped_items = models.PositiveIntegerField(default=0)
+    current_phase = models.CharField(max_length=255, blank=True)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-requested_at']
+        verbose_name = _("Product Import Run")
+        verbose_name_plural = _("Product Import Runs")
+
+    def __str__(self):
+        return (
+            f"{self.product_family}: {self.from_date}–{self.to_date} "
+            f"({self.status})"
+        )
+
+    @property
+    def product_family_label(self):
+        from climweb.pages.products.import_registry import PRODUCT_IMPORTS_BY_KEY
+
+        definition = PRODUCT_IMPORTS_BY_KEY.get(self.product_family)
+        return definition["label"] if definition else self.product_family
+
+
+class ProductImportSchedule(models.Model):
+    """Dashboard-managed automatic import interval for a product family."""
+
+    product_family = models.CharField(
+        max_length=80,
+        unique=True,
+        verbose_name=_("Product Family"),
+    )
+    interval_hours = models.PositiveIntegerField(
+        default=24,
+        validators=[MinValueValidator(1), MaxValueValidator(720)],
+        verbose_name=_("Interval Hours"),
+    )
+    enabled_override = models.BooleanField(
+        null=True,
+        blank=True,
+        verbose_name=_("Enabled Override"),
+        help_text=_("Leave empty to use the deployment configuration."),
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='product_import_schedules',
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['product_family']
+        verbose_name = _("Product Import Schedule")
+        verbose_name_plural = _("Product Import Schedules")
+
+    def __str__(self):
+        return f"{self.product_family}: every {self.interval_hours} hour(s)"
+
+
+class ProductImportSourceConfig(models.Model):
+    """Dashboard-managed source and discovery schema for a product importer."""
+
+    TYPE_HTML_ARCHIVE = 'html_archive'
+    TYPE_THREDDS_CATALOG = 'thredds_catalog'
+    TYPE_WORDPRESS_API = 'wordpress_api'
+    SOURCE_TYPE_CHOICES = [
+        (TYPE_HTML_ARCHIVE, _("HTML archive or directory listing")),
+        (TYPE_THREDDS_CATALOG, _("THREDDS XML catalogue")),
+        (TYPE_WORDPRESS_API, _("WordPress media API")),
+    ]
+
+    product_family = models.CharField(
+        max_length=80,
+        unique=True,
+        verbose_name=_("Product Family"),
+    )
+    source_type = models.CharField(
+        max_length=40,
+        choices=SOURCE_TYPE_CHOICES,
+        default=TYPE_HTML_ARCHIVE,
+        verbose_name=_("Source Type"),
+    )
+    source_url = models.URLField(max_length=1000, verbose_name=_("Source URL"))
+    source_system = models.CharField(
+        max_length=255,
+        verbose_name=_("Source Name"),
+    )
+    allowed_extensions = models.JSONField(default=list)
+    filename_pattern = models.TextField(verbose_name=_("Filename Pattern"))
+    date_format = models.CharField(
+        max_length=80,
+        default='%Y%m%d',
+        verbose_name=_("Date Format"),
+    )
+    history_url_pattern = models.TextField(
+        blank=True,
+        verbose_name=_("Historical Archive Pattern"),
+    )
+    request_headers = models.JSONField(default=dict, blank=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='product_import_source_configs',
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['product_family']
+        verbose_name = _("Product Import Source Configuration")
+        verbose_name_plural = _("Product Import Source Configurations")
+
+    def __str__(self):
+        return f"{self.product_family}: {self.source_url}"
 
 
 class SubNationalProductsLandingPage(AbstractIntroPage, Page):

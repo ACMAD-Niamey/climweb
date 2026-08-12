@@ -249,6 +249,10 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
+            "--history-catalog-url",
+            help="Override the primary NCEP historical THREDDS catalogue.",
+        )
+        parser.add_argument(
             "--source",
             action="append",
             choices=[spec["key"] for spec in SOURCE_SPECS],
@@ -445,7 +449,11 @@ class Command(BaseCommand):
         root_catalogues = {}
         failures = []
         for collection in sorted(collections):
-            catalog_url = HISTORY_CATALOGS[collection]
+            catalog_url = (
+                options.get("history_catalog_url")
+                if collection == "ncep"
+                else None
+            ) or HISTORY_CATALOGS[collection]
             try:
                 root_catalogues[collection] = parse_history_root_catalog(
                     self._fetch_catalog(catalog_url), catalog_url
