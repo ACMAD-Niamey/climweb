@@ -428,6 +428,146 @@ def run_acmad_monthly_climate_import(self):
 
 
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_season_onset_import(self):
+    """Fetch and publish ACMAD RCC observed and forecast season-onset maps."""
+    if not _product_import_is_enabled(
+        "season-onset", settings.ACMAD_SEASON_ONSET_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD SEASON ONSET] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_SEASON_ONSET_IMPORT_LIMIT
+    logger.info(f"[ACMAD SEASON ONSET] Checking the newest {limit} issue date(s).")
+    call_command(
+        "import_acmad_season_onset",
+        limit=limit,
+        continue_on_error=True,
+        **_configured_source_options("season-onset"),
+    )
+    logger.info("[ACMAD SEASON ONSET] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_climate_change_import(self):
+    """Fetch and publish ACMAD RCC climate-change reports."""
+    if not _product_import_is_enabled(
+        "climate-change", settings.ACMAD_CLIMATE_CHANGE_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD CLIMATE CHANGE] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_CLIMATE_CHANGE_IMPORT_LIMIT
+    logger.info(f"[ACMAD CLIMATE CHANGE] Checking up to {limit} report(s).")
+    call_command(
+        "import_acmad_climate_change",
+        limit=limit,
+        continue_on_error=True,
+        **_configured_source_options("climate-change"),
+    )
+    logger.info("[ACMAD CLIMATE CHANGE] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_annual_climate_import(self):
+    """Fetch and publish ACMAD RCC annual climate reports."""
+    if not _product_import_is_enabled(
+        "annual-climate", settings.ACMAD_ANNUAL_CLIMATE_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD ANNUAL CLIMATE] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_ANNUAL_CLIMATE_IMPORT_LIMIT
+    logger.info(
+        f"[ACMAD ANNUAL CLIMATE] Checking the newest {limit} report year(s)."
+    )
+    call_command(
+        "import_acmad_annual_climate",
+        limit=limit,
+        continue_on_error=True,
+        **_configured_source_options("annual-climate"),
+    )
+    logger.info("[ACMAD ANNUAL CLIMATE] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_climate_watch_import(self):
+    """Fetch and publish ACMAD RCC Climate Watch bulletins."""
+    if not _product_import_is_enabled(
+        "climate-watch", settings.ACMAD_CLIMATE_WATCH_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD CLIMATE WATCH] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_CLIMATE_WATCH_IMPORT_LIMIT
+    logger.info(f"[ACMAD CLIMATE WATCH] Checking the newest {limit} bulletin(s).")
+    call_command(
+        "import_acmad_climate_watch",
+        limit=limit,
+        continue_on_error=True,
+        **_configured_source_options("climate-watch"),
+    )
+    logger.info("[ACMAD CLIMATE WATCH] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_rainfall_exceedance_import(self):
+    """Fetch and publish seasonal rainfall probability-of-exceedance maps."""
+    if not _product_import_is_enabled(
+        "rainfall-exceedance", settings.ACMAD_RAINFALL_EXCEEDANCE_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD RAINFALL EXCEEDANCE] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_RAINFALL_EXCEEDANCE_IMPORT_LIMIT
+    logger.info(
+        f"[ACMAD RAINFALL EXCEEDANCE] Checking the newest {limit} issue date(s)."
+    )
+    call_command(
+        "import_acmad_rainfall_exceedance",
+        limit=limit,
+        continue_on_error=True,
+        **_configured_source_options("rainfall-exceedance"),
+    )
+    logger.info("[ACMAD RAINFALL EXCEEDANCE] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_five_day_rainfall_import(self):
+    """Fetch and publish ACMAD RCC five-day rainfall probability maps."""
+    if not _product_import_is_enabled(
+        "five-day-rainfall", settings.ACMAD_FIVE_DAY_RAINFALL_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD FIVE-DAY RAINFALL] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_FIVE_DAY_RAINFALL_IMPORT_LIMIT
+    logger.info(
+        f"[ACMAD FIVE-DAY RAINFALL] Checking the newest {limit} issue date(s)."
+    )
+    call_command(
+        "import_acmad_five_day_rainfall",
+        limit=limit,
+        continue_on_error=True,
+        **_configured_source_options("five-day-rainfall"),
+    )
+    logger.info("[ACMAD FIVE-DAY RAINFALL] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_cryosphere_import(self):
+    """Fetch and publish ACMAD RCC cryosphere reports."""
+    if not _product_import_is_enabled("cryosphere", settings.ACMAD_CRYOSPHERE_AUTO_IMPORT):
+        logger.info("[ACMAD CRYOSPHERE] Automatic import is disabled.")
+        return
+    call_command(
+        "import_acmad_cryosphere",
+        limit=settings.ACMAD_CRYOSPHERE_IMPORT_LIMIT,
+        continue_on_error=True,
+        **_configured_source_options("cryosphere"),
+    )
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_policy_briefs_import(self):
     """Fetch and publish current Policy and Decision Brief assets."""
     if not _product_import_is_enabled(
@@ -716,6 +856,55 @@ def setup_product_ingestion_tasks(sender, **kwargs):
         ),
         run_acmad_monthly_climate_import.s(),
         name="import-acmad-monthly-climate-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds(
+            "season-onset", settings.ACMAD_SEASON_ONSET_IMPORT_INTERVAL_HOURS
+        ),
+        run_acmad_season_onset_import.s(),
+        name="import-acmad-season-onset-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds(
+            "climate-change", settings.ACMAD_CLIMATE_CHANGE_IMPORT_INTERVAL_HOURS
+        ),
+        run_acmad_climate_change_import.s(),
+        name="import-acmad-climate-change-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds(
+            "annual-climate", settings.ACMAD_ANNUAL_CLIMATE_IMPORT_INTERVAL_HOURS
+        ),
+        run_acmad_annual_climate_import.s(),
+        name="import-acmad-annual-climate-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds(
+            "climate-watch", settings.ACMAD_CLIMATE_WATCH_IMPORT_INTERVAL_HOURS
+        ),
+        run_acmad_climate_watch_import.s(),
+        name="import-acmad-climate-watch-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds(
+            "rainfall-exceedance",
+            settings.ACMAD_RAINFALL_EXCEEDANCE_IMPORT_INTERVAL_HOURS,
+        ),
+        run_acmad_rainfall_exceedance_import.s(),
+        name="import-acmad-rainfall-exceedance-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds(
+            "five-day-rainfall",
+            settings.ACMAD_FIVE_DAY_RAINFALL_IMPORT_INTERVAL_HOURS,
+        ),
+        run_acmad_five_day_rainfall_import.s(),
+        name="import-acmad-five-day-rainfall-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds("cryosphere", settings.ACMAD_CRYOSPHERE_IMPORT_INTERVAL_HOURS),
+        run_acmad_cryosphere_import.s(),
+        name="import-acmad-cryosphere-automatically",
     )
     sender.add_periodic_task(
         interval_seconds(
