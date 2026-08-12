@@ -17,16 +17,16 @@ The following ten importer families have been implemented.
 
 | Priority | Product family | Imported formats | Primary source | Default automatic interval | Historical import |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Continental Multi-Hazard Outlook | PDF | ACMAD SGBD/THREDDS briefing archive | 6 hours | Yes |
-| 2 | Daily Rainfall Monitoring | PNG | ACMAD SGBD/THREDDS GSMaP archive | 6 hours | Yes |
-| 3 | Dekadal Climate Bulletin | PDF | ACMAD RCC and SGBD/THREDDS | 24 hours | Yes |
-| 4 | Policy and Decision Briefs | PDF, PNG, JPG | ACMAD SGBD/THREDDS policy-brief catalogue | 24 hours | Yes |
-| 5 | Atmospheric Analysis | PNG | ACMAD Atmospheric Analysis THREDDS | 6 hours | Yes |
-| 6 | Heat and Thermal Stress | PNG, JPG | ACMAD Heatwave THREDDS | 6 hours | Yes |
-| 7 | ITD and ITCZ Monitoring | PDF, PNG, JPG | ACMAD SGBD/THREDDS and CSAG archive | 6 hours | Yes |
-| 8 | Thunderstorm and Nowcasting | JPG | ACMAD Satellite THREDDS | 1 hour | Yes |
-| 9 | Climate and Health | PDF, PNG, JPG | Legacy ACMAD WordPress media API | 24 hours | Yes |
-| 10 | Seasonal and Long-Range Forecasts | PDF, PNG, JPG | Legacy ACMAD WordPress media API and THREDDS | 24 hours | Yes |
+| 1 | Continental Multi-Hazard Outlook | PDF | ACMAD SGBD/THREDDS briefing archive | customizable hours | Yes |
+| 2 | Daily Rainfall Monitoring | PNG | ACMAD SGBD/THREDDS GSMaP archive | customizable hours | Yes |
+| 3 | Dekadal Climate Bulletin | PDF | ACMAD RCC and SGBD/THREDDS | customizable hours | Yes |
+| 4 | Policy and Decision Briefs | PDF, PNG, JPG | ACMAD SGBD/THREDDS policy-brief catalogue | customizable hours | Yes |
+| 5 | Atmospheric Analysis | PNG | ACMAD Atmospheric Analysis THREDDS | customizable hours | Yes |
+| 6 | Heat and Thermal Stress | PNG, JPG | ACMAD Heatwave THREDDS | customizable hours | Yes |
+| 7 | ITD and ITCZ Monitoring | PDF, PNG, JPG | ACMAD SGBD/THREDDS and CSAG archive | customizable hours | Yes |
+| 8 | Thunderstorm and Nowcasting | JPG | ACMAD Satellite THREDDS | customizable hours | Yes |
+| 9 | Climate and Health | PDF, PNG, JPG | Legacy ACMAD WordPress media API | customizable hours | Yes |
+| 10 | Seasonal and Long-Range Forecasts | PDF, PNG, JPG | Legacy ACMAD WordPress media API and THREDDS | customizable hours | Yes |
 
 Automatic importing is disabled by default. The intervals above are deployment defaults and can be changed separately
 for each family in the Wagtail administration dashboard.
