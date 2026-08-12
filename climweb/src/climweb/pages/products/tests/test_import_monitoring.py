@@ -27,8 +27,8 @@ from climweb.pages.products.tasks import run_manual_product_import
 
 
 class TestProductImportRegistry(TestCase):
-    def test_registry_covers_all_eleven_importer_families(self):
-        self.assertEqual(len(PRODUCT_IMPORTS), 11)
+    def test_registry_covers_all_eighteen_importer_families(self):
+        self.assertEqual(len(PRODUCT_IMPORTS), 18)
         self.assertEqual(
             set(PRODUCT_IMPORTS_BY_KEY),
             {
@@ -36,6 +36,13 @@ class TestProductImportRegistry(TestCase):
                 "rainfall",
                 "dekadal",
                 "monthly-climate",
+                "season-onset",
+                "climate-change",
+                "annual-climate",
+                "climate-watch",
+                "rainfall-exceedance",
+                "five-day-rainfall",
+                "cryosphere",
                 "policy-briefs",
                 "atmospheric-analysis",
                 "heat-stress",
@@ -110,7 +117,7 @@ class TestProductImportMonitoring(TestCase):
         )
 
         summary = build_import_monitor_summary(rows)
-        self.assertEqual(summary["families"], 11)
+        self.assertEqual(summary["families"], 18)
         self.assertEqual(summary["imported"], 1)
         self.assertEqual(summary["failed"], 1)
 
@@ -142,7 +149,7 @@ class TestProductImportMonitoring(TestCase):
         self.assertContains(response, "Daily Rainfall Monitoring")
         self.assertContains(response, "Seasonal and Long-Range Forecasts")
         self.assertContains(response, "Upstream source unavailable")
-        self.assertContains(response, "Manage imports", count=11)
+        self.assertContains(response, "Manage imports", count=18)
         self.assertNotContains(response, "Manual historical import")
 
     @patch("climweb.pages.products.tasks.run_manual_product_import.delay")
