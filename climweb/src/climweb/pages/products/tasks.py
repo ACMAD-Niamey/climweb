@@ -532,6 +532,28 @@ def run_acmad_rainfall_exceedance_import(self):
 
 
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_five_day_rainfall_import(self):
+    """Fetch and publish ACMAD RCC five-day rainfall probability maps."""
+    if not _product_import_is_enabled(
+        "five-day-rainfall", settings.ACMAD_FIVE_DAY_RAINFALL_AUTO_IMPORT
+    ):
+        logger.info("[ACMAD FIVE-DAY RAINFALL] Automatic import is disabled.")
+        return
+
+    limit = settings.ACMAD_FIVE_DAY_RAINFALL_IMPORT_LIMIT
+    logger.info(
+        f"[ACMAD FIVE-DAY RAINFALL] Checking the newest {limit} issue date(s)."
+    )
+    call_command(
+        "import_acmad_five_day_rainfall",
+        limit=limit,
+        continue_on_error=True,
+        **_configured_source_options("five-day-rainfall"),
+    )
+    logger.info("[ACMAD FIVE-DAY RAINFALL] Automatic import complete.")
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_cryosphere_import(self):
     """Fetch and publish ACMAD RCC cryosphere reports."""
     if not _product_import_is_enabled("cryosphere", settings.ACMAD_CRYOSPHERE_AUTO_IMPORT):
@@ -870,6 +892,14 @@ def setup_product_ingestion_tasks(sender, **kwargs):
         ),
         run_acmad_rainfall_exceedance_import.s(),
         name="import-acmad-rainfall-exceedance-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds(
+            "five-day-rainfall",
+            settings.ACMAD_FIVE_DAY_RAINFALL_IMPORT_INTERVAL_HOURS,
+        ),
+        run_acmad_five_day_rainfall_import.s(),
+        name="import-acmad-five-day-rainfall-automatically",
     )
     sender.add_periodic_task(
         interval_seconds("cryosphere", settings.ACMAD_CRYOSPHERE_IMPORT_INTERVAL_HOURS),

@@ -256,6 +256,15 @@ def inspect_product_import_source(family_key, values, include_history=False):
             for asset in assets
         ]
         archive_count = len({asset["date"] for asset in assets})
+    elif family_key == "five-day-rainfall":
+        from .management.commands.import_acmad_five_day_rainfall import Command
+
+        catalogs = Command()._discover_catalogs(values["source_url"])
+        issues = [
+            {"date": catalog["date"], "source_url": catalog["catalog_url"]}
+            for catalog in catalogs
+        ]
+        archive_count = len(catalogs)
     elif family_key == "cryosphere":
         from .management.commands.import_acmad_cryosphere import Command
 

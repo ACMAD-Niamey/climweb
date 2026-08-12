@@ -268,6 +268,40 @@ PRODUCT_IMPORTS = (
         },
     },
     {
+        "key": "five-day-rainfall",
+        "label": "5-Day Rainfall Probability Forecast",
+        "product_names": ("5-Day Rainfall Probability Forecast",),
+        "source_label": "ACMAD RCC 5-Day Rainfall Probability THREDDS",
+        "enabled_setting": "ACMAD_FIVE_DAY_RAINFALL_AUTO_IMPORT",
+        "interval_setting": "ACMAD_FIVE_DAY_RAINFALL_IMPORT_INTERVAL_HOURS",
+        "periodic_task_name": "import-acmad-five-day-rainfall-automatically",
+        "celery_task": "climweb.pages.products.tasks.run_acmad_five_day_rainfall_import",
+        "command": "import_acmad_five_day_rainfall",
+        "limit_setting": "ACMAD_FIVE_DAY_RAINFALL_IMPORT_LIMIT",
+        "include_history": True,
+        "history_only": True,
+        "supports_retry": True,
+        "configurable_source": True,
+        "source_option": "catalog_url",
+        "source_defaults": {
+            "source_type": "thredds_catalog",
+            "source_url": (
+                "http://sgbd.acmad.org:8080/thredds/catalog/ACMAD/CDD/"
+                "climatemonitoringservice/Probability_of_Exceedance/5_Days/"
+                "catalog.xml"
+            ),
+            "source_system": "ACMAD RCC 5-Day Rainfall Probability THREDDS",
+            "allowed_extensions": [".jpeg", ".jpg"],
+            "filename_pattern": (
+                r"(?P<date>20\d{6})/.*/Probability_"
+                r"(?:25|50|75|100|150)mm_5_Days[12]\.jpe?g$"
+            ),
+            "date_format": "%Y%m%d",
+            "history_url_pattern": "",
+            "request_headers": {},
+        },
+    },
+    {
         "key": "cryosphere",
         "label": "Cryosphere and African Mountain Glaciers",
         "product_names": ("Cryosphere and African Mountain Glaciers",),
