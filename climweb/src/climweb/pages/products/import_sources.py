@@ -256,6 +256,12 @@ def inspect_product_import_source(family_key, values, include_history=False):
             for asset in assets
         ]
         archive_count = len({asset["date"] for asset in assets})
+    elif family_key == "cryosphere":
+        from .management.commands.import_acmad_cryosphere import Command
+
+        assets = Command()._discover_assets(values["source_url"])
+        issues = [{"date": asset["date"], "source_url": asset["source_url"]} for asset in assets]
+        archive_count = len(issues)
     else:
         inspectors = {
             "html_archive": _inspect_html,

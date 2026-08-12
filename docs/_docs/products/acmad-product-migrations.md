@@ -13,7 +13,7 @@ historical imports.
 
 ## Completed product families
 
-The following sixteen importer families have been implemented.
+The following seventeen importer families have been implemented.
 
 | Priority | Product family | Imported formats | Primary source | Default automatic interval | Historical import |
 | --- | --- | --- | --- | --- | --- |
@@ -26,6 +26,7 @@ The following sixteen importer families have been implemented.
 | 7 | Annual State of the Climate Report | PDF | ACMAD RCC archive and State of Climate THREDDS | customizable hours | Yes |
 | 8 | Climate Watch Bulletin | PDF | ACMAD RCC Drought Monitoring THREDDS and legacy RCC archive | customizable hours | Yes |
 | 9 | Seasonal Rainfall Probability of Exceedance | JPG | ACMAD RCC Climate Monitoring THREDDS | customizable hours | Yes |
+| 10 | Cryosphere and African Mountain Glaciers | PDF | ACMAD RCC Climate Monitoring archive | customizable hours | Yes |
 | 10 | Policy and Decision Briefs | PDF, PNG, JPG | ACMAD SGBD/THREDDS policy-brief catalogue | customizable hours | Yes |
 | 11 | Atmospheric Analysis | PNG | ACMAD Atmospheric Analysis THREDDS | customizable hours | Yes |
 | 12 | Heat and Thermal Stress | PNG, JPG | ACMAD Heatwave THREDDS | customizable hours | Yes |
@@ -55,6 +56,8 @@ for each family in the Wagtail administration dashboard.
   archived ACMAD/MESA climate-watch assessment.
 - **Seasonal Rainfall Probability of Exceedance** publishes ten seasonal-total precipitation probability maps at
   thresholds from 100 mm through 1000 mm. Daily and five-day products remain separate from this product family.
+- **Cryosphere and African Mountain Glaciers** publishes RCC reports on glacier status, climate impacts, and related
+  climate services.
 - **Policy and Decision Briefs** separates document briefs from image-based briefs.
 - **Atmospheric Analysis** contains five 5-day atmospheric climatology maps and three daily synoptic analysis maps.
 - **Heat and Thermal Stress** contains observed temperature products, heatwave indicators, and daily heat-index
@@ -210,7 +213,7 @@ docker compose --profile prod exec climweb_prod \
 ```
 
 Valid family keys are `multihazard`, `rainfall`, `dekadal`, `monthly-climate`, `season-onset`, `climate-change`,
-`annual-climate`, `climate-watch`, `rainfall-exceedance`, `policy-briefs`,
+`annual-climate`, `climate-watch`, `rainfall-exceedance`, `cryosphere`, `policy-briefs`,
 `atmospheric-analysis`, `heat-stress`, `itd-itcz`, `thunderstorm-nowcasting`, `climate-health`, and
 `seasonal-forecasts`.
 

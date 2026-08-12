@@ -532,6 +532,20 @@ def run_acmad_rainfall_exceedance_import(self):
 
 
 @app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
+def run_acmad_cryosphere_import(self):
+    """Fetch and publish ACMAD RCC cryosphere reports."""
+    if not _product_import_is_enabled("cryosphere", settings.ACMAD_CRYOSPHERE_AUTO_IMPORT):
+        logger.info("[ACMAD CRYOSPHERE] Automatic import is disabled.")
+        return
+    call_command(
+        "import_acmad_cryosphere",
+        limit=settings.ACMAD_CRYOSPHERE_IMPORT_LIMIT,
+        continue_on_error=True,
+        **_configured_source_options("cryosphere"),
+    )
+
+
+@app.task(base=Singleton, bind=True, lock_expiry=60 * 60 * 2)
 def run_acmad_policy_briefs_import(self):
     """Fetch and publish current Policy and Decision Brief assets."""
     if not _product_import_is_enabled(
@@ -856,6 +870,11 @@ def setup_product_ingestion_tasks(sender, **kwargs):
         ),
         run_acmad_rainfall_exceedance_import.s(),
         name="import-acmad-rainfall-exceedance-automatically",
+    )
+    sender.add_periodic_task(
+        interval_seconds("cryosphere", settings.ACMAD_CRYOSPHERE_IMPORT_INTERVAL_HOURS),
+        run_acmad_cryosphere_import.s(),
+        name="import-acmad-cryosphere-automatically",
     )
     sender.add_periodic_task(
         interval_seconds(
