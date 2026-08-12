@@ -60,7 +60,7 @@ development/index
 general-architecture
 backup-restore
 management-commands
-acmad-product-migrations
+../products/acmad-product-migrations
 extending-climweb/index
 deployment
 subdomain-deployment
