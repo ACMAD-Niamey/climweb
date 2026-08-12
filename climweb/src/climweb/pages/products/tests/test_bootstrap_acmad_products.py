@@ -12,6 +12,8 @@ ALL_IMPORTS_ENABLED = {
     "ACMAD_RAINFALL_AUTO_IMPORT": True,
     "ACMAD_RAINFALL_IMPORT_LIMIT": 7,
     "ACMAD_DEKADAL_AUTO_IMPORT": True,
+    "ACMAD_MONTHLY_CLIMATE_AUTO_IMPORT": True,
+    "ACMAD_MONTHLY_CLIMATE_IMPORT_LIMIT": 2,
     "ACMAD_POLICY_BRIEFS_AUTO_IMPORT": True,
     "ACMAD_POLICY_BRIEFS_IMPORT_LIMIT": 5,
     "ACMAD_ATMOSPHERIC_ANALYSIS_AUTO_IMPORT": True,
@@ -44,7 +46,7 @@ class TestBootstrapAcmadProducts(SimpleTestCase):
         "climweb.pages.products.management.commands."
         "bootstrap_acmad_products.call_command"
     )
-    def test_enabled_bootstrap_runs_all_ten_importers(self, importer):
+    def test_enabled_bootstrap_runs_all_eleven_importers(self, importer):
         call_command("bootstrap_acmad_products")
 
         self.assertEqual(
@@ -61,6 +63,11 @@ class TestBootstrapAcmadProducts(SimpleTestCase):
                     limit=7,
                 ),
                 call("import_acmad_dekadal_bulletin", continue_on_error=True),
+                call(
+                    "import_acmad_monthly_climate",
+                    continue_on_error=True,
+                    limit=2,
+                ),
                 call(
                     "import_acmad_policy_briefs",
                     continue_on_error=True,
@@ -112,9 +119,10 @@ class TestBootstrapAcmadProducts(SimpleTestCase):
             None,
             None,
             None,
+            None,
         ]
 
         with self.assertRaises(CommandError):
             call_command("bootstrap_acmad_products")
 
-        self.assertEqual(importer.call_count, 10)
+        self.assertEqual(importer.call_count, 11)

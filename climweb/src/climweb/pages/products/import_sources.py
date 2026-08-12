@@ -194,6 +194,17 @@ def inspect_product_import_source(family_key, values, include_history=False):
             history_url_pattern=values["history_url_pattern"],
             allowed_extensions=values["allowed_extensions"],
         )
+    elif family_key == "monthly-climate":
+        from .management.commands.import_acmad_monthly_climate import Command
+
+        assets = Command()._discover_assets(
+            values["source_url"], include_history=include_history
+        )
+        issues = [
+            {"date": asset["date"], "source_url": asset["source_url"]}
+            for asset in assets
+        ]
+        archive_count = len({asset["date"].year for asset in assets})
     else:
         inspectors = {
             "html_archive": _inspect_html,

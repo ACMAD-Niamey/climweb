@@ -13,20 +13,21 @@ historical imports.
 
 ## Completed product families
 
-The following ten importer families have been implemented.
+The following eleven importer families have been implemented.
 
 | Priority | Product family | Imported formats | Primary source | Default automatic interval | Historical import |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Continental Multi-Hazard Outlook | PDF | ACMAD SGBD/THREDDS briefing archive | customizable hours | Yes |
 | 2 | Daily Rainfall Monitoring | PNG | ACMAD SGBD/THREDDS GSMaP archive | customizable hours | Yes |
 | 3 | Dekadal Climate Bulletin | PDF | ACMAD RCC and SGBD/THREDDS | customizable hours | Yes |
-| 4 | Policy and Decision Briefs | PDF, PNG, JPG | ACMAD SGBD/THREDDS policy-brief catalogue | customizable hours | Yes |
-| 5 | Atmospheric Analysis | PNG | ACMAD Atmospheric Analysis THREDDS | customizable hours | Yes |
-| 6 | Heat and Thermal Stress | PNG, JPG | ACMAD Heatwave THREDDS | customizable hours | Yes |
-| 7 | ITD and ITCZ Monitoring | PDF, PNG, JPG | ACMAD SGBD/THREDDS and CSAG archive | customizable hours | Yes |
-| 8 | Thunderstorm and Nowcasting | JPG | ACMAD Satellite THREDDS | customizable hours | Yes |
-| 9 | Climate and Health | PDF, PNG, JPG | Legacy ACMAD WordPress media API | customizable hours | Yes |
-| 10 | Seasonal and Long-Range Forecasts | PDF, PNG, JPG | Legacy ACMAD WordPress media API and THREDDS | customizable hours | Yes |
+| 4 | Monthly Climate Diagnostic Bulletin | PNG | ACMAD RCC Monthly Climate Review THREDDS | customizable hours | Yes |
+| 5 | Policy and Decision Briefs | PDF, PNG, JPG | ACMAD SGBD/THREDDS policy-brief catalogue | customizable hours | Yes |
+| 6 | Atmospheric Analysis | PNG | ACMAD Atmospheric Analysis THREDDS | customizable hours | Yes |
+| 7 | Heat and Thermal Stress | PNG, JPG | ACMAD Heatwave THREDDS | customizable hours | Yes |
+| 8 | ITD and ITCZ Monitoring | PDF, PNG, JPG | ACMAD SGBD/THREDDS and CSAG archive | customizable hours | Yes |
+| 9 | Thunderstorm and Nowcasting | JPG | ACMAD Satellite THREDDS | customizable hours | Yes |
+| 10 | Climate and Health | PDF, PNG, JPG | Legacy ACMAD WordPress media API | customizable hours | Yes |
+| 11 | Seasonal and Long-Range Forecasts | PDF, PNG, JPG | Legacy ACMAD WordPress media API and THREDDS | customizable hours | Yes |
 
 Automatic importing is disabled by default. The intervals above are deployment defaults and can be changed separately
 for each family in the Wagtail administration dashboard.
@@ -37,6 +38,8 @@ for each family in the Wagtail administration dashboard.
   Bulletin product.
 - **Daily Rainfall Monitoring** publishes dated GSMaP 24-hour rainfall observation maps.
 - **Dekadal Climate Bulletin** publishes the available bulletin document set by issue date.
+- **Monthly Climate Diagnostic Bulletin** publishes twelve monthly rainfall-review maps, including totals, anomalies,
+  rainy-day indicators, and consecutive wet/dry/heavy-rain diagnostics.
 - **Policy and Decision Briefs** separates document briefs from image-based briefs.
 - **Atmospheric Analysis** contains five 5-day atmospheric climatology maps and three daily synoptic analysis maps.
 - **Heat and Thermal Stress** contains observed temperature products, heatwave indicators, and daily heat-index
@@ -47,6 +50,10 @@ for each family in the Wagtail administration dashboard.
 - **Climate and Health** contains weekly meningitis bulletins, technical notes, vigilance/relative-humidity outlooks,
   and verification images discovered in the audited media collection.
 - **Seasonal and Long-Range Forecasts** is a parent category whose five distinguishable product pages are listed below.
+
+The Dekadal, Monthly Climate Diagnostic, and Seasonal/Long-Range products are assigned to the exact
+**Regional Climate Center** service category. The importers reuse an existing category with that name and create it only
+when it is absent, so the same behavior works on a newly restored site and on a site where editors created the category.
 
 ## Seasonal and Long-Range Forecast structure
 
@@ -186,8 +193,9 @@ docker compose --profile prod exec climweb_prod \
   --product seasonal-forecasts
 ```
 
-Valid family keys are `multihazard`, `rainfall`, `dekadal`, `policy-briefs`, `atmospheric-analysis`, `heat-stress`,
-`itd-itcz`, `thunderstorm-nowcasting`, `climate-health`, and `seasonal-forecasts`.
+Valid family keys are `multihazard`, `rainfall`, `dekadal`, `monthly-climate`, `policy-briefs`,
+`atmospheric-analysis`, `heat-stress`, `itd-itcz`, `thunderstorm-nowcasting`, `climate-health`, and
+`seasonal-forecasts`.
 
 ## Command-line operation
 

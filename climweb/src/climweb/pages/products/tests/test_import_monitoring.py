@@ -27,14 +27,15 @@ from climweb.pages.products.tasks import run_manual_product_import
 
 
 class TestProductImportRegistry(TestCase):
-    def test_registry_covers_all_ten_importer_families(self):
-        self.assertEqual(len(PRODUCT_IMPORTS), 10)
+    def test_registry_covers_all_eleven_importer_families(self):
+        self.assertEqual(len(PRODUCT_IMPORTS), 11)
         self.assertEqual(
             set(PRODUCT_IMPORTS_BY_KEY),
             {
                 "multihazard",
                 "rainfall",
                 "dekadal",
+                "monthly-climate",
                 "policy-briefs",
                 "atmospheric-analysis",
                 "heat-stress",
@@ -109,7 +110,7 @@ class TestProductImportMonitoring(TestCase):
         )
 
         summary = build_import_monitor_summary(rows)
-        self.assertEqual(summary["families"], 10)
+        self.assertEqual(summary["families"], 11)
         self.assertEqual(summary["imported"], 1)
         self.assertEqual(summary["failed"], 1)
 
@@ -141,7 +142,7 @@ class TestProductImportMonitoring(TestCase):
         self.assertContains(response, "Daily Rainfall Monitoring")
         self.assertContains(response, "Seasonal and Long-Range Forecasts")
         self.assertContains(response, "Upstream source unavailable")
-        self.assertContains(response, "Manage imports", count=10)
+        self.assertContains(response, "Manage imports", count=11)
         self.assertNotContains(response, "Manual historical import")
 
     @patch("climweb.pages.products.tasks.run_manual_product_import.delay")
