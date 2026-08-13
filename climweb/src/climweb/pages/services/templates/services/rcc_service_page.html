@@ -1,0 +1,311 @@
+{% extends 'base.html' %}
+{% load static i18n wagtailcore_tags wagtailimages_tags lazyimages_tags wagtailiconchooser_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/services_rcc.css' %}">
+    {% if page.youtube_playlist %}
+        <link rel="stylesheet" type="text/css" href="{% static 'css/jquery.skeleton.css' %}">
+        <link rel="stylesheet" type="text/css" href="{% static 'css/video_include.css' %}">
+    {% endif %}
+{% endblock %}
+
+{% block body_class %}service_page rcc-service-page{% endblock %}
+
+{% block content %}
+{% translate "Climate intelligence for better decisions" as default_intro_title %}
+<main>
+    <section class="rcc-hero{% if not page.banner_image %} rcc-hero--plain{% endif %}">
+        {% if page.banner_image %}
+            {% image page.banner_image original as hero_image %}
+            <div class="rcc-hero__image progressive__bg progressive--not-loaded"
+                 data-progressive="{{ hero_image.url }}"
+                 style="background-image:url('{% lazy_image_url hero_image %}')"></div>
+        {% endif %}
+        <div class="rcc-hero__overlay"></div>
+        <div class="container rcc-hero__content">
+            <p class="rcc-eyebrow rcc-eyebrow--light">{% translate "WMO Regional Climate Centre for Africa" %}</p>
+            <h1>{{ page.banner_title|default:page.title }}</h1>
+            {% if page.banner_subtitle %}
+                <p class="rcc-hero__lead">{{ page.banner_subtitle }}</p>
+            {% elif page.introduction_title %}
+                <p class="rcc-hero__lead">{{ page.introduction_title }}</p>
+            {% endif %}
+            <div class="rcc-hero__actions">
+                <a class="rcc-button rcc-button--primary" href="#rcc-products">
+                    {% translate "Explore RCC products" %}
+                    <span aria-hidden="true">&#8594;</span>
+                </a>
+                <a class="rcc-button rcc-button--ghost" href="#rcc-data-services">
+                    {% translate "Access data and tools" %}
+                </a>
+            </div>
+        </div>
+        <div class="rcc-hero__status">
+            <div class="container">
+                <span class="rcc-status-dot" aria-hidden="true"></span>
+                {% translate "Operational climate information and services for Africa" %}
+            </div>
+        </div>
+    </section>
+
+    <nav class="rcc-section-nav" aria-label="{% translate 'Regional Climate Center sections' %}">
+        <div class="container rcc-section-nav__inner">
+            <a href="#rcc-products"><span>01</span>{% translate "Climate products" %}</a>
+            <a href="#rcc-data-services"><span>02</span>{% translate "Data services" %}</a>
+            <a href="#rcc-resources"><span>03</span>{% translate "Forums and resources" %}</a>
+            <a href="#rcc-updates"><span>04</span>{% translate "Latest updates" %}</a>
+        </div>
+    </nav>
+
+    <section class="rcc-overview">
+        <div class="container rcc-overview__grid">
+            <div>
+                <p class="rcc-eyebrow">{% translate "Regional expertise, continental reach" %}</p>
+                <h2>{{ page.introduction_title|default:default_intro_title }}</h2>
+            </div>
+            <div class="rcc-overview__copy format-text">
+                {% if page.introduction_text %}
+                    {{ page.introduction_text|richtext }}
+                {% else %}
+                    <p>{% translate "ACMAD provides authoritative monitoring, forecasting and climate data services that help institutions and communities across Africa anticipate climate risks." %}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="rcc-functions">
+            <article class="rcc-function">
+                <span class="rcc-function__number">01</span>
+                <h3>{% translate "Climate monitoring" %}</h3>
+                <p>{% translate "Track current conditions, anomalies and emerging hazards across the continent." %}</p>
+            </article>
+            <article class="rcc-function">
+                <span class="rcc-function__number">02</span>
+                <h3>{% translate "Long-range forecasting" %}</h3>
+                <p>{% translate "Translate seasonal signals into usable outlooks for regional decision-makers." %}</p>
+            </article>
+            <article class="rcc-function">
+                <span class="rcc-function__number">03</span>
+                <h3>{% translate "Data services" %}</h3>
+                <p>{% translate "Improve access to quality-controlled observations, estimates and climate datasets." %}</p>
+            </article>
+            <article class="rcc-function">
+                <span class="rcc-function__number">04</span>
+                <h3>{% translate "Regional coordination" %}</h3>
+                <p>{% translate "Support climate outlook forums, training and cooperation with national services." %}</p>
+            </article>
+        </div>
+    </section>
+
+    <section id="rcc-products" class="rcc-products rcc-section">
+        <div class="container">
+            <div class="rcc-section-heading">
+                <div>
+                    <p class="rcc-eyebrow">{% translate "Operational catalogue" %}</p>
+                    <h2>{% translate "Regional Climate Center products" %}</h2>
+                </div>
+                {% if page.products %}
+                    <p class="rcc-section-heading__aside">
+                        {% blocktranslate count counter=page.products|length %}{{ counter }} product available{% plural %}{{ counter }} products available{% endblocktranslate %}
+                    </p>
+                {% endif %}
+            </div>
+
+            {% if page.products %}
+                <div class="rcc-product-grid">
+                    {% for product in page.products %}
+                        <article class="rcc-product-card">
+                            <a href="{{ product.url }}" aria-label="{{ product.title }}">
+                                <div class="rcc-product-card__media">
+                                    {% if product.listing_image %}
+                                        {% image product.listing_image fill-720x440 as product_image %}
+                                        <img class="progressive__img progressive--not-loaded"
+                                             src="{% lazy_image_url product_image %}"
+                                             data-progressive="{{ product_image.url }}"
+                                             alt="">
+                                    {% else %}
+                                        <div class="rcc-product-card__placeholder" aria-hidden="true"></div>
+                                    {% endif %}
+                                    <span class="rcc-product-card__type">{% translate "Climate product" %}</span>
+                                </div>
+                                <div class="rcc-product-card__body">
+                                    <h3>{{ product.title }}</h3>
+                                    {% with latest=product.all_products.first %}
+                                        {% if latest %}
+                                            <p>{% translate "Latest issue" %}: <time datetime="{{ latest.date|date:'Y-m-d' }}">{{ latest.date|date:"j M Y" }}</time></p>
+                                        {% else %}
+                                            <p>{% translate "Browse available issues" %}</p>
+                                        {% endif %}
+                                    {% endwith %}
+                                    <span class="rcc-product-card__link">
+                                        {% translate "View product" %} <span aria-hidden="true">&#8594;</span>
+                                    </span>
+                                </div>
+                            </a>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="rcc-empty-state">
+                    <h3>{% translate "The RCC catalogue is being prepared" %}</h3>
+                    <p>{% translate "Published products assigned to the Regional Climate Center will appear here automatically." %}</p>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <section id="rcc-data-services" class="rcc-data rcc-section">
+        <div class="container rcc-data__layout">
+            <div class="rcc-data__intro">
+                <p class="rcc-eyebrow rcc-eyebrow--light">{% translate "Data and infrastructure" %}</p>
+                <h2>{% translate "Climate data services for Africa" %}</h2>
+                <p>{% translate "The RCC supports access to observations and gridded datasets, regional quality control, standardized climate indices and interoperable data delivery." %}</p>
+            </div>
+            <div class="rcc-data__capabilities">
+                <div><strong>{% translate "Observations" %}</strong><span>{% translate "Station monitoring and GTS-SYNOP data" %}</span></div>
+                <div><strong>{% translate "Quality control" %}</strong><span>{% translate "Regional datasets and metadata management" %}</span></div>
+                <div><strong>{% translate "Gridded data" %}</strong><span>{% translate "Precipitation and temperature estimates" %}</span></div>
+                <div><strong>{% translate "Delivery" %}</strong><span>{% translate "Standards-based catalogues and data tools" %}</span></div>
+            </div>
+        </div>
+
+        {% if page.applications.all %}
+            <div class="container rcc-applications">
+                {% include 'applications_include.html' with applications=page.applications.all %}
+            </div>
+        {% endif %}
+    </section>
+
+    {% if page.what_we_do_items %}
+        <section class="rcc-section rcc-editorial-section">
+            <div class="container">
+                <div class="rcc-section-heading">
+                    <div>
+                        <p class="rcc-eyebrow">{% translate "Our work" %}</p>
+                        <h2>{% translate "How the RCC supports the region" %}</h2>
+                    </div>
+                </div>
+                <div class="columns is-multiline is-mobile is-centered">
+                    {% for block in page.what_we_do_items %}
+                        {% include_block block %}
+                    {% endfor %}
+                </div>
+                {% if page.what_we_do_button_text and page.what_we_do_button_link %}
+                    <a class="rcc-text-link" href="{{ page.what_we_do_button_link.url }}">
+                        {{ page.what_we_do_button_text }} <span aria-hidden="true">&#8594;</span>
+                    </a>
+                {% endif %}
+            </div>
+        </section>
+    {% endif %}
+
+    {% if page.feature_block_items %}
+        <section class="rcc-section rcc-feature-blocks">
+            <div class="container">
+                {% include 'feature_block_section.html' with feature_blocks=page.feature_block_items %}
+            </div>
+        </section>
+    {% endif %}
+
+    <section id="rcc-resources" class="rcc-resources rcc-section">
+        <div class="container">
+            <div class="rcc-section-heading">
+                <div>
+                    <p class="rcc-eyebrow">{% translate "Knowledge and coordination" %}</p>
+                    <h2>{% translate "Forums, training and resources" %}</h2>
+                </div>
+            </div>
+
+            {% if page.flex_pages %}
+                <div class="rcc-resource-list">
+                    {% for resource in page.flex_pages %}
+                        <a href="{{ resource.url }}">
+                            <span class="rcc-resource-list__index">{{ forloop.counter|stringformat:"02d" }}</span>
+                            <span class="rcc-resource-list__title">{{ resource.title }}</span>
+                            <span class="rcc-resource-list__arrow" aria-hidden="true">&#8594;</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="rcc-resource-callout">
+                    <div>
+                        <h3>{% translate "Regional Climate Outlook Forums" %}</h3>
+                        <p>{% translate "A collaborative platform for producing and communicating consensus climate outlooks across Africa's regions." %}</p>
+                    </div>
+                    <div>
+                        <h3>{% translate "Capacity development" %}</h3>
+                        <p>{% translate "Training materials and technical guidance strengthen climate services and data capabilities across NMHSs." %}</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
+    {% if page.extra_content %}
+        {% for block in page.extra_content %}
+            <section class="rcc-section rcc-extra-content{% if block.block_type == 'accordion' %} ac-section{% endif %}">
+                <div class="container">{% include_block block %}</div>
+            </section>
+        {% endfor %}
+    {% endif %}
+
+    {% if page.projects.all %}
+        <section class="rcc-section rcc-projects">
+            <div class="container">{% include 'projects_include.html' with page=page %}</div>
+        </section>
+    {% endif %}
+
+    {% if page.events %}
+        <section class="rcc-section rcc-events">
+            <div class="container">
+                <p class="rcc-eyebrow">{% translate "Connect" %}</p>
+                <h2>{% translate "Upcoming events" %}</h2>
+                {% include 'events_include.html' with events=page.events %}
+            </div>
+        </section>
+    {% endif %}
+
+    {% if page.latest_updates %}
+        <div id="rcc-updates">{% include 'home/section/updates_include.html' %}</div>
+    {% else %}
+        <div id="rcc-updates"></div>
+    {% endif %}
+
+    {% if page.youtube_playlist %}
+        <section class="rcc-section rcc-videos" id="videoSection">
+            <div class="container">
+                <p class="rcc-eyebrow">{% translate "Latest media" %}</p>
+                <h2>{% translate "RCC highlights and videos" %}</h2>
+                {% include 'videos_skeleton.html' %}
+            </div>
+        </section>
+    {% endif %}
+</main>
+{% endblock content %}
+
+{% block extra_js %}
+    {{ block.super }}
+    {% if page.youtube_playlist %}
+        <script src="{% static 'js/jquery.scheletrone.js' %}"></script>
+        <script>
+            $(document).ready(function () {
+                $('#videoWrapper').scheletrone({
+                    onComplete: function () {
+                        $.ajax({
+                            url: "{{ youtube_playlist_url }}",
+                            dataType: "html",
+                            success: function (data) {
+                                if (data) {
+                                    $('#videoWrapper').html('').append(data);
+                                } else {
+                                    $('#videoSection').remove();
+                                }
+                            },
+                            error: function () { $('#videoSection').remove(); }
+                        });
+                    }
+                });
+            });
+        </script>
+    {% endif %}
+{% endblock extra_js %}

@@ -37,3 +37,23 @@ class TestServicesPages(WagtailPageTestCase):
         meta_tags = get_html_meta_tags(resp.content)
         
         test_page_meta_tags(self, self.service2_page, meta_tags, request=resp.wsgi_request)
+
+    def test_rcc_service_uses_dedicated_landing_page(self):
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center",
+            service__name="Regional Climate Center",
+        )
+
+        response = self.client.get(rcc_page.get_url())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "services/rcc_service_page.html")
+        self.assertContains(response, "Regional Climate Center products")
+        self.assertContains(response, "Climate data services for Africa")
+
+    def test_other_services_keep_default_template(self):
+        response = self.client.get(self.service1_page.get_url())
+
+        self.assertTemplateUsed(response, "services/service_page.html")
+        self.assertTemplateNotUsed(response, "services/rcc_service_page.html")

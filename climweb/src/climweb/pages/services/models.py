@@ -70,6 +70,8 @@ class ServiceIndexPage(MetadataPageMixin, Page):
 
 class ServicePage(AbstractBannerWithIntroPage):
     template = 'services/service_page.html'
+    rcc_template = 'services/rcc_service_page.html'
+    rcc_service_name = 'Regional Climate Center'
     parent_page_types = ['services.ServiceIndexPage']
     subpage_types = ['flex_page.FlexPage', ]
     show_in_menus_default = True
@@ -143,6 +145,12 @@ class ServicePage(AbstractBannerWithIntroPage):
         verbose_name = _('Service Page')
         verbose_name_plural = _('Service Pages')
         ordering = ['service__order']
+
+    def get_template(self, request, *args, **kwargs):
+        """Use the dedicated landing page for the Regional Climate Center."""
+        if self.service.name == self.rcc_service_name:
+            return self.rcc_template
+        return super().get_template(request, *args, **kwargs)
     
     @cached_property
     def products(self):
