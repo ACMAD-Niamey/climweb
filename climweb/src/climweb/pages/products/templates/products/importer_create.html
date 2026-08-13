@@ -1,7 +1,7 @@
 {% extends "wagtailadmin/base.html" %}
 {% load i18n %}
 
-{% block titletag %}{% translate "Create Product Importer" %}{% endblock %}
+{% block titletag %}{% if importer %}{% translate "Edit Product Importer" %}{% else %}{% translate "Create Product Importer" %}{% endif %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -31,11 +31,21 @@
 {% endblock %}
 
 {% block content %}
-{% translate "Create Product Importer" as header_title %}
+{% if importer %}
+    {% translate "Edit Product Importer" as header_title %}
+{% else %}
+    {% translate "Create Product Importer" as header_title %}
+{% endif %}
 {% include "wagtailadmin/shared/header.html" with title=header_title icon="plus" %}
 
 <div class="nice-padding">
-    <p><a href="{% url 'product_import_monitor' %}">← {% translate "All product imports" %}</a></p>
+    <p>
+        {% if importer %}
+            <a href="{% url 'product_import_family' family_key=importer.key %}">← {% translate "Importer details" %}</a>
+        {% else %}
+            <a href="{% url 'product_import_monitor' %}">← {% translate "All product imports" %}</a>
+        {% endif %}
+    </p>
     <section class="importer-form-panel">
         <h2>{% translate "Importer destination and source schema" %}</h2>
         <p class="import-meta">
@@ -60,7 +70,11 @@
             <div class="importer-actions">
                 <button class="button" type="submit" name="action" value="test_source">{% translate "Test connection" %}</button>
                 <button class="button" type="submit" name="action" value="preview_source">{% translate "Preview discovered files" %}</button>
-                <button class="button button-primary" type="submit" name="action" value="create_importer">{% translate "Create importer" %}</button>
+                {% if importer %}
+                    <button class="button button-primary" type="submit" name="action" value="save_importer">{% translate "Save changes" %}</button>
+                {% else %}
+                    <button class="button button-primary" type="submit" name="action" value="create_importer">{% translate "Create importer" %}</button>
+                {% endif %}
             </div>
         </form>
     </section>

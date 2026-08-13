@@ -19,6 +19,7 @@ from climweb.pages.products.import_registry import (
 )
 from climweb.pages.products.models import (
     ConfiguredProductImporter,
+    ConfiguredProductImporterAuditEvent,
     ProductImportRun,
     ProductImportSchedule,
     ProductImportSourceConfig,
@@ -213,6 +214,11 @@ class TestProductImportMonitoring(TestCase):
             progress_percent=100,
             current_phase="Import completed",
             output="Rainfall preview output",
+            error_message=(
+                "The upstream rainfall archive returned an unexpected response "
+                "while processing a historical date range, so the importer could "
+                "not finish downloading the selected records."
+            ),
         )
         ProductImportRun.objects.create(
             product_family="seasonal-forecasts",
@@ -243,6 +249,13 @@ class TestProductImportMonitoring(TestCase):
             f'data-output-source="run-output-{rainfall_run.pk}"',
         )
         self.assertContains(response, "View output")
+        self.assertContains(response, "View error")
+        self.assertContains(
+            response,
+            f'data-output-source="run-error-{rainfall_run.pk}"',
+        )
+        self.assertContains(response, 'id="run-error-')
+        self.assertContains(response, "The upstream rainfall archive returned")
         self.assertContains(response, "Automatic import schedule")
         self.assertContains(response, "Save schedule")
 
@@ -271,6 +284,146 @@ class TestProductImportMonitoring(TestCase):
         self.assertContains(response, "Stop import")
         self.assertContains(response, 'name="run_id" value="%s"' % run.pk)
         self.assertContains(response, "data-stop-import-form")
+
+    def test_family_page_renders_retry_button_only_for_failed_import(self):
+        user = get_user_model().objects.create_superuser(
+            username="retry-button-admin",
+            email="retry-button@example.com",
+            password="test-password",
+        )
+        failed_run = ProductImportRun.objects.create(
+            product_family="rainfall",
+            mode=ProductImportRun.MODE_IMPORT,
+            status=ProductImportRun.STATUS_FAILED,
+            from_date=date(2026, 8, 1),
+            to_date=date(2026, 8, 10),
+            error_message="Download failed",
+        )
+        ProductImportRun.objects.create(
+            product_family="rainfall",
+            mode=ProductImportRun.MODE_IMPORT,
+            status=ProductImportRun.STATUS_SUCCEEDED,
+            from_date=date(2026, 7, 1),
+            to_date=date(2026, 7, 10),
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            )
+        )
+
+        self.assertContains(response, "Retry import", count=1)
+        self.assertContains(
+            response,
+            'name="action" value="retry_import"',
+            count=1,
+        )
+        self.assertContains(
+            response,
+            'name="run_id" value="%s"' % failed_run.pk,
+        )
+
+    @patch("climweb.pages.products.tasks.run_manual_product_import.delay")
+    def test_admin_can_retry_failed_import_with_original_settings(self, delay):
+        delay.return_value = SimpleNamespace(id="retry-task-123")
+        user = get_user_model().objects.create_superuser(
+            username="retry-admin",
+            email="retry@example.com",
+            password="test-password",
+        )
+        failed_run = ProductImportRun.objects.create(
+            product_family="rainfall",
+            mode=ProductImportRun.MODE_IMPORT,
+            status=ProductImportRun.STATUS_FAILED,
+            from_date=date(2025, 1, 1),
+            to_date=date(2025, 12, 31),
+            limit=375,
+            refresh_existing=True,
+            retry_failures=False,
+            task_id="original-task",
+            output="Original output",
+            error_message="Original failure",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+            {"action": "retry_import", "run_id": failed_run.pk},
+        )
+
+        self.assertRedirects(
+            response,
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+        )
+        failed_run.refresh_from_db()
+        self.assertEqual(failed_run.status, ProductImportRun.STATUS_FAILED)
+        self.assertEqual(failed_run.task_id, "original-task")
+        self.assertEqual(failed_run.output, "Original output")
+        self.assertEqual(failed_run.error_message, "Original failure")
+
+        retry_run = ProductImportRun.objects.exclude(pk=failed_run.pk).get()
+        self.assertEqual(retry_run.status, ProductImportRun.STATUS_QUEUED)
+        self.assertEqual(retry_run.mode, failed_run.mode)
+        self.assertEqual(retry_run.from_date, failed_run.from_date)
+        self.assertEqual(retry_run.to_date, failed_run.to_date)
+        self.assertEqual(retry_run.limit, 375)
+        self.assertTrue(retry_run.refresh_existing)
+        self.assertTrue(retry_run.retry_failures)
+        self.assertEqual(retry_run.requested_by, user)
+        self.assertEqual(retry_run.task_id, "retry-task-123")
+        self.assertIn(f"#{failed_run.pk}", retry_run.current_phase)
+        delay.assert_called_once_with(retry_run.pk)
+
+        history_response = self.client.get(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            )
+        )
+        self.assertContains(history_response, "Retry failures")
+
+    @patch("climweb.pages.products.tasks.run_manual_product_import.delay")
+    def test_admin_cannot_retry_a_successful_import(self, delay):
+        user = get_user_model().objects.create_superuser(
+            username="invalid-retry-admin",
+            email="invalid-retry@example.com",
+            password="test-password",
+        )
+        succeeded_run = ProductImportRun.objects.create(
+            product_family="rainfall",
+            mode=ProductImportRun.MODE_IMPORT,
+            status=ProductImportRun.STATUS_SUCCEEDED,
+            from_date=date(2026, 8, 1),
+            to_date=date(2026, 8, 10),
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+            {"action": "retry_import", "run_id": succeeded_run.pk},
+        )
+
+        self.assertRedirects(
+            response,
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+        )
+        self.assertEqual(ProductImportRun.objects.count(), 1)
+        delay.assert_not_called()
 
     @patch("climweb.config.celery.app.control.revoke")
     def test_admin_can_stop_queued_manual_import(self, revoke):
@@ -801,6 +954,41 @@ class TestConfiguredProductImporterCreation(TestCase):
         values.update(overrides)
         return values
 
+    def create_importer(self, **overrides):
+        values = {
+            "key": "new-rcc-bulletin",
+            "label": "New RCC Bulletin",
+            "product_page": self.product_page,
+            "product_item_type": self.item_type,
+            "status": ConfiguredProductImporter.STATUS_DRAFT,
+            "default_interval_hours": 24,
+            "default_source_config": {
+                "source_type": "html_archive",
+                "source_url": "https://data.example.com/bulletins/",
+                "source_system": "RCC Bulletin Archive",
+                "allowed_extensions": [".pdf"],
+                "filename_pattern": r"bulletin_(?P<date>20\d{6})\.pdf$",
+                "date_format": "%Y%m%d",
+                "history_url_pattern": "",
+                "request_headers": {},
+            },
+            "created_by": self.user,
+        }
+        values.update(overrides)
+        importer = ConfiguredProductImporter.objects.create(**values)
+        ProductImportSourceConfig.objects.create(
+            product_family=importer.key,
+            updated_by=self.user,
+            **importer.default_source_config,
+        )
+        ProductImportSchedule.objects.create(
+            product_family=importer.key,
+            interval_hours=importer.default_interval_hours,
+            enabled_override=importer.status == ConfiguredProductImporter.STATUS_ACTIVE,
+            updated_by=self.user,
+        )
+        return importer
+
     def test_monitor_page_links_to_create_importer_wizard(self):
         response = self.client.get(reverse("product_import_monitor"))
 
@@ -855,6 +1043,11 @@ class TestConfiguredProductImporterCreation(TestCase):
         self.assertEqual(importer.product_item_type, self.item_type)
         self.assertEqual(importer.status, ConfiguredProductImporter.STATUS_DRAFT)
         self.assertEqual(importer.created_by, self.user)
+        event = importer.audit_events.get()
+        self.assertEqual(
+            event.action, ConfiguredProductImporterAuditEvent.ACTION_CREATED
+        )
+        self.assertEqual(event.actor, self.user)
         config = ProductImportSourceConfig.objects.get(product_family=importer.key)
         self.assertEqual(config.allowed_extensions, [".pdf"])
         schedule = ProductImportSchedule.objects.get(product_family=importer.key)
@@ -944,6 +1137,135 @@ class TestConfiguredProductImporterCreation(TestCase):
         )
         self.assertEqual(periodic_task.args, '["scheduled-rcc-bulletin"]')
         self.assertTrue(periodic_task.enabled)
+
+    @patch("climweb.pages.products.import_sources.inspect_product_import_source")
+    def test_admin_can_edit_importer_and_records_audit_event(self, inspect_source):
+        inspect_source.return_value = {
+            "archive_count": 1,
+            "discovered_count": 1,
+            "issues": [{
+                "date": date(2026, 8, 11),
+                "source_url": "https://changed.example.com/report_20260811.pdf",
+            }],
+        }
+        importer = self.create_importer()
+
+        response = self.client.post(
+            reverse(
+                "configured_product_importer_edit",
+                kwargs={"family_key": importer.key},
+            ),
+            self.form_data(
+                action="save_importer",
+                label="Updated RCC Bulletin",
+                key="attempted-key-change",
+                source_url="https://changed.example.com/",
+                filename_pattern=r"report_(?P<date>20\d{6})\.pdf$",
+                default_interval_hours=12,
+            ),
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("product_import_family", kwargs={"family_key": importer.key}),
+        )
+        importer.refresh_from_db()
+        self.assertEqual(importer.key, "new-rcc-bulletin")
+        self.assertEqual(importer.label, "Updated RCC Bulletin")
+        self.assertEqual(importer.default_interval_hours, 12)
+        config = ProductImportSourceConfig.objects.get(product_family=importer.key)
+        self.assertEqual(config.source_url, "https://changed.example.com/")
+        event = importer.audit_events.get(
+            action=ConfiguredProductImporterAuditEvent.ACTION_UPDATED
+        )
+        self.assertIn("label", event.changes)
+        self.assertIn("source", event.changes)
+
+    def test_admin_can_archive_and_restore_importer_without_losing_history(self):
+        importer = self.create_importer(
+            status=ConfiguredProductImporter.STATUS_ACTIVE
+        )
+        run = ProductImportRun.objects.create(
+            product_family=importer.key,
+            mode=ProductImportRun.MODE_PREVIEW,
+            status=ProductImportRun.STATUS_SUCCEEDED,
+            from_date=date(2026, 1, 1),
+            to_date=date(2026, 1, 31),
+        )
+        from climweb.pages.products.import_scheduling import sync_product_import_schedule
+
+        sync_product_import_schedule(importer.key, 24, enabled=True)
+
+        response = self.client.post(
+            reverse("product_import_family", kwargs={"family_key": importer.key}),
+            {"action": "archive_importer"},
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("product_import_family", kwargs={"family_key": importer.key}),
+        )
+        importer.refresh_from_db()
+        self.assertEqual(importer.status, ConfiguredProductImporter.STATUS_ARCHIVED)
+        self.assertTrue(ProductImportRun.objects.filter(pk=run.pk).exists())
+        self.assertFalse(
+            ProductImportSchedule.objects.get(
+                product_family=importer.key
+            ).enabled_override
+        )
+        self.assertFalse(
+            PeriodicTask.objects.get(
+                name=f"import-configured-product-{importer.key}"
+            ).enabled
+        )
+        self.assertTrue(
+            importer.audit_events.filter(
+                action=ConfiguredProductImporterAuditEvent.ACTION_ARCHIVED
+            ).exists()
+        )
+        page = self.client.get(
+            reverse("product_import_family", kwargs={"family_key": importer.key})
+        )
+        self.assertContains(page, "This importer is archived")
+        self.assertNotContains(page, "Queue import")
+        self.assertContains(page, "Importer audit trail")
+
+        self.client.post(
+            reverse("product_import_family", kwargs={"family_key": importer.key}),
+            {"action": "restore_importer"},
+        )
+        importer.refresh_from_db()
+        self.assertEqual(importer.status, ConfiguredProductImporter.STATUS_DRAFT)
+        self.assertTrue(
+            importer.audit_events.filter(
+                action=ConfiguredProductImporterAuditEvent.ACTION_RESTORED
+            ).exists()
+        )
+
+    def test_archive_is_blocked_while_manual_import_is_active(self):
+        importer = self.create_importer()
+        ProductImportRun.objects.create(
+            product_family=importer.key,
+            mode=ProductImportRun.MODE_IMPORT,
+            status=ProductImportRun.STATUS_RUNNING,
+            from_date=date(2026, 1, 1),
+            to_date=date(2026, 1, 31),
+        )
+
+        response = self.client.post(
+            reverse("product_import_family", kwargs={"family_key": importer.key}),
+            {"action": "archive_importer"},
+            follow=True,
+        )
+
+        importer.refresh_from_db()
+        self.assertEqual(importer.status, ConfiguredProductImporter.STATUS_DRAFT)
+        self.assertContains(response, "Stop or wait for active manual imports")
+        self.assertFalse(
+            importer.audit_events.filter(
+                action=ConfiguredProductImporterAuditEvent.ACTION_ARCHIVED
+            ).exists()
+        )
 
     @patch("climweb.pages.products.tasks.call_command")
     def test_running_manual_import_stops_at_progress_checkpoint(self, call_command):

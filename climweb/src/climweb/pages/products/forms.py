@@ -243,6 +243,41 @@ class ConfiguredProductImporterForm(forms.ModelForm):
             "default_interval_hours": "Automatic check interval from 1 hour to 30 days.",
         }
 
+    def __init__(self, *args, source_config=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["status"].choices = [
+            choice
+            for choice in ConfiguredProductImporter.STATUS_CHOICES
+            if choice[0] != ConfiguredProductImporter.STATUS_ARCHIVED
+        ]
+        if self.instance and self.instance.pk:
+            self.fields["key"].disabled = True
+            self.fields["key"].help_text = (
+                "The importer key is permanent because import history and schedules use it."
+            )
+            values = source_config or self.instance.default_source_config
+            if values:
+                self.initial.update(
+                    {
+                        "source_type": values.get("source_type"),
+                        "source_url": values.get("source_url"),
+                        "source_system": values.get("source_system"),
+                        "allowed_extensions": ", ".join(
+                            values.get("allowed_extensions", [])
+                        ),
+                        "filename_pattern": values.get("filename_pattern"),
+                        "date_format": values.get("date_format"),
+                        "history_url_pattern": values.get(
+                            "history_url_pattern", ""
+                        ),
+                        "request_headers": json.dumps(
+                            values.get("request_headers", {}),
+                            indent=2,
+                            sort_keys=True,
+                        ),
+                    }
+                )
+
     def clean_allowed_extensions(self):
         values = [
             value.strip().lower()
