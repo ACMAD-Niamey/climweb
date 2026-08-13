@@ -6,6 +6,7 @@ from wagtail.admin.menu import MenuItem
 from .models import ProductPage
 from .views import (
     configured_product_importer_create_view,
+    configured_product_importer_edit_view,
     product_import_family_view,
     product_import_monitor_view,
     product_import_status_view,
@@ -36,6 +37,11 @@ def urlconf_products():
             'product-imports/create/',
             configured_product_importer_create_view,
             name="configured_product_importer_create",
+        ),
+        path(
+            'product-imports/<slug:family_key>/edit/',
+            configured_product_importer_edit_view,
+            name="configured_product_importer_edit",
         ),
         path(
             'product-imports/status/',

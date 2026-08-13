@@ -23,11 +23,21 @@ from .import_monitoring import (
 from .import_registry import get_product_import_definition
 from .models import (
     ConfiguredProductImporter,
+    ConfiguredProductImporterAuditEvent,
     ProductImportRun,
     ProductImportSchedule,
     ProductImportSourceConfig,
     ProductPage,
 )
+
+
+def _record_importer_audit(importer, action, actor, changes=None):
+    return ConfiguredProductImporterAuditEvent.objects.create(
+        importer=importer,
+        action=action,
+        actor=actor,
+        changes=changes or {},
+    )
 
 
 @user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
@@ -116,6 +126,19 @@ def configured_product_importer_create_view(request):
                         importer.default_source_config = form.source_values
                         importer.created_by = request.user
                         importer.save()
+                        _record_importer_audit(
+                            importer,
+                            ConfiguredProductImporterAuditEvent.ACTION_CREATED,
+                            request.user,
+                            {
+                                "status": importer.status,
+                                "destination_product_page": importer.product_page.title,
+                                "destination_product_type": str(
+                                    importer.product_item_type
+                                ),
+                                "source_url": form.source_values["source_url"],
+                            },
+                        )
                         ProductImportSourceConfig.objects.create(
                             product_family=importer.key,
                             updated_by=request.user,
@@ -160,12 +183,179 @@ def configured_product_importer_create_view(request):
 
 
 @user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
+def configured_product_importer_edit_view(request, family_key):
+    importer = get_object_or_404(
+        ConfiguredProductImporter.objects.select_related(
+            "product_page__product", "product_item_type__category"
+        ),
+        key=family_key,
+    )
+    if importer.status == ConfiguredProductImporter.STATUS_ARCHIVED:
+        messages.warning(request, "Restore this importer before editing it.")
+        return redirect("product_import_family", family_key=family_key)
+
+    source_config = ProductImportSourceConfig.objects.filter(
+        product_family=family_key
+    ).first()
+    source_values = (
+        {
+            field: getattr(source_config, field)
+            for field in (
+                "source_type",
+                "source_url",
+                "source_system",
+                "allowed_extensions",
+                "filename_pattern",
+                "date_format",
+                "history_url_pattern",
+                "request_headers",
+            )
+        }
+        if source_config
+        else importer.default_source_config
+    )
+    action = request.POST.get("action", "")
+    form = ConfiguredProductImporterForm(
+        request.POST if request.method == "POST" else None,
+        instance=importer,
+        source_config=source_values,
+    )
+    source_preview = None
+    if request.method == "POST" and form.is_valid():
+        from .import_sources import inspect_product_import_source
+
+        try:
+            source_preview = inspect_product_import_source(
+                importer.key,
+                form.source_values,
+                include_history=False,
+            )
+        except Exception as exc:
+            messages.error(request, f"Source check failed: {exc}")
+        else:
+            if action == "test_source":
+                messages.success(
+                    request,
+                    "Connection successful. "
+                    f"Discovered {source_preview['discovered_count']} matching file(s).",
+                )
+                source_preview = None
+            elif action == "preview_source":
+                messages.success(
+                    request,
+                    f"Preview found {source_preview['discovered_count']} matching file(s).",
+                )
+            elif action == "save_importer":
+                if source_preview["discovered_count"] == 0:
+                    form.add_error(
+                        "filename_pattern",
+                        "No matching dated files were found. Adjust the source schema before saving.",
+                    )
+                else:
+                    original = ConfiguredProductImporter.objects.get(pk=importer.pk)
+                    old_values = {
+                        "label": original.label,
+                        "product_page": original.product_page_id,
+                        "product_item_type": original.product_item_type_id,
+                        "status": original.status,
+                        "default_interval_hours": original.default_interval_hours,
+                        "source": source_values,
+                    }
+                    with transaction.atomic():
+                        importer = form.save(commit=False)
+                        importer.default_source_config = form.source_values
+                        importer.save()
+                        ProductImportSourceConfig.objects.update_or_create(
+                            product_family=importer.key,
+                            defaults={
+                                **form.source_values,
+                                "updated_by": request.user,
+                            },
+                        )
+                        schedule, _ = ProductImportSchedule.objects.update_or_create(
+                            product_family=importer.key,
+                            defaults={
+                                "interval_hours": importer.default_interval_hours,
+                                "enabled_override": (
+                                    importer.status
+                                    == ConfiguredProductImporter.STATUS_ACTIVE
+                                ),
+                                "updated_by": request.user,
+                            },
+                        )
+                        new_values = {
+                            "label": importer.label,
+                            "product_page": importer.product_page_id,
+                            "product_item_type": importer.product_item_type_id,
+                            "status": importer.status,
+                            "default_interval_hours": importer.default_interval_hours,
+                            "source": form.source_values,
+                        }
+                        changes = {
+                            key: {"from": old_values[key], "to": value}
+                            for key, value in new_values.items()
+                            if old_values[key] != value
+                        }
+                        _record_importer_audit(
+                            importer,
+                            ConfiguredProductImporterAuditEvent.ACTION_UPDATED,
+                            request.user,
+                            changes,
+                        )
+                    from .import_scheduling import sync_product_import_schedule
+
+                    try:
+                        sync_product_import_schedule(
+                            importer.key,
+                            schedule.interval_hours,
+                            enabled=(
+                                importer.status
+                                == ConfiguredProductImporter.STATUS_ACTIVE
+                            ),
+                        )
+                    except Exception as exc:
+                        messages.warning(
+                            request,
+                            "Changes were saved, but the live scheduler could not "
+                            f"be updated: {exc}",
+                        )
+                    messages.success(request, f"{importer.label} was updated.")
+                    return redirect(
+                        "product_import_family", family_key=importer.key
+                    )
+
+    return TemplateResponse(
+        request,
+        "products/importer_create.html",
+        {
+            "form": form,
+            "importer": importer,
+            "source_preview": source_preview,
+        },
+    )
+
+
+@user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
 def product_import_family_view(request, family_key):
     definition = get_product_import_definition(family_key)
     if definition is None:
         raise Http404("Unknown product importer")
 
     action = request.POST.get("action", "manual_import")
+    configured_importer = (
+        ConfiguredProductImporter.objects.filter(key=family_key).first()
+        if definition.get("is_configured")
+        else None
+    )
+    if (
+        request.method == "POST"
+        and configured_importer
+        and configured_importer.status
+        == ConfiguredProductImporter.STATUS_ARCHIVED
+        and action != "restore_importer"
+    ):
+        messages.warning(request, "Restore this importer before making changes.")
+        return redirect("product_import_family", family_key=family_key)
     source_config = None
     source_form = None
     source_preview = None
@@ -189,7 +379,86 @@ def product_import_family_view(request, family_key):
         )
 
     source_actions = {"save_source", "test_source", "preview_source"}
-    if request.method == "POST" and action == "restore_source_defaults":
+    if request.method == "POST" and action == "archive_importer":
+        if configured_importer is None:
+            raise Http404("Only dashboard-created importers can be archived")
+        active_runs = ProductImportRun.objects.filter(
+            product_family=family_key,
+            status__in={
+                ProductImportRun.STATUS_QUEUED,
+                ProductImportRun.STATUS_RUNNING,
+                ProductImportRun.STATUS_CANCELLING,
+            },
+        )
+        if active_runs.exists():
+            messages.error(
+                request,
+                "Stop or wait for active manual imports before archiving this importer.",
+            )
+            return redirect("product_import_family", family_key=family_key)
+        configured_importer.status = ConfiguredProductImporter.STATUS_ARCHIVED
+        configured_importer.save(update_fields=["status", "updated_at"])
+        schedule, _ = ProductImportSchedule.objects.get_or_create(
+            product_family=family_key,
+            defaults={
+                "interval_hours": configured_importer.default_interval_hours,
+            },
+        )
+        schedule.enabled_override = False
+        schedule.updated_by = request.user
+        schedule.save(
+            update_fields=["enabled_override", "updated_by", "updated_at"]
+        )
+        from .import_scheduling import sync_product_import_schedule
+
+        try:
+            sync_product_import_schedule(
+                family_key, schedule.interval_hours, enabled=False
+            )
+        except Exception as exc:
+            messages.warning(
+                request,
+                "The importer was archived, but the live scheduler could not "
+                f"be disabled: {exc}",
+            )
+        _record_importer_audit(
+            configured_importer,
+            ConfiguredProductImporterAuditEvent.ACTION_ARCHIVED,
+            request.user,
+            {"preserved_import_runs": ProductImportRun.objects.filter(
+                product_family=family_key
+            ).count()},
+        )
+        messages.success(
+            request,
+            f"{configured_importer.label} was archived. Its history was preserved.",
+        )
+        return redirect("product_import_family", family_key=family_key)
+    elif request.method == "POST" and action == "restore_importer":
+        if configured_importer is None:
+            raise Http404("Only dashboard-created importers can be restored")
+        configured_importer.status = ConfiguredProductImporter.STATUS_DRAFT
+        configured_importer.save(update_fields=["status", "updated_at"])
+        ProductImportSchedule.objects.update_or_create(
+            product_family=family_key,
+            defaults={
+                "interval_hours": configured_importer.default_interval_hours,
+                "enabled_override": False,
+                "updated_by": request.user,
+            },
+        )
+        _record_importer_audit(
+            configured_importer,
+            ConfiguredProductImporterAuditEvent.ACTION_RESTORED,
+            request.user,
+            {"status": ConfiguredProductImporter.STATUS_DRAFT},
+        )
+        messages.success(
+            request,
+            f"{configured_importer.label} was restored as a draft.",
+        )
+        return redirect("product_import_family", family_key=family_key)
+    elif request.method == "POST" and action == "restore_source_defaults":
         if source_form is None:
             raise Http404("Source configuration is not available for this importer")
         ProductImportSourceConfig.objects.filter(product_family=family_key).delete()
@@ -217,6 +486,23 @@ def product_import_family_view(request, family_key):
         schedule.save(
             update_fields=["enabled_override", "updated_by", "updated_at"]
         )
+        if configured_importer:
+            configured_importer.status = (
+                ConfiguredProductImporter.STATUS_ACTIVE
+                if enabled
+                else ConfiguredProductImporter.STATUS_DRAFT
+            )
+            configured_importer.save(update_fields=["status", "updated_at"])
+            _record_importer_audit(
+                configured_importer,
+                (
+                    ConfiguredProductImporterAuditEvent.ACTION_ENABLED
+                    if enabled
+                    else ConfiguredProductImporterAuditEvent.ACTION_DISABLED
+                ),
+                request.user,
+                {"enabled": enabled},
+            )
         from .import_scheduling import sync_product_import_schedule
 
         try:
@@ -298,6 +584,13 @@ def product_import_family_view(request, family_key):
                 source_config.product_family = family_key
                 source_config.updated_by = request.user
                 source_config.save()
+                if configured_importer:
+                    _record_importer_audit(
+                        configured_importer,
+                        ConfiguredProductImporterAuditEvent.ACTION_SOURCE_UPDATED,
+                        request.user,
+                        {"source_url": source_config.source_url},
+                    )
                 messages.success(
                     request,
                     f"{definition['label']} source configuration was saved.",
@@ -350,6 +643,13 @@ def product_import_family_view(request, family_key):
                     "updated_by": request.user,
                 },
             )
+            if configured_importer:
+                _record_importer_audit(
+                    configured_importer,
+                    ConfiguredProductImporterAuditEvent.ACTION_SCHEDULE_UPDATED,
+                    request.user,
+                    {"interval_hours": interval_hours},
+                )
             from .import_scheduling import sync_product_import_schedule
 
             try:
@@ -452,6 +752,12 @@ def product_import_family_view(request, family_key):
             "source_form": source_form,
             "source_preview": source_preview,
             "recent_runs": recent_runs,
+            "configured_importer": configured_importer,
+            "audit_events": (
+                configured_importer.audit_events.select_related("actor")[:20]
+                if configured_importer
+                else []
+            ),
         },
     )
 

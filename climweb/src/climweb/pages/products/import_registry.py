@@ -620,6 +620,8 @@ def configured_importer_definition(importer):
         "product_item_type_id": importer.product_item_type_id,
         "default_enabled": importer.status == importer.STATUS_ACTIVE,
         "default_interval_hours": importer.default_interval_hours,
+        "configured_status": importer.status,
+        "is_archived": importer.status == importer.STATUS_ARCHIVED,
     }
 
 

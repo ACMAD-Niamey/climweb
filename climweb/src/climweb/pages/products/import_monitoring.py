@@ -71,7 +71,10 @@ def build_import_monitor_rows():
             .order_by("title")
         )
 
-        if not enabled:
+        if definition.get("is_archived"):
+            health = "archived"
+            health_label = "Archived"
+        elif not enabled:
             health = "disabled"
             health_label = "Disabled"
         elif stats["failed_count"]:
