@@ -382,7 +382,19 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if run.error_message %}<div class="import-error">{{ run.error_message }}</div>{% endif %}
+                                {% if run.error_message %}
+                                    <div class="import-error">{{ run.error_message|truncatechars:120 }}</div>
+                                    <button
+                                        type="button"
+                                        class="button button-small"
+                                        data-output-trigger
+                                        data-output-source="run-error-{{ run.pk }}"
+                                        data-output-title="{% translate 'Import error' %} — {{ definition.label }} — {{ run.requested_at|date:'Y-m-d H:i' }}"
+                                    >
+                                        {% translate "View error" %}
+                                    </button>
+                                    <pre id="run-error-{{ run.pk }}" hidden>{{ run.error_message }}</pre>
+                                {% endif %}
                                 {% if run.output %}
                                     <button
                                         type="button"
@@ -396,7 +408,7 @@
                                     <pre id="run-output-{{ run.pk }}" hidden>{{ run.output }}</pre>
                                 {% elif run.status == "queued" or run.status == "running" %}
                                     {% translate "Waiting for completion" %}
-                                {% else %}
+                                {% elif not run.error_message %}
                                     —
                                 {% endif %}
                             </td>
@@ -439,7 +451,7 @@
 
     <dialog id="import-output-modal" class="output-modal" aria-labelledby="import-output-title">
         <div class="output-modal-header">
-            <h2 id="import-output-title">{% translate "Import output" %}</h2>
+            <h2 id="import-output-title">{% translate "Import details" %}</h2>
             <button type="button" class="button button-small" data-output-close>{% translate "Close" %}</button>
         </div>
         <div class="output-modal-body"><pre id="import-output-content"></pre></div>

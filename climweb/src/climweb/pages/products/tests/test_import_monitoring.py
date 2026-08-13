@@ -214,6 +214,11 @@ class TestProductImportMonitoring(TestCase):
             progress_percent=100,
             current_phase="Import completed",
             output="Rainfall preview output",
+            error_message=(
+                "The upstream rainfall archive returned an unexpected response "
+                "while processing a historical date range, so the importer could "
+                "not finish downloading the selected records."
+            ),
         )
         ProductImportRun.objects.create(
             product_family="seasonal-forecasts",
@@ -244,6 +249,13 @@ class TestProductImportMonitoring(TestCase):
             f'data-output-source="run-output-{rainfall_run.pk}"',
         )
         self.assertContains(response, "View output")
+        self.assertContains(response, "View error")
+        self.assertContains(
+            response,
+            f'data-output-source="run-error-{rainfall_run.pk}"',
+        )
+        self.assertContains(response, 'id="run-error-')
+        self.assertContains(response, "The upstream rainfall archive returned")
         self.assertContains(response, "Automatic import schedule")
         self.assertContains(response, "Save schedule")
 
