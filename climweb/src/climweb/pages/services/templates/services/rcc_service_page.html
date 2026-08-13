@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
-{% load static i18n wagtailcore_tags wagtailimages_tags lazyimages_tags wagtailiconchooser_tags %}
+{% load static i18n wagtailcore_tags wagtailimages_tags wagtailsettings_tags lazyimages_tags wagtailiconchooser_tags %}
+{% get_settings use_default_site=True %}
 
 {% block extra_css %}
     {{ block.super }}
@@ -113,7 +114,7 @@
 
             {% if page.products %}
                 <div class="rcc-product-grid">
-                    {% for product in page.products %}
+                    {% for product in page.products|slice:":3" %}
                         <article class="rcc-product-card">
                             <a href="{{ product.url }}" aria-label="{{ product.title }}">
                                 <div class="rcc-product-card__media">
@@ -144,6 +145,21 @@
                             </a>
                         </article>
                     {% endfor %}
+                </div>
+                <div class="rcc-products__footer">
+                    {% if settings.base.ImportantPages.all_products_page %}
+                        <a class="rcc-button rcc-button--catalogue"
+                           href="{{ settings.base.ImportantPages.all_products_page.url }}">
+                            {% translate "Explore more products" %}
+                            <span aria-hidden="true">&#8594;</span>
+                        </a>
+                    {% else %}
+                        <a class="rcc-button rcc-button--catalogue"
+                           href="{{ page.products.0.get_parent.url }}">
+                            {% translate "Explore more products" %}
+                            <span aria-hidden="true">&#8594;</span>
+                        </a>
+                    {% endif %}
                 </div>
             {% else %}
                 <div class="rcc-empty-state">

@@ -269,6 +269,23 @@
 .rcc-product-card p { margin: 0; color: var(--rcc-muted); font-size: .82rem; }
 .rcc-product-card__link { display: flex; margin-top: 28px; color: var(--rcc-teal); font-size: .85rem; font-weight: 800; justify-content: space-between; }
 
+.rcc-products__footer {
+    display: flex;
+    margin-top: 42px;
+    justify-content: center;
+}
+
+.rcc-button--catalogue {
+    border-color: var(--primary-color);
+    color: #fff;
+    background: var(--primary-color);
+}
+
+.rcc-button--catalogue:hover {
+    color: #fff;
+    background: color-mix(in srgb, var(--primary-color) 88%, black);
+}
+
 .rcc-empty-state { padding: 58px; border: 1px dashed #b8c8c4; text-align: center; background: rgba(255, 255, 255, .62); }
 .rcc-empty-state h3 { margin: 0 0 10px; font-size: 1.35rem; }
 .rcc-empty-state p { margin: 0; color: var(--rcc-muted); }
