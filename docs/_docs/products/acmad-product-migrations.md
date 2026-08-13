@@ -139,6 +139,9 @@ overview page shows every importer family and summarizes:
 
 Each family has its own page for manual runs, scheduling, source configuration, and recent history.
 
+For the complete shared feature—including dashboard-created importers, lifecycle auditing, error modals, and failed-run
+retry—see [Product Importer Feature](product-importer-feature.md).
+
 ### Manual historical imports
 
 On an individual importer page:
