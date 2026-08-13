@@ -15,6 +15,7 @@ from climweb.config.settings.base import SUMMARY_RICHTEXT_FEATURES
 from climweb.pages.events.models import EventPage
 from climweb.pages.flex_page.models import FlexPage
 from climweb.pages.news.models import NewsPage
+from climweb.pages.organisation_pages.partners.models import Partner
 from climweb.pages.organisation_pages.projects.models import ServiceProject
 from climweb.pages.products.models import ProductPage, SubNationalProductPage
 from climweb.pages.publications.models import PublicationPage
@@ -242,6 +243,11 @@ class ServicePage(AbstractBannerWithIntroPage):
         updates.extend(publications)
         
         return updates
+
+    @cached_property
+    def featured_partners(self):
+        """Partners selected for prominent display across the main website."""
+        return Partner.objects.filter(visible_on_homepage=True, logo__isnull=False)[:6]
     
     @cached_property
     def nav_menu_icon(self):

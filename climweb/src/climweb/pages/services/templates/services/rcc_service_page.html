@@ -335,6 +335,50 @@
         <div id="rcc-updates"></div>
     {% endif %}
 
+    {% if page.featured_partners %}
+        <section class="rcc-section rcc-partners">
+            <div class="container">
+                <div class="rcc-section-heading">
+                    <div>
+                        <p class="rcc-eyebrow">{% translate "Collaboration" %}</p>
+                        <h2>{% translate "Our partners" %}</h2>
+                    </div>
+                    <p class="rcc-section-heading__aside">
+                        {% translate "Working together to strengthen climate services across Africa." %}
+                    </p>
+                </div>
+
+                <div class="rcc-partner-grid">
+                    {% for partner in page.featured_partners %}
+                        {% if partner.link %}
+                            <a class="rcc-partner-card" href="{{ partner.link }}"
+                               target="_blank" rel="noopener noreferrer" title="{{ partner.name }}">
+                        {% else %}
+                            <div class="rcc-partner-card" title="{{ partner.name }}">
+                        {% endif %}
+                                {% image partner.logo max-320x160 as partner_logo %}
+                                <img class="progressive__img progressive--not-loaded"
+                                     data-progressive="{{ partner_logo.url }}"
+                                     src="{% lazy_image_url partner_logo %}"
+                                     alt="{{ partner.name }}">
+                                <span>{{ partner.name }}</span>
+                        {% if partner.link %}</a>{% else %}</div>{% endif %}
+                    {% endfor %}
+                </div>
+
+                {% if settings.base.ImportantPages.all_partners_page %}
+                    <div class="rcc-preview-footer">
+                        <a class="rcc-button rcc-button--catalogue"
+                           href="{{ settings.base.ImportantPages.all_partners_page.url }}">
+                            {% translate "Explore more partners" %}
+                            <span aria-hidden="true">&#8594;</span>
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+    {% endif %}
+
     {% if page.youtube_playlist %}
         <section class="rcc-section rcc-videos" id="videoSection">
             <div class="container">

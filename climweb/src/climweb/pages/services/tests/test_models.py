@@ -3,6 +3,7 @@ from wagtail.test.utils import WagtailPageTestCase
 from climweb.base.seo_utils import get_html_meta_tags
 from climweb.base.test_utils import test_page_meta_tags
 from climweb.pages.home.tests.factories import get_or_create_homepage
+from climweb.pages.organisation_pages.partners.tests.factories import PartnerFactory
 from .factories import ServiceIndexPageFactory, ServicePageFactory
 
 
@@ -57,3 +58,16 @@ class TestServicesPages(WagtailPageTestCase):
 
         self.assertTemplateUsed(response, "services/service_page.html")
         self.assertTemplateNotUsed(response, "services/rcc_service_page.html")
+
+    def test_rcc_page_displays_featured_partners(self):
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center partners",
+            service__name="Regional Climate Center",
+        )
+        partner = PartnerFactory(visible_on_homepage=True)
+
+        response = self.client.get(rcc_page.get_url())
+
+        self.assertContains(response, "Our partners")
+        self.assertContains(response, partner.name)

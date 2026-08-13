@@ -323,6 +323,48 @@
 
 .rcc-projects { background: var(--primary-color-lightest, #f4f6f9); }
 .rcc-updates { background: var(--primary-color-lightest, #f4f6f9); }
+.rcc-partners { background: #fff; }
+
+.rcc-partner-grid {
+    display: grid;
+    border-top: 1px solid var(--rcc-line);
+    border-left: 1px solid var(--rcc-line);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.rcc-partner-card {
+    display: flex;
+    min-height: 190px;
+    padding: 28px;
+    border-right: 1px solid var(--rcc-line);
+    border-bottom: 1px solid var(--rcc-line);
+    align-items: center;
+    color: var(--rcc-ink);
+    flex-direction: column;
+    gap: 20px;
+    justify-content: center;
+    text-align: center;
+    transition: background-color .2s ease, transform .2s ease;
+}
+
+a.rcc-partner-card:hover {
+    color: var(--primary-color);
+    background: var(--primary-color-lightest);
+    transform: translateY(-2px);
+}
+
+.rcc-partner-card img {
+    width: auto;
+    max-width: 180px;
+    height: 80px;
+    object-fit: contain;
+}
+
+.rcc-partner-card span {
+    font-size: .78rem;
+    font-weight: 700;
+}
+
 .rcc-events h2,
 .rcc-videos h2 { margin-bottom: 40px; }
 
@@ -341,6 +383,7 @@
     .rcc-section-nav__inner { width: max-content; min-width: 100%; grid-template-columns: repeat(4, minmax(190px, 1fr)); }
     .rcc-overview__grid { grid-template-columns: 1fr; }
     .rcc-section-heading { align-items: flex-start; flex-direction: column; }
+    .rcc-partner-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 560px) {
@@ -357,6 +400,8 @@
     .rcc-data__layout { display: block; }
     .rcc-data__capabilities { margin-top: 50px; }
     .rcc-resource-list a { grid-template-columns: 42px 1fr 24px; }
+    .rcc-partner-card { min-height: 160px; padding: 20px 14px; }
+    .rcc-partner-card img { max-width: 130px; height: 64px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
