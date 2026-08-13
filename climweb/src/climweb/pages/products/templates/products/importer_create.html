@@ -1,0 +1,87 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n %}
+
+{% block titletag %}{% translate "Create Product Importer" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .importer-form-panel,
+    .preview-panel {
+        border: 1px solid var(--w-color-border-furniture);
+        border-radius: 0.4rem;
+        margin-bottom: 2rem;
+        padding: 1.25rem;
+    }
+    .importer-form-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        margin: 1rem 0;
+    }
+    .importer-field label { display: block; font-weight: 700; margin-bottom: 0.35rem; }
+    .importer-field input:not([type="checkbox"]),
+    .importer-field select,
+    .importer-field textarea { width: 100%; }
+    .importer-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+    .preview-table { width: 100%; }
+    .preview-table th,
+    .preview-table td { border-bottom: 1px solid var(--w-color-border-furniture); padding: 0.75rem; text-align: left; }
+    .import-meta { color: var(--w-color-text-meta); font-size: 0.85rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% translate "Create Product Importer" as header_title %}
+{% include "wagtailadmin/shared/header.html" with title=header_title icon="plus" %}
+
+<div class="nice-padding">
+    <p><a href="{% url 'product_import_monitor' %}">← {% translate "All product imports" %}</a></p>
+    <section class="importer-form-panel">
+        <h2>{% translate "Importer destination and source schema" %}</h2>
+        <p class="import-meta">
+            {% translate "Create a controlled PDF/image importer for an existing product page. Previewing the source is required before creation." %}
+        </p>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            <div class="importer-form-grid">
+                {% for field in form %}
+                    <div class="importer-field">
+                        {{ field.label_tag }}
+                        {{ field }}
+                        {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+                        {{ field.errors }}
+                    </div>
+                {% endfor %}
+            </div>
+            <p class="help">
+                {% translate "Only public or non-secret sources are supported. Importers cannot contain executable code or stored credentials." %}
+            </p>
+            <div class="importer-actions">
+                <button class="button" type="submit" name="action" value="test_source">{% translate "Test connection" %}</button>
+                <button class="button" type="submit" name="action" value="preview_source">{% translate "Preview discovered files" %}</button>
+                <button class="button button-primary" type="submit" name="action" value="create_importer">{% translate "Create importer" %}</button>
+            </div>
+        </form>
+    </section>
+
+    {% if source_preview %}
+        <section class="preview-panel">
+            <h2>{% translate "Discovery preview" %}</h2>
+            <p class="import-meta">
+                {% blocktranslate with count=source_preview.discovered_count %}Found {{ count }} matching file(s). Showing up to 20.{% endblocktranslate %}
+            </p>
+            <table class="preview-table">
+                <thead><tr><th>{% translate "Issue date" %}</th><th>{% translate "Source file" %}</th></tr></thead>
+                <tbody>
+                {% for issue in source_preview.issues %}
+                    <tr><td>{{ issue.date }}</td><td><a href="{{ issue.source_url }}" target="_blank" rel="noopener noreferrer">{{ issue.source_url }}</a></td></tr>
+                {% empty %}
+                    <tr><td colspan="2">{% translate "No matching files were discovered." %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    {% endif %}
+</div>
+{% endblock %}

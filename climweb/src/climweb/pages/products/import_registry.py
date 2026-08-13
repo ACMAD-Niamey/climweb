@@ -596,3 +596,54 @@ PRODUCT_IMPORTS = (
 PRODUCT_IMPORTS_BY_KEY = {
     definition["key"]: definition for definition in PRODUCT_IMPORTS
 }
+
+
+def configured_importer_definition(importer):
+    """Convert a database-backed importer into the shared registry shape."""
+    source_defaults = dict(importer.default_source_config)
+    return {
+        "key": importer.key,
+        "label": importer.label,
+        "product_names": (importer.product_page.product.name,),
+        "source_label": source_defaults.get("source_system", "Configured source"),
+        "periodic_task_name": f"import-configured-product-{importer.key}",
+        "celery_task": "climweb.pages.products.tasks.run_configured_product_import",
+        "command": "import_configured_product",
+        "include_history": True,
+        "supports_retry": True,
+        "configurable_source": True,
+        "source_option": None,
+        "source_defaults": source_defaults,
+        "is_configured": True,
+        "configured_importer_id": importer.pk,
+        "product_page_id": importer.product_page_id,
+        "product_item_type_id": importer.product_item_type_id,
+        "default_enabled": importer.status == importer.STATUS_ACTIVE,
+        "default_interval_hours": importer.default_interval_hours,
+    }
+
+
+def get_product_import_definitions():
+    """Return built-in and dashboard-created importer definitions."""
+    from .models import ConfiguredProductImporter
+
+    configured = ConfiguredProductImporter.objects.select_related(
+        "product_page__product", "product_item_type__category"
+    )
+    return (*PRODUCT_IMPORTS, *(configured_importer_definition(item) for item in configured))
+
+
+def get_product_import_definition(family_key):
+    definition = PRODUCT_IMPORTS_BY_KEY.get(family_key)
+    if definition is not None:
+        return definition
+
+    from .models import ConfiguredProductImporter
+
+    try:
+        importer = ConfiguredProductImporter.objects.select_related(
+            "product_page__product", "product_item_type__category"
+        ).get(key=family_key)
+    except ConfiguredProductImporter.DoesNotExist:
+        return None
+    return configured_importer_definition(importer)

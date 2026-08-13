@@ -10,6 +10,7 @@ from django.utils import timezone
 from wagtail.admin.auth import user_passes_test
 
 from .forms import (
+    ConfiguredProductImporterForm,
     ProductImportRunForm,
     ProductImportScheduleForm,
     ProductImportSourceConfigForm,
@@ -19,8 +20,9 @@ from .import_monitoring import (
     build_import_monitor_rows,
     build_import_monitor_summary,
 )
-from .import_registry import PRODUCT_IMPORTS_BY_KEY
+from .import_registry import get_product_import_definition
 from .models import (
+    ConfiguredProductImporter,
     ProductImportRun,
     ProductImportSchedule,
     ProductImportSourceConfig,
@@ -32,7 +34,7 @@ from .models import (
 def product_import_status_view(request, family_key=None):
     runs = ProductImportRun.objects.all()
     if family_key:
-        if family_key not in PRODUCT_IMPORTS_BY_KEY:
+        if get_product_import_definition(family_key) is None:
             raise Http404("Unknown product importer")
         runs = runs.filter(product_family=family_key)
     runs = runs[:20]
@@ -72,8 +74,94 @@ def product_import_monitor_view(request):
 
 
 @user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
+def configured_product_importer_create_view(request):
+    action = request.POST.get("action", "")
+    form = ConfiguredProductImporterForm(
+        request.POST if request.method == "POST" else None
+    )
+    source_preview = None
+    if request.method == "POST" and form.is_valid():
+        from .import_sources import inspect_product_import_source
+
+        try:
+            source_preview = inspect_product_import_source(
+                form.cleaned_data["key"],
+                form.source_values,
+                include_history=False,
+            )
+        except Exception as exc:
+            messages.error(request, f"Source check failed: {exc}")
+        else:
+            if action == "test_source":
+                messages.success(
+                    request,
+                    "Connection successful. "
+                    f"Discovered {source_preview['discovered_count']} matching file(s).",
+                )
+                source_preview = None
+            elif action == "preview_source":
+                messages.success(
+                    request,
+                    f"Preview found {source_preview['discovered_count']} matching file(s).",
+                )
+            elif action == "create_importer":
+                if source_preview["discovered_count"] == 0:
+                    form.add_error(
+                        "filename_pattern",
+                        "No matching dated files were found. Preview the source and adjust the schema.",
+                    )
+                else:
+                    with transaction.atomic():
+                        importer = form.save(commit=False)
+                        importer.default_source_config = form.source_values
+                        importer.created_by = request.user
+                        importer.save()
+                        ProductImportSourceConfig.objects.create(
+                            product_family=importer.key,
+                            updated_by=request.user,
+                            **form.source_values,
+                        )
+                        ProductImportSchedule.objects.create(
+                            product_family=importer.key,
+                            interval_hours=importer.default_interval_hours,
+                            enabled_override=(
+                                importer.status
+                                == ConfiguredProductImporter.STATUS_ACTIVE
+                            ),
+                            updated_by=request.user,
+                        )
+                    if importer.status == ConfiguredProductImporter.STATUS_ACTIVE:
+                        from .import_scheduling import sync_product_import_schedule
+
+                        try:
+                            sync_product_import_schedule(
+                                importer.key,
+                                importer.default_interval_hours,
+                                enabled=True,
+                            )
+                        except Exception as exc:
+                            messages.warning(
+                                request,
+                                "The importer was created, but the live scheduler "
+                                f"could not be updated: {exc}",
+                            )
+                    messages.success(
+                        request,
+                        f"{importer.label} importer was created.",
+                    )
+                    return redirect(
+                        "product_import_family", family_key=importer.key
+                    )
+    return TemplateResponse(
+        request,
+        "products/importer_create.html",
+        {"form": form, "source_preview": source_preview},
+    )
+
+
+@user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
 def product_import_family_view(request, family_key):
-    definition = PRODUCT_IMPORTS_BY_KEY.get(family_key)
+    definition = get_product_import_definition(family_key)
     if definition is None:
         raise Http404("Unknown product importer")
 
@@ -115,8 +203,10 @@ def product_import_family_view(request, family_key):
         "disable_importer",
     }:
         enabled = action == "enable_importer"
-        default_interval = getattr(
-            settings, definition["interval_setting"], 24
+        default_interval = (
+            definition.get("default_interval_hours", 24)
+            if definition.get("is_configured")
+            else getattr(settings, definition["interval_setting"], 24)
         )
         schedule, _ = ProductImportSchedule.objects.get_or_create(
             product_family=family_key,

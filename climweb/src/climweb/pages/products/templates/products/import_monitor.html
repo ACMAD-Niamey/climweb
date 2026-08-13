@@ -181,6 +181,11 @@
 {% include "wagtailadmin/shared/header.html" with title=header_title icon="history" %}
 
 <div class="nice-padding">
+    <p>
+        <a class="button button-primary" href="{% url 'configured_product_importer_create' %}">
+            {% translate "Create importer" %}
+        </a>
+    </p>
     <p class="help-block help-info">
         {% translate "Select a product family to run manual imports, follow its progress, and review its import
         history." %}

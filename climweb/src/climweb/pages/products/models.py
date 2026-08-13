@@ -697,9 +697,9 @@ class ProductImportRun(models.Model):
 
     @property
     def product_family_label(self):
-        from climweb.pages.products.import_registry import PRODUCT_IMPORTS_BY_KEY
+        from climweb.pages.products.import_registry import get_product_import_definition
 
-        definition = PRODUCT_IMPORTS_BY_KEY.get(self.product_family)
+        definition = get_product_import_definition(self.product_family)
         return definition["label"] if definition else self.product_family
 
 
@@ -796,6 +796,65 @@ class ProductImportSourceConfig(models.Model):
 
     def __str__(self):
         return f"{self.product_family}: {self.source_url}"
+
+
+class ConfiguredProductImporter(models.Model):
+    """A safe, dashboard-created importer for a file-based product."""
+
+    STATUS_DRAFT = 'draft'
+    STATUS_ACTIVE = 'active'
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, _("Draft")),
+        (STATUS_ACTIVE, _("Active")),
+    ]
+
+    key = models.SlugField(
+        max_length=80,
+        unique=True,
+        verbose_name=_("Importer Key"),
+        help_text=_("Stable identifier used by import runs and schedules."),
+    )
+    label = models.CharField(max_length=255, verbose_name=_("Importer Name"))
+    product_page = models.ForeignKey(
+        'products.ProductPage',
+        on_delete=models.PROTECT,
+        related_name='configured_importers',
+        verbose_name=_("Destination Product Page"),
+    )
+    product_item_type = models.ForeignKey(
+        'base.ProductItemType',
+        on_delete=models.PROTECT,
+        related_name='configured_importers',
+        verbose_name=_("Destination Product Type"),
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_DRAFT,
+    )
+    default_interval_hours = models.PositiveIntegerField(
+        default=24,
+        validators=[MinValueValidator(1), MaxValueValidator(720)],
+        verbose_name=_("Default Interval Hours"),
+    )
+    default_source_config = models.JSONField(default=dict)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='configured_product_importers',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['label']
+        verbose_name = _("Configured Product Importer")
+        verbose_name_plural = _("Configured Product Importers")
+
+    def __str__(self):
+        return self.label
 
 
 class SubNationalProductsLandingPage(AbstractIntroPage, Page):
