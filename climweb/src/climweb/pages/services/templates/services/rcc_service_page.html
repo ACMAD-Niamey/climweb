@@ -50,52 +50,6 @@
         </div>
     </section>
 
-    {% with featured_update=page.latest_updates.0 %}
-        {% if featured_update %}
-            {% with card=featured_update.card_props %}
-                <section class="rcc-featured-update" aria-labelledby="rcc-featured-update-title">
-                    <div class="container">
-                        <article class="rcc-featured-update__card">
-                            {% if card.card_image %}
-                                <a class="rcc-featured-update__media" href="{{ card.card_more_link }}" tabindex="-1">
-                                    {% if card.card_image_type == "url" %}
-                                        <img src="{{ card.card_image }}" alt="">
-                                    {% else %}
-                                        {% image card.card_image fill-720x440 as featured_update_image %}
-                                        <img class="progressive__img progressive--not-loaded"
-                                             data-progressive="{{ featured_update_image.url }}"
-                                             src="{% lazy_image_url featured_update_image %}"
-                                             alt="">
-                                    {% endif %}
-                                </a>
-                            {% endif %}
-                            <div class="rcc-featured-update__content{% if not card.card_image %} rcc-featured-update__content--full{% endif %}">
-                                <p class="rcc-eyebrow">{% translate "Latest from the RCC" %}</p>
-                                {% if card.card_tag_category %}
-                                    <span class="rcc-featured-update__type">{{ card.card_tag_category }}</span>
-                                {% endif %}
-                                <h2 id="rcc-featured-update-title">
-                                    <a href="{{ card.card_more_link }}">{{ card.card_title }}</a>
-                                </h2>
-                                {% if card.card_text %}
-                                    <div class="rcc-featured-update__summary format-text">
-                                        {{ card.card_text|richtext|truncatechars_html:180 }}
-                                    </div>
-                                {% endif %}
-                                <div class="rcc-featured-update__meta">
-                                    {% if card.card_meta %}<span>{{ card.card_meta }}</span>{% endif %}
-                                    <a href="{{ card.card_more_link }}">
-                                        {% translate "Read the latest update" %} <span aria-hidden="true">&#8594;</span>
-                                    </a>
-                                </div>
-                            </div>
-                        </article>
-                    </div>
-                </section>
-            {% endwith %}
-        {% endif %}
-    {% endwith %}
-
     <nav class="rcc-section-nav" aria-label="{% translate 'Regional Climate Center sections' %}">
         <div class="container rcc-section-nav__inner">
             <a href="#rcc-products"><span>01</span>{% translate "Climate products" %}</a>
@@ -352,7 +306,7 @@
                     </div>
                 </div>
                 <div class="columns is-multiline is-8">
-                    {% for update in page.latest_updates|slice:"1:4" %}
+                    {% for update in page.latest_updates|slice:":3" %}
                         <div class="column is-4-desktop is-6-tablet is-12-mobile">
                             {% include 'update_card_include.html' with card=update.card_props show_type=True %}
                         </div>
