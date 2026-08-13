@@ -751,11 +751,11 @@ def run_manual_product_import(self, run_id):
         ImportProgressOutput,
         activate_import_run,
     )
-    from climweb.pages.products.import_registry import PRODUCT_IMPORTS_BY_KEY
+    from climweb.pages.products.import_registry import get_product_import_definition
     from climweb.pages.products.models import ProductImportRun
 
     run = ProductImportRun.objects.get(pk=run_id)
-    definition = PRODUCT_IMPORTS_BY_KEY.get(run.product_family)
+    definition = get_product_import_definition(run.product_family)
     if definition is None:
         run.status = ProductImportRun.STATUS_FAILED
         run.error_message = f"Unknown product family: {run.product_family}"
@@ -803,8 +803,12 @@ def run_manual_product_import(self, run_id):
     )
     try:
         with activate_import_run(run.pk):
+            command_args = (
+                [run.product_family] if definition.get("is_configured") else []
+            )
             call_command(
                 definition["command"],
+                *command_args,
                 stdout=output,
                 stderr=output,
                 **command_options,
@@ -850,6 +854,28 @@ def run_manual_product_import(self, run_id):
                 "current_phase",
             ]
         )
+
+
+@app.task
+def run_configured_product_import(family_key):
+    """Run an active dashboard-created importer from django-celery-beat."""
+    from climweb.pages.products.import_registry import get_product_import_definition
+    from climweb.pages.products.import_scheduling import get_product_import_enabled
+
+    definition = get_product_import_definition(family_key)
+    if definition is None or not definition.get("is_configured"):
+        logger.error(f"[CONFIGURED IMPORT] Unknown importer: {family_key}")
+        return
+    if not get_product_import_enabled(family_key):
+        logger.info(f"[CONFIGURED IMPORT] {family_key} is disabled.")
+        return
+    call_command(
+        "import_configured_product",
+        family_key,
+        limit=100,
+        include_history=False,
+        continue_on_error=True,
+    )
 
 
 @app.on_after_finalize.connect

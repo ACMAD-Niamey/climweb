@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.db.models import Count, Max, Q
 
-from climweb.pages.products.import_registry import PRODUCT_IMPORTS
+from climweb.pages.products.import_registry import get_product_import_definitions
 from climweb.pages.products.models import (
     ProductImportSchedule,
     ProductPage,
@@ -21,7 +21,7 @@ def build_import_monitor_rows():
         for family, interval_hours, enabled_override in schedule_values
     }
     rows = []
-    for definition in PRODUCT_IMPORTS:
+    for definition in get_product_import_definitions():
         imports = ProductSourceImport.objects.filter(
             product__name__in=definition["product_names"]
         )
@@ -40,14 +40,20 @@ def build_import_monitor_rows():
             ),
             last_activity=Max("updated_at"),
         )
-        default_enabled = getattr(settings, definition["enabled_setting"], False)
+        default_enabled = (
+            definition.get("default_enabled", False)
+            if definition.get("is_configured")
+            else getattr(settings, definition["enabled_setting"], False)
+        )
         saved_schedule = saved_schedules.get(definition["key"], {})
         enabled_override = saved_schedule.get("enabled_override")
         enabled = (
             default_enabled if enabled_override is None else enabled_override
         )
-        default_interval_hours = getattr(
-            settings, definition["interval_setting"], None
+        default_interval_hours = (
+            definition.get("default_interval_hours")
+            if definition.get("is_configured")
+            else getattr(settings, definition["interval_setting"], None)
         )
         interval_hours = saved_schedule.get(
             "interval_hours", default_interval_hours

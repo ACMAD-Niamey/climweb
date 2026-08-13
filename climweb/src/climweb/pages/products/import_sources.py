@@ -10,7 +10,7 @@ import requests
 from bs4 import BeautifulSoup
 from django.db import OperationalError, ProgrammingError
 
-from .import_registry import PRODUCT_IMPORTS_BY_KEY
+from .import_registry import get_product_import_definition
 from .models import ProductImportSourceConfig
 
 
@@ -30,7 +30,9 @@ INSPECTION_USER_AGENT = (
 
 
 def get_product_import_source_values(family_key):
-    definition = PRODUCT_IMPORTS_BY_KEY[family_key]
+    definition = get_product_import_definition(family_key)
+    if definition is None:
+        raise KeyError(family_key)
     values = dict(definition.get("source_defaults", {}))
     try:
         config = ProductImportSourceConfig.objects.get(product_family=family_key)
@@ -51,7 +53,9 @@ def get_product_import_source_command_options(family_key):
     an override. This keeps restoration to defaults equivalent to deleting the
     database override.
     """
-    definition = PRODUCT_IMPORTS_BY_KEY[family_key]
+    definition = get_product_import_definition(family_key)
+    if definition is None:
+        raise KeyError(family_key)
     option_name = definition.get("source_option")
     if not option_name:
         return {}
@@ -95,12 +99,12 @@ def _extension_allowed(url, allowed_extensions):
     return extension in set(allowed_extensions)
 
 
-def _inspect_html(values):
-    response = _request(values["source_url"], values.get("request_headers", {}))
+def _inspect_html_page(values, page_url):
+    response = _request(page_url, values.get("request_headers", {}))
     soup = BeautifulSoup(response.text, "html.parser")
     issues = []
     for anchor in soup.find_all("a", href=True):
-        source_url = urljoin(values["source_url"], anchor["href"])
+        source_url = urljoin(page_url, anchor["href"])
         if not _extension_allowed(source_url, values["allowed_extensions"]):
             continue
         issue_date = _extract_date(
@@ -110,7 +114,24 @@ def _inspect_html(values):
         )
         if issue_date:
             issues.append({"date": issue_date, "source_url": source_url})
-    return issues, 1
+    return issues, soup
+
+
+def _inspect_html(values, include_history=False):
+    issues, soup = _inspect_html_page(values, values["source_url"])
+    archive_count = 1
+    history_pattern = values.get("history_url_pattern")
+    if include_history and history_pattern:
+        archive_urls = []
+        for anchor in soup.find_all("a", href=True):
+            archive_url = urljoin(values["source_url"], anchor["href"])
+            if re.search(history_pattern, archive_url, re.IGNORECASE):
+                archive_urls.append(archive_url)
+        for archive_url in list(dict.fromkeys(archive_urls))[:100]:
+            archive_issues, _ = _inspect_html_page(values, archive_url)
+            issues.extend(archive_issues)
+            archive_count += 1
+    return issues, archive_count
 
 
 def _inspect_thredds(values):
@@ -143,10 +164,18 @@ def _inspect_thredds(values):
             fallback=modified,
         )
         if issue_date:
+            if source_path:
+                parsed = urlparse(values["source_url"])
+                source_url = (
+                    f"{parsed.scheme}://{parsed.netloc}/thredds/fileServer/"
+                    f"{source_path.lstrip('/')}"
+                )
+            else:
+                source_url = urljoin(values["source_url"], candidate)
             issues.append(
                 {
                     "date": issue_date,
-                    "source_url": urljoin(values["source_url"], candidate),
+                    "source_url": source_url,
                 }
             )
     return issues, 1
@@ -179,7 +208,9 @@ def _inspect_wordpress(values):
     return issues, 1
 
 
-def inspect_product_import_source(family_key, values, include_history=False):
+def inspect_product_import_source(
+    family_key, values, include_history=False, preview_limit=20
+):
     """Connect to a configured source and preview its matching dated files."""
     if family_key == "rainfall":
         from .management.commands.import_acmad_daily_rainfall import Command
@@ -301,7 +332,12 @@ def inspect_product_import_source(family_key, values, include_history=False):
             raise ValueError(
                 f"Unsupported source type: {values['source_type']}"
             ) from exc
-        issues, archive_count = inspector(values)
+        if values["source_type"] == "html_archive":
+            issues, archive_count = inspector(
+                values, include_history=include_history
+            )
+        else:
+            issues, archive_count = inspector(values)
 
     unique_issues = {
         (issue["date"], issue["source_url"]): issue for issue in issues
@@ -311,6 +347,6 @@ def inspect_product_import_source(family_key, values, include_history=False):
     )
     return {
         "archive_count": archive_count,
-        "issues": issues[:20],
+        "issues": issues[:preview_limit] if preview_limit else issues,
         "discovered_count": len(issues),
     }

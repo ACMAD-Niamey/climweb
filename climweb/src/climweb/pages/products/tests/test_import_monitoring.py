@@ -18,10 +18,16 @@ from climweb.pages.products.import_registry import (
     PRODUCT_IMPORTS_BY_KEY,
 )
 from climweb.pages.products.models import (
+    ConfiguredProductImporter,
     ProductImportRun,
     ProductImportSchedule,
     ProductImportSourceConfig,
     ProductSourceImport,
+)
+from climweb.pages.home.tests.factories import get_or_create_homepage
+from climweb.pages.products.tests.factories import (
+    ProductIndexPageFactory,
+    ProductPageFactory,
 )
 from climweb.pages.products.tasks import run_manual_product_import
 
@@ -757,6 +763,187 @@ class TestProductImportMonitoring(TestCase):
         self.assertEqual(run.progress_percent, 52)
         self.assertEqual(run.current_phase, "Import failed")
         self.assertEqual(run.error_message, "Import stopped")
+
+
+class TestConfiguredProductImporterCreation(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        home_page = get_or_create_homepage()
+        index = ProductIndexPageFactory(parent=home_page)
+        cls.product_page = ProductPageFactory(parent=index)
+        cls.item_type = cls.product_page.product.categories.first().product_item_types.first()
+        cls.user = get_user_model().objects.create_superuser(
+            username="configured-import-admin",
+            email="configured-imports@example.com",
+            password="test-password",
+        )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def form_data(self, **overrides):
+        values = {
+            "label": "New RCC Bulletin",
+            "key": "new-rcc-bulletin",
+            "product_page": self.product_page.pk,
+            "product_item_type": self.item_type.pk,
+            "status": "draft",
+            "default_interval_hours": 24,
+            "source_type": "html_archive",
+            "source_url": "https://data.example.com/bulletins/",
+            "source_system": "RCC Bulletin Archive",
+            "allowed_extensions": ".pdf",
+            "filename_pattern": r"bulletin_(?P<date>20\d{6})\.pdf$",
+            "date_format": "%Y%m%d",
+            "history_url_pattern": "",
+            "request_headers": "{}",
+        }
+        values.update(overrides)
+        return values
+
+    def test_monitor_page_links_to_create_importer_wizard(self):
+        response = self.client.get(reverse("product_import_monitor"))
+
+        self.assertContains(response, "Create importer")
+        self.assertContains(
+            response, reverse("configured_product_importer_create")
+        )
+
+    @patch("climweb.pages.products.import_sources.inspect_product_import_source")
+    def test_admin_can_preview_without_creating_importer(self, inspect_source):
+        inspect_source.return_value = {
+            "archive_count": 1,
+            "discovered_count": 1,
+            "issues": [{
+                "date": date(2026, 8, 10),
+                "source_url": "https://data.example.com/bulletin_20260810.pdf",
+            }],
+        }
+
+        response = self.client.post(
+            reverse("configured_product_importer_create"),
+            self.form_data(action="preview_source"),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Discovery preview")
+        self.assertContains(response, "bulletin_20260810.pdf")
+        self.assertFalse(ConfiguredProductImporter.objects.exists())
+
+    @patch("climweb.pages.products.import_sources.inspect_product_import_source")
+    def test_admin_can_create_draft_importer(self, inspect_source):
+        inspect_source.return_value = {
+            "archive_count": 1,
+            "discovered_count": 1,
+            "issues": [{
+                "date": date(2026, 8, 10),
+                "source_url": "https://data.example.com/bulletin_20260810.pdf",
+            }],
+        }
+
+        response = self.client.post(
+            reverse("configured_product_importer_create"),
+            self.form_data(action="create_importer"),
+        )
+
+        importer = ConfiguredProductImporter.objects.get()
+        self.assertRedirects(
+            response,
+            reverse("product_import_family", kwargs={"family_key": importer.key}),
+        )
+        self.assertEqual(importer.product_page, self.product_page)
+        self.assertEqual(importer.product_item_type, self.item_type)
+        self.assertEqual(importer.status, ConfiguredProductImporter.STATUS_DRAFT)
+        self.assertEqual(importer.created_by, self.user)
+        config = ProductImportSourceConfig.objects.get(product_family=importer.key)
+        self.assertEqual(config.allowed_extensions, [".pdf"])
+        schedule = ProductImportSchedule.objects.get(product_family=importer.key)
+        self.assertFalse(schedule.enabled_override)
+
+    def test_creation_rejects_pattern_without_named_date_group(self):
+        response = self.client.post(
+            reverse("configured_product_importer_create"),
+            self.form_data(
+                action="create_importer",
+                filename_pattern=r"bulletin_20\d{6}\.pdf$",
+            ),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "must contain a named (?P&lt;date&gt;...) group")
+        self.assertFalse(ConfiguredProductImporter.objects.exists())
+
+    def test_creation_rejects_secret_request_headers(self):
+        response = self.client.post(
+            reverse("configured_product_importer_create"),
+            self.form_data(
+                action="create_importer",
+                request_headers='{"Authorization": "Bearer secret"}',
+            ),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Authentication secrets cannot be stored")
+        self.assertFalse(ConfiguredProductImporter.objects.exists())
+
+    @patch("climweb.pages.products.tasks.call_command")
+    def test_manual_run_uses_generic_command_for_configured_importer(
+        self, call_command
+    ):
+        importer = ConfiguredProductImporter.objects.create(
+            key="new-rcc-bulletin",
+            label="New RCC Bulletin",
+            product_page=self.product_page,
+            product_item_type=self.item_type,
+            default_source_config={
+                "source_type": "html_archive",
+                "source_url": "https://data.example.com/bulletins/",
+                "source_system": "RCC Bulletin Archive",
+                "allowed_extensions": [".pdf"],
+                "filename_pattern": r"bulletin_(?P<date>20\d{6})\.pdf$",
+                "date_format": "%Y%m%d",
+                "history_url_pattern": "",
+                "request_headers": {},
+            },
+        )
+        run = ProductImportRun.objects.create(
+            product_family=importer.key,
+            mode=ProductImportRun.MODE_PREVIEW,
+            from_date=date(2026, 1, 1),
+            to_date=date(2026, 12, 31),
+        )
+
+        run_manual_product_import.run(run.pk)
+
+        args, options = call_command.call_args
+        self.assertEqual(args[:2], ("import_configured_product", importer.key))
+        self.assertTrue(options["dry_run"])
+        self.assertTrue(options["include_history"])
+        run.refresh_from_db()
+        self.assertEqual(run.status, ProductImportRun.STATUS_SUCCEEDED)
+
+    def test_configured_importer_schedule_passes_family_key_to_celery_task(self):
+        importer = ConfiguredProductImporter.objects.create(
+            key="scheduled-rcc-bulletin",
+            label="Scheduled RCC Bulletin",
+            product_page=self.product_page,
+            product_item_type=self.item_type,
+            status=ConfiguredProductImporter.STATUS_ACTIVE,
+            default_interval_hours=12,
+            default_source_config={"source_system": "RCC Bulletin Archive"},
+        )
+        from climweb.pages.products.import_scheduling import sync_product_import_schedule
+
+        periodic_task = sync_product_import_schedule(
+            importer.key, 12, enabled=True
+        )
+
+        self.assertEqual(
+            periodic_task.task,
+            "climweb.pages.products.tasks.run_configured_product_import",
+        )
+        self.assertEqual(periodic_task.args, '["scheduled-rcc-bulletin"]')
+        self.assertTrue(periodic_task.enabled)
 
     @patch("climweb.pages.products.tasks.call_command")
     def test_running_manual_import_stops_at_progress_checkpoint(self, call_command):
