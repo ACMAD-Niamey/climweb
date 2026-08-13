@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load wagtailcore_tags bulma_tags i18n wagtailiconchooser_tags %}
+{% load wagtailcore_tags bulma_tags i18n wagtailiconchooser_tags static %}
 
 {% block page_meta %}
     {{ block.super }}
@@ -33,7 +33,7 @@
                         {% endif %}
                         <div class="form-column">
                             {% if not page.event.is_ended and page.event.registration_open %}
-                                <form action="{% pageurl page %}" method="POST">
+                                <form action="{% pageurl page %}" method="POST" enctype="multipart/form-data">
                                     {% csrf_token %}
                                     {{ form|bulma }}
                                     <div class="field">
@@ -64,3 +64,7 @@
         </section>
     </main>
 {% endblock content %}
+
+{% block extra_js %}
+    <script src="{% static 'base/js/bulma-file.js' %}"></script>
+{% endblock %}
