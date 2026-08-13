@@ -274,15 +274,63 @@
     {% if page.events %}
         <section class="rcc-section rcc-events">
             <div class="container">
-                <p class="rcc-eyebrow">{% translate "Connect" %}</p>
-                <h2>{% translate "Upcoming events" %}</h2>
-                {% include 'events_include.html' with events=page.events %}
+                {% include 'events_include.html' with events=page.events hide_more_link=True %}
+                {% if settings.base.ImportantPages.all_events_page %}
+                    <div class="rcc-preview-footer">
+                        <a class="rcc-button rcc-button--catalogue"
+                           href="{{ settings.base.ImportantPages.all_events_page.url }}">
+                            {% translate "Explore more events" %}
+                            <span aria-hidden="true">&#8594;</span>
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="rcc-preview-footer">
+                        <a class="rcc-button rcc-button--catalogue"
+                           href="{{ page.events.0.get_parent.url }}">
+                            {% translate "Explore more events" %}
+                            <span aria-hidden="true">&#8594;</span>
+                        </a>
+                    </div>
+                {% endif %}
             </div>
         </section>
     {% endif %}
 
     {% if page.latest_updates %}
-        <div id="rcc-updates">{% include 'home/section/updates_include.html' %}</div>
+        <section id="rcc-updates" class="rcc-section rcc-updates">
+            <div class="container">
+                <div class="rcc-section-heading">
+                    <div>
+                        <p class="rcc-eyebrow">{% translate "Latest updates" %}</p>
+                        <h2>{% translate "News and publications" %}</h2>
+                    </div>
+                </div>
+                <div class="columns is-multiline is-8">
+                    {% for update in page.latest_updates|slice:":3" %}
+                        <div class="column is-4-desktop is-6-tablet is-12-mobile">
+                            {% include 'update_card_include.html' with card=update.card_props show_type=True %}
+                        </div>
+                    {% endfor %}
+                </div>
+                {% if settings.base.ImportantPages.all_news_page %}
+                    <div class="rcc-preview-footer">
+                        <a class="rcc-button rcc-button--catalogue"
+                           href="{{ settings.base.ImportantPages.all_news_page.url }}">
+                            {% translate "Explore more updates" %}
+                            <span aria-hidden="true">&#8594;</span>
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="rcc-preview-footer">
+                        <a class="rcc-button rcc-button--catalogue"
+                           href="{{ page.latest_updates.0.get_parent.url }}">
+                            {% translate "Explore more updates" %}
+                            <span aria-hidden="true">&#8594;</span>
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
     {% else %}
         <div id="rcc-updates"></div>
     {% endif %}

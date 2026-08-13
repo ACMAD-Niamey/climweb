@@ -269,7 +269,8 @@
 .rcc-product-card p { margin: 0; color: var(--rcc-muted); font-size: .82rem; }
 .rcc-product-card__link { display: flex; margin-top: 28px; color: var(--rcc-teal); font-size: .85rem; font-weight: 800; justify-content: space-between; }
 
-.rcc-products__footer {
+.rcc-products__footer,
+.rcc-preview-footer {
     display: flex;
     margin-top: 42px;
     justify-content: center;
@@ -321,6 +322,7 @@
 .rcc-resource-callout p { margin: 0; color: var(--rcc-muted); line-height: 1.75; }
 
 .rcc-projects { background: var(--primary-color-lightest, #f4f6f9); }
+.rcc-updates { background: var(--primary-color-lightest, #f4f6f9); }
 .rcc-events h2,
 .rcc-videos h2 { margin-bottom: 40px; }
 
