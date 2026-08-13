@@ -1,5 +1,5 @@
-{% load i18n static wagtailimages_tags wagtailsettings_tags wagtailcore_tags wagtailiconchooser_tags nmhs_cms_tags %} 
-{% get_settings use_default_site=True%} 
+{% load i18n static wagtailimages_tags wagtailsettings_tags wagtailcore_tags wagtailiconchooser_tags nmhs_cms_tags %}
+{% get_settings use_default_site=True%}
 {% wagtail_site as current_site %}
 
 <footer class="site-footer">
@@ -8,16 +8,10 @@
             <div class="columns is-multiline is-mobile">
                 <div class="column is-full-mobile is-one-quarter-desktop">
                     <div class="footer-brand">
-                        <a
-                            class="footer-logo-link"
-                            href="{{ current_site.root_url }}"
-                        >
-                            {% if settings.base.OrganisationSetting.footer_logo%} {% image settings.base.OrganisationSetting.footer_logo original as footer_logo %}
-                            <img
-                                src="{{ footer_logo.url }}"
-                                alt="Logo"
-                                class="footer-logo-img"
-                            />
+                        <a class="footer-logo-link" href="{{ current_site.root_url }}">
+                            {% if settings.base.OrganisationSetting.footer_logo%} {% image
+                            settings.base.OrganisationSetting.footer_logo original as footer_logo %}
+                            <img src="{{ footer_logo.url }}" alt="Logo" class="footer-logo-img" />
                             {% endif %}
                         </a>
 
@@ -33,38 +27,21 @@
                                 &copy; {{ settings.base.OrganisationSetting.name }} {% now 'Y' %}
                             </p>
                             {% endif %}
-                            <a
-                                class="footer-powered"
-                                href="https://github.com/wmo-raf/nmhs-cms"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
+                            <a class="footer-powered" href="https://github.com/wmo-raf/nmhs-cms" target="_blank"
+                                rel="noopener noreferrer">
                                 {% translate "Powered by Climweb" %} v{% cms_version %}
                             </a>
-                            <a
-                                href="https://digitalpublicgoods.net/r/climweb"
-                                target="_blank"
-                                rel="noopener"
-                            >
-                                <img
-                                    src="https://github.com/DPGAlliance/dpg-resources/blob/main/docs/assets/dpg-badge/dpg-badge-w.png?raw=true"
-                                    width="80"
-                                    alt="Digital Public Goods Badge"
-                                    class="footer-dpg-badge"
-                                />
+                            <a href="https://digitalpublicgoods.net/r/climweb" target="_blank" rel="noopener">
+                                <img src="https://github.com/DPGAlliance/dpg-resources/blob/main/docs/assets/dpg-badge/dpg-badge-w.png?raw=true"
+                                    width="80" alt="Digital Public Goods Badge" class="footer-dpg-badge" />
                             </a>
                         </div>
 
                         <!-- socials under brand on desktop -->
                         <div class="footer-brand-socials">
                             {% for account in settings.base.OrganisationSetting.social_media_accounts %}
-                            <a
-                                class="footer-brand-social-icon"
-                                title="{{ account.value.name }}"
-                                href="{{ account.value.full_url }}"
-                                target="_blank"
-                                rel="noopener"
-                            >
+                            <a class="footer-brand-social-icon" title="{{ account.value.name }}"
+                                href="{{ account.value.full_url }}" target="_blank" rel="noopener">
                                 <span class="icon">
                                     {% svg_icon name=account.value.icon %}
                                 </span>
@@ -76,7 +53,7 @@
                 <div class="column">
                     <div class="columns is-multiline is-mobile">
                         <!-- NAV COLUMNS — rendered by footer_menu.html -->
-                        {% for block in settings.base.NavigationSettings.footer_menu %} 
+                        {% for block in settings.base.NavigationSettings.footer_menu %}
                         {% include_block block %} {% endfor %}
                     </div>
                 </div>
