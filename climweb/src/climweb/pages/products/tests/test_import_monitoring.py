@@ -285,6 +285,146 @@ class TestProductImportMonitoring(TestCase):
         self.assertContains(response, 'name="run_id" value="%s"' % run.pk)
         self.assertContains(response, "data-stop-import-form")
 
+    def test_family_page_renders_retry_button_only_for_failed_import(self):
+        user = get_user_model().objects.create_superuser(
+            username="retry-button-admin",
+            email="retry-button@example.com",
+            password="test-password",
+        )
+        failed_run = ProductImportRun.objects.create(
+            product_family="rainfall",
+            mode=ProductImportRun.MODE_IMPORT,
+            status=ProductImportRun.STATUS_FAILED,
+            from_date=date(2026, 8, 1),
+            to_date=date(2026, 8, 10),
+            error_message="Download failed",
+        )
+        ProductImportRun.objects.create(
+            product_family="rainfall",
+            mode=ProductImportRun.MODE_IMPORT,
+            status=ProductImportRun.STATUS_SUCCEEDED,
+            from_date=date(2026, 7, 1),
+            to_date=date(2026, 7, 10),
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            )
+        )
+
+        self.assertContains(response, "Retry import", count=1)
+        self.assertContains(
+            response,
+            'name="action" value="retry_import"',
+            count=1,
+        )
+        self.assertContains(
+            response,
+            'name="run_id" value="%s"' % failed_run.pk,
+        )
+
+    @patch("climweb.pages.products.tasks.run_manual_product_import.delay")
+    def test_admin_can_retry_failed_import_with_original_settings(self, delay):
+        delay.return_value = SimpleNamespace(id="retry-task-123")
+        user = get_user_model().objects.create_superuser(
+            username="retry-admin",
+            email="retry@example.com",
+            password="test-password",
+        )
+        failed_run = ProductImportRun.objects.create(
+            product_family="rainfall",
+            mode=ProductImportRun.MODE_IMPORT,
+            status=ProductImportRun.STATUS_FAILED,
+            from_date=date(2025, 1, 1),
+            to_date=date(2025, 12, 31),
+            limit=375,
+            refresh_existing=True,
+            retry_failures=False,
+            task_id="original-task",
+            output="Original output",
+            error_message="Original failure",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+            {"action": "retry_import", "run_id": failed_run.pk},
+        )
+
+        self.assertRedirects(
+            response,
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+        )
+        failed_run.refresh_from_db()
+        self.assertEqual(failed_run.status, ProductImportRun.STATUS_FAILED)
+        self.assertEqual(failed_run.task_id, "original-task")
+        self.assertEqual(failed_run.output, "Original output")
+        self.assertEqual(failed_run.error_message, "Original failure")
+
+        retry_run = ProductImportRun.objects.exclude(pk=failed_run.pk).get()
+        self.assertEqual(retry_run.status, ProductImportRun.STATUS_QUEUED)
+        self.assertEqual(retry_run.mode, failed_run.mode)
+        self.assertEqual(retry_run.from_date, failed_run.from_date)
+        self.assertEqual(retry_run.to_date, failed_run.to_date)
+        self.assertEqual(retry_run.limit, 375)
+        self.assertTrue(retry_run.refresh_existing)
+        self.assertTrue(retry_run.retry_failures)
+        self.assertEqual(retry_run.requested_by, user)
+        self.assertEqual(retry_run.task_id, "retry-task-123")
+        self.assertIn(f"#{failed_run.pk}", retry_run.current_phase)
+        delay.assert_called_once_with(retry_run.pk)
+
+        history_response = self.client.get(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            )
+        )
+        self.assertContains(history_response, "Retry failures")
+
+    @patch("climweb.pages.products.tasks.run_manual_product_import.delay")
+    def test_admin_cannot_retry_a_successful_import(self, delay):
+        user = get_user_model().objects.create_superuser(
+            username="invalid-retry-admin",
+            email="invalid-retry@example.com",
+            password="test-password",
+        )
+        succeeded_run = ProductImportRun.objects.create(
+            product_family="rainfall",
+            mode=ProductImportRun.MODE_IMPORT,
+            status=ProductImportRun.STATUS_SUCCEEDED,
+            from_date=date(2026, 8, 1),
+            to_date=date(2026, 8, 10),
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+            {"action": "retry_import", "run_id": succeeded_run.pk},
+        )
+
+        self.assertRedirects(
+            response,
+            reverse(
+                "product_import_family",
+                kwargs={"family_key": "rainfall"},
+            ),
+        )
+        self.assertEqual(ProductImportRun.objects.count(), 1)
+        delay.assert_not_called()
+
     @patch("climweb.config.celery.app.control.revoke")
     def test_admin_can_stop_queued_manual_import(self, revoke):
         user = get_user_model().objects.create_superuser(

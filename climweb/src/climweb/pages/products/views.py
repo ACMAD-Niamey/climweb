@@ -40,6 +40,32 @@ def _record_importer_audit(importer, action, actor, changes=None):
     )
 
 
+def _queue_product_import(request, run, label, *, retry=False):
+    from .tasks import run_manual_product_import
+
+    try:
+        task = run_manual_product_import.delay(run.pk)
+    except Exception as exc:
+        run.status = ProductImportRun.STATUS_FAILED
+        run.error_message = f"Could not queue import: {exc}"
+        run.finished_at = timezone.now()
+        run.save(
+            update_fields=[
+                "status",
+                "error_message",
+                "finished_at",
+            ]
+        )
+        messages.error(request, run.error_message)
+        return False
+
+    run.task_id = task.id
+    run.save(update_fields=["task_id"])
+    action_label = "retry" if retry else "import"
+    messages.success(request, f"{label} {action_label} was queued.")
+    return True
+
+
 @user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
 def product_import_status_view(request, family_key=None):
     runs = ProductImportRun.objects.all()
@@ -575,6 +601,34 @@ def product_import_family_view(request, family_key):
         else:
             messages.success(request, "The manual import is being stopped.")
         return redirect("product_import_family", family_key=family_key)
+    elif request.method == "POST" and action == "retry_import":
+        failed_run = get_object_or_404(
+            ProductImportRun,
+            pk=request.POST.get("run_id"),
+            product_family=family_key,
+        )
+        if failed_run.status != ProductImportRun.STATUS_FAILED:
+            messages.info(request, "Only failed imports can be retried.")
+            return redirect("product_import_family", family_key=family_key)
+
+        retry_run = ProductImportRun.objects.create(
+            product_family=failed_run.product_family,
+            mode=failed_run.mode,
+            from_date=failed_run.from_date,
+            to_date=failed_run.to_date,
+            limit=failed_run.limit,
+            refresh_existing=failed_run.refresh_existing,
+            retry_failures=True,
+            requested_by=request.user,
+            current_phase=f"Retry of import #{failed_run.pk} waiting to start",
+        )
+        _queue_product_import(
+            request,
+            retry_run,
+            definition["label"],
+            retry=True,
+        )
+        return redirect("product_import_family", family_key=family_key)
     elif request.method == "POST" and action in source_actions:
         if source_form is None:
             raise Http404("Source configuration is not available for this importer")
@@ -689,29 +743,7 @@ def product_import_family_view(request, family_key):
                 retry_failures=form.cleaned_data["retry_failures"],
                 requested_by=request.user,
             )
-            from .tasks import run_manual_product_import
-
-            try:
-                task = run_manual_product_import.delay(run.pk)
-            except Exception as exc:
-                run.status = ProductImportRun.STATUS_FAILED
-                run.error_message = f"Could not queue import: {exc}"
-                run.finished_at = timezone.now()
-                run.save(
-                    update_fields=[
-                        "status",
-                        "error_message",
-                        "finished_at",
-                    ]
-                )
-                messages.error(request, run.error_message)
-            else:
-                run.task_id = task.id
-                run.save(update_fields=["task_id"])
-                messages.success(
-                    request,
-                    f"{definition['label']} import was queued.",
-                )
+            _queue_product_import(request, run, definition["label"])
             return redirect("product_import_family", family_key=family_key)
         schedule_form = None
     else:

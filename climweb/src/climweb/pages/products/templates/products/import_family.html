@@ -337,7 +337,12 @@
                 <tbody>
                     {% for run in recent_runs %}
                         <tr data-import-run="{{ run.pk }}" data-status="{{ run.status }}">
-                            <td>{{ run.get_mode_display }}</td>
+                            <td>
+                                {{ run.get_mode_display }}
+                                {% if run.retry_failures %}
+                                    <div class="import-meta">{% translate "Retry failures" %}</div>
+                                {% endif %}
+                            </td>
                             <td>{{ run.from_date }} – {{ run.to_date }}</td>
                             <td data-run-status-cell class="run-status--{{ run.status }}">
                                 <strong data-run-status>{{ run.get_status_display }}</strong>
@@ -377,6 +382,15 @@
                                     </form>
                                 {% elif run.status == "cancelling" %}
                                     <span class="import-meta">{% translate "Stop requested" %}</span>
+                                {% elif run.status == "failed" %}
+                                    <form method="post" data-retry-import-form>
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="retry_import">
+                                        <input type="hidden" name="run_id" value="{{ run.pk }}">
+                                        <button type="submit" class="button button-primary button-small">
+                                            {% translate "Retry import" %}
+                                        </button>
+                                    </form>
                                 {% else %}
                                     —
                                 {% endif %}
@@ -474,6 +488,13 @@
                 document.querySelectorAll("[data-stop-import-form]").forEach((form) => {
                     form.addEventListener("submit", (event) => {
                         if (!window.confirm("Stop this manual import? Already imported records will be kept.")) {
+                            event.preventDefault();
+                        }
+                    });
+                });
+                document.querySelectorAll("[data-retry-import-form]").forEach((form) => {
+                    form.addEventListener("submit", (event) => {
+                        if (!window.confirm("Retry this failed import with the same date range and settings?")) {
                             event.preventDefault();
                         }
                     });
