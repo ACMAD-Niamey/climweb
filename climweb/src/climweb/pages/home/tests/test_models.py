@@ -64,6 +64,23 @@ class TestHomePage(WagtailPageTestCase):
             title="Unordered featured product",
             is_featured_on_homepage=True,
         )
+        third_product = ProductPageFactory(
+            parent=product_index,
+            title="Third featured product",
+            is_featured_on_homepage=True,
+            homepage_feature_order=30,
+        )
+        fourth_product = ProductPageFactory(
+            parent=product_index,
+            title="Fourth featured product",
+            is_featured_on_homepage=True,
+            homepage_feature_order=40,
+        )
+        ProductPageFactory(
+            parent=product_index,
+            title="Overflow unordered product",
+            is_featured_on_homepage=True,
+        )
         ProductPageFactory(
             parent=product_index,
             title="Not featured product",
@@ -76,7 +93,13 @@ class TestHomePage(WagtailPageTestCase):
 
         self.assertEqual(
             featured_titles,
-            [first_product.title, later_product.title, unordered_product.title],
+            [
+                first_product.title,
+                later_product.title,
+                third_product.title,
+                fourth_product.title,
+                unordered_product.title,
+            ],
         )
 
     def test_unfeatured_product_is_ignored_when_still_manually_selected(self):

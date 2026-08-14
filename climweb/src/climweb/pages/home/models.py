@@ -185,7 +185,7 @@ class HomePage(MetadataPageMixin, Page):
             ('custom_blurb', blocks.TextBlock(required=False, max_length=160)),
             ('icon', IconChooserBlock(required=False)),
         ], label=_("Product"))),
-    ], null=True, blank=True, use_json_field=True, max_num=3, verbose_name=_("Featured Products"))
+    ], null=True, blank=True, use_json_field=True, max_num=5, verbose_name=_("Featured Products"))
 
     services_strip = StreamField([
         ('item', blocks.StructBlock([
@@ -586,9 +586,9 @@ class HomePage(MetadataPageMixin, Page):
         Manual picks from the featured_products StreamField come first because
         editors curated their order, but the ProductPage feature checkbox remains
         the source of truth. Products flagged with is_featured_on_homepage then
-        fill any remaining slots. Capped at 3 to fit the card layout.
+        fill any remaining slots. Capped at 5 to fit the card layout.
         """
-        max_items = 3
+        max_items = 5
         items: list[dict] = []
         seen_page_ids: set[int] = set()
 
