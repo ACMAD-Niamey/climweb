@@ -185,7 +185,7 @@ class HomePage(MetadataPageMixin, Page):
             ('custom_blurb', blocks.TextBlock(required=False, max_length=160)),
             ('icon', IconChooserBlock(required=False)),
         ], label=_("Product"))),
-    ], null=True, blank=True, use_json_field=True, max_num=3, verbose_name=_("Featured Products"))
+    ], null=True, blank=True, use_json_field=True, max_num=5, verbose_name=_("Featured Products"))
 
     services_strip = StreamField([
         ('item', blocks.StructBlock([
@@ -584,11 +584,11 @@ class HomePage(MetadataPageMixin, Page):
         Products for the homepage Featured Products card.
 
         Manual picks from the featured_products StreamField come first because
-        editors curated their order. Products flagged with is_featured_on_homepage
-        then fill any remaining slots, so the card stays populated even when
-        no manual curation was done. Capped at 3 to fit the card layout.
+        editors curated their order, but the ProductPage feature checkbox remains
+        the source of truth. Products flagged with is_featured_on_homepage then
+        fill any remaining slots. Capped at 5 to fit the card layout.
         """
-        max_items = 3
+        max_items = 5
         items: list[dict] = []
         seen_page_ids: set[int] = set()
 
@@ -632,6 +632,11 @@ class HomePage(MetadataPageMixin, Page):
                 except Exception:
                     logger.warning("Failed to resolve featured product page for homepage %s", self.pk,
                                    exc_info=True)
+                    continue
+                # A page may remain in this legacy manual list after an editor
+                # turns off its homepage feature checkbox. Respect the checkbox
+                # so unselecting a product always removes it from the homepage.
+                if not page.is_featured_on_homepage:
                     continue
                 if page.pk in seen_page_ids:
                     continue
