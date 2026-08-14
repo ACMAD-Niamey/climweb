@@ -3,6 +3,7 @@ from wagtail.test.utils import WagtailPageTestCase
 
 from climweb.base.seo_utils import get_html_meta_tags
 from climweb.base.test_utils import test_page_meta_tags
+from climweb.pages.products.tests.factories import ProductIndexPageFactory, ProductPageFactory
 from .factories import get_or_create_homepage
 
 
@@ -43,3 +44,37 @@ class TestHomePage(WagtailPageTestCase):
         meta_tags = get_html_meta_tags(resp.content)
         
         test_page_meta_tags(self, self.page, meta_tags, request=resp.wsgi_request)
+
+    def test_flagged_products_use_configured_homepage_order(self):
+        product_index = ProductIndexPageFactory(parent=self.page)
+        later_product = ProductPageFactory(
+            parent=product_index,
+            title="Later featured product",
+            is_featured_on_homepage=True,
+            homepage_feature_order=20,
+        )
+        first_product = ProductPageFactory(
+            parent=product_index,
+            title="First featured product",
+            is_featured_on_homepage=True,
+            homepage_feature_order=5,
+        )
+        unordered_product = ProductPageFactory(
+            parent=product_index,
+            title="Unordered featured product",
+            is_featured_on_homepage=True,
+        )
+        ProductPageFactory(
+            parent=product_index,
+            title="Not featured product",
+            is_featured_on_homepage=False,
+            homepage_feature_order=1,
+        )
+
+        self.page.__dict__.pop("featured_products_list", None)
+        featured_titles = [item["title"] for item in self.page.featured_products_list]
+
+        self.assertEqual(
+            featured_titles,
+            [first_product.title, later_product.title, unordered_product.title],
+        )
