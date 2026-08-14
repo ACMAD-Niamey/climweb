@@ -212,6 +212,15 @@ class ProductPage(BaseProductPage):
         verbose_name=_("Feature on homepage"),
         help_text=_("Show this product in the homepage Featured Products card"),
     )
+    homepage_feature_order = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        verbose_name=_("Homepage feature order"),
+        help_text=_(
+            "Controls the order of products selected for the homepage. "
+            "Lower numbers appear first."
+        ),
+    )
     map_layers = StreamField([
         ('layers', LayerBlock(label="Layer"))
     ], blank=True, null=True, use_json_field=True, verbose_name=_("Map Layers"))
@@ -227,6 +236,7 @@ class ProductPage(BaseProductPage):
                 FieldPanel('default_listing_thumbnail'),
                 FieldPanel('menu_order'),
                 FieldPanel('is_featured_on_homepage'),
+                FieldPanel('homepage_feature_order'),
             ],
             heading=_("Other settings"),
         ),
