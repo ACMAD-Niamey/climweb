@@ -584,9 +584,9 @@ class HomePage(MetadataPageMixin, Page):
         Products for the homepage Featured Products card.
 
         Manual picks from the featured_products StreamField come first because
-        editors curated their order. Products flagged with is_featured_on_homepage
-        then fill any remaining slots, so the card stays populated even when
-        no manual curation was done. Capped at 3 to fit the card layout.
+        editors curated their order, but the ProductPage feature checkbox remains
+        the source of truth. Products flagged with is_featured_on_homepage then
+        fill any remaining slots. Capped at 3 to fit the card layout.
         """
         max_items = 3
         items: list[dict] = []
@@ -632,6 +632,11 @@ class HomePage(MetadataPageMixin, Page):
                 except Exception:
                     logger.warning("Failed to resolve featured product page for homepage %s", self.pk,
                                    exc_info=True)
+                    continue
+                # A page may remain in this legacy manual list after an editor
+                # turns off its homepage feature checkbox. Respect the checkbox
+                # so unselecting a product always removes it from the homepage.
+                if not page.is_featured_on_homepage:
                     continue
                 if page.pk in seen_page_ids:
                     continue

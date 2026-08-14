@@ -78,3 +78,26 @@ class TestHomePage(WagtailPageTestCase):
             featured_titles,
             [first_product.title, later_product.title, unordered_product.title],
         )
+
+    def test_unfeatured_product_is_ignored_when_still_manually_selected(self):
+        product_index = ProductIndexPageFactory(parent=self.page)
+        product = ProductPageFactory(
+            parent=product_index,
+            title="Legacy manually selected product",
+            is_featured_on_homepage=False,
+        )
+        self.page.featured_products = [
+            {
+                "type": "product",
+                "value": {
+                    "page": product,
+                    "custom_title": "",
+                    "custom_blurb": "",
+                    "icon": "",
+                },
+            }
+        ]
+
+        self.page.__dict__.pop("featured_products_list", None)
+
+        self.assertEqual(self.page.featured_products_list, [])
