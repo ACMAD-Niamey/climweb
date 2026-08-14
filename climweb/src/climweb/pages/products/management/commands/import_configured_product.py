@@ -55,6 +55,8 @@ class Command(BaseCommand):
             ).get(key=options["family_key"])
         except ConfiguredProductImporter.DoesNotExist as exc:
             raise CommandError("Configured importer was not found") from exc
+        if importer.status == ConfiguredProductImporter.STATUS_ARCHIVED:
+            raise CommandError("Configured importer is archived")
 
         values = get_product_import_source_values(importer.key)
         preview = inspect_product_import_source(

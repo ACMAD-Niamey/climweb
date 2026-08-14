@@ -52,6 +52,11 @@ The subdomain deployment section documents an ACMAD-fork-specific customization 
 The ACMAD product migrations section documents the completed file-based product importers, dashboard operations,
 automatic scheduling, historical imports, source configuration, initial production seeding, and troubleshooting.
 
+### Product Importer Feature
+
+The Product Importer feature guide documents the shared dashboard, manual and automatic workflows, progress, stopping,
+retry, source/schema configuration, and the complete lifecycle for dashboard-created importers.
+
 ```{toctree}
 ---
 maxdepth: 1
@@ -60,6 +65,7 @@ development/index
 general-architecture
 backup-restore
 management-commands
+../products/product-importer-feature
 ../products/acmad-product-migrations
 extending-climweb/index
 deployment

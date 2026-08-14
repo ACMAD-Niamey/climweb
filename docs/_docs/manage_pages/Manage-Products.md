@@ -307,12 +307,16 @@ Use **Product Imports** in the Wagtail administration menu to:
 - preview or run historical imports by date range;
 - monitor live progress and recent output;
 - stop a queued or running manual import;
+- inspect full errors and retry failed imports;
 - enable or disable each automatic importer;
 - change its automatic interval; and
-- test, preview, save, or restore its source/schema configuration.
+- test, preview, save, or restore its source/schema configuration;
+- create a controlled importer for a new file-based product; and
+- edit, archive, restore, and audit dashboard-created importers.
 
-See [ACMAD Product Migrations](../products/acmad-product-migrations.md) for the completed families, production seeding,
-source configuration, and troubleshooting.
+See [Product Importer Feature](../products/product-importer-feature.md) for the complete administration and lifecycle
+guide. See [ACMAD Product Migrations](../products/acmad-product-migrations.md) for the completed built-in families and
+production seeding.
 
 ## Seasonal and Long-Range Forecast pages
 

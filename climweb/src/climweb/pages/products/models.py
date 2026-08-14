@@ -212,6 +212,15 @@ class ProductPage(BaseProductPage):
         verbose_name=_("Feature on homepage"),
         help_text=_("Show this product in the homepage Featured Products card"),
     )
+    homepage_feature_order = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        verbose_name=_("Homepage feature order"),
+        help_text=_(
+            "Controls the order of products selected for the homepage. "
+            "Lower numbers appear first."
+        ),
+    )
     map_layers = StreamField([
         ('layers', LayerBlock(label="Layer"))
     ], blank=True, null=True, use_json_field=True, verbose_name=_("Map Layers"))
@@ -227,6 +236,7 @@ class ProductPage(BaseProductPage):
                 FieldPanel('default_listing_thumbnail'),
                 FieldPanel('menu_order'),
                 FieldPanel('is_featured_on_homepage'),
+                FieldPanel('homepage_feature_order'),
             ],
             heading=_("Other settings"),
         ),
@@ -803,9 +813,11 @@ class ConfiguredProductImporter(models.Model):
 
     STATUS_DRAFT = 'draft'
     STATUS_ACTIVE = 'active'
+    STATUS_ARCHIVED = 'archived'
     STATUS_CHOICES = [
         (STATUS_DRAFT, _("Draft")),
         (STATUS_ACTIVE, _("Active")),
+        (STATUS_ARCHIVED, _("Archived")),
     ]
 
     key = models.SlugField(
@@ -855,6 +867,53 @@ class ConfiguredProductImporter(models.Model):
 
     def __str__(self):
         return self.label
+
+
+class ConfiguredProductImporterAuditEvent(models.Model):
+    """Immutable lifecycle history for a dashboard-created importer."""
+
+    ACTION_CREATED = 'created'
+    ACTION_UPDATED = 'updated'
+    ACTION_ARCHIVED = 'archived'
+    ACTION_RESTORED = 'restored'
+    ACTION_ENABLED = 'enabled'
+    ACTION_DISABLED = 'disabled'
+    ACTION_SOURCE_UPDATED = 'source_updated'
+    ACTION_SCHEDULE_UPDATED = 'schedule_updated'
+    ACTION_CHOICES = [
+        (ACTION_CREATED, _("Created")),
+        (ACTION_UPDATED, _("Updated")),
+        (ACTION_ARCHIVED, _("Archived")),
+        (ACTION_RESTORED, _("Restored")),
+        (ACTION_ENABLED, _("Enabled")),
+        (ACTION_DISABLED, _("Disabled")),
+        (ACTION_SOURCE_UPDATED, _("Source updated")),
+        (ACTION_SCHEDULE_UPDATED, _("Schedule updated")),
+    ]
+
+    importer = models.ForeignKey(
+        ConfiguredProductImporter,
+        on_delete=models.CASCADE,
+        related_name='audit_events',
+    )
+    action = models.CharField(max_length=40, choices=ACTION_CHOICES)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='configured_importer_audit_events',
+    )
+    changes = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at', '-pk']
+        verbose_name = _("Configured Product Importer Audit Event")
+        verbose_name_plural = _("Configured Product Importer Audit Events")
+
+    def __str__(self):
+        return f"{self.importer}: {self.get_action_display()}"
 
 
 class SubNationalProductsLandingPage(AbstractIntroPage, Page):

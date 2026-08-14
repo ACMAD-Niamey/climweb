@@ -96,6 +96,8 @@
     .output-modal-header h2 { margin: 0; }
     .output-modal-body { max-height: 60vh; overflow: auto; padding: 1.25rem; }
     .output-modal-body pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
+    .lifecycle-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
+    .archive-notice { background: #fef3c7; border-left: 4px solid #d97706; margin-bottom: 1rem; padding: 1rem; }
     @media (max-width: 900px) { .import-table { display: block; overflow-x: auto; } }
 </style>
 {% endblock %}
@@ -108,11 +110,36 @@
             <a href="{% url 'product_import_monitor' %}">← {% translate "All product imports" %}</a>
         </div>
 
+        {% if configured_importer %}
+            <div class="lifecycle-actions">
+                {% if definition.is_archived %}
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="restore_importer">
+                        <button type="submit" class="button button-primary">{% translate "Restore as draft" %}</button>
+                    </form>
+                {% else %}
+                    <a class="button" href="{% url 'configured_product_importer_edit' family_key=definition.key %}">{% translate "Edit importer" %}</a>
+                    <form method="post" data-archive-importer-form>
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="archive_importer">
+                        <button type="submit" class="button button-secondary">{% translate "Archive importer" %}</button>
+                    </form>
+                {% endif %}
+            </div>
+            {% if definition.is_archived %}
+                <div class="archive-notice">
+                    <strong>{% translate "This importer is archived." %}</strong>
+                    {% translate "Its schedule is disabled and its import history is preserved. Restore it before editing or running imports." %}
+                </div>
+            {% endif %}
+        {% endif %}
+
         <div class="family-summary">
             <div class="family-card">
                 <span class="family-card-value">{{ monitor_row.health_label }}</span>
                 <span class="import-meta">{% translate "Importer status" %}</span>
-                <form method="post" class="importer-status-form">
+                {% if not definition.is_archived %}<form method="post" class="importer-status-form">
                     {% csrf_token %}
                     {% if monitor_row.enabled %}
                         <input type="hidden" name="action" value="disable_importer">
@@ -125,7 +152,7 @@
                             {% translate "Enable importer" %}
                         </button>
                     {% endif %}
-                </form>
+                </form>{% endif %}
                 {% if monitor_row.enabled_is_custom %}
                     <span class="import-meta">{% translate "Dashboard override" %}</span>
                 {% else %}
@@ -152,6 +179,7 @@
             </div>
         </div>
 
+        {% if not definition.is_archived %}
         {% if source_form %}
             <section class="source-panel">
                 <h2>{% translate "Source and schema configuration" %}</h2>
@@ -290,6 +318,7 @@
                 </button>
             </form>
         </section>
+        {% endif %}
 
         <section>
             <h2>{% translate "Recent import history" %}</h2>
@@ -308,7 +337,12 @@
                 <tbody>
                     {% for run in recent_runs %}
                         <tr data-import-run="{{ run.pk }}" data-status="{{ run.status }}">
-                            <td>{{ run.get_mode_display }}</td>
+                            <td>
+                                {{ run.get_mode_display }}
+                                {% if run.retry_failures %}
+                                    <div class="import-meta">{% translate "Retry failures" %}</div>
+                                {% endif %}
+                            </td>
                             <td>{{ run.from_date }} – {{ run.to_date }}</td>
                             <td data-run-status-cell class="run-status--{{ run.status }}">
                                 <strong data-run-status>{{ run.get_status_display }}</strong>
@@ -348,12 +382,33 @@
                                     </form>
                                 {% elif run.status == "cancelling" %}
                                     <span class="import-meta">{% translate "Stop requested" %}</span>
+                                {% elif run.status == "failed" %}
+                                    <form method="post" data-retry-import-form>
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="retry_import">
+                                        <input type="hidden" name="run_id" value="{{ run.pk }}">
+                                        <button type="submit" class="button button-primary button-small">
+                                            {% translate "Retry import" %}
+                                        </button>
+                                    </form>
                                 {% else %}
                                     —
                                 {% endif %}
                             </td>
                             <td>
-                                {% if run.error_message %}<div class="import-error">{{ run.error_message }}</div>{% endif %}
+                                {% if run.error_message %}
+                                    <div class="import-error">{{ run.error_message|truncatechars:120 }}</div>
+                                    <button
+                                        type="button"
+                                        class="button button-small"
+                                        data-output-trigger
+                                        data-output-source="run-error-{{ run.pk }}"
+                                        data-output-title="{% translate 'Import error' %} — {{ definition.label }} — {{ run.requested_at|date:'Y-m-d H:i' }}"
+                                    >
+                                        {% translate "View error" %}
+                                    </button>
+                                    <pre id="run-error-{{ run.pk }}" hidden>{{ run.error_message }}</pre>
+                                {% endif %}
                                 {% if run.output %}
                                     <button
                                         type="button"
@@ -367,7 +422,7 @@
                                     <pre id="run-output-{{ run.pk }}" hidden>{{ run.output }}</pre>
                                 {% elif run.status == "queued" or run.status == "running" %}
                                     {% translate "Waiting for completion" %}
-                                {% else %}
+                                {% elif not run.error_message %}
                                     —
                                 {% endif %}
                             </td>
@@ -378,11 +433,39 @@
                 </tbody>
             </table>
         </section>
+
+        {% if configured_importer %}
+            <section class="manual-import-panel">
+                <h2>{% translate "Importer audit trail" %}</h2>
+                <table class="import-table">
+                    <thead>
+                        <tr>
+                            <th>{% translate "Date" %}</th>
+                            <th>{% translate "Action" %}</th>
+                            <th>{% translate "User" %}</th>
+                            <th>{% translate "Changes" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for event in audit_events %}
+                            <tr>
+                                <td>{{ event.created_at|date:"Y-m-d H:i" }}</td>
+                                <td>{{ event.get_action_display }}</td>
+                                <td>{{ event.actor|default:"System" }}</td>
+                                <td><code>{{ event.changes }}</code></td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="4">{% translate "No lifecycle changes have been recorded yet." %}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+        {% endif %}
     </div>
 
     <dialog id="import-output-modal" class="output-modal" aria-labelledby="import-output-title">
         <div class="output-modal-header">
-            <h2 id="import-output-title">{% translate "Import output" %}</h2>
+            <h2 id="import-output-title">{% translate "Import details" %}</h2>
             <button type="button" class="button button-small" data-output-close>{% translate "Close" %}</button>
         </div>
         <div class="output-modal-body"><pre id="import-output-content"></pre></div>
@@ -409,6 +492,21 @@
                         }
                     });
                 });
+                document.querySelectorAll("[data-retry-import-form]").forEach((form) => {
+                    form.addEventListener("submit", (event) => {
+                        if (!window.confirm("Retry this failed import with the same date range and settings?")) {
+                            event.preventDefault();
+                        }
+                    });
+                });
+                const archiveForm = document.querySelector("[data-archive-importer-form]");
+                if (archiveForm) {
+                    archiveForm.addEventListener("submit", (event) => {
+                        if (!window.confirm("Archive this importer? Its schedule will be disabled and its history will be preserved.")) {
+                            event.preventDefault();
+                        }
+                    });
+                }
                 const modal = document.getElementById("import-output-modal");
                 const modalTitle = document.getElementById("import-output-title");
                 const modalContent = document.getElementById("import-output-content");

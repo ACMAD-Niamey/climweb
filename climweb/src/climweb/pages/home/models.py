@@ -643,11 +643,17 @@ class HomePage(MetadataPageMixin, Page):
                     icon=value.get("icon"),
                 ))
 
-        # 2. Fill remaining slots with flagged products, ordered by tree path
-        #    for a stable, predictable order.
+        # 2. Fill remaining slots with flagged products. Editors can control
+        #    their homepage order on each ProductPage; products without an
+        #    explicit order follow afterwards in stable tree order.
         if len(items) < max_items:
             try:
-                flagged = ProductPage.objects.live().filter(is_featured_on_homepage=True).order_by("path")
+                flagged = ProductPage.objects.live().filter(
+                    is_featured_on_homepage=True
+                ).order_by(
+                    models.F("homepage_feature_order").asc(nulls_last=True),
+                    "path",
+                )
                 for page in flagged:
                     if len(items) >= max_items:
                         break
