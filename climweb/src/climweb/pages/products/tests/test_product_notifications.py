@@ -22,6 +22,15 @@ from climweb.pages.products.product_notifications import (
 
 
 class TestProductSubscriptions(TestCase):
+    def test_subscription_page_uses_product_alert_layout(self):
+        response = self.client.get(reverse("product_subscription"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Climate information, delivered to you")
+        self.assertContains(response, "Choose product alerts")
+        self.assertContains(response, "Select all")
+        self.assertContains(response, "products/css/subscription.css")
+
     @patch(
         "climweb.pages.products.tasks.send_product_subscription_confirmation.delay"
     )
