@@ -1113,3 +1113,33 @@ def product_layers_integration_view(request, product_page_id):
     })
 
     return render(request, template_name, context=context)
+from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect
+from wagtail.admin.auth import user_passes_test
+from .models import ProductSubscriber
+from .product_notifications import send_confirmation_email
+
+@user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
+def product_subscriber_resend_verification_view(request, subscriber_id):
+    subscriber = get_object_or_404(ProductSubscriber, pk=subscriber_id)
+    if subscriber.status == ProductSubscriber.STATUS_PENDING:
+        try:
+            send_confirmation_email(subscriber)
+            messages.success(request, f"Verification email sent to {subscriber.email}.")
+        except Exception as e:
+            messages.error(request, f"Failed to send email to {subscriber.email}: {e}")
+    else:
+        messages.warning(request, f"Subscriber {subscriber.email} is not pending verification.")
+    
+    return redirect("product_subscriber_dashboard")
+
+@user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
+def product_subscriber_delete_view(request, subscriber_id):
+    subscriber = get_object_or_404(ProductSubscriber, pk=subscriber_id)
+    if request.method == "POST":
+        email = subscriber.email
+        subscriber.delete()
+        messages.success(request, f"Subscriber {email} deleted successfully.")
+    else:
+        messages.error(request, "Invalid request method for deletion. Use POST.")
+    return redirect("product_subscriber_dashboard")

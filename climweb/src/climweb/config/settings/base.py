@@ -512,7 +512,14 @@ if RECAPTCHA_VERIFY_REQUEST_TIMEOUT:
 
 # EMAIL SETTINGS
 # Default email address used to send messages from the website.
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="climweb@localhost")
+
+EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+EMAIL_PORT = env.int("EMAIL_PORT", default=25)
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=False)
+EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 
 # A list of people who get error notifications.
 ADMINS = getaddresses([env('DJANGO_ADMINS', default="")])
