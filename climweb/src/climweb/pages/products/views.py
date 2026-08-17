@@ -1,3 +1,4 @@
+import uuid
 from datetime import timedelta
 
 from django.conf import settings
@@ -15,6 +16,8 @@ from .forms import (
     ProductImportScheduleForm,
     ProductImportSourceConfigForm,
     ProductLayerForm,
+    ProductSubscriptionForm,
+    ProductSubscriptionPreferencesForm,
 )
 from .import_monitoring import (
     build_import_monitor_rows,
@@ -28,7 +31,158 @@ from .models import (
     ProductImportSchedule,
     ProductImportSourceConfig,
     ProductPage,
+    ProductNotificationEvent,
+    ProductSubscriptionPreference,
+    ProductSubscriber,
 )
+
+
+def product_subscription_view(request):
+    form = ProductSubscriptionForm(
+        request.POST if request.method == "POST" else None
+    )
+    if request.method == "POST" and form.is_valid():
+        email = form.cleaned_data["email"].strip().lower()
+        subscriber, _ = ProductSubscriber.objects.update_or_create(
+            email=email,
+            defaults={
+                "name": form.cleaned_data["name"].strip(),
+                "status": ProductSubscriber.STATUS_PENDING,
+                "confirmation_token": uuid.uuid4(),
+                "consented_at": timezone.now(),
+                "confirmed_at": None,
+                "unsubscribed_at": None,
+                "consent_ip": request.META.get("REMOTE_ADDR") or None,
+                "consent_user_agent": request.META.get(
+                    "HTTP_USER_AGENT", ""
+                )[:500],
+            },
+        )
+        subscriber.preferences.all().delete()
+        ProductSubscriptionPreference.objects.bulk_create(
+            [
+                ProductSubscriptionPreference(
+                    subscriber=subscriber, product_family=family
+                )
+                for family in form.cleaned_data["product_families"]
+            ]
+        )
+        from .tasks import send_product_subscription_confirmation
+
+        send_product_subscription_confirmation.delay(subscriber.pk)
+        return render(
+            request,
+            "products/subscription_status.html",
+            {
+                "status_title": "Check your email",
+                "status_message": (
+                    "We sent you a confirmation link. Your subscription will "
+                    "remain inactive until you confirm it."
+                ),
+            },
+        )
+    return render(request, "products/subscription_form.html", {"form": form})
+
+
+def product_subscription_confirm_view(request, token):
+    subscriber = get_object_or_404(ProductSubscriber, confirmation_token=token)
+    subscriber.status = ProductSubscriber.STATUS_ACTIVE
+    subscriber.confirmed_at = timezone.now()
+    subscriber.unsubscribed_at = None
+    subscriber.save(
+        update_fields=[
+            "status",
+            "confirmed_at",
+            "unsubscribed_at",
+            "updated_at",
+        ]
+    )
+    return render(
+        request,
+        "products/subscription_status.html",
+        {
+            "status_title": "Subscription confirmed",
+            "status_message": (
+                "You will now receive notifications for your selected ACMAD "
+                "products."
+            ),
+        },
+    )
+
+
+def product_subscription_preferences_view(request, token):
+    subscriber = get_object_or_404(ProductSubscriber, unsubscribe_token=token)
+    initial = {
+        "name": subscriber.name,
+        "email": subscriber.email,
+        "product_families": list(
+            subscriber.preferences.values_list("product_family", flat=True)
+        ),
+    }
+    form = ProductSubscriptionPreferencesForm(
+        request.POST if request.method == "POST" else None,
+        initial=initial,
+    )
+    form.fields["email"].disabled = True
+    if request.method == "POST" and form.is_valid():
+        subscriber.name = form.cleaned_data["name"].strip()
+        subscriber.status = ProductSubscriber.STATUS_ACTIVE
+        subscriber.unsubscribed_at = None
+        subscriber.save(
+            update_fields=[
+                "name",
+                "status",
+                "unsubscribed_at",
+                "updated_at",
+            ]
+        )
+        subscriber.preferences.all().delete()
+        ProductSubscriptionPreference.objects.bulk_create(
+            [
+                ProductSubscriptionPreference(
+                    subscriber=subscriber, product_family=family
+                )
+                for family in form.cleaned_data["product_families"]
+            ]
+        )
+        return render(
+            request,
+            "products/subscription_status.html",
+            {
+                "status_title": "Preferences updated",
+                "status_message": (
+                    "Your ACMAD product notification preferences have been saved."
+                ),
+            },
+        )
+    return render(
+        request,
+        "products/subscription_form.html",
+        {"form": form, "managing_preferences": True, "subscriber": subscriber},
+    )
+
+
+def product_subscription_unsubscribe_view(request, token):
+    subscriber = get_object_or_404(ProductSubscriber, unsubscribe_token=token)
+    if request.method == "POST":
+        subscriber.status = ProductSubscriber.STATUS_UNSUBSCRIBED
+        subscriber.unsubscribed_at = timezone.now()
+        subscriber.save(update_fields=["status", "unsubscribed_at", "updated_at"])
+        return render(
+            request,
+            "products/subscription_status.html",
+            {
+                "status_title": "Unsubscribed",
+                "status_message": (
+                    "You will no longer receive ACMAD product notifications."
+                ),
+            },
+        )
+    return render(
+        request,
+        "products/subscription_unsubscribe.html",
+        {"subscriber": subscriber},
+    )
 
 
 def _record_importer_audit(importer, action, actor, changes=None):
@@ -629,6 +783,21 @@ def product_import_family_view(request, family_key):
             retry=True,
         )
         return redirect("product_import_family", family_key=family_key)
+    elif request.method == "POST" and action == "send_latest_notification":
+        from .product_notifications import queue_latest_product_notification
+
+        event = queue_latest_product_notification(family_key, request.user)
+        if event is None:
+            messages.warning(
+                request,
+                "There is no successfully imported file to notify subscribers about.",
+            )
+        else:
+            messages.success(
+                request,
+                f"Notification for the latest {definition['label']} product was queued.",
+            )
+        return redirect("product_import_family", family_key=family_key)
     elif request.method == "POST" and action in source_actions:
         if source_form is None:
             raise Http404("Source configuration is not available for this importer")
@@ -771,6 +940,13 @@ def product_import_family_view(request, family_key):
     recent_runs = ProductImportRun.objects.filter(
         product_family=family_key
     ).select_related("requested_by")[:20]
+    recent_notification_events = ProductNotificationEvent.objects.filter(
+        product_family=family_key
+    ).select_related("source_import", "requested_by")[:10]
+    active_subscriber_count = ProductSubscriber.objects.filter(
+        status=ProductSubscriber.STATUS_ACTIVE,
+        preferences__product_family=family_key,
+    ).distinct().count()
     return TemplateResponse(
         request,
         "products/import_family.html",
@@ -784,6 +960,8 @@ def product_import_family_view(request, family_key):
             "source_form": source_form,
             "source_preview": source_preview,
             "recent_runs": recent_runs,
+            "recent_notification_events": recent_notification_events,
+            "active_subscriber_count": active_subscriber_count,
             "configured_importer": configured_importer,
             "audit_events": (
                 configured_importer.audit_events.select_related("actor")[:20]

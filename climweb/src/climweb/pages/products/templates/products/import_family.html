@@ -198,9 +198,55 @@
                         </a>
                     </p>
                 {% endif %}
+                <p class="import-meta">
+                    {% blocktranslate with count=active_subscriber_count %}{{ count }} active subscriber(s) selected this product family.{% endblocktranslate %}
+                </p>
+                <form
+                    method="post"
+                    data-notification-form
+                    onsubmit="return window.confirm('{% translate "Send an email notification to all active subscribers for this product family?" %}');"
+                >
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="send_latest_notification">
+                    <button type="submit" class="button button-primary">
+                        {% translate "Notify subscribers about latest product" %}
+                    </button>
+                </form>
             {% else %}
                 <p class="import-meta">{% translate "No file has been imported for this product yet." %}</p>
             {% endif %}
+        </section>
+
+        <section class="manual-import-panel">
+            <h2>{% translate "Recent product notifications" %}</h2>
+            <table class="import-table">
+                <thead>
+                    <tr>
+                        <th>{% translate "Issue date" %}</th>
+                        <th>{% translate "Trigger" %}</th>
+                        <th>{% translate "Status" %}</th>
+                        <th>{% translate "Recipients" %}</th>
+                        <th>{% translate "Sent" %}</th>
+                        <th>{% translate "Failed" %}</th>
+                        <th>{% translate "Created" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in recent_notification_events %}
+                        <tr>
+                            <td>{{ event.source_import.source_published_date|date:"Y-m-d" }}</td>
+                            <td>{{ event.get_trigger_display }}</td>
+                            <td>{{ event.get_status_display }}</td>
+                            <td>{{ event.recipient_count }}</td>
+                            <td>{{ event.sent_count }}</td>
+                            <td>{{ event.failed_count }}</td>
+                            <td>{{ event.created_at|date:"Y-m-d H:i" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="7">{% translate "No product notifications have been sent yet." %}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </section>
 
         {% if not definition.is_archived %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<main class="section">
+    <div class="container" style="max-width: 760px">
+        <h1 class="title">{% if managing_preferences %}{% translate "Manage product notifications" %}{% else %}{% translate "Subscribe to product notifications" %}{% endif %}</h1>
+        <p class="mb-5">{% translate "Choose the ACMAD product families you want to receive by email." %}</p>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            {% for field in form %}
+                <div class="field mb-4">
+                    {% if field.name == "product_families" %}
+                        <label class="label">{{ field.label }}</label>
+                        <div class="box">{{ field }}</div>
+                    {% elif field.name == "consent" %}
+                        <label class="checkbox">{{ field }} {{ field.label }}</label>
+                    {% else %}
+                        <label class="label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        <div class="control">{{ field }}</div>
+                    {% endif %}
+                    {% if field.help_text %}<p class="help">{{ field.help_text }}</p>{% endif %}
+                    {{ field.errors }}
+                </div>
+            {% endfor %}
+            <button class="button is-primary" type="submit">
+                {% if managing_preferences %}{% translate "Save preferences" %}{% else %}{% translate "Send confirmation email" %}{% endif %}
+            </button>
+        </form>
+        {% if managing_preferences %}
+            <p class="mt-5">
+                <a href="{% url 'product_subscription_unsubscribe' token=subscriber.unsubscribe_token %}">{% translate "Unsubscribe from all product notifications" %}</a>
+            </p>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}
