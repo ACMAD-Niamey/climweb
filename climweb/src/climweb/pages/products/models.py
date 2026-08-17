@@ -922,6 +922,42 @@ class ConfiguredProductImporterAuditEvent(models.Model):
 class ProductSubscriber(models.Model):
     """A locally owned subscriber with explicit product preferences."""
 
+    class Sector(models.TextChoices):
+        AGRICULTURE = "Agriculture", _("Agriculture")
+        AVIATION = "Aviation", _("Aviation")
+        MARINE = "Marine", _("Marine")
+        MEDIA = "Media", _("Media")
+        ENVIRONMENT = "Environment", _("Environment")
+        TOURISM = "Tourism", _("Tourism")
+        SECURITY = "Security", _("Security")
+        CIVIL_PROTECTION = "Civil Protection", _("Civil Protection")
+        TELECOMMUNICATION = "Telecommunication", _("Telecommunication")
+        HEALTH = "Health", _("Health")
+        BANKING_FINANCE = "Banking and Finance", _("Banking and Finance")
+        RESEARCH = "Research", _("Research")
+        WATER_SANITATION = "Water and Sanitation", _("Water and Sanitation")
+        OTHERS = "Others", _("Others")
+
+    class OrganizationType(models.TextChoices):
+        PUBLIC_SECTOR = "Public Sector", _("Public Sector")
+        INTERGOVERNMENTAL = (
+            "Intergovernmental Organisation",
+            _("Intergovernmental Organisation"),
+        )
+        PRIVATE_SECTOR = "Private Sector", _("Private Sector")
+        ACADEMIC_RESEARCH = "Academic/Research", _("Academic/Research")
+        MEDIA = "Media", _("Media")
+        YOUTH = "Youth", _("Youth")
+        DONOR_FINANCE = (
+            "Donor/Finance institutions",
+            _("Donor/Finance institutions"),
+        )
+        NGO = (
+            "Non Governmental Organisation (NGO)",
+            _("Non Governmental Organisation (NGO)"),
+        )
+        OTHERS = "Others", _("Others")
+
     STATUS_PENDING = "pending"
     STATUS_ACTIVE = "active"
     STATUS_UNSUBSCRIBED = "unsubscribed"
@@ -935,6 +971,16 @@ class ProductSubscriber(models.Model):
 
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=255, blank=True)
+    sector = models.CharField(
+        max_length=80,
+        choices=Sector.choices,
+        blank=True,
+    )
+    organization_type = models.CharField(
+        max_length=100,
+        choices=OrganizationType.choices,
+        blank=True,
+    )
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING
     )
@@ -951,6 +997,8 @@ class ProductSubscriber(models.Model):
     panels = [
         FieldPanel("email"),
         FieldPanel("name"),
+        FieldPanel("sector"),
+        FieldPanel("organization_type"),
         FieldPanel("status"),
     ]
 

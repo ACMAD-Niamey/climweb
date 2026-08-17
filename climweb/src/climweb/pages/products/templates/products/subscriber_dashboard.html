@@ -204,6 +204,8 @@
                         <td>
                             <strong>{{ subscriber.email }}</strong>
                             {% if subscriber.name %}<div class="subscriber-meta">{{ subscriber.name }}</div>{% endif %}
+                            {% if subscriber.sector %}<div class="subscriber-meta">{{ subscriber.get_sector_display }}</div>{% endif %}
+                            {% if subscriber.organization_type %}<div class="subscriber-meta">{{ subscriber.get_organization_type_display }}</div>{% endif %}
                         </td>
                         <td>
                             <span class="subscriber-status subscriber-status--{{ subscriber.status }}">

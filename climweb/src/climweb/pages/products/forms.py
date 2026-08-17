@@ -10,12 +10,24 @@ from climweb.pages.products.models import (
     ConfiguredProductImporter,
     ProductImportSourceConfig,
     ProductPage,
+    ProductSubscriber,
 )
 
 
 class ProductSubscriptionForm(forms.Form):
     name = forms.CharField(max_length=255, required=False)
     email = forms.EmailField()
+    sector = forms.ChoiceField(
+        choices=ProductSubscriber.Sector.choices,
+        initial=ProductSubscriber.Sector.AGRICULTURE,
+        required=False,
+    )
+    organization_type = forms.ChoiceField(
+        label="Type of Organisation",
+        choices=ProductSubscriber.OrganizationType.choices,
+        initial=ProductSubscriber.OrganizationType.PUBLIC_SECTOR,
+        required=False,
+    )
     product_families = forms.MultipleChoiceField(
         label="Products",
         widget=forms.CheckboxSelectMultiple,

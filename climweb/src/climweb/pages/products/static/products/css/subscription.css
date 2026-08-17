@@ -71,6 +71,19 @@
     color: #777;
 }
 
+.product-subscribe-form-column .select select {
+    background: #fff;
+    border-color: #dbdbdb;
+    color: #363636;
+    font-size: 1rem;
+    height: 2.5rem;
+}
+
+.product-subscribe-form-column .product-subscribe-organisation-select,
+.product-subscribe-form-column .product-subscribe-organisation-select select {
+    width: 100%;
+}
+
 .product-subscribe-form-column .help {
     color: #4a4a4a;
     font-size: 0.75rem;

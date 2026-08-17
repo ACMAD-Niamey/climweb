@@ -50,6 +50,8 @@ def product_subscription_view(request):
             email=email,
             defaults={
                 "name": form.cleaned_data["name"].strip(),
+                "sector": form.cleaned_data["sector"],
+                "organization_type": form.cleaned_data["organization_type"],
                 "status": ProductSubscriber.STATUS_PENDING,
                 "confirmation_token": uuid.uuid4(),
                 "consented_at": timezone.now(),
@@ -118,6 +120,8 @@ def product_subscription_preferences_view(request, token):
     initial = {
         "name": subscriber.name,
         "email": subscriber.email,
+        "sector": subscriber.sector,
+        "organization_type": subscriber.organization_type,
         "product_families": list(
             subscriber.preferences.values_list("product_family", flat=True)
         ),
@@ -129,11 +133,15 @@ def product_subscription_preferences_view(request, token):
     form.fields["email"].disabled = True
     if request.method == "POST" and form.is_valid():
         subscriber.name = form.cleaned_data["name"].strip()
+        subscriber.sector = form.cleaned_data["sector"]
+        subscriber.organization_type = form.cleaned_data["organization_type"]
         subscriber.status = ProductSubscriber.STATUS_ACTIVE
         subscriber.unsubscribed_at = None
         subscriber.save(
             update_fields=[
                 "name",
+                "sector",
+                "organization_type",
                 "status",
                 "unsubscribed_at",
                 "updated_at",

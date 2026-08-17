@@ -57,6 +57,30 @@
                     {{ form.name.errors }}
                 </div>
 
+                <div class="field">
+                    <label class="label" for="{{ form.sector.id_for_label }}">
+                        {{ form.sector.label }}
+                    </label>
+                    <div class="control">
+                        <span class="select">
+                            {{ form.sector }}
+                        </span>
+                    </div>
+                    {{ form.sector.errors }}
+                </div>
+
+                <div class="field">
+                    <label class="label" for="{{ form.organization_type.id_for_label }}">
+                        {{ form.organization_type.label }}
+                    </label>
+                    <div class="control">
+                        <span class="select product-subscribe-organisation-select">
+                            {{ form.organization_type }}
+                        </span>
+                    </div>
+                    {{ form.organization_type.errors }}
+                </div>
+
                 <div class="field product-subscribe-products-field">
                     <div class="product-subscribe-products-heading">
                         <label class="label">{% translate "Our Products" %}</label>
