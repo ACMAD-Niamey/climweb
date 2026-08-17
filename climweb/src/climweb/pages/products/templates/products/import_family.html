@@ -179,6 +179,30 @@
             </div>
         </div>
 
+        <section class="manual-import-panel">
+            <h2>{% translate "Last imported file" %}</h2>
+            {% if monitor_row.latest_import_file %}
+                <p>
+                    <a href="{{ monitor_row.latest_import_file.url }}" target="_blank" rel="noopener noreferrer">
+                        <strong>{{ monitor_row.latest_import_file.name }}</strong>
+                    </a>
+                </p>
+                <p class="import-meta">
+                    {% blocktranslate with issue_date=monitor_row.latest_import_file.source_published_date|date:"Y-m-d" imported_at=monitor_row.latest_import_file.imported_at|date:"Y-m-d H:i" %}Issue date: {{ issue_date }} · Imported: {{ imported_at }}{% endblocktranslate %}
+                    · {{ monitor_row.latest_import_file.source_system }}
+                </p>
+                {% if monitor_row.latest_import_file.url != monitor_row.latest_import_file.source_url %}
+                    <p class="import-meta">
+                        <a href="{{ monitor_row.latest_import_file.source_url }}" target="_blank" rel="noopener noreferrer">
+                            {% translate "View original source" %}
+                        </a>
+                    </p>
+                {% endif %}
+            {% else %}
+                <p class="import-meta">{% translate "No file has been imported for this product yet." %}</p>
+            {% endif %}
+        </section>
+
         {% if not definition.is_archived %}
         {% if source_form %}
             <section class="source-panel">
