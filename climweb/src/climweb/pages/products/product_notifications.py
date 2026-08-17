@@ -132,12 +132,19 @@ def queue_latest_product_notification(product_family, requested_by):
     if source_import is None:
         return None
 
-    event = ProductNotificationEvent.objects.create(
+    event = ProductNotificationEvent.objects.filter(
         product_family=product_family,
         source_import=source_import,
-        trigger=ProductNotificationEvent.TRIGGER_MANUAL,
-        requested_by=requested_by,
-    )
+    ).first()
+
+    if not event:
+        event = ProductNotificationEvent.objects.create(
+            product_family=product_family,
+            source_import=source_import,
+            trigger=ProductNotificationEvent.TRIGGER_MANUAL,
+            requested_by=requested_by,
+        )
+
     from .tasks import send_product_notification
 
     transaction.on_commit(lambda: send_product_notification.delay(event.pk))
