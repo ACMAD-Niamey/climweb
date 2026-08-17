@@ -195,6 +195,24 @@ def deliver_product_notification(event_id):
     product_url = _product_url(source_import)
     filename = _source_filename(source_import)
     subject = f"New ACMAD product: {product_label} — {source_import.source_published_date}"
+    
+    product_item_page = source_import.product_item_page
+    valid_from = None
+    valid_until = None
+    product_description = ""
+    
+    if product_item_page:
+        valid_from = product_item_page.date
+        valid_until = product_item_page.valid_until
+        try:
+            parent_page = product_item_page.get_parent().specific
+            if hasattr(parent_page, 'introduction_text') and parent_page.introduction_text:
+                from django.utils.html import strip_tags
+                product_description = strip_tags(parent_page.introduction_text)
+                if len(product_description) > 300:
+                    product_description = product_description[:297] + "..."
+        except Exception:
+            pass
 
     sent_count = 0
     failed_count = 0
@@ -230,6 +248,9 @@ def deliver_product_notification(event_id):
         context = _get_email_context()
         context.update({
             "product_label": product_label,
+            "product_description": product_description,
+            "valid_from": valid_from,
+            "valid_until": valid_until,
             "source_published_date": source_import.source_published_date,
             "filename": filename,
             "product_url": product_url,

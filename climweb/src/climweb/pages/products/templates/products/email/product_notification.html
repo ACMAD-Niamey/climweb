@@ -7,8 +7,22 @@
     
     <p>A new product from <strong>{{ site_name|default:"ACMAD" }}</strong> is now available.</p>
     
+    {% if product_description %}
+    <p style="margin-top: 15px; margin-bottom: 20px; line-height: 1.5; color: #555555;">
+        {{ product_description }}
+    </p>
+    {% endif %}
+    
     <div class="card">
         <p style="margin: 0 0 10px 0;"><strong>Issue Date:</strong> {{ source_published_date }}</p>
+        {% if valid_from or valid_until %}
+        <p style="margin: 0 0 10px 0;">
+            <strong>Validity:</strong> 
+            {% if valid_from %}{{ valid_from }}{% endif %}
+            {% if valid_from and valid_until %} to {% endif %}
+            {% if valid_until %}{{ valid_until }}{% endif %}
+        </p>
+        {% endif %}
         <p style="margin: 0;"><strong>File:</strong> {{ filename }}</p>
     </div>
     
