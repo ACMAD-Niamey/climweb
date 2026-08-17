@@ -26,8 +26,8 @@ class TestProductSubscriptions(TestCase):
         response = self.client.get(reverse("product_subscription"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Climate information, delivered to you")
-        self.assertContains(response, "Choose product alerts")
+        self.assertContains(response, "Get Product Updates")
+        self.assertContains(response, "Our Products")
         self.assertContains(response, "Select all")
         self.assertContains(response, "products/css/subscription.css")
 
