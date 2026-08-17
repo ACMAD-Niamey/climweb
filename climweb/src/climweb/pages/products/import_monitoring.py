@@ -16,7 +16,7 @@ def _latest_import_file(imports):
     latest_import = (
         imports.filter(status=ProductSourceImport.STATUS_IMPORTED)
         .select_related("document", "image", "product_item_page")
-        .order_by("-imported_at")
+        .order_by("-source_published_date", "-imported_at")
         .first()
     )
     if latest_import is None:
