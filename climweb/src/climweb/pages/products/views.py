@@ -3,7 +3,9 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.db import transaction
+from django.db.models import Count, Max, Q
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.response import TemplateResponse
@@ -30,8 +32,9 @@ from .models import (
     ProductImportRun,
     ProductImportSchedule,
     ProductImportSourceConfig,
-    ProductPage,
+    ProductNotificationDelivery,
     ProductNotificationEvent,
+    ProductPage,
     ProductSubscriptionPreference,
     ProductSubscriber,
 )
@@ -259,6 +262,94 @@ def product_import_monitor_view(request):
         {
             "rows": rows,
             "summary": build_import_monitor_summary(rows),
+        },
+    )
+
+
+@user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
+def product_subscriber_dashboard_view(request):
+    """Track locally stored product subscribers and notification activity."""
+    from .import_registry import get_product_import_definitions
+
+    definitions = [
+        definition
+        for definition in get_product_import_definitions()
+        if not definition.get("is_archived")
+    ]
+    product_choices = [
+        (definition["key"], definition["label"])
+        for definition in definitions
+    ]
+    product_labels = dict(product_choices)
+    valid_statuses = dict(ProductSubscriber.STATUS_CHOICES)
+
+    search = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+    product_filter = request.GET.get("product", "").strip()
+    if status_filter not in valid_statuses:
+        status_filter = ""
+    if product_filter not in product_labels:
+        product_filter = ""
+
+    subscribers = ProductSubscriber.objects.prefetch_related("preferences")
+    if search:
+        subscribers = subscribers.filter(
+            Q(email__icontains=search) | Q(name__icontains=search)
+        )
+    if status_filter:
+        subscribers = subscribers.filter(status=status_filter)
+    if product_filter:
+        subscribers = subscribers.filter(
+            preferences__product_family=product_filter
+        )
+
+    subscribers = subscribers.annotate(
+        sent_delivery_count=Count(
+            "deliveries",
+            filter=Q(
+                deliveries__status=ProductNotificationDelivery.STATUS_SENT
+            ),
+            distinct=True,
+        ),
+        last_notified_at=Max("deliveries__sent_at"),
+    ).order_by("-created_at", "email")
+
+    page = Paginator(subscribers, 50).get_page(request.GET.get("page"))
+    for subscriber in page.object_list:
+        subscriber.selected_product_labels = [
+            product_labels.get(
+                preference.product_family, preference.product_family
+            )
+            for preference in subscriber.preferences.all()
+        ]
+
+    status_counts = {
+        row["status"]: row["count"]
+        for row in ProductSubscriber.objects.values("status").annotate(
+            count=Count("pk")
+        )
+    }
+    recent_events = list(
+        ProductNotificationEvent.objects.select_related("source_import")[:10]
+    )
+    for event in recent_events:
+        event.product_label = product_labels.get(
+            event.product_family, event.product_family
+        )
+
+    return TemplateResponse(
+        request,
+        "products/subscriber_dashboard.html",
+        {
+            "subscriber_page": page,
+            "total_subscribers": ProductSubscriber.objects.count(),
+            "status_counts": status_counts,
+            "status_choices": ProductSubscriber.STATUS_CHOICES,
+            "product_choices": product_choices,
+            "search": search,
+            "status_filter": status_filter,
+            "product_filter": product_filter,
+            "recent_events": recent_events,
         },
     )
 

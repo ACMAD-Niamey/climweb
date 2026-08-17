@@ -10,6 +10,9 @@
 - Exclude preview and dashboard historical-import runs from automatic notifications.
 - Provide an explicit **Notify subscribers about latest product** action on every importer page.
 - Record per-subscriber delivery status and show recent notification history on the importer dashboard.
+- Provide a dedicated **Email Subscribers** dashboard with subscriber totals,
+  search, status and product filters, consent dates, selected products, sent
+  counts, last-notified dates and recent notification activity.
 
 ## Phase 2 — production email delivery
 
@@ -37,7 +40,7 @@ ClimWeb database; Mailgun is only the delivery transport.
 
 ## Phase 3 — operational controls
 
-- Add global subscriber statistics, search, CSV export and status filters to the Product Imports dashboard.
+- Add CSV export for authorised subscriber-list administration.
 - Add per-family notification enable/disable controls and configurable email subject/introduction text.
 - Add a test-notification action and retry control for failed deliveries.
 - Add Mailgun webhook handling for delivered, bounced, complained and unsubscribed events.

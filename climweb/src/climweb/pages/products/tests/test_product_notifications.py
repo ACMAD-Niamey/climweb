@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from climweb.base.models import Product
 from climweb.pages.products.models import (
+    ProductNotificationDelivery,
     ProductNotificationEvent,
     ProductSourceImport,
     ProductSubscriber,
@@ -168,3 +169,108 @@ class TestProductNotifications(TestCase):
         self.assertEqual(event.trigger, ProductNotificationEvent.TRIGGER_MANUAL)
         self.assertEqual(event.requested_by, user)
         delay.assert_called_once_with(event.pk)
+
+
+class TestProductSubscriberDashboard(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.active = ProductSubscriber.objects.create(
+            name="Alice Forecast",
+            email="alice@example.com",
+            status=ProductSubscriber.STATUS_ACTIVE,
+            confirmed_at=timezone.now(),
+        )
+        ProductSubscriptionPreference.objects.create(
+            subscriber=cls.active,
+            product_family="rainfall",
+        )
+        cls.pending = ProductSubscriber.objects.create(
+            name="Bob Climate",
+            email="bob@example.com",
+            status=ProductSubscriber.STATUS_PENDING,
+        )
+        ProductSubscriptionPreference.objects.create(
+            subscriber=cls.pending,
+            product_family="heat-stress",
+        )
+
+        product = Product.objects.create(
+            name="Daily Rainfall Monitoring",
+            variable_name="subscriber-dashboard-rainfall",
+            temporal_resolution="daily",
+        )
+        source_import = ProductSourceImport.objects.create(
+            product=product,
+            source_url="https://example.com/rainfall-20260817.jpg",
+            source_system="Test source",
+            source_published_date=date(2026, 8, 17),
+            checksum_sha256="b" * 64,
+            status=ProductSourceImport.STATUS_IMPORTED,
+        )
+        event = ProductNotificationEvent.objects.create(
+            product_family="rainfall",
+            source_import=source_import,
+            trigger=ProductNotificationEvent.TRIGGER_AUTOMATIC,
+            status=ProductNotificationEvent.STATUS_SENT,
+            recipient_count=1,
+            sent_count=1,
+            finished_at=timezone.now(),
+        )
+        ProductNotificationDelivery.objects.create(
+            event=event,
+            subscriber=cls.active,
+            status=ProductNotificationDelivery.STATUS_SENT,
+            sent_at=timezone.now(),
+        )
+
+    def test_dashboard_requires_admin_access(self):
+        response = self.client.get(reverse("product_subscriber_dashboard"))
+
+        self.assertEqual(response.status_code, 302)
+
+    def test_dashboard_tracks_subscribers_and_recent_notifications(self):
+        user = get_user_model().objects.create_superuser(
+            username="subscriber-admin",
+            email="subscriber-admin@example.com",
+            password="test-password",
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("product_subscriber_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Email Subscribers")
+        self.assertContains(response, "alice@example.com")
+        self.assertContains(response, "bob@example.com")
+        self.assertContains(response, "Daily Rainfall Monitoring")
+        self.assertContains(response, "Recent notification activity")
+        self.assertEqual(response.context["total_subscribers"], 2)
+        self.assertEqual(response.context["status_counts"]["active"], 1)
+        active_row = next(
+            subscriber
+            for subscriber in response.context["subscriber_page"]
+            if subscriber.pk == self.active.pk
+        )
+        self.assertEqual(active_row.sent_delivery_count, 1)
+
+    def test_dashboard_filters_by_search_status_and_product(self):
+        user = get_user_model().objects.create_superuser(
+            username="subscriber-filter-admin",
+            email="subscriber-filter-admin@example.com",
+            password="test-password",
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(
+            reverse("product_subscriber_dashboard"),
+            {
+                "q": "alice",
+                "status": ProductSubscriber.STATUS_ACTIVE,
+                "product": "rainfall",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "alice@example.com")
+        self.assertNotContains(response, "bob@example.com")
+        self.assertEqual(response.context["subscriber_page"].paginator.count, 1)
