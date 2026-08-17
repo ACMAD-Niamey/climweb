@@ -98,6 +98,16 @@
         
         <div class="footer">
             {% block footer %}
+            {% if social_media %}
+            <div style="margin-bottom: 15px;">
+                {% for social in social_media %}
+                <a href="{{ social.url }}" style="margin: 0 10px; color: #888888; text-decoration: none; font-weight: normal;">
+                    {{ social.name }}
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
             <p>&copy; {% now "Y" %} {{ site_name|default:"ACMAD" }}. All rights reserved.</p>
             <p>You are receiving this email because you subscribed to product notifications.</p>
             {% endblock %}

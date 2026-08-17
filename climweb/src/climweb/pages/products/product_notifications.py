@@ -29,6 +29,7 @@ def _get_email_context():
             'background_color': '#F4F6F8',
             'border_radius': '8px',
         },
+        "social_media": [],
     }
     
     site = Site.objects.filter(is_default_site=True).first()
@@ -54,6 +55,13 @@ def _get_email_context():
         if org.logo:
             logo_url = org.logo.get_rendition("max-200x100").url
             context["logo_url"] = f"{site.root_url.rstrip('/')}{logo_url}"
+            
+        if org.social_media_accounts:
+            context["social_media"] = [
+                {"name": block.value.get("name"), "url": block.value.get("full_url")}
+                for block in org.social_media_accounts
+                if block.value.get("full_url")
+            ]
     except Exception:
         pass
         
