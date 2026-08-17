@@ -26,6 +26,7 @@ class TestProductSubscriptions(TestCase):
         response = self.client.get(reverse("product_subscription"))
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(reverse("product_subscription"), "/subscribe/")
         self.assertContains(response, "Get Product Updates")
         self.assertContains(response, "Our Products")
         self.assertContains(response, "Sector")
@@ -34,6 +35,11 @@ class TestProductSubscriptions(TestCase):
         self.assertContains(response, "Public Sector")
         self.assertContains(response, "Select all")
         self.assertContains(response, "products/css/subscription.css")
+
+    def test_previous_product_subscription_url_redirects_to_main_page(self):
+        response = self.client.get(reverse("product_subscription_legacy"))
+
+        self.assertRedirects(response, reverse("product_subscription"))
 
     @patch(
         "climweb.pages.products.tasks.send_product_subscription_confirmation.delay"
