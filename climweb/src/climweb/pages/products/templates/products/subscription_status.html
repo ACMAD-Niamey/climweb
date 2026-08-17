@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<main class="section">
+    <div class="container" style="max-width: 760px">
+        <div class="notification is-success">
+            <h1 class="title is-3">{{ status_title }}</h1>
+            <p>{{ status_message }}</p>
+        </div>
+        <a class="button" href="/products/">{% translate "View products" %}</a>
+    </div>
+</main>
+{% endblock %}

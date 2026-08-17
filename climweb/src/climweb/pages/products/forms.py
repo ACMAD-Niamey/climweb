@@ -10,7 +10,46 @@ from climweb.pages.products.models import (
     ConfiguredProductImporter,
     ProductImportSourceConfig,
     ProductPage,
+    ProductSubscriber,
 )
+
+
+class ProductSubscriptionForm(forms.Form):
+    name = forms.CharField(max_length=255, required=False)
+    email = forms.EmailField()
+    sector = forms.ChoiceField(
+        choices=ProductSubscriber.Sector.choices,
+        initial=ProductSubscriber.Sector.AGRICULTURE,
+        required=False,
+    )
+    organization_type = forms.ChoiceField(
+        label="Type of Organisation",
+        choices=ProductSubscriber.OrganizationType.choices,
+        initial=ProductSubscriber.OrganizationType.PUBLIC_SECTOR,
+        required=False,
+    )
+    product_families = forms.MultipleChoiceField(
+        label="Products",
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Choose the product families you want to receive.",
+    )
+    consent = forms.BooleanField(
+        label="I agree to receive ACMAD product notifications by email."
+    )
+
+    def __init__(self, *args, **kwargs):
+        from .import_registry import get_product_import_definitions
+
+        super().__init__(*args, **kwargs)
+        self.fields["product_families"].choices = [
+            (definition["key"], definition["label"])
+            for definition in get_product_import_definitions()
+            if not definition.get("is_archived")
+        ]
+
+
+class ProductSubscriptionPreferencesForm(ProductSubscriptionForm):
+    consent = None
 
 
 class ProductImportRunForm(forms.Form):

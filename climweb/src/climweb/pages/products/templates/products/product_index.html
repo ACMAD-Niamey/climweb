@@ -18,6 +18,11 @@
     <section class="is-desktop">
         <div class="container">
             {% include 'service_introduction.html' with page=page what_we_do=False %}
+            <div class="has-text-centered mb-5">
+                <a class="button is-primary" href="{% url 'product_subscription' %}">
+                    {% translate "Subscribe to product updates" %}
+                </a>
+            </div>
         </div>
     </section>
     <section class="listing-section">
