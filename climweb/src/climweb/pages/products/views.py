@@ -337,9 +337,9 @@ def product_subscriber_dashboard_view(request):
             count=Count("pk")
         )
     }
-    recent_events = list(
-        ProductNotificationEvent.objects.select_related("source_import")[:10]
-    )
+    events_queryset = ProductNotificationEvent.objects.select_related("source_import").order_by("-created_at")
+    event_page = Paginator(events_queryset, 5).get_page(request.GET.get("event_page"))
+    recent_events = list(event_page.object_list)
     for event in recent_events:
         event.product_label = product_labels.get(
             event.product_family, event.product_family
@@ -358,6 +358,7 @@ def product_subscriber_dashboard_view(request):
             "status_filter": status_filter,
             "product_filter": product_filter,
             "recent_events": recent_events,
+            "event_page": event_page,
         },
     )
 
