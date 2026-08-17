@@ -119,6 +119,14 @@ class TestProductImportMonitoring(TestCase):
         self.assertEqual(rainfall["imported_count"], 1)
         self.assertEqual(rainfall["failed_count"], 1)
         self.assertEqual(rainfall["latest_source_date"], date(2026, 8, 8))
+        self.assertEqual(
+            rainfall["latest_import_file"]["name"],
+            "rainfall-20260808.jpg",
+        )
+        self.assertEqual(
+            rainfall["latest_import_file"]["url"],
+            "https://example.com/rainfall-20260808.jpg",
+        )
         self.assertEqual(rainfall["health"], "attention")
         self.assertEqual(
             rainfall["latest_failure"].error_message,
@@ -143,6 +151,28 @@ class TestProductImportMonitoring(TestCase):
         self.assertEqual(rainfall["interval_hours"], 12)
         self.assertTrue(rainfall["interval_is_custom"])
 
+    def test_monitoring_selects_latest_file_by_issue_date(self):
+        ProductSourceImport.objects.create(
+            product=self.product,
+            source_url="https://example.com/rainfall-20200101.jpg",
+            source_system="ACMAD SGBD/THREDDS GSMaP",
+            source_published_date=date(2020, 1, 1),
+            checksum_sha256="b" * 64,
+            status=ProductSourceImport.STATUS_IMPORTED,
+        )
+
+        rows = build_import_monitor_rows()
+        rainfall = next(row for row in rows if row["key"] == "rainfall")
+
+        self.assertEqual(
+            rainfall["latest_import_file"]["name"],
+            "rainfall-20260808.jpg",
+        )
+        self.assertEqual(
+            rainfall["latest_import_file"]["source_published_date"],
+            date(2026, 8, 8),
+        )
+
     def test_admin_monitor_renders_all_importer_families(self):
         user = get_user_model().objects.create_superuser(
             username="import-admin",
@@ -157,6 +187,8 @@ class TestProductImportMonitoring(TestCase):
         self.assertContains(response, "Product Imports")
         self.assertContains(response, "Daily Rainfall Monitoring")
         self.assertContains(response, "Seasonal and Long-Range Forecasts")
+        self.assertContains(response, "Latest imported file")
+        self.assertContains(response, "rainfall-20260808.jpg")
         self.assertContains(response, "Upstream source unavailable")
         self.assertContains(response, "Manage imports", count=20)
         self.assertNotContains(response, "Manual historical import")
@@ -241,6 +273,8 @@ class TestProductImportMonitoring(TestCase):
         self.assertContains(response, "Daily Rainfall Monitoring")
         self.assertContains(response, "Manual historical import")
         self.assertContains(response, "Recent import history")
+        self.assertContains(response, "Latest imported file")
+        self.assertContains(response, "rainfall-20260808.jpg")
         self.assertContains(response, "Rainfall preview output")
         self.assertNotContains(response, "Seasonal output must not appear")
         self.assertContains(response, 'id="import-output-modal"')

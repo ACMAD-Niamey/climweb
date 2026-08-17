@@ -95,6 +95,12 @@
         max-width: 28rem;
     }
 
+    .import-file-name {
+        display: inline-block;
+        max-width: 20rem;
+        overflow-wrap: anywhere;
+    }
+
     .manual-import-panel {
         border: 1px solid var(--w-color-border-furniture);
         border-radius: 0.4rem;
@@ -223,7 +229,7 @@
                 <th>{% translate "Schedule" %}</th>
                 <th>{% translate "Imported" %}</th>
                 <th>{% translate "Failed" %}</th>
-                <th>{% translate "Latest source date" %}</th>
+                <th>{% translate "Latest imported file" %}</th>
                 <th>{% translate "Last record activity" %}</th>
                 <th>{% translate "Actions" %}</th>
             </tr>
@@ -269,7 +275,18 @@
                 </td>
                 <td>{{ row.imported_count }}</td>
                 <td>{{ row.failed_count }}</td>
-                <td>{{ row.latest_source_date|date:"Y-m-d"|default:"—" }}</td>
+                <td>
+                    {% if row.latest_import_file %}
+                        <a class="import-file-name" href="{{ row.latest_import_file.url }}" target="_blank" rel="noopener noreferrer">
+                            {{ row.latest_import_file.name }}
+                        </a>
+                        <div class="import-meta">
+                            {% blocktranslate with issue_date=row.latest_import_file.source_published_date|date:"Y-m-d" %}Issue date: {{ issue_date }}{% endblocktranslate %}
+                        </div>
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
                 <td>
                     {% if row.last_activity %}
                     {{ row.last_activity|date:"Y-m-d H:i" }}

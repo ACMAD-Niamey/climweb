@@ -1,3 +1,6 @@
+from pathlib import PurePosixPath
+from urllib.parse import unquote, urlsplit
+
 from django.conf import settings
 from django.db.models import Count, Max, Q
 
@@ -7,6 +10,40 @@ from climweb.pages.products.models import (
     ProductPage,
     ProductSourceImport,
 )
+
+
+def _latest_import_file(imports):
+    latest_import = (
+        imports.filter(status=ProductSourceImport.STATUS_IMPORTED)
+        .select_related("document", "image", "product_item_page")
+        .order_by("-source_published_date", "-imported_at")
+        .first()
+    )
+    if latest_import is None:
+        return None
+
+    filename = unquote(
+        PurePosixPath(urlsplit(latest_import.source_url).path).name
+    )
+    file_url = latest_import.source_url
+
+    if latest_import.document_id:
+        filename = latest_import.document.filename or filename
+        file_url = latest_import.document.url
+    elif latest_import.image_id:
+        filename = latest_import.image.filename or filename
+        file_url = latest_import.image.file.url
+    elif latest_import.product_item_page_id:
+        file_url = latest_import.product_item_page.url or file_url
+
+    return {
+        "name": filename or latest_import.source_url,
+        "url": file_url,
+        "source_url": latest_import.source_url,
+        "source_system": latest_import.source_system,
+        "source_published_date": latest_import.source_published_date,
+        "imported_at": latest_import.imported_at,
+    }
 
 
 def build_import_monitor_rows():
@@ -63,6 +100,7 @@ def build_import_monitor_rows():
             .order_by("-updated_at")
             .first()
         )
+        latest_import_file = _latest_import_file(imports)
         product_pages = list(
             ProductPage.objects.filter(
                 product__name__in=definition["product_names"]
@@ -98,6 +136,7 @@ def build_import_monitor_rows():
                 "health": health,
                 "health_label": health_label,
                 "latest_failure": latest_failure,
+                "latest_import_file": latest_import_file,
                 "product_pages": product_pages,
             }
         )
