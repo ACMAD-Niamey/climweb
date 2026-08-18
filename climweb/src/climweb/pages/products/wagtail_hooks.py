@@ -11,7 +11,10 @@ from .views import (
     product_import_monitor_view,
     product_import_status_view,
     product_layers_integration_view,
+    product_subscriber_dashboard_view,
     trigger_product_ingestion_view,
+    product_subscriber_resend_verification_view,
+    product_subscriber_delete_view,
 )
 
 
@@ -32,6 +35,21 @@ def urlconf_products():
             'product-imports/',
             product_import_monitor_view,
             name="product_import_monitor",
+        ),
+        path(
+            'product-subscribers/',
+            product_subscriber_dashboard_view,
+            name="product_subscriber_dashboard",
+        ),
+        path(
+            'product-subscribers/<int:subscriber_id>/resend-verification/',
+            product_subscriber_resend_verification_view,
+            name="product_subscriber_resend_verification",
+        ),
+        path(
+            'product-subscribers/<int:subscriber_id>/delete/',
+            product_subscriber_delete_view,
+            name="product_subscriber_delete",
         ),
         path(
             'product-imports/create/',
@@ -68,6 +86,16 @@ def register_product_import_monitor_menu_item():
         reverse("product_import_monitor"),
         icon_name="history",
         order=290,
+    )
+
+
+@hooks.register("register_admin_menu_item")
+def register_product_subscriber_menu_item():
+    return MenuItem(
+        "Email Subscribers",
+        reverse("product_subscriber_dashboard"),
+        icon_name="user",
+        order=291,
     )
 
 

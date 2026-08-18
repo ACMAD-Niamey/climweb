@@ -1,0 +1,236 @@
+.product-subscribe-page {
+    background: #fff;
+    color: #333;
+    min-height: 760px;
+    padding-bottom: 6rem;
+    padding-top: 5.5rem;
+}
+
+.product-subscribe-container {
+    max-width: 760px;
+}
+
+.product-subscribe-header {
+    margin: 0 auto 3rem;
+    max-width: 620px;
+}
+
+.product-subscribe-header .title {
+    color: #333;
+    font-size: 2rem;
+    margin-bottom: 2rem;
+}
+
+.product-subscribe-header p {
+    font-size: 1rem;
+    line-height: 1.55;
+    max-width: 560px;
+}
+
+.product-subscribe-form-column {
+    background: #f8f9fb;
+    margin: 0 auto;
+    max-width: 620px;
+    padding: 3.1rem;
+}
+
+.product-subscribe-form-column .field:not(:last-child) {
+    margin-bottom: 1.55rem;
+}
+
+.product-subscribe-form-column .label {
+    color: #3b3b3b;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.55rem;
+}
+
+.product-subscribe-form-column input[type="email"],
+.product-subscribe-form-column input[type="text"] {
+    background: #fff;
+    border: 1px solid #dbdbdb;
+    border-radius: 4px;
+    box-shadow: inset 0 1px 2px rgba(10, 10, 10, 0.1);
+    color: #363636;
+    font-size: 1rem;
+    height: 2.5rem;
+    line-height: 1.5;
+    padding: 0.5rem 0.75rem;
+    width: 100%;
+}
+
+.product-subscribe-form-column input[type="email"]:focus,
+.product-subscribe-form-column input[type="text"]:focus {
+    border-color: #3273dc;
+    box-shadow: 0 0 0 0.125em rgba(50, 115, 220, 0.25);
+    outline: none;
+}
+
+.product-subscribe-form-column input:disabled {
+    background: #eee;
+    color: #777;
+}
+
+.product-subscribe-form-column .select select {
+    background: #fff;
+    border-color: #dbdbdb;
+    color: #363636;
+    font-size: 1rem;
+    height: 2.5rem;
+}
+
+.product-subscribe-form-column .product-subscribe-organisation-select,
+.product-subscribe-form-column .product-subscribe-organisation-select select {
+    width: 100%;
+}
+
+.product-subscribe-form-column .help {
+    color: #4a4a4a;
+    font-size: 0.75rem;
+    margin-top: 0.35rem;
+}
+
+.required-mark {
+    color: #e53935;
+    margin-left: 0.15rem;
+}
+
+.product-subscribe-products-field {
+    margin-top: 2rem;
+}
+
+.product-subscribe-products-heading {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.product-subscribe-selection-actions {
+    display: flex;
+    gap: 0.8rem;
+}
+
+.product-subscribe-selection-actions button {
+    background: transparent;
+    border: 0;
+    color: var(--primary-color);
+    cursor: pointer;
+    font-size: 0.78rem;
+    padding: 0;
+}
+
+.product-subscribe-selection-actions button:hover,
+.product-subscribe-selection-actions button:focus {
+    text-decoration: underline;
+}
+
+.product-subscribe-options > div {
+    display: grid;
+    gap: 0.35rem 1.5rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.product-subscribe-options label {
+    align-items: flex-start;
+    color: #4a4a4a;
+    cursor: pointer;
+    display: flex;
+    font-size: 0.9rem;
+    gap: 0.4rem;
+    line-height: 1.35;
+}
+
+.product-subscribe-options input,
+.product-subscribe-consent input {
+    accent-color: var(--primary-color);
+    flex: 0 0 auto;
+    height: 1.1rem;
+    margin-top: 0.05rem;
+    width: 1.1rem;
+}
+
+.product-subscribe-consent {
+    border-top: 1px solid #e2e5e9;
+    margin-top: 1.75rem;
+    padding-top: 1.4rem;
+}
+
+.product-subscribe-consent .checkbox {
+    align-items: flex-start;
+    color: #4a4a4a;
+    display: flex;
+    font-size: 0.9rem;
+    gap: 0.55rem;
+    line-height: 1.4;
+}
+
+.product-subscribe-submit-field {
+    margin-top: 1.75rem;
+}
+
+.product-subscribe-submit {
+    background: var(--primary-color);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 1rem;
+    min-height: 2.5rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+.product-subscribe-submit:hover,
+.product-subscribe-submit:focus {
+    background: var(--primary-color-dark, var(--primary-color));
+    color: #fff;
+}
+
+.product-subscribe-errors,
+.product-subscribe-form-column .errorlist {
+    color: #b42318;
+    font-size: 0.8rem;
+}
+
+.product-subscribe-errors {
+    border-left: 3px solid #b42318;
+    margin-bottom: 1.5rem;
+    padding: 0.5rem 0.75rem;
+}
+
+.product-subscribe-form-column .errorlist {
+    margin: 0.35rem 0 0;
+}
+
+.product-subscribe-unsubscribe {
+    border-top: 1px solid #e2e5e9;
+    margin-top: 1.75rem;
+    padding-top: 1.25rem;
+}
+
+.product-subscribe-unsubscribe a {
+    color: #b42318;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 700px) {
+    .product-subscribe-page {
+        min-height: 0;
+        padding: 3rem 1rem 4rem;
+    }
+
+    .product-subscribe-header {
+        margin-bottom: 2rem;
+    }
+
+    .product-subscribe-header .title {
+        margin-bottom: 1.25rem;
+    }
+
+    .product-subscribe-form-column {
+        padding: 2rem 1.4rem;
+    }
+
+    .product-subscribe-options > div {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,0 +1,44 @@
+{% extends "products/email/base_email.html" %}
+
+{% block subject %}New {{ product_label }} Available{% endblock %}
+
+{% block content %}
+<h2>New {{ product_label }} Available</h2>
+
+<p>A new product from <strong>{{ site_name|default:"ACMAD" }}</strong> is now available.</p>
+
+{% if product_description %}
+<p style="margin-top: 15px; margin-bottom: 20px; line-height: 1.5;">
+    {{ product_description }}
+</p>
+{% endif %}
+
+<div class="card">
+    <p style="margin: 0 0 10px 0;"><strong>Issue Date:</strong> {{ source_published_date }}</p>
+    {% if valid_from or valid_until %}
+    <p style="margin: 0 0 10px 0;">
+        <strong>Validity:</strong>
+        {% if valid_from %}{{ valid_from }}{% endif %}
+        {% if valid_from and valid_until %} to {% endif %}
+        {% if valid_until %}{{ valid_until }}{% endif %}
+    </p>
+    {% endif %}
+</div>
+
+<div class="text-center">
+    <a href="{{ product_url }}" class="button">View Product</a>
+</div>
+
+<p class="muted" style="margin-top: 30px;">
+    If the button above does not work, copy and paste this link into your browser:<br>
+    <a href="{{ product_url }}">{{ product_url }}</a>
+</p>
+{% endblock %}
+
+{% block footer %}
+{{ block.super }}
+<p style="margin-top: 15px;">
+    <a href="{{ preferences_url }}">Manage Preferences</a> &nbsp;|&nbsp;
+    <a href="{{ unsubscribe_url }}">Unsubscribe</a>
+</p>
+{% endblock %}

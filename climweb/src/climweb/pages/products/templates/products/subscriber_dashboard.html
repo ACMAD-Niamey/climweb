@@ -1,0 +1,330 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n %}
+
+{% block titletag %}{% translate "Email Subscribers" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .subscriber-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .subscriber-summary-card,
+    .subscriber-panel {
+        background: var(--w-color-surface-page);
+        border: 1px solid var(--w-color-border-furniture);
+        border-radius: 0.4rem;
+        padding: 1rem;
+    }
+
+    .subscriber-summary-value {
+        display: block;
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+
+    .subscriber-meta {
+        color: var(--w-color-text-meta);
+        font-size: 0.85rem;
+    }
+
+    .subscriber-filters {
+        align-items: end;
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: minmax(220px, 2fr) repeat(2, minmax(160px, 1fr)) auto;
+        margin-bottom: 1.5rem;
+    }
+
+    .subscriber-filter label {
+        display: block;
+        font-weight: 700;
+        margin-bottom: 0.35rem;
+    }
+
+    .subscriber-filter input,
+    .subscriber-filter select {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .subscriber-table {
+        width: 100%;
+    }
+
+    .subscriber-table th,
+    .subscriber-table td {
+        border-bottom: 1px solid var(--w-color-border-furniture);
+        padding: 0.75rem;
+        text-align: left;
+        vertical-align: top;
+    }
+
+    .subscriber-status {
+        background: #e5e7eb;
+        border-radius: 999px;
+        display: inline-block;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.25rem 0.65rem;
+    }
+
+    .subscriber-status--active {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .subscriber-status--pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .subscriber-status--unsubscribed,
+    .subscriber-status--bounced {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .subscriber-products {
+        margin: 0;
+        padding-left: 1rem;
+    }
+
+    .subscriber-pagination {
+        align-items: center;
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-top: 1.5rem;
+    }
+
+    .subscriber-panel {
+        margin-top: 2rem;
+    }
+
+    @media (max-width: 900px) {
+        .subscriber-filters {
+            grid-template-columns: 1fr;
+        }
+
+        .subscriber-table-wrap {
+            overflow-x: auto;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% translate "Email Subscribers" as header_title %}
+{% include "wagtailadmin/shared/header.html" with title=header_title icon="user" %}
+
+<div class="nice-padding">
+
+    <div class="subscriber-summary">
+        <div class="subscriber-summary-card">
+            <span class="subscriber-summary-value">{{ total_subscribers }}</span>
+            <span class="subscriber-meta">{% translate "All subscribers" %}</span>
+        </div>
+        <div class="subscriber-summary-card">
+            <span class="subscriber-summary-value">{{ status_counts.active|default:0 }}</span>
+            <span class="subscriber-meta">{% translate "Active" %}</span>
+        </div>
+        <div class="subscriber-summary-card">
+            <span class="subscriber-summary-value">{{ status_counts.pending|default:0 }}</span>
+            <span class="subscriber-meta">{% translate "Pending confirmation" %}</span>
+        </div>
+        <div class="subscriber-summary-card">
+            <span class="subscriber-summary-value">{{ status_counts.unsubscribed|default:0 }}</span>
+            <span class="subscriber-meta">{% translate "Unsubscribed" %}</span>
+        </div>
+        <div class="subscriber-summary-card">
+            <span class="subscriber-summary-value">{{ status_counts.bounced|default:0 }}</span>
+            <span class="subscriber-meta">{% translate "Bounced" %}</span>
+        </div>
+    </div>
+
+    <form method="get" class="subscriber-filters">
+        <div class="subscriber-filter">
+            <label for="subscriber-search">{% translate "Search" %}</label>
+            <input id="subscriber-search" type="search" name="q" value="{{ search }}"
+                placeholder="{% translate 'Search by name or email' %}">
+        </div>
+        <div class="subscriber-filter">
+            <label for="subscriber-status">{% translate "Status" %}</label>
+            <select id="subscriber-status" name="status">
+                <option value="">{% translate "All statuses" %}</option>
+                {% for value, label in status_choices %}
+                <!-- prettier-ignore -->
+                <option value="{{ value }}" {% if status_filter == value %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="subscriber-filter">
+            <label for="subscriber-product">{% translate "Product" %}</label>
+            <select id="subscriber-product" name="product">
+                <option value="">{% translate "All products" %}</option>
+                {% for value, label in product_choices %}
+                <!-- prettier-ignore -->
+                <option value="{{ value }}" {% if product_filter == value %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <button type="submit" class="button button-primary">{% translate "Filter" %}</button>
+            <a class="button" href="{% url 'product_subscriber_dashboard' %}">{% translate "Clear" %}</a>
+        </div>
+    </form>
+
+    <div class="subscriber-table-wrap">
+        <table class="subscriber-table">
+            <thead>
+                <tr>
+                    <th>{% translate "Subscriber" %}</th>
+                    <th>{% translate "Status" %}</th>
+                    <th>{% translate "Selected products" %}</th>
+                    <th>{% translate "Confirmed" %}</th>
+                    <th>{% translate "Emails sent" %}</th>
+                    <th>{% translate "Last notified" %}</th>
+                    <th>{% translate "Actions" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for subscriber in subscriber_page %}
+                <tr>
+                    <td>
+                        <strong>{{ subscriber.email }}</strong>
+                        {% if subscriber.name %}
+                        <div class="subscriber-meta">{{ subscriber.name }}</div>
+                        {% endif %}
+                        {% if subscriber.sector %}
+                        <div class="subscriber-meta">{{ subscriber.get_sector_display }}</div>
+                        {% endif %}
+                        {% if subscriber.organization_type %}
+                        <div class="subscriber-meta">{{ subscriber.get_organization_type_display }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="subscriber-status subscriber-status--{{ subscriber.status }}">
+                            {{ subscriber.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if subscriber.selected_product_labels %}
+                        <ul class="subscriber-products">
+                            {% for label in subscriber.selected_product_labels %}<li>{{ label }}</li>{% endfor %}
+                        </ul>
+                        {% else %}
+                        <span class="subscriber-meta">{% translate "No products selected" %}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ subscriber.confirmed_at|date:"Y-m-d H:i"|default:"—" }}</td>
+                    <td>{{ subscriber.sent_delivery_count }}</td>
+                    <td>{{ subscriber.last_notified_at|date:"Y-m-d H:i"|default:"—" }}</td>
+                    <td>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            {% if subscriber.status == 'pending' %}
+                            <a href="{% url 'product_subscriber_resend_verification' subscriber.pk %}"
+                                class="button button-small button-secondary">
+                                {% translate "Resend" %}
+                            </a>
+                            {% endif %}
+                            <form action="{% url 'product_subscriber_delete' subscriber.pk %}" method="post" onsubmit="return confirm('{% translate "Are you sure you want to delete this subscriber?" %}');" style="margin: 0;">
+                                {% csrf_token %}
+                                <button type="submit" class="button button-small no">
+                                    {% translate "Delete" %}
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8">{% translate "No subscribers match these filters." %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if subscriber_page.has_other_pages %}
+    <nav class="subscriber-pagination" aria-label="{% translate 'Subscriber pages' %}">
+        {% if subscriber_page.has_previous %}
+        <a class="button"
+            href="?q={{ search|urlencode }}&amp;status={{ status_filter|urlencode }}&amp;product={{ product_filter|urlencode }}&amp;page={{ subscriber_page.previous_page_number }}{% if event_page %}&amp;event_page={{ event_page.number }}{% endif %}">
+            {% translate "Previous" %}
+        </a>
+        {% endif %}
+        <span>
+            {% blocktranslate with current=subscriber_page.number total=subscriber_page.paginator.num_pages %}Page {{ current }} of {{ total }}{% endblocktranslate %}
+        </span>
+        {% if subscriber_page.has_next %}
+        <a class="button"
+            href="?q={{ search|urlencode }}&amp;status={{ status_filter|urlencode }}&amp;product={{ product_filter|urlencode }}&amp;page={{ subscriber_page.next_page_number }}{% if event_page %}&amp;event_page={{ event_page.number }}{% endif %}">
+            {% translate "Next" %}
+        </a>
+        {% endif %}
+    </nav>
+    {% endif %}
+
+    <section class="subscriber-panel">
+        <h2>{% translate "Recent notification activity" %}</h2>
+        <div class="subscriber-table-wrap">
+            <table class="subscriber-table">
+                <thead>
+                    <tr>
+                        <th>{% translate "Product" %}</th>
+                        <th>{% translate "Issue date" %}</th>
+                        <th>{% translate "Trigger" %}</th>
+                        <th>{% translate "Status" %}</th>
+                        <th>{% translate "Recipients" %}</th>
+                        <th>{% translate "Sent" %}</th>
+                        <th>{% translate "Failed" %}</th>
+                        <th>{% translate "Created" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in recent_events %}
+                    <tr>
+                        <td>{{ event.product_label }}</td>
+                        <td>{{ event.source_import.source_published_date|date:"Y-m-d" }}</td>
+                        <td>{{ event.get_trigger_display }}</td>
+                        <td>{{ event.get_status_display }}</td>
+                        <td>{{ event.recipient_count }}</td>
+                        <td>{{ event.sent_count }}</td>
+                        <td>{{ event.failed_count }}</td>
+                        <td>{{ event.created_at|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8">{% translate "No notifications have been created yet." %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if event_page.has_other_pages %}
+        <nav class="subscriber-pagination" aria-label="{% translate 'Notification pages' %}">
+            {% if event_page.has_previous %}
+            <a class="button"
+                href="?q={{ search|urlencode }}&amp;status={{ status_filter|urlencode }}&amp;product={{ product_filter|urlencode }}&amp;page={{ subscriber_page.number }}&amp;event_page={{ event_page.previous_page_number }}">
+                {% translate "Previous" %}
+            </a>
+            {% endif %}
+            <span>
+                {% blocktranslate with current=event_page.number total=event_page.paginator.num_pages %}Page {{ current }} of {{ total }}{% endblocktranslate %}
+            </span>
+            {% if event_page.has_next %}
+            <a class="button"
+                href="?q={{ search|urlencode }}&amp;status={{ status_filter|urlencode }}&amp;product={{ product_filter|urlencode }}&amp;page={{ subscriber_page.number }}&amp;event_page={{ event_page.next_page_number }}">
+                {% translate "Next" %}
+            </a>
+            {% endif %}
+        </nav>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

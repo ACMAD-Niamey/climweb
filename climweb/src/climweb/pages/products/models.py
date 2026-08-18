@@ -1,3 +1,5 @@
+import uuid
+
 from adminboundarymanager.models import AdminBoundarySettings
 from django import forms
 from django.conf import settings
@@ -914,6 +916,219 @@ class ConfiguredProductImporterAuditEvent(models.Model):
 
     def __str__(self):
         return f"{self.importer}: {self.get_action_display()}"
+
+
+@register_snippet
+class ProductSubscriber(models.Model):
+    """A locally owned subscriber with explicit product preferences."""
+
+    class Sector(models.TextChoices):
+        AGRICULTURE = "Agriculture", _("Agriculture")
+        AVIATION = "Aviation", _("Aviation")
+        MARINE = "Marine", _("Marine")
+        MEDIA = "Media", _("Media")
+        ENVIRONMENT = "Environment", _("Environment")
+        TOURISM = "Tourism", _("Tourism")
+        SECURITY = "Security", _("Security")
+        CIVIL_PROTECTION = "Civil Protection", _("Civil Protection")
+        TELECOMMUNICATION = "Telecommunication", _("Telecommunication")
+        HEALTH = "Health", _("Health")
+        BANKING_FINANCE = "Banking and Finance", _("Banking and Finance")
+        RESEARCH = "Research", _("Research")
+        WATER_SANITATION = "Water and Sanitation", _("Water and Sanitation")
+        OTHERS = "Others", _("Others")
+
+    class OrganizationType(models.TextChoices):
+        PUBLIC_SECTOR = "Public Sector", _("Public Sector")
+        INTERGOVERNMENTAL = (
+            "Intergovernmental Organisation",
+            _("Intergovernmental Organisation"),
+        )
+        PRIVATE_SECTOR = "Private Sector", _("Private Sector")
+        ACADEMIC_RESEARCH = "Academic/Research", _("Academic/Research")
+        MEDIA = "Media", _("Media")
+        YOUTH = "Youth", _("Youth")
+        DONOR_FINANCE = (
+            "Donor/Finance institutions",
+            _("Donor/Finance institutions"),
+        )
+        NGO = (
+            "Non Governmental Organisation (NGO)",
+            _("Non Governmental Organisation (NGO)"),
+        )
+        OTHERS = "Others", _("Others")
+
+    STATUS_PENDING = "pending"
+    STATUS_ACTIVE = "active"
+    STATUS_UNSUBSCRIBED = "unsubscribed"
+    STATUS_BOUNCED = "bounced"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, _("Pending")),
+        (STATUS_ACTIVE, _("Active")),
+        (STATUS_UNSUBSCRIBED, _("Unsubscribed")),
+        (STATUS_BOUNCED, _("Bounced")),
+    ]
+
+    email = models.EmailField(unique=True)
+    name = models.CharField(max_length=255, blank=True)
+    sector = models.CharField(
+        max_length=80,
+        choices=Sector.choices,
+        blank=True,
+    )
+    organization_type = models.CharField(
+        max_length=100,
+        choices=OrganizationType.choices,
+        blank=True,
+    )
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING
+    )
+    confirmation_token = models.UUIDField(default=uuid.uuid4, unique=True)
+    unsubscribe_token = models.UUIDField(default=uuid.uuid4, unique=True)
+    consented_at = models.DateTimeField(default=timezone.now)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    unsubscribed_at = models.DateTimeField(null=True, blank=True)
+    consent_ip = models.GenericIPAddressField(null=True, blank=True)
+    consent_user_agent = models.CharField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    panels = [
+        FieldPanel("email"),
+        FieldPanel("name"),
+        FieldPanel("sector"),
+        FieldPanel("organization_type"),
+        FieldPanel("status"),
+    ]
+
+    class Meta:
+        ordering = ["email"]
+        verbose_name = _("Product subscriber")
+        verbose_name_plural = _("Product subscribers")
+
+    def __str__(self):
+        return self.email
+
+
+class ProductSubscriptionPreference(models.Model):
+    subscriber = models.ForeignKey(
+        ProductSubscriber,
+        on_delete=models.CASCADE,
+        related_name="preferences",
+    )
+    product_family = models.SlugField(max_length=80)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["product_family"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["subscriber", "product_family"],
+                name="unique_product_subscription_preference",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.subscriber.email}: {self.product_family}"
+
+
+@register_snippet
+class ProductNotificationEvent(models.Model):
+    TRIGGER_AUTOMATIC = "automatic"
+    TRIGGER_MANUAL = "manual"
+    TRIGGER_CHOICES = [
+        (TRIGGER_AUTOMATIC, _("Automatic import")),
+        (TRIGGER_MANUAL, _("Dashboard action")),
+    ]
+    STATUS_QUEUED = "queued"
+    STATUS_SENDING = "sending"
+    STATUS_SENT = "sent"
+    STATUS_FAILED = "failed"
+    STATUS_CHOICES = [
+        (STATUS_QUEUED, _("Queued")),
+        (STATUS_SENDING, _("Sending")),
+        (STATUS_SENT, _("Sent")),
+        (STATUS_FAILED, _("Failed")),
+    ]
+
+    product_family = models.SlugField(max_length=80)
+    source_import = models.ForeignKey(
+        ProductSourceImport,
+        on_delete=models.CASCADE,
+        related_name="notification_events",
+    )
+    trigger = models.CharField(max_length=20, choices=TRIGGER_CHOICES)
+    automatic_key = models.CharField(
+        max_length=120, unique=True, null=True, blank=True
+    )
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default=STATUS_QUEUED
+    )
+    recipient_count = models.PositiveIntegerField(default=0)
+    sent_count = models.PositiveIntegerField(default=0)
+    failed_count = models.PositiveIntegerField(default=0)
+    error_message = models.TextField(blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="product_notification_events",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    panels = [
+        FieldPanel("product_family"),
+        FieldPanel("source_import"),
+        FieldPanel("trigger"),
+        FieldPanel("status"),
+    ]
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = _("Product notification event")
+        verbose_name_plural = _("Product notification events")
+
+    def __str__(self):
+        return f"{self.product_family}: {self.source_import.source_published_date}"
+
+
+class ProductNotificationDelivery(models.Model):
+    STATUS_QUEUED = "queued"
+    STATUS_SENT = "sent"
+    STATUS_FAILED = "failed"
+    STATUS_CHOICES = [
+        (STATUS_QUEUED, _("Queued")),
+        (STATUS_SENT, _("Sent")),
+        (STATUS_FAILED, _("Failed")),
+    ]
+
+    event = models.ForeignKey(
+        ProductNotificationEvent,
+        on_delete=models.CASCADE,
+        related_name="deliveries",
+    )
+    subscriber = models.ForeignKey(
+        ProductSubscriber,
+        on_delete=models.CASCADE,
+        related_name="deliveries",
+    )
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default=STATUS_QUEUED
+    )
+    error_message = models.TextField(blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["subscriber__email"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event", "subscriber"],
+                name="unique_product_notification_delivery",
+            )
+        ]
 
 
 class SubNationalProductsLandingPage(AbstractIntroPage, Page):

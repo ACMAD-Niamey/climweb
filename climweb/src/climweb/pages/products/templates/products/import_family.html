@@ -179,6 +179,66 @@
             </div>
         </div>
 
+        <section class="manual-import-panel">
+            <h2>{% translate "Latest imported file" %}</h2>
+            {% if monitor_row.latest_import_file %}
+                <p>
+                    <a href="{{ monitor_row.latest_import_file.url }}" target="_blank" rel="noopener noreferrer">
+                        <strong>{{ monitor_row.latest_import_file.name }}</strong>
+                    </a>
+                </p>
+                <p class="import-meta">
+                    {% blocktranslate with issue_date=monitor_row.latest_import_file.source_published_date|date:"Y-m-d" imported_at=monitor_row.latest_import_file.imported_at|date:"Y-m-d H:i" %}Issue date: {{ issue_date }} · Imported: {{ imported_at }}{% endblocktranslate %}
+                    · {{ monitor_row.latest_import_file.source_system }}
+                </p>
+                <form
+                    method="post"
+                    data-notification-form
+                    onsubmit="return window.confirm('{% translate "Send an email notification to all active subscribers for this product family?" %}');"
+                >
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="send_latest_notification">
+                    <button type="submit" class="button button-primary">
+                        {% translate "Notify subscribers about latest product" %}
+                    </button>
+                </form>
+            {% else %}
+                <p class="import-meta">{% translate "No file has been imported for this product yet." %}</p>
+            {% endif %}
+        </section>
+
+        <section class="manual-import-panel">
+            <h2>{% translate "Recent product notifications" %}</h2>
+            <table class="import-table">
+                <thead>
+                    <tr>
+                        <th>{% translate "Issue date" %}</th>
+                        <th>{% translate "Trigger" %}</th>
+                        <th>{% translate "Status" %}</th>
+                        <th>{% translate "Recipients" %}</th>
+                        <th>{% translate "Sent" %}</th>
+                        <th>{% translate "Failed" %}</th>
+                        <th>{% translate "Created" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in recent_notification_events %}
+                        <tr>
+                            <td>{{ event.source_import.source_published_date|date:"Y-m-d" }}</td>
+                            <td>{{ event.get_trigger_display }}</td>
+                            <td>{{ event.get_status_display }}</td>
+                            <td>{{ event.recipient_count }}</td>
+                            <td>{{ event.sent_count }}</td>
+                            <td>{{ event.failed_count }}</td>
+                            <td>{{ event.created_at|date:"Y-m-d H:i" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="7">{% translate "No product notifications have been sent yet." %}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
         {% if not definition.is_archived %}
         {% if source_form %}
             <section class="source-panel">
@@ -228,6 +288,39 @@
                     </form>
                 {% endif %}
 
+                <hr style="margin: 2rem 0; border: none; border-bottom: 1px solid var(--w-color-border-furniture);" />
+
+                <h3>{% translate "Automatic import schedule" %}</h3>
+                <p class="import-meta">
+                    {% if monitor_row.enabled %}
+                        {% translate "Automatic imports are enabled. Change how often this product source is checked for new files." %}
+                    {% elif monitor_row.enabled_is_custom %}
+                        {% translate "Automatic imports are disabled from this dashboard. The saved interval will be retained if the importer is enabled again." %}
+                    {% else %}
+                        {% translate "Automatic imports are disabled by the deployment configuration. You can save the interval now; it will be used when automatic imports are enabled." %}
+                    {% endif %}
+                </p>
+                <form method="post" class="schedule-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_schedule">
+                    {{ schedule_form.non_field_errors }}
+                    <div class="manual-import-field">
+                        {{ schedule_form.interval_hours.label_tag }}
+                        {{ schedule_form.interval_hours }}
+                        {% if schedule_form.interval_hours.help_text %}<div class="help">{{ schedule_form.interval_hours.help_text }}</div>{% endif %}
+                        {{ schedule_form.interval_hours.errors }}
+                    </div>
+                    <button type="submit" class="button button-primary">
+                        {% translate "Save schedule" %}
+                    </button>
+                </form>
+                {% if schedule %}
+                    <p class="import-meta">
+                        {% blocktranslate with updated=schedule.updated_at|date:"Y-m-d H:i" %}Last updated {{ updated }}{% endblocktranslate %}
+                        {% if schedule.updated_by %} {% blocktranslate with user=schedule.updated_by %}by {{ user }}{% endblocktranslate %}{% endif %}
+                    </p>
+                {% endif %}
+
                 {% if source_preview %}
                     <h3>{% translate "Discovery preview" %}</h3>
                     <p class="import-meta">
@@ -255,38 +348,7 @@
             </section>
         {% endif %}
 
-        <section class="schedule-panel">
-            <h2>{% translate "Automatic import schedule" %}</h2>
-            <p class="import-meta">
-                {% if monitor_row.enabled %}
-                    {% translate "Automatic imports are enabled. Change how often this product source is checked for new files." %}
-                {% elif monitor_row.enabled_is_custom %}
-                    {% translate "Automatic imports are disabled from this dashboard. The saved interval will be retained if the importer is enabled again." %}
-                {% else %}
-                    {% translate "Automatic imports are disabled by the deployment configuration. You can save the interval now; it will be used when automatic imports are enabled." %}
-                {% endif %}
-            </p>
-            <form method="post" class="schedule-form">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="update_schedule">
-                {{ schedule_form.non_field_errors }}
-                <div class="manual-import-field">
-                    {{ schedule_form.interval_hours.label_tag }}
-                    {{ schedule_form.interval_hours }}
-                    {% if schedule_form.interval_hours.help_text %}<div class="help">{{ schedule_form.interval_hours.help_text }}</div>{% endif %}
-                    {{ schedule_form.interval_hours.errors }}
-                </div>
-                <button type="submit" class="button button-primary">
-                    {% translate "Save schedule" %}
-                </button>
-            </form>
-            {% if schedule %}
-                <p class="import-meta">
-                    {% blocktranslate with updated=schedule.updated_at|date:"Y-m-d H:i" %}Last updated {{ updated }}{% endblocktranslate %}
-                    {% if schedule.updated_by %} {% blocktranslate with user=schedule.updated_by %}by {{ user }}{% endblocktranslate %}{% endif %}
-                </p>
-            {% endif %}
-        </section>
+
 
         <section class="manual-import-panel">
             <h2>{% translate "Manual historical import" %}</h2>

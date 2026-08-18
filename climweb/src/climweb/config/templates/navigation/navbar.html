@@ -36,7 +36,7 @@
         {% endif %}
 
         {% if settings.base.ImportantPages.mailing_list_signup_page %}
-            <a href="{{ settings.base.ImportantPages.mailing_list_signup_page.url }}"
+            <a href="{% url 'product_subscription' %}"
             class="util-link">
             <span>{% translate "Subscribe" %}</span>
             <span class="util-icon">{% svg_icon name="mail" %}</span>
@@ -157,7 +157,7 @@
               </a>
             {% endif %}
             {% if settings.base.ImportantPages.mailing_list_signup_page %}
-              <a href="{{ settings.base.ImportantPages.mailing_list_signup_page.url }}"
+              <a href="{% url 'product_subscription' %}"
                  class="button is-fullwidth mobile-util-link">
                 {% translate "Subscribe" %}
               </a>
