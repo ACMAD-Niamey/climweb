@@ -47,9 +47,19 @@ class ProductSubscriptionForm(forms.Form):
             if not definition.get("is_archived")
         ]
 
+def clean_email(self):
+    email = self.cleaned_data.get("email")
+    return email.strip().lower() if email else email
+
 
 class ProductSubscriptionPreferencesForm(ProductSubscriptionForm):
     consent = None
+
+    def clean_email(self):
+        email = self.cleaned_data.get("email")
+        if email:
+            return email.strip().lower()
+        return email
 
 
 class ProductImportRunForm(forms.Form):

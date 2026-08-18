@@ -3,6 +3,7 @@ from pathlib import PurePosixPath
 from urllib.parse import unquote, urlsplit
 
 from django.db import transaction
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from wagtail.models import Site
@@ -16,6 +17,55 @@ from .models import (
     ProductSourceImport,
     ProductSubscriber,
 )
+
+
+def _get_email_context():
+    context = {
+        "site_name": "ACMAD",
+        "logo_url": None,
+        "theme": {
+            'text_color': '#363636',
+            'primary_color': '#0C447C',
+            'background_color': '#F4F6F8',
+            'border_radius': '8px',
+        },
+        "social_media": [],
+    }
+    
+    site = Site.objects.filter(is_default_site=True).first()
+    if not site:
+        return context
+        
+    context["site_name"] = site.site_name
+    
+    try:
+        from climweb.base.models import Theme, OrganisationSetting
+        from climweb.base.utils import mix_with_white
+        
+        d_theme = Theme.objects.filter(is_default=True).first()
+        if d_theme:
+            context["theme"] = {
+                'primary_color': d_theme.primary_hover_color,
+                'text_color': d_theme.primary_color,
+                'background_color': mix_with_white(d_theme.primary_hover_color, 0.8),
+                'border_radius': f"{d_theme.border_radius * 0.06}em",
+            }
+            
+        org = OrganisationSetting.for_site(site)
+        if org.logo:
+            logo_url = org.logo.get_rendition("max-200x100").url
+            context["logo_url"] = f"{site.root_url.rstrip('/')}{logo_url}"
+            
+        if org.social_media_accounts:
+            context["social_media"] = [
+                {"name": block.value.get("name"), "url": block.value.get("full_url")}
+                for block in org.social_media_accounts
+                if block.value.get("full_url")
+            ]
+    except Exception:
+        pass
+        
+    return context
 
 
 def _public_url(path):
@@ -82,12 +132,19 @@ def queue_latest_product_notification(product_family, requested_by):
     if source_import is None:
         return None
 
-    event = ProductNotificationEvent.objects.create(
+    event = ProductNotificationEvent.objects.filter(
         product_family=product_family,
         source_import=source_import,
-        trigger=ProductNotificationEvent.TRIGGER_MANUAL,
-        requested_by=requested_by,
-    )
+    ).first()
+
+    if not event:
+        event = ProductNotificationEvent.objects.create(
+            product_family=product_family,
+            source_import=source_import,
+            trigger=ProductNotificationEvent.TRIGGER_MANUAL,
+            requested_by=requested_by,
+        )
+
     from .tasks import send_product_notification
 
     transaction.on_commit(lambda: send_product_notification.delay(event.pk))
@@ -101,14 +158,23 @@ def send_confirmation_email(subscriber):
             kwargs={"token": subscriber.confirmation_token},
         )
     )
+    
+    context = _get_email_context()
+    context.update({"confirmation_url": confirmation_url})
+    
+    text = (
+        "Confirm your ACMAD product subscription by opening this link:\n\n"
+        f"{confirmation_url}\n\n"
+        "If you did not request this subscription, ignore this email."
+    )
+    
+    html = render_to_string("products/email/subscription_confirm.html", context)
+    
     send_mail(
         "Confirm your ACMAD product subscription",
-        (
-            "Confirm your ACMAD product subscription by opening this link:\n\n"
-            f"{confirmation_url}\n\n"
-            "If you did not request this subscription, ignore this email."
-        ),
+        text,
         [subscriber.email],
+        html_message=html,
     )
 
 
@@ -136,6 +202,24 @@ def deliver_product_notification(event_id):
     product_url = _product_url(source_import)
     filename = _source_filename(source_import)
     subject = f"New ACMAD product: {product_label} — {source_import.source_published_date}"
+    
+    product_item_page = source_import.product_item_page
+    valid_from = None
+    valid_until = None
+    product_description = ""
+    
+    if product_item_page:
+        valid_from = product_item_page.date
+        valid_until = product_item_page.valid_until
+        try:
+            parent_page = product_item_page.get_parent().specific
+            if hasattr(parent_page, 'introduction_text') and parent_page.introduction_text:
+                from django.utils.html import strip_tags
+                product_description = strip_tags(parent_page.introduction_text)
+                if len(product_description) > 300:
+                    product_description = product_description[:297] + "..."
+        except Exception:
+            pass
 
     sent_count = 0
     failed_count = 0
@@ -167,14 +251,22 @@ def deliver_product_notification(event_id):
             f"Manage preferences: {preferences_url}\n"
             f"Unsubscribe: {unsubscribe_url}"
         )
-        html = (
-            f"<h2>{escape(product_label)}</h2>"
-            f"<p>A new ACMAD product is available for "
-            f"<strong>{escape(str(source_import.source_published_date))}</strong>.</p>"
-            f"<p><a href=\"{escape(product_url)}\">View {escape(filename)}</a></p>"
-            f"<p><a href=\"{escape(preferences_url)}\">Manage preferences</a> · "
-            f"<a href=\"{escape(unsubscribe_url)}\">Unsubscribe</a></p>"
-        )
+        
+        context = _get_email_context()
+        context.update({
+            "product_label": product_label,
+            "product_description": product_description,
+            "valid_from": valid_from,
+            "valid_until": valid_until,
+            "source_published_date": source_import.source_published_date,
+            "filename": filename,
+            "product_url": product_url,
+            "preferences_url": preferences_url,
+            "unsubscribe_url": unsubscribe_url,
+        })
+        
+        html = render_to_string("products/email/product_notification.html", context)
+        
         try:
             send_mail(subject, text, [subscriber.email], html_message=html)
         except Exception as exc:

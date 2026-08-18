@@ -963,7 +963,7 @@ class ProductSubscriber(models.Model):
     STATUS_UNSUBSCRIBED = "unsubscribed"
     STATUS_BOUNCED = "bounced"
     STATUS_CHOICES = [
-        (STATUS_PENDING, _("Pending confirmation")),
+        (STATUS_PENDING, _("Pending")),
         (STATUS_ACTIVE, _("Active")),
         (STATUS_UNSUBSCRIBED, _("Unsubscribed")),
         (STATUS_BOUNCED, _("Bounced")),
