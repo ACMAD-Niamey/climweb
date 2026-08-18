@@ -512,10 +512,9 @@ if RECAPTCHA_VERIFY_REQUEST_TIMEOUT:
 
 # EMAIL SETTINGS
 # Default email address used to send messages from the website.
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="climweb@localhost")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="") or "climweb@localhost"
 
-EMAIL_HOST = env("EMAIL_HOST", default="localhost")
-
+EMAIL_HOST = env("EMAIL_HOST", default="") or "localhost"
 _email_port = env("EMAIL_PORT", default="")
 EMAIL_PORT = int(_email_port) if _email_port else 25
 
