@@ -47,13 +47,9 @@ class ProductSubscriptionForm(forms.Form):
             if not definition.get("is_archived")
         ]
 
-    def clean_email(self):
-        email = self.cleaned_data.get("email")
-        if email:
-            email = email.strip().lower()
-            if ProductSubscriber.objects.filter(email=email).exists():
-                raise forms.ValidationError("This email is already registered.")
-        return email
+def clean_email(self):
+    email = self.cleaned_data.get("email")
+    return email.strip().lower() if email else email
 
 
 class ProductSubscriptionPreferencesForm(ProductSubscriptionForm):
