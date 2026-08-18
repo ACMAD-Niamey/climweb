@@ -239,6 +239,37 @@
             </table>
         </section>
 
+        <section class="manual-import-panel">
+            <h2>{% translate "Notification settings" %}</h2>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_notification_config">
+                
+                <div class="manual-import-grid">
+                    <div class="manual-import-field" style="grid-column: 1 / -1;">
+                        <label>
+                            <input type="checkbox" name="notifications_enabled" {% if not notification_config or notification_config.notifications_enabled %}checked{% endif %}>
+                            {% translate "Enable notifications for this product family" %}
+                        </label>
+                    </div>
+                    <div class="manual-import-field" style="grid-column: 1 / -1;">
+                        <label for="custom_subject">{% translate "Custom Email Subject" %}</label>
+                        <input type="text" id="custom_subject" name="custom_subject" value="{{ notification_config.custom_subject }}" style="width: 100%; box-sizing: border-box;" placeholder="New ACMAD product: &#123;&#123; product_label &#125;&#125; — &#123;&#123; date &#125;&#125;">
+                        <div class="help">{% translate "Optional. Use &#123;&#123; product_label &#125;&#125; and &#123;&#123; date &#125;&#125; as variables." %}</div>
+                    </div>
+                    <div class="manual-import-field" style="grid-column: 1 / -1;">
+                        <label for="introduction_text">{% translate "Email Introduction Text" %}</label>
+                        <textarea id="introduction_text" name="introduction_text" rows="4" style="width: 100%; box-sizing: border-box;">{{ notification_config.introduction_text }}</textarea>
+                        <div class="help">{% translate "Optional text to appear at the top of the notification email." %}</div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="button button-primary">
+                    {% translate "Save settings" %}
+                </button>
+            </form>
+        </section>
+
         {% if not definition.is_archived %}
         {% if source_form %}
             <section class="source-panel">
@@ -494,6 +525,26 @@
                     {% endfor %}
                 </tbody>
             </table>
+            
+            {% if recent_runs.has_other_pages %}
+            <nav class="subscriber-pagination" aria-label="{% translate 'Recent runs pages' %}" style="margin-top: 20px;">
+                {% if recent_runs.has_previous %}
+                <a class="button"
+                    href="?page={{ recent_runs.previous_page_number }}">
+                    {% translate "Previous" %}
+                </a>
+                {% endif %}
+                <span>
+                    {% blocktranslate with current=recent_runs.number total=recent_runs.paginator.num_pages %}Page {{ current }} of {{ total }}{% endblocktranslate %}
+                </span>
+                {% if recent_runs.has_next %}
+                <a class="button"
+                    href="?page={{ recent_runs.next_page_number }}">
+                    {% translate "Next" %}
+                </a>
+                {% endif %}
+            </nav>
+            {% endif %}
         </section>
 
         {% if configured_importer %}

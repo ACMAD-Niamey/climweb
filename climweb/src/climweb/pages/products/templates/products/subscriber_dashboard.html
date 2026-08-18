@@ -175,6 +175,7 @@
         <div>
             <button type="submit" class="button button-primary">{% translate "Filter" %}</button>
             <a class="button" href="{% url 'product_subscriber_dashboard' %}">{% translate "Clear" %}</a>
+            <a class="button" href="{% url 'product_subscriber_export_csv' %}?{{ request.GET.urlencode }}">{% translate "Export CSV" %}</a>
         </div>
     </form>
 

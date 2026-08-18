@@ -37,6 +37,7 @@ from .models import (
     ProductPage,
     ProductSubscriptionPreference,
     ProductSubscriber,
+    ProductFamilyNotificationConfig,
 )
 
 
@@ -361,6 +362,78 @@ def product_subscriber_dashboard_view(request):
             "event_page": event_page,
         },
     )
+
+
+@user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
+def product_subscriber_export_csv_view(request):
+    """Export subscribers as a CSV file matching the dashboard filters."""
+    import csv
+    from django.http import HttpResponse
+    from .import_registry import get_product_import_definitions
+
+    definitions = [
+        definition
+        for definition in get_product_import_definitions()
+        if not definition.get("is_archived")
+    ]
+    product_choices = [
+        (definition["key"], definition["label"])
+        for definition in definitions
+    ]
+    product_labels = dict(product_choices)
+    valid_statuses = dict(ProductSubscriber.STATUS_CHOICES)
+
+    search = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+    product_filter = request.GET.get("product", "").strip()
+    if status_filter not in valid_statuses:
+        status_filter = ""
+    if product_filter not in product_labels:
+        product_filter = ""
+
+    subscribers = ProductSubscriber.objects.prefetch_related("preferences")
+    if search:
+        subscribers = subscribers.filter(
+            Q(email__icontains=search) | Q(name__icontains=search)
+        )
+    if status_filter:
+        subscribers = subscribers.filter(status=status_filter)
+    if product_filter:
+        subscribers = subscribers.filter(
+            preferences__product_family=product_filter
+        )
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="subscribers_export.csv"'
+    writer = csv.writer(response)
+    writer.writerow([
+        "Email", 
+        "Name",
+        "Status", 
+        "Confirmed At", 
+        "Unsubscribed At", 
+        "Sector",
+        "Organization Type",
+        "Preferred Product Families"
+    ])
+
+    for subscriber in subscribers:
+        preferred_products = ", ".join(
+            product_labels.get(pref.product_family, pref.product_family)
+            for pref in subscriber.preferences.all()
+        )
+        writer.writerow([
+            subscriber.email,
+            subscriber.name or "",
+            subscriber.get_status_display(),
+            subscriber.confirmed_at.strftime('%Y-%m-%d %H:%M') if subscriber.confirmed_at else "",
+            subscriber.unsubscribed_at.strftime('%Y-%m-%d %H:%M') if subscriber.unsubscribed_at else "",
+            subscriber.get_sector_display() if subscriber.sector else "",
+            subscriber.get_organization_type_display() if subscriber.organization_type else "",
+            preferred_products
+        ])
+
+    return response
 
 
 @user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
@@ -898,6 +971,21 @@ def product_import_family_view(request, family_key):
                 f"Notification for the latest {definition['label']} product was queued.",
             )
         return redirect("product_import_family", family_key=family_key)
+    elif request.method == "POST" and action == "update_notification_config":
+        notifications_enabled = request.POST.get("notifications_enabled") == "on"
+        custom_subject = request.POST.get("custom_subject", "").strip()
+        introduction_text = request.POST.get("introduction_text", "").strip()
+        
+        ProductFamilyNotificationConfig.objects.update_or_create(
+            product_family=family_key,
+            defaults={
+                "notifications_enabled": notifications_enabled,
+                "custom_subject": custom_subject,
+                "introduction_text": introduction_text,
+            }
+        )
+        messages.success(request, f"{definition['label']} notification settings updated.")
+        return redirect("product_import_family", family_key=family_key)
     elif request.method == "POST" and action in source_actions:
         if source_form is None:
             raise Http404("Source configuration is not available for this importer")
@@ -1037,9 +1125,12 @@ def product_import_family_view(request, family_key):
     schedule = ProductImportSchedule.objects.filter(
         product_family=family_key
     ).select_related("updated_by").first()
-    recent_runs = ProductImportRun.objects.filter(
+    recent_runs_qs = ProductImportRun.objects.filter(
         product_family=family_key
-    ).select_related("requested_by")[:20]
+    ).select_related("requested_by")
+    paginator = Paginator(recent_runs_qs, 5)
+    page_number = request.GET.get('page')
+    recent_runs = paginator.get_page(page_number)
     recent_notification_events = ProductNotificationEvent.objects.filter(
         product_family=family_key
     ).select_related("source_import", "requested_by")[:10]
@@ -1047,6 +1138,9 @@ def product_import_family_view(request, family_key):
         status=ProductSubscriber.STATUS_ACTIVE,
         preferences__product_family=family_key,
     ).distinct().count()
+    
+    notification_config = ProductFamilyNotificationConfig.objects.filter(product_family=family_key).first()
+    
     return TemplateResponse(
         request,
         "products/import_family.html",
@@ -1063,6 +1157,7 @@ def product_import_family_view(request, family_key):
             "recent_notification_events": recent_notification_events,
             "active_subscriber_count": active_subscriber_count,
             "configured_importer": configured_importer,
+            "notification_config": notification_config,
             "audit_events": (
                 configured_importer.audit_events.select_related("actor")[:20]
                 if configured_importer

@@ -12,6 +12,7 @@ from .views import (
     product_import_status_view,
     product_layers_integration_view,
     product_subscriber_dashboard_view,
+    product_subscriber_export_csv_view,
     trigger_product_ingestion_view,
     product_subscriber_resend_verification_view,
     product_subscriber_delete_view,
@@ -40,6 +41,11 @@ def urlconf_products():
             'product-subscribers/',
             product_subscriber_dashboard_view,
             name="product_subscriber_dashboard",
+        ),
+        path(
+            'product-subscribers/export/',
+            product_subscriber_export_csv_view,
+            name="product_subscriber_export_csv",
         ),
         path(
             'product-subscribers/<int:subscriber_id>/resend-verification/',

@@ -16,6 +16,7 @@ from .models import (
     ProductNotificationEvent,
     ProductSourceImport,
     ProductSubscriber,
+    ProductFamilyNotificationConfig,
 )
 
 
@@ -85,6 +86,10 @@ def _product_url(source_import):
 
 def queue_automatic_product_notifications(product_family, started_at):
     """Queue successful records touched by one automatic importer execution."""
+    config = ProductFamilyNotificationConfig.objects.filter(product_family=product_family).first()
+    if config and not config.notifications_enabled:
+        return []
+
     definition = get_product_import_definition(product_family)
     if definition is None:
         return []
@@ -118,6 +123,10 @@ def queue_automatic_product_notifications(product_family, started_at):
 
 
 def queue_latest_product_notification(product_family, requested_by):
+    config = ProductFamilyNotificationConfig.objects.filter(product_family=product_family).first()
+    if config and not config.notifications_enabled:
+        return None
+
     definition = get_product_import_definition(product_family)
     if definition is None:
         return None
@@ -201,7 +210,22 @@ def deliver_product_notification(event_id):
     product_label = definition.get("label", source_import.product.name)
     product_url = _product_url(source_import)
     filename = _source_filename(source_import)
-    subject = f"New ACMAD product: {product_label} — {source_import.source_published_date}"
+    
+    config = ProductFamilyNotificationConfig.objects.filter(product_family=event.product_family).first()
+    if config and config.custom_subject:
+        from django.template import Template, Context
+        try:
+            subject_template = Template(config.custom_subject)
+            subject = subject_template.render(Context({
+                "product_label": product_label,
+                "date": source_import.source_published_date,
+            }))
+        except Exception:
+            subject = f"New ACMAD product: {product_label} — {source_import.source_published_date}"
+    else:
+        subject = f"New ACMAD product: {product_label} — {source_import.source_published_date}"
+        
+    custom_intro = config.introduction_text if config else ""
     
     product_item_page = source_import.product_item_page
     valid_from = None
@@ -243,7 +267,12 @@ def deliver_product_notification(event_id):
                 kwargs={"token": subscriber.unsubscribe_token},
             )
         )
-        text = (
+        text = ""
+        if custom_intro:
+            from django.utils.html import strip_tags
+            text += f"{strip_tags(custom_intro)}\n\n"
+        
+        text += (
             f"A new {product_label} product is available.\n\n"
             f"Issue date: {source_import.source_published_date}\n"
             f"File: {filename}\n"
@@ -254,6 +283,7 @@ def deliver_product_notification(event_id):
         
         context = _get_email_context()
         context.update({
+            "custom_intro": custom_intro,
             "product_label": product_label,
             "product_description": product_description,
             "valid_from": valid_from,

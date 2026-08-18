@@ -1033,6 +1033,39 @@ class ProductSubscriptionPreference(models.Model):
         return f"{self.subscriber.email}: {self.product_family}"
 
 
+class ProductFamilyNotificationConfig(models.Model):
+    product_family = models.SlugField(
+        max_length=80,
+        unique=True,
+        verbose_name=_("Product Family"),
+    )
+    notifications_enabled = models.BooleanField(
+        default=True,
+        verbose_name=_("Notifications Enabled"),
+        help_text=_("If disabled, no notifications will be sent for this product family."),
+    )
+    custom_subject = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_("Custom Email Subject"),
+        help_text=_("Optional. Use {{ product_label }} and {{ date }} as variables."),
+    )
+    introduction_text = models.TextField(
+        blank=True,
+        verbose_name=_("Email Introduction Text"),
+        help_text=_("Optional text to appear at the top of the notification email."),
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Product family notification config")
+        verbose_name_plural = _("Product family notification configs")
+
+    def __str__(self):
+        return self.product_family
+
+
 @register_snippet
 class ProductNotificationEvent(models.Model):
     TRIGGER_AUTOMATIC = "automatic"
