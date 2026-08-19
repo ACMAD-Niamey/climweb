@@ -16,6 +16,7 @@ from .models import (
     ProductNotificationEvent,
     ProductSourceImport,
     ProductSubscriber,
+    ProductFamilyNotificationConfig,
 )
 
 
@@ -85,6 +86,10 @@ def _product_url(source_import):
 
 def queue_automatic_product_notifications(product_family, started_at):
     """Queue successful records touched by one automatic importer execution."""
+    config = ProductFamilyNotificationConfig.objects.filter(product_family=product_family).first()
+    if config and not config.notifications_enabled:
+        return []
+
     definition = get_product_import_definition(product_family)
     if definition is None:
         return []
@@ -118,6 +123,10 @@ def queue_automatic_product_notifications(product_family, started_at):
 
 
 def queue_latest_product_notification(product_family, requested_by):
+    config = ProductFamilyNotificationConfig.objects.filter(product_family=product_family).first()
+    if config and not config.notifications_enabled:
+        return None
+
     definition = get_product_import_definition(product_family)
     if definition is None:
         return None
@@ -151,27 +160,38 @@ def queue_latest_product_notification(product_family, requested_by):
     return event
 
 
-def send_confirmation_email(subscriber):
-    confirmation_url = _public_url(
+def send_welcome_email(subscriber):
+    preferences_url = _public_url(
         reverse(
-            "product_subscription_confirm",
-            kwargs={"token": subscriber.confirmation_token},
+            "product_subscription_preferences",
+            kwargs={"token": subscriber.unsubscribe_token},
+        )
+    )
+    unsubscribe_url = _public_url(
+        reverse(
+            "product_subscription_unsubscribe",
+            kwargs={"token": subscriber.unsubscribe_token},
         )
     )
     
     context = _get_email_context()
-    context.update({"confirmation_url": confirmation_url})
+    context.update({
+        "preferences_url": preferences_url,
+        "unsubscribe_url": unsubscribe_url,
+    })
     
     text = (
-        "Confirm your ACMAD product subscription by opening this link:\n\n"
-        f"{confirmation_url}\n\n"
-        "If you did not request this subscription, ignore this email."
+        "You have successfully subscribed to ACMAD product notifications.\n\n"
+        "Manage your preferences here:\n"
+        f"{preferences_url}\n\n"
+        "Unsubscribe here:\n"
+        f"{unsubscribe_url}"
     )
     
-    html = render_to_string("products/email/subscription_confirm.html", context)
+    html = render_to_string("products/email/subscription_welcome.html", context)
     
     send_mail(
-        "Confirm your ACMAD product subscription",
+        "Welcome to ACMAD Product Notifications",
         text,
         [subscriber.email],
         html_message=html,
@@ -201,7 +221,22 @@ def deliver_product_notification(event_id):
     product_label = definition.get("label", source_import.product.name)
     product_url = _product_url(source_import)
     filename = _source_filename(source_import)
-    subject = f"New ACMAD product: {product_label} — {source_import.source_published_date}"
+    
+    config = ProductFamilyNotificationConfig.objects.filter(product_family=event.product_family).first()
+    if config and config.custom_subject:
+        from django.template import Template, Context
+        try:
+            subject_template = Template(config.custom_subject)
+            subject = subject_template.render(Context({
+                "product_label": product_label,
+                "date": source_import.source_published_date,
+            }))
+        except Exception:
+            subject = f"New ACMAD product: {product_label} — {source_import.source_published_date}"
+    else:
+        subject = f"New ACMAD product: {product_label} — {source_import.source_published_date}"
+        
+    custom_intro = config.introduction_text if config else ""
     
     product_item_page = source_import.product_item_page
     valid_from = None
@@ -243,7 +278,12 @@ def deliver_product_notification(event_id):
                 kwargs={"token": subscriber.unsubscribe_token},
             )
         )
-        text = (
+        text = ""
+        if custom_intro:
+            from django.utils.html import strip_tags
+            text += f"{strip_tags(custom_intro)}\n\n"
+        
+        text += (
             f"A new {product_label} product is available.\n\n"
             f"Issue date: {source_import.source_published_date}\n"
             f"File: {filename}\n"
@@ -254,6 +294,7 @@ def deliver_product_notification(event_id):
         
         context = _get_email_context()
         context.update({
+            "custom_intro": custom_intro,
             "product_label": product_label,
             "product_description": product_description,
             "valid_from": valid_from,

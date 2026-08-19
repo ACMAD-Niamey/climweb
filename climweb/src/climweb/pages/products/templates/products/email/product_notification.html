@@ -7,6 +7,12 @@
 
 <p>A new product from <strong>{{ site_name|default:"ACMAD" }}</strong> is now available.</p>
 
+{% if custom_intro %}
+<p style="margin-top: 15px; margin-bottom: 20px; line-height: 1.5;">
+    {{ custom_intro|linebreaksbr }}
+</p>
+{% endif %}
+
 {% if product_description %}
 <p style="margin-top: 15px; margin-bottom: 20px; line-height: 1.5;">
     {{ product_description }}
