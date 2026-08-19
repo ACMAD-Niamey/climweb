@@ -262,12 +262,14 @@
                                 {% translate "Resend" %}
                             </a>
                             {% endif %}
+                            {% if subscriber.status != 'unsubscribed' %}
                             <form action="{% url 'product_subscriber_unsubscribe' subscriber.pk %}" method="post" onsubmit="return confirm('{% translate "Are you sure you want to unsubscribe this user?" %}');" style="margin: 0;">
                                 {% csrf_token %}
                                 <button type="submit" class="button button-small no">
                                     {% translate "Unsubscribe" %}
                                 </button>
                             </form>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
