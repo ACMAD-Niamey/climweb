@@ -37,6 +37,7 @@ from .models import (
     ProductPage,
     ProductSubscriptionPreference,
     ProductSubscriber,
+    ProductFamilyNotificationConfig,
 )
 
 
@@ -52,10 +53,11 @@ def product_subscription_view(request):
                 "name": form.cleaned_data["name"].strip(),
                 "sector": form.cleaned_data["sector"],
                 "organization_type": form.cleaned_data["organization_type"],
-                "status": ProductSubscriber.STATUS_PENDING,
+                "organization_name": form.cleaned_data.get("organization_name", "").strip(),
+                "status": ProductSubscriber.STATUS_ACTIVE,
                 "confirmation_token": uuid.uuid4(),
                 "consented_at": timezone.now(),
-                "confirmed_at": None,
+                "confirmed_at": timezone.now(),
                 "unsubscribed_at": None,
                 "consent_ip": request.META.get("REMOTE_ADDR") or None,
                 "consent_user_agent": request.META.get(
@@ -79,10 +81,10 @@ def product_subscription_view(request):
             request,
             "products/subscription_status.html",
             {
-                "status_title": "Check your email",
+                "status_title": "Subscription Successful",
                 "status_message": (
-                    "We sent you a confirmation link. Your subscription will "
-                    "remain inactive until you confirm it."
+                    "You will now receive notifications for your selected ACMAD "
+                    "products."
                 ),
             },
         )
@@ -122,6 +124,7 @@ def product_subscription_preferences_view(request, token):
         "email": subscriber.email,
         "sector": subscriber.sector,
         "organization_type": subscriber.organization_type,
+        "organization_name": subscriber.organization_name,
         "product_families": list(
             subscriber.preferences.values_list("product_family", flat=True)
         ),
@@ -135,6 +138,7 @@ def product_subscription_preferences_view(request, token):
         subscriber.name = form.cleaned_data["name"].strip()
         subscriber.sector = form.cleaned_data["sector"]
         subscriber.organization_type = form.cleaned_data["organization_type"]
+        subscriber.organization_name = form.cleaned_data.get("organization_name", "").strip()
         subscriber.status = ProductSubscriber.STATUS_ACTIVE
         subscriber.unsubscribed_at = None
         subscriber.save(
@@ -142,6 +146,7 @@ def product_subscription_preferences_view(request, token):
                 "name",
                 "sector",
                 "organization_type",
+                "organization_name",
                 "status",
                 "unsubscribed_at",
                 "updated_at",
@@ -361,6 +366,84 @@ def product_subscriber_dashboard_view(request):
             "event_page": event_page,
         },
     )
+
+
+@user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
+def product_subscriber_export_csv_view(request):
+    """Export subscribers as a CSV file matching the dashboard filters."""
+    import csv
+    from django.http import HttpResponse
+    from .import_registry import get_product_import_definitions
+
+    definitions = [
+        definition
+        for definition in get_product_import_definitions()
+        if not definition.get("is_archived")
+    ]
+    product_choices = [
+        (definition["key"], definition["label"])
+        for definition in definitions
+    ]
+    product_labels = dict(product_choices)
+    valid_statuses = dict(ProductSubscriber.STATUS_CHOICES)
+
+    search = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+    product_filter = request.GET.get("product", "").strip()
+    if status_filter not in valid_statuses:
+        status_filter = ""
+    if product_filter not in product_labels:
+        product_filter = ""
+
+    subscribers = ProductSubscriber.objects.prefetch_related("preferences")
+    if search:
+        subscribers = subscribers.filter(
+            Q(email__icontains=search) | Q(name__icontains=search)
+        )
+    if status_filter:
+        subscribers = subscribers.filter(status=status_filter)
+    if product_filter:
+        subscribers = subscribers.filter(
+            preferences__product_family=product_filter
+        )
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="subscribers_export.csv"'
+    writer = csv.writer(response)
+    writer.writerow([
+        "Email", 
+        "Name",
+        "Status", 
+        "Confirmed At", 
+        "Unsubscribed At", 
+        "Sector",
+        "Organization Type",
+        "Organization Name",
+        "Preferred Product Families"
+    ])
+
+    def csv_safe(value):
+        value = str(value or "")
+        return f"'{value}" if value.lstrip().startswith(("=", "+", "-", "@")) else value
+
+    for subscriber in subscribers:
+        preferred_products = ", ".join(
+            product_labels.get(pref.product_family, pref.product_family)
+            for pref in subscriber.preferences.all()
+        )
+        writer.writerow([
+            csv_safe(subscriber.email),
+            csv_safe(subscriber.name),
+            subscriber.get_status_display(),
+            subscriber.confirmed_at.strftime('%Y-%m-%d %H:%M') if subscriber.confirmed_at else "",
+            subscriber.unsubscribed_at.strftime('%Y-%m-%d %H:%M') if subscriber.unsubscribed_at else "",
+            subscriber.get_sector_display() if subscriber.sector else "",
+            subscriber.get_organization_type_display() if subscriber.organization_type else "",
+            csv_safe(subscriber.organization_name),
+            preferred_products
+        ])
+
+    return response
 
 
 @user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
@@ -898,6 +981,21 @@ def product_import_family_view(request, family_key):
                 f"Notification for the latest {definition['label']} product was queued.",
             )
         return redirect("product_import_family", family_key=family_key)
+    elif request.method == "POST" and action == "update_notification_config":
+        notifications_enabled = request.POST.get("notifications_enabled") == "on"
+        custom_subject = request.POST.get("custom_subject", "").strip()
+        introduction_text = request.POST.get("introduction_text", "").strip()
+        
+        ProductFamilyNotificationConfig.objects.update_or_create(
+            product_family=family_key,
+            defaults={
+                "notifications_enabled": notifications_enabled,
+                "custom_subject": custom_subject,
+                "introduction_text": introduction_text,
+            }
+        )
+        messages.success(request, f"{definition['label']} notification settings updated.")
+        return redirect("product_import_family", family_key=family_key)
     elif request.method == "POST" and action in source_actions:
         if source_form is None:
             raise Http404("Source configuration is not available for this importer")
@@ -1037,9 +1135,12 @@ def product_import_family_view(request, family_key):
     schedule = ProductImportSchedule.objects.filter(
         product_family=family_key
     ).select_related("updated_by").first()
-    recent_runs = ProductImportRun.objects.filter(
+    recent_runs_qs = ProductImportRun.objects.filter(
         product_family=family_key
-    ).select_related("requested_by")[:20]
+    ).select_related("requested_by")
+    paginator = Paginator(recent_runs_qs, 5)
+    page_number = request.GET.get('page')
+    recent_runs = paginator.get_page(page_number)
     recent_notification_events = ProductNotificationEvent.objects.filter(
         product_family=family_key
     ).select_related("source_import", "requested_by")[:10]
@@ -1047,6 +1148,9 @@ def product_import_family_view(request, family_key):
         status=ProductSubscriber.STATUS_ACTIVE,
         preferences__product_family=family_key,
     ).distinct().count()
+    
+    notification_config = ProductFamilyNotificationConfig.objects.filter(product_family=family_key).first()
+    
     return TemplateResponse(
         request,
         "products/import_family.html",
@@ -1063,6 +1167,7 @@ def product_import_family_view(request, family_key):
             "recent_notification_events": recent_notification_events,
             "active_subscriber_count": active_subscriber_count,
             "configured_importer": configured_importer,
+            "notification_config": notification_config,
             "audit_events": (
                 configured_importer.audit_events.select_related("actor")[:20]
                 if configured_importer
@@ -1118,15 +1223,15 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
 from wagtail.admin.auth import user_passes_test
 from .models import ProductSubscriber
-from .product_notifications import send_confirmation_email
+from .product_notifications import send_welcome_email
 
 @user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
 def product_subscriber_resend_verification_view(request, subscriber_id):
     subscriber = get_object_or_404(ProductSubscriber, pk=subscriber_id)
-    if subscriber.status == ProductSubscriber.STATUS_PENDING:
+    if subscriber.status == ProductSubscriber.STATUS_ACTIVE:
         try:
-            send_confirmation_email(subscriber)
-            messages.success(request, f"Verification email sent to {subscriber.email}.")
+            send_welcome_email(subscriber)
+            messages.success(request, f"Welcome email sent to {subscriber.email}.")
         except Exception as e:
             messages.error(request, f"Failed to send email to {subscriber.email}: {e}")
     else:
@@ -1134,13 +1239,17 @@ def product_subscriber_resend_verification_view(request, subscriber_id):
     
     return redirect("product_subscriber_dashboard")
 
+
+
 @user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
-def product_subscriber_delete_view(request, subscriber_id):
+def product_subscriber_unsubscribe_view(request, subscriber_id):
     subscriber = get_object_or_404(ProductSubscriber, pk=subscriber_id)
     if request.method == "POST":
         email = subscriber.email
-        subscriber.delete()
-        messages.success(request, f"Subscriber {email} deleted successfully.")
+        subscriber.status = ProductSubscriber.STATUS_UNSUBSCRIBED
+        subscriber.unsubscribed_at = timezone.now()
+        subscriber.save()
+        messages.success(request, f"Subscriber {email} unsubscribed successfully.")
     else:
-        messages.error(request, "Invalid request method for deletion. Use POST.")
+        messages.error(request, "Invalid request method for unsubscribe. Use POST.")
     return redirect("product_subscriber_dashboard")

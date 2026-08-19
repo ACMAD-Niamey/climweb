@@ -40,11 +40,11 @@ def _run_automatic_product_import(family_key, command_name, *args, **options):
 @app.task
 def send_product_subscription_confirmation(subscriber_id):
     from .models import ProductSubscriber
-    from .product_notifications import send_confirmation_email
+    from .product_notifications import send_welcome_email
 
     subscriber = ProductSubscriber.objects.get(pk=subscriber_id)
-    if subscriber.status == ProductSubscriber.STATUS_PENDING:
-        send_confirmation_email(subscriber)
+    if subscriber.status == ProductSubscriber.STATUS_ACTIVE:
+        send_welcome_email(subscriber)
 
 
 @app.task
