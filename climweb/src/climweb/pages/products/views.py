@@ -422,20 +422,24 @@ def product_subscriber_export_csv_view(request):
         "Preferred Product Families"
     ])
 
+    def csv_safe(value):
+        value = str(value or "")
+        return f"'{value}" if value.lstrip().startswith(("=", "+", "-", "@")) else value
+
     for subscriber in subscribers:
         preferred_products = ", ".join(
             product_labels.get(pref.product_family, pref.product_family)
             for pref in subscriber.preferences.all()
         )
         writer.writerow([
-            subscriber.email,
-            subscriber.name or "",
+            csv_safe(subscriber.email),
+            csv_safe(subscriber.name),
             subscriber.get_status_display(),
             subscriber.confirmed_at.strftime('%Y-%m-%d %H:%M') if subscriber.confirmed_at else "",
             subscriber.unsubscribed_at.strftime('%Y-%m-%d %H:%M') if subscriber.unsubscribed_at else "",
             subscriber.get_sector_display() if subscriber.sector else "",
             subscriber.get_organization_type_display() if subscriber.organization_type else "",
-            subscriber.organization_name or "",
+            csv_safe(subscriber.organization_name),
             preferred_products
         ])
 
