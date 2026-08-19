@@ -15,7 +15,7 @@ from .views import (
     product_subscriber_export_csv_view,
     trigger_product_ingestion_view,
     product_subscriber_resend_verification_view,
-    product_subscriber_delete_view,
+    product_subscriber_unsubscribe_view,
 )
 
 
@@ -53,9 +53,9 @@ def urlconf_products():
             name="product_subscriber_resend_verification",
         ),
         path(
-            'product-subscribers/<int:subscriber_id>/delete/',
-            product_subscriber_delete_view,
-            name="product_subscriber_delete",
+            "product-subscribers/<int:subscriber_id>/unsubscribe/",
+            product_subscriber_unsubscribe_view,
+            name="product_subscriber_unsubscribe",
         ),
         path(
             'product-imports/create/',

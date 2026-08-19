@@ -262,10 +262,10 @@
                                 {% translate "Resend" %}
                             </a>
                             {% endif %}
-                            <form action="{% url 'product_subscriber_delete' subscriber.pk %}" method="post" onsubmit="return confirm('{% translate "Are you sure you want to delete this subscriber?" %}');" style="margin: 0;">
+                            <form action="{% url 'product_subscriber_unsubscribe' subscriber.pk %}" method="post" onsubmit="return confirm('{% translate "Are you sure you want to unsubscribe this user?" %}');" style="margin: 0;">
                                 {% csrf_token %}
                                 <button type="submit" class="button button-small no">
-                                    {% translate "Delete" %}
+                                    {% translate "Unsubscribe" %}
                                 </button>
                             </form>
                         </div>

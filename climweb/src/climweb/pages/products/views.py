@@ -1235,13 +1235,17 @@ def product_subscriber_resend_verification_view(request, subscriber_id):
     
     return redirect("product_subscriber_dashboard")
 
+
+
 @user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
-def product_subscriber_delete_view(request, subscriber_id):
+def product_subscriber_unsubscribe_view(request, subscriber_id):
     subscriber = get_object_or_404(ProductSubscriber, pk=subscriber_id)
     if request.method == "POST":
         email = subscriber.email
-        subscriber.delete()
-        messages.success(request, f"Subscriber {email} deleted successfully.")
+        subscriber.status = ProductSubscriber.STATUS_UNSUBSCRIBED
+        subscriber.unsubscribed_at = timezone.now()
+        subscriber.save()
+        messages.success(request, f"Subscriber {email} unsubscribed successfully.")
     else:
-        messages.error(request, "Invalid request method for deletion. Use POST.")
+        messages.error(request, "Invalid request method for unsubscribe. Use POST.")
     return redirect("product_subscriber_dashboard")
