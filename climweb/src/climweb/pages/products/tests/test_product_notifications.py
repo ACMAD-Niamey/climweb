@@ -44,25 +44,28 @@ class TestProductSubscriptions(TestCase):
     @patch(
         "climweb.pages.products.tasks.send_product_subscription_confirmation.delay"
     )
-    def test_subscription_is_stored_locally_pending_confirmation(self, delay):
-        response = self.client.post(
-            reverse("product_subscription"),
-            {
-                "name": "Forecast User",
-                "email": "USER@example.com",
-                "sector": ProductSubscriber.Sector.RESEARCH,
-                "organization_type": (
-                    ProductSubscriber.OrganizationType.ACADEMIC_RESEARCH
-                ),
-                "product_families": ["rainfall", "heat-stress"],
-                "consent": "on",
-            },
-        )
+    def test_subscription_is_stored_locally_active(self, delay):
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(
+                reverse("product_subscription"),
+                {
+                    "name": "Forecast User",
+                    "email": "USER@example.com",
+                    "sector": ProductSubscriber.Sector.RESEARCH,
+                    "organization_name": "Test Org",
+                    "organization_type": (
+                        ProductSubscriber.OrganizationType.ACADEMIC_RESEARCH
+                    ),
+                    "product_families": ["rainfall", "heat-stress"],
+                    "consent": "on",
+                },
+            )
 
         self.assertEqual(response.status_code, 200)
         subscriber = ProductSubscriber.objects.get(email="user@example.com")
-        self.assertEqual(subscriber.status, ProductSubscriber.STATUS_PENDING)
+        self.assertEqual(subscriber.status, ProductSubscriber.STATUS_ACTIVE)
         self.assertEqual(subscriber.sector, ProductSubscriber.Sector.RESEARCH)
+        self.assertEqual(subscriber.organization_name, "Test Org")
         self.assertEqual(
             subscriber.organization_type,
             ProductSubscriber.OrganizationType.ACADEMIC_RESEARCH,
