@@ -81,6 +81,16 @@
                     {{ form.organization_type.errors }}
                 </div>
 
+                <div class="field">
+                    <label class="label" for="{{ form.organization_name.id_for_label }}">
+                        {{ form.organization_name.label }}
+                    </label>
+                    <div class="control">
+                        {{ form.organization_name }}
+                    </div>
+                    {{ form.organization_name.errors }}
+                </div>
+
                 <div class="field product-subscribe-products-field">
                     <div class="product-subscribe-products-heading">
                         <label class="label">{% translate "Our Products" %}</label>
@@ -117,7 +127,7 @@
                         {% endif %}
                     </button>
                     {% if not managing_preferences %}
-                        <p class="help">{% translate "We will email you a link to confirm your subscription." %}</p>
+                        <p class="help">{% translate "You will receive an email confirming your subscription." %}</p>
                     {% endif %}
                 </div>
 

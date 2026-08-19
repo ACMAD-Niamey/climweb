@@ -981,6 +981,7 @@ class ProductSubscriber(models.Model):
         choices=OrganizationType.choices,
         blank=True,
     )
+    organization_name = models.CharField(max_length=255, blank=True)
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING
     )
@@ -999,6 +1000,7 @@ class ProductSubscriber(models.Model):
         FieldPanel("name"),
         FieldPanel("sector"),
         FieldPanel("organization_type"),
+        FieldPanel("organization_name"),
         FieldPanel("status"),
     ]
 

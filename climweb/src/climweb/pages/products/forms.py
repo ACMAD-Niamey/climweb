@@ -28,6 +28,11 @@ class ProductSubscriptionForm(forms.Form):
         initial=ProductSubscriber.OrganizationType.PUBLIC_SECTOR,
         required=False,
     )
+    organization_name = forms.CharField(
+        label="Name of Organisation",
+        max_length=255,
+        required=False,
+    )
     product_families = forms.MultipleChoiceField(
         label="Products",
         widget=forms.CheckboxSelectMultiple,

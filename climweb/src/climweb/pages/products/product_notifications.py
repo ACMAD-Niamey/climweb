@@ -160,27 +160,38 @@ def queue_latest_product_notification(product_family, requested_by):
     return event
 
 
-def send_confirmation_email(subscriber):
-    confirmation_url = _public_url(
+def send_welcome_email(subscriber):
+    preferences_url = _public_url(
         reverse(
-            "product_subscription_confirm",
-            kwargs={"token": subscriber.confirmation_token},
+            "product_subscription_preferences",
+            kwargs={"token": subscriber.unsubscribe_token},
+        )
+    )
+    unsubscribe_url = _public_url(
+        reverse(
+            "product_subscription_unsubscribe",
+            kwargs={"token": subscriber.unsubscribe_token},
         )
     )
     
     context = _get_email_context()
-    context.update({"confirmation_url": confirmation_url})
+    context.update({
+        "preferences_url": preferences_url,
+        "unsubscribe_url": unsubscribe_url,
+    })
     
     text = (
-        "Confirm your ACMAD product subscription by opening this link:\n\n"
-        f"{confirmation_url}\n\n"
-        "If you did not request this subscription, ignore this email."
+        "You have successfully subscribed to ACMAD product notifications.\n\n"
+        "Manage your preferences here:\n"
+        f"{preferences_url}\n\n"
+        "Unsubscribe here:\n"
+        f"{unsubscribe_url}"
     )
     
-    html = render_to_string("products/email/subscription_confirm.html", context)
+    html = render_to_string("products/email/subscription_welcome.html", context)
     
     send_mail(
-        "Confirm your ACMAD product subscription",
+        "Welcome to ACMAD Product Notifications",
         text,
         [subscriber.email],
         html_message=html,

@@ -53,10 +53,11 @@ def product_subscription_view(request):
                 "name": form.cleaned_data["name"].strip(),
                 "sector": form.cleaned_data["sector"],
                 "organization_type": form.cleaned_data["organization_type"],
-                "status": ProductSubscriber.STATUS_PENDING,
+                "organization_name": form.cleaned_data.get("organization_name", "").strip(),
+                "status": ProductSubscriber.STATUS_ACTIVE,
                 "confirmation_token": uuid.uuid4(),
                 "consented_at": timezone.now(),
-                "confirmed_at": None,
+                "confirmed_at": timezone.now(),
                 "unsubscribed_at": None,
                 "consent_ip": request.META.get("REMOTE_ADDR") or None,
                 "consent_user_agent": request.META.get(
@@ -80,10 +81,10 @@ def product_subscription_view(request):
             request,
             "products/subscription_status.html",
             {
-                "status_title": "Check your email",
+                "status_title": "Subscription Successful",
                 "status_message": (
-                    "We sent you a confirmation link. Your subscription will "
-                    "remain inactive until you confirm it."
+                    "You will now receive notifications for your selected ACMAD "
+                    "products."
                 ),
             },
         )
@@ -123,6 +124,7 @@ def product_subscription_preferences_view(request, token):
         "email": subscriber.email,
         "sector": subscriber.sector,
         "organization_type": subscriber.organization_type,
+        "organization_name": subscriber.organization_name,
         "product_families": list(
             subscriber.preferences.values_list("product_family", flat=True)
         ),
@@ -136,6 +138,7 @@ def product_subscription_preferences_view(request, token):
         subscriber.name = form.cleaned_data["name"].strip()
         subscriber.sector = form.cleaned_data["sector"]
         subscriber.organization_type = form.cleaned_data["organization_type"]
+        subscriber.organization_name = form.cleaned_data.get("organization_name", "").strip()
         subscriber.status = ProductSubscriber.STATUS_ACTIVE
         subscriber.unsubscribed_at = None
         subscriber.save(
@@ -143,6 +146,7 @@ def product_subscription_preferences_view(request, token):
                 "name",
                 "sector",
                 "organization_type",
+                "organization_name",
                 "status",
                 "unsubscribed_at",
                 "updated_at",
@@ -414,6 +418,7 @@ def product_subscriber_export_csv_view(request):
         "Unsubscribed At", 
         "Sector",
         "Organization Type",
+        "Organization Name",
         "Preferred Product Families"
     ])
 
@@ -430,6 +435,7 @@ def product_subscriber_export_csv_view(request):
             subscriber.unsubscribed_at.strftime('%Y-%m-%d %H:%M') if subscriber.unsubscribed_at else "",
             subscriber.get_sector_display() if subscriber.sector else "",
             subscriber.get_organization_type_display() if subscriber.organization_type else "",
+            subscriber.organization_name or "",
             preferred_products
         ])
 
@@ -1213,15 +1219,15 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
 from wagtail.admin.auth import user_passes_test
 from .models import ProductSubscriber
-from .product_notifications import send_confirmation_email
+from .product_notifications import send_welcome_email
 
 @user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
 def product_subscriber_resend_verification_view(request, subscriber_id):
     subscriber = get_object_or_404(ProductSubscriber, pk=subscriber_id)
-    if subscriber.status == ProductSubscriber.STATUS_PENDING:
+    if subscriber.status == ProductSubscriber.STATUS_ACTIVE:
         try:
-            send_confirmation_email(subscriber)
-            messages.success(request, f"Verification email sent to {subscriber.email}.")
+            send_welcome_email(subscriber)
+            messages.success(request, f"Welcome email sent to {subscriber.email}.")
         except Exception as e:
             messages.error(request, f"Failed to send email to {subscriber.email}: {e}")
     else:
