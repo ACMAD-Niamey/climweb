@@ -101,7 +101,7 @@
                 <div class="columns is-multiline is-mobile partners-list">
                 {% for partner in page.partners %}
                     {% if partner.visible_on_homepage and partner.logo %}
-                    <div class="column is-4-mobile is-3-tablet is-2-desktop">
+                    <div class="column is-6-mobile is-4-tablet is-4-desktop">
                         <a href="{% if partner.link %}{{ partner.link }}{% endif %}"
                         target="{% if partner.link %}_blank{% else %}_self{% endif %}"
                         rel="noopener"
@@ -122,11 +122,9 @@
 
                 {% if settings.base.ImportantPages.all_partners_page %}
                 <div class="has-text-centered mt-5">
-                    
-
-                    <a class="more-partners" href="{{ settings.base.ImportantPages.all_partners_page.url }}">
-                        {% translate "More Partners" %}
-                        </a>
+                    <a class="button is-primary" href="{{ settings.base.ImportantPages.all_partners_page.url }}">
+                        {% translate "View More Partners" %}
+                    </a>
                 </div>
                 {% endif %}
 
