@@ -1,9 +1,16 @@
+from datetime import date
+
 from django.conf import settings
 from wagtail.test.utils import WagtailPageTestCase
 
 from climweb.base.seo_utils import get_html_meta_tags
 from climweb.base.test_utils import test_page_meta_tags
-from climweb.pages.products.tests.factories import ProductIndexPageFactory, ProductPageFactory
+from climweb.pages.products.tests.factories import (
+    ProductIndexPageFactory,
+    ProductItemPageFactory,
+    ProductPageFactory,
+)
+from climweb.pages.home.models import canonical_public_page_url, get_significant_product_slides
 from .factories import get_or_create_homepage
 
 
@@ -124,3 +131,51 @@ class TestHomePage(WagtailPageTestCase):
         self.page.__dict__.pop("featured_products_list", None)
 
         self.assertEqual(self.page.featured_products_list, [])
+
+    def test_significant_product_slides_use_latest_item_from_each_family(self):
+        product_index = ProductIndexPageFactory(parent=self.page)
+        multi_hazard = ProductPageFactory(
+            parent=product_index,
+            title="Weather Watch and Prediction Products",
+        )
+        heat = ProductPageFactory(parent=product_index, title="Heat and Thermal Stress")
+        thunderstorm = ProductPageFactory(parent=product_index, title="Thunderstorm and Nowcasting")
+
+        ProductItemPageFactory(
+            parent=multi_hazard,
+            title="Continental Multi-Hazard Outlook — older",
+            date=date(2026, 8, 1),
+        )
+        ProductItemPageFactory(
+            parent=multi_hazard,
+            title="Continental Multi-Hazard Outlook — latest",
+            date=date(2026, 8, 6),
+        )
+        ProductItemPageFactory(parent=heat, date=date(2026, 8, 8))
+        ProductItemPageFactory(parent=thunderstorm, date=date(2026, 8, 7))
+
+        slides = get_significant_product_slides()
+
+        self.assertEqual([slide["key"] for slide in slides], ["multi-hazard", "heat", "thunderstorm"])
+        self.assertEqual(
+            [slide["issue_date"] for slide in slides],
+            [date(2026, 8, 6), date(2026, 8, 8), date(2026, 8, 7)],
+        )
+
+    def test_significant_product_links_hide_internal_homepage_slug(self):
+        self.assertEqual(
+            canonical_public_page_url("/home-page/products/heat-and-thermal-stress/"),
+            "/products/heat-and-thermal-stress/",
+        )
+        self.assertEqual(canonical_public_page_url("/products/example/"), "/products/example/")
+
+    def test_significant_product_slides_follow_dashboard_selection_order(self):
+        product_index = ProductIndexPageFactory(parent=self.page)
+        heat = ProductPageFactory(parent=product_index, title="Heat and Thermal Stress")
+        thunderstorm = ProductPageFactory(parent=product_index, title="Thunderstorm and Nowcasting")
+        ProductItemPageFactory(parent=heat, date=date(2026, 8, 8))
+        ProductItemPageFactory(parent=thunderstorm, date=date(2026, 8, 7))
+
+        slides = get_significant_product_slides([thunderstorm, heat])
+
+        self.assertEqual([slide["key"] for slide in slides], ["thunderstorm", "heat"])

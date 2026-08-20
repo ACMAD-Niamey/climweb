@@ -486,9 +486,8 @@
   <section class="section met-banner">
 {% endif %}
 
-  <div class="container">
-    <div class="columns">
-      <div class="column is-8">
+  <div class="container met-banner-layout">
+      <div class="met-banner-copy">
 
         {% if self.pre_title %}
           <div class="rcc-badge has-text-weight-semibold">{{ self.pre_title }}</div>
@@ -524,7 +523,8 @@
         {% endif %}
 
       </div>
-    </div>
+
+      {% include "home/section/hero_product_widget.html" %}
   </div>
 
 </section>

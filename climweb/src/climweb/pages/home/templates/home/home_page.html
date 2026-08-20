@@ -13,6 +13,7 @@
     {% if IS_METEOROLOGICAL %}
         {# met homepage redesign — card row + services strip styles #}
         <link rel="stylesheet" href="{% static 'css/home_redesign.css' %}">
+    <link rel="stylesheet" href="{% static 'css/hero_product_widget.css' %}?v=1.1">
     {% endif %}
     {% if page.show_weather_watch %}
         {# map-only styles — loaded only when the weather watch map section is enabled #}
@@ -378,6 +379,43 @@
 
     /* ── boot ── */
     $(document).ready(function () {
+
+      const heroProductCarousel = document.getElementById('hero-product-carousel');
+      if (heroProductCarousel && typeof Glide !== 'undefined') {
+        const slideCount = heroProductCarousel.querySelectorAll('.glide__slide').length;
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        window.heroProductGlide = new Glide('#hero-product-carousel', {
+          type: 'slider',
+          perView: 1,
+          gap: 0,
+          rewind: true,
+          autoplay: !reduceMotion && slideCount > 1 ? 7500 : false,
+          hoverpause: true,
+          animationDuration: reduceMotion ? 0 : 550,
+          swipeThreshold: 60,
+          dragThreshold: 80,
+        });
+
+        const syncHeroProductAccessibility = () => {
+          heroProductCarousel.querySelectorAll('.glide__slide').forEach((slide, index) => {
+            const active = index === window.heroProductGlide.index;
+            slide.setAttribute('aria-hidden', active ? 'false' : 'true');
+            slide.querySelectorAll('a, button').forEach(control => {
+              control.tabIndex = active ? 0 : -1;
+            });
+          });
+        };
+
+        window.heroProductGlide.on(['mount.after', 'run.after'], syncHeroProductAccessibility);
+        window.heroProductGlide.mount();
+        syncHeroProductAccessibility();
+
+        heroProductCarousel.addEventListener('focusin', () => window.heroProductGlide.pause());
+        heroProductCarousel.addEventListener('focusout', () => {
+          if (!reduceMotion && slideCount > 1) window.heroProductGlide.play(7500);
+        });
+      }
 
       const isSsrRendered = weatherWidgetWrapper.length
         && weatherWidgetWrapper.children().length > 0
