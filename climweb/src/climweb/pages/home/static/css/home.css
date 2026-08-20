@@ -883,8 +883,7 @@
 .home-partner-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    border-top: 1px solid var(--theme-border, #e4e9ee);
-    border-left: 1px solid var(--theme-border, #e4e9ee);
+    gap: 24px;
 }
 
 .home-partner-card {
@@ -898,8 +897,8 @@
     gap: 22px;
     color: inherit;
     background: var(--theme-surface, #fff);
-    border-right: 1px solid var(--theme-border, #e4e9ee);
-    border-bottom: 1px solid var(--theme-border, #e4e9ee);
+    border: 1px solid var(--theme-border, #e4e9ee);
+    border-radius: 12px;
     text-decoration: none;
     transition: transform 0.2s ease, box-shadow 0.2s ease,
         border-color 0.2s ease;
