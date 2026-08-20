@@ -866,3 +866,102 @@
     }
 }
 
+/* ------------------------------------------------------------
+   Homepage partners — bordered logo tiles based on the ACMAD
+   landing-page prototype. These selectors are deliberately
+   homepage-specific so other partner listings keep their styles.
+   ------------------------------------------------------------ */
+.home-partners-section {
+    background: var(--theme-surface, #fff);
+    border-bottom: 1px solid var(--theme-border, #e4e9ee);
+}
+
+.home-partners-heading {
+    max-width: 720px;
+}
+
+.home-partner-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+}
+
+.home-partner-card {
+    min-width: 0;
+    min-height: 238px;
+    padding: 28px 20px 23px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    color: inherit;
+    background: var(--theme-surface, #fff);
+    border: 1px solid var(--theme-border, #e4e9ee);
+    border-radius: 12px;
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease,
+        border-color 0.2s ease;
+}
+
+.home-partner-card:hover,
+.home-partner-card:focus-visible {
+    position: relative;
+    z-index: 2;
+    color: inherit;
+    border-color: transparent;
+    box-shadow: var(--shadow-sm, 0 8px 24px rgba(14, 43, 65, 0.1));
+    transform: translateY(-5px);
+}
+
+.home-partner-card:focus-visible {
+    outline: 3px solid var(--primary-color-medium);
+    outline-offset: -3px;
+}
+
+.home-partner-logo {
+    width: 100%;
+    height: 118px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.home-partner-logo-img {
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: 100%;
+    object-fit: contain;
+    mix-blend-mode: multiply;
+    filter: saturate(0.82);
+    transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+.home-partner-card:hover .home-partner-logo-img,
+.home-partner-card:focus-visible .home-partner-logo-img {
+    filter: saturate(1);
+    transform: scale(1.035);
+}
+
+@media (max-width: 768px) {
+    .home-partner-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .home-partner-card {
+        min-height: 205px;
+        padding: 24px 16px 20px;
+    }
+
+    .home-partner-logo {
+        height: 100px;
+    }
+
+    .home-partner-card:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+        width: 50%;
+        justify-self: center;
+        border-left: 1px solid var(--theme-border, #e4e9ee);
+    }
+}

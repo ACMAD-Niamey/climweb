@@ -6,13 +6,14 @@
 {% block body_class %}template-homepage{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/home.css' %}">
+    <link rel="stylesheet" href="{% static 'css/home.css' %}?v=2.2">
     <link href="{% static 'css/hero.css' %}" type="text/css" rel="stylesheet"/>
     <link rel="stylesheet" type="text/css" href="{% static 'css/partners.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'css/project_detail.css' %}">
     {% if IS_METEOROLOGICAL %}
         {# met homepage redesign — card row + services strip styles #}
-        <link rel="stylesheet" href="{% static 'css/home_redesign.css' %}">
+        <link rel="stylesheet" href="{% static 'css/home_redesign.css' %}?v=1.1">
+    <link rel="stylesheet" href="{% static 'css/hero_product_widget.css' %}?v=1.1">
     {% endif %}
     {% if page.show_weather_watch %}
         {# map-only styles — loaded only when the weather watch map section is enabled #}
@@ -83,11 +84,11 @@
         {% endif %}
         
  
-            {% if page.partners %}
-            <section class="section">
-            <div class="container py-5">
+        {% if page.partners %}
+            <section class="section home-partners-section" id="partners">
+            <div class="container py-5 home-partners-layout">
 
-                <div class="mb-5">
+                <div class="mb-5 home-partners-heading">
                 <p class="is-uppercase has-text-weight-bold is-size-8 mb-1"
                     style="color:var(--primary-color) ; letter-spacing:0.08em;">
                     {% translate "Collaborators" %}
@@ -98,35 +99,31 @@
                 </p>
                 </div>
 
-                <div class="columns is-multiline is-mobile partners-list">
+                <div class="home-partner-grid">
                 {% for partner in page.partners %}
                     {% if partner.visible_on_homepage and partner.logo %}
-                    <div class="column is-4-mobile is-3-tablet is-2-desktop">
-                        <a href="{% if partner.link %}{{ partner.link }}{% endif %}"
+                        <a href="{% if partner.link %}{{ partner.link }}{% else %}#{% endif %}"
                         target="{% if partner.link %}_blank{% else %}_self{% endif %}"
-                        rel="noopener"
-                        class="partner-card"
-                        title="{{ partner.name }}">
-                        <figure class="image partner-logo-figure">
+                        {% if partner.link %}rel="noopener noreferrer"{% endif %}
+                        class="home-partner-card"
+                        aria-label="{{ partner.name }}{% if partner.link %} ({% translate 'opens in a new tab' %}){% endif %}">
+                        <span class="home-partner-logo">
                             {% image partner.logo original as p_logo %}
-                            <img class="progressive__img progressive--not-loaded partner-logo-img"
+                            <img class="progressive__img progressive--not-loaded home-partner-logo-img"
                                 data-progressive="{{ p_logo.url }}"
                                 src="{% lazy_image_url p_logo %}"
                                 alt="{{ partner.name }}" />
-                        </figure>
+                        </span>
                         </a>
-                    </div>
                     {% endif %}
                 {% endfor %}
                 </div>
 
                 {% if settings.base.ImportantPages.all_partners_page %}
                 <div class="has-text-centered mt-5">
-                    
-
-                    <a class="more-partners" href="{{ settings.base.ImportantPages.all_partners_page.url }}">
-                        {% translate "More Partners" %}
-                        </a>
+                    <a class="button is-primary" href="{{ settings.base.ImportantPages.all_partners_page.url }}">
+                        {% translate "View More Partners" %}
+                    </a>
                 </div>
                 {% endif %}
 
@@ -382,6 +379,43 @@
 
     /* ── boot ── */
     $(document).ready(function () {
+
+      const heroProductCarousel = document.getElementById('hero-product-carousel');
+      if (heroProductCarousel && typeof Glide !== 'undefined') {
+        const slideCount = heroProductCarousel.querySelectorAll('.glide__slide').length;
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        window.heroProductGlide = new Glide('#hero-product-carousel', {
+          type: 'slider',
+          perView: 1,
+          gap: 0,
+          rewind: true,
+          autoplay: !reduceMotion && slideCount > 1 ? 7500 : false,
+          hoverpause: true,
+          animationDuration: reduceMotion ? 0 : 550,
+          swipeThreshold: 60,
+          dragThreshold: 80,
+        });
+
+        const syncHeroProductAccessibility = () => {
+          heroProductCarousel.querySelectorAll('.glide__slide').forEach((slide, index) => {
+            const active = index === window.heroProductGlide.index;
+            slide.setAttribute('aria-hidden', active ? 'false' : 'true');
+            slide.querySelectorAll('a, button').forEach(control => {
+              control.tabIndex = active ? 0 : -1;
+            });
+          });
+        };
+
+        window.heroProductGlide.on(['mount.after', 'run.after'], syncHeroProductAccessibility);
+        window.heroProductGlide.mount();
+        syncHeroProductAccessibility();
+
+        heroProductCarousel.addEventListener('focusin', () => window.heroProductGlide.pause());
+        heroProductCarousel.addEventListener('focusout', () => {
+          if (!reduceMotion && slideCount > 1) window.heroProductGlide.play(7500);
+        });
+      }
 
       const isSsrRendered = weatherWidgetWrapper.length
         && weatherWidgetWrapper.children().length > 0

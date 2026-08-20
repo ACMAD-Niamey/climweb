@@ -1,0 +1,58 @@
+{% load i18n static wagtailiconchooser_tags %}
+
+{% with utility_links=settings.base.NavigationSettings.header_utility_links %}
+  {% if utility_links %}
+    {% for block in utility_links %}
+      {% with item=block.value %}
+        {% if item.enabled %}
+          {% if item.external_url or item.page %}
+            <a href="{% if item.external_url %}{{ item.external_url }}{% else %}{{ item.page.url }}{% endif %}"
+               class="{% if mobile %}button is-fullwidth mobile-util-link{% else %}util-link{% endif %}"
+               {% if item.open_in_new_tab %}target="_blank" rel="noopener noreferrer"{% endif %}>
+              <span>{{ item.label }}</span>
+              {% if item.icon %}
+                <span class="util-icon">{% svg_icon name=item.icon %}</span>
+              {% endif %}
+            </a>
+          {% endif %}
+        {% endif %}
+      {% endwith %}
+    {% endfor %}
+  {% else %}
+    {# Preserve existing utility links until a custom list is configured. #}
+    {% if settings.base.ImportantPages.cap_warnings_list_page %}
+      <a href="{{ settings.base.ImportantPages.cap_warnings_list_page.url }}"
+         class="{% if mobile %}button is-fullwidth mobile-util-link{% else %}util-link util-link--alert{% endif %}">
+        <span>{% translate "Alerts" %}</span>
+        {% if not mobile %}
+          <img src="{% static 'img/CAPLogo.jpeg' %}" alt="CAP Alerts"
+               style="height:16px;width:16px;border-radius:3px;">
+        {% endif %}
+      </a>
+    {% endif %}
+
+    {% if settings.base.ImportantPages.mailing_list_signup_page %}
+      <a href="{% url 'product_subscription' %}"
+         class="{% if mobile %}button is-fullwidth mobile-util-link{% else %}util-link{% endif %}">
+        <span>{% translate "Subscribe" %}</span>
+        {% if not mobile %}
+          <span class="util-icon">{% svg_icon name="mail" %}</span>
+        {% endif %}
+      </a>
+    {% endif %}
+
+    {% if settings.base.ImportantPages.contact_us_page %}
+      <a href="{{ settings.base.ImportantPages.contact_us_page.url }}"
+         class="{% if mobile %}button is-fullwidth mobile-util-link mobile-util-link--cta{% else %}header-cta{% endif %}">
+        {% translate "Contact us" %}
+      </a>
+    {% endif %}
+
+    {% if settings.base.ImportantPages.feedback_page %}
+      <a href="{{ settings.base.ImportantPages.feedback_page.url }}"
+         class="{% if mobile %}button is-fullwidth mobile-util-link mobile-util-link--cta{% else %}header-cta header-cta--feedback{% endif %}">
+        {% translate "Feedback" %}
+      </a>
+    {% endif %}
+  {% endif %}
+{% endwith %}

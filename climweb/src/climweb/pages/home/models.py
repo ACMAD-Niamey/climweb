@@ -70,6 +70,110 @@ HOME_SUBPAGE_TYPES = [
     'products.ProductSubscriptionPage',
 ]
 
+SIGNIFICANT_PRODUCT_SPECS = (
+    {
+        "key": "multi-hazard",
+        "parent_title": "Weather Watch and Prediction Products",
+        "title_prefix": "Continental Multi-Hazard Outlook",
+    },
+    {
+        "key": "heat",
+        "parent_title": "Heat and Thermal Stress",
+    },
+    {
+        "key": "thunderstorm",
+        "parent_title": "Thunderstorm and Nowcasting",
+    },
+)
+
+
+def canonical_public_page_url(url):
+    """Remove the internal HomePage slug from public-facing product URLs."""
+    if url == "/home-page":
+        return "/"
+    if url and url.startswith("/home-page/"):
+        return url[len("/home-page"):]
+    return url
+
+
+def _significant_product_spec_for_page(page):
+    for spec in SIGNIFICANT_PRODUCT_SPECS:
+        if page.title == spec["parent_title"]:
+            return {**spec, "parent": page}
+
+    title = page.title.lower()
+    if "heat" in title or "thermal" in title:
+        key = "heat"
+    elif "thunder" in title or "nowcast" in title:
+        key = "thunderstorm"
+    elif "hazard" in title:
+        key = "multi-hazard"
+    else:
+        key = "general"
+    return {"key": key, "parent": page}
+
+
+def get_significant_product_slides(product_pages=None):
+    slides = []
+
+    if product_pages:
+        specs = [_significant_product_spec_for_page(page.specific) for page in product_pages]
+    else:
+        specs = SIGNIFICANT_PRODUCT_SPECS
+
+    for spec in specs:
+        parent = spec.get("parent")
+        if parent:
+            if not parent.live:
+                continue
+        else:
+            parent = ProductPage.objects.live().filter(title=spec["parent_title"]).first()
+            if not parent:
+                continue
+
+        items = ProductItemPage.objects.live().child_of(parent)
+        if spec.get("title_prefix"):
+            items = items.filter(title__istartswith=spec["title_prefix"])
+
+        item = items.order_by("-date", "-first_published_at").first()
+        if not item:
+            continue
+
+        download_url = None
+        file_format = None
+        for product_block in item.products:
+            if product_block.block_type == "document_product":
+                document = product_block.value.get("document")
+                if document:
+                    download_url = document.url
+                    file_format = "PDF"
+                    break
+            elif product_block.block_type == "image_product":
+                image = product_block.value.get("image")
+                if image:
+                    download_url = image.file.url
+                    file_format = "IMAGE"
+                    break
+
+        try:
+            description = truncatechars(parent.get_meta_description() or "", 130)
+        except Exception:
+            description = ""
+
+        slides.append({
+            "key": spec["key"],
+            "display_title": parent.title,
+            "description": description,
+            "item_title": item.title,
+            "issue_date": item.date,
+            "valid_until": item.valid_until,
+            "page_url": canonical_public_page_url(item.url),
+            "download_url": download_url,
+            "file_format": file_format,
+        })
+
+    return slides
+
 if "forecastmanager" in settings.INSTALLED_APPS:
     HOME_SUBPAGE_TYPES += ['weather.WeatherDetailPage', 'cityclimate.CityClimateDataPage']
 
@@ -188,6 +292,13 @@ class HomePage(MetadataPageMixin, Page):
         ], label=_("Product"))),
     ], null=True, blank=True, use_json_field=True, max_num=5, verbose_name=_("Featured Products"))
 
+    hero_featured_products = StreamField([
+        ('product', blocks.PageChooserBlock(page_type=['products.ProductPage'])),
+    ], null=True, blank=True, use_json_field=True, max_num=3,
+        verbose_name=_("Hero Featured Products"),
+        help_text=_("Choose up to three product families for the rotating hero card. "
+                    "Their latest published items are shown in this order. Leave empty to use the defaults."))
+
     services_strip = StreamField([
         ('item', blocks.StructBlock([
             ('icon', IconChooserBlock(default="layer-group")),
@@ -256,6 +367,9 @@ class HomePage(MetadataPageMixin, Page):
         MultiFieldPanel([
             FieldPanel('featured_products'),
         ], heading=_("Featured Products")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
+        MultiFieldPanel([
+            FieldPanel('hero_featured_products'),
+        ], heading=_("Hero Product Carousel")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
         MultiFieldPanel([
             FieldPanel('services_strip'),
         ], heading=_("Services Strip")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
@@ -442,6 +556,9 @@ class HomePage(MetadataPageMixin, Page):
             })
         
         context['IS_METEOROLOGICAL'] = settings.IS_METEOROLOGICAL
+        if settings.IS_METEOROLOGICAL:
+            selected_products = [block.value for block in self.hero_featured_products] if self.hero_featured_products else None
+            context["hero_significant_products"] = get_significant_product_slides(selected_products)
         return context
 
     @cached_property
