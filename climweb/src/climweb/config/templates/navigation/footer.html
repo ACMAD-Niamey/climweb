@@ -9,9 +9,12 @@
                 <div class="column is-full-mobile is-one-quarter-desktop">
                     <div class="footer-brand">
                         <a class="footer-logo-link" href="{{ current_site.root_url }}">
-                            {% if settings.base.OrganisationSetting.footer_logo%} {% image
-                            settings.base.OrganisationSetting.footer_logo original as footer_logo %}
-                            <img src="{{ footer_logo.url }}" alt="Logo" class="footer-logo-img" />
+                            {% if settings.base.OrganisationSetting.footer_logo %} 
+                                {% image settings.base.OrganisationSetting.footer_logo original as footer_logo %}
+                                <img src="{{ footer_logo.url }}" alt="Logo" class="footer-logo-img" />
+                            {% elif settings.base.OrganisationSetting.logo %}
+                                {% image settings.base.OrganisationSetting.logo original as footer_logo %}
+                                <img src="{{ footer_logo.url }}" alt="Logo" class="footer-logo-img" />
                             {% endif %}
                         </a>
 
