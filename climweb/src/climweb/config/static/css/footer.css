@@ -1,6 +1,6 @@
 /* ── FOOTER WRAPPER ── */
 .site-footer {
-  background: var(--primary-color);
+  background: var(--theme-header-dark, var(--primary-color));
 }
 
 /* ── TOP SECTION ── */

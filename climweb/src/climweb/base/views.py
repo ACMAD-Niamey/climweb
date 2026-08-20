@@ -175,15 +175,16 @@ _DEFAULT_TOKENS = {
 def _build_tokens():
     try:
         theme = Theme.objects.get(is_default=True)
-        primary = theme.primary_hover_color
+        theme_tokens = theme.as_tokens()
+        primary = theme_tokens["green_700"]
         return {
             "primary": primary,
             "primary-light": mix_with_white(primary, 0.75),
             "primary-medium": mix_with_white(primary, 0.50),
-            "background": mix_with_white(primary, 0.80),
-            "text": theme.primary_color,
-            "border-radius": f"{theme.border_radius * 0.06}em",
-            "box-shadow-elevation": str(theme.box_shadow),
+            "background": theme_tokens["green_100"],
+            "text": theme_tokens["ink"],
+            "border-radius": theme_tokens["border_radius"],
+            "box-shadow-elevation": theme_tokens["box_shadow_elevation"],
         }
     except ObjectDoesNotExist:
         return _DEFAULT_TOKENS

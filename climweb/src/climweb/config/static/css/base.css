@@ -5,6 +5,28 @@ html, body {
     top: 0 !important;
 }
 
+body,
+button,
+input,
+select,
+textarea {
+    font-family: var(--theme-font-body, "Open Sans", sans-serif);
+}
+
+body {
+    background: var(--theme-page-background, #fff);
+    color: var(--theme-text, #363636);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--theme-font-heading, var(--theme-font-body, "Open Sans", sans-serif));
+}
+
 [dir="rtl"] body {
     font-family: "Noto Sans Arabic", sans-serif;
 }
@@ -17,7 +39,7 @@ html, body {
 }
 
 main {
-    background: #fff;
+    background: var(--theme-surface, #fff);
     flex-grow: 1;
 }
 
