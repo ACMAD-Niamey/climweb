@@ -1,5 +1,7 @@
 import uuid
 
+from django.core.exceptions import ValidationError
+from django.forms.utils import ErrorList
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 from wagtail import blocks
@@ -158,6 +160,47 @@ class SocialMediaBlock(blocks.StructBlock):
     class Meta:
         icon = 'placeholder'
         label = _("Social Media Account")
+
+
+class HeaderUtilityLinkBlock(blocks.StructBlock):
+    label = blocks.CharBlock(max_length=60, label=_("Label"))
+    page = blocks.PageChooserBlock(
+        required=False,
+        label=_("Internal page"),
+        help_text=_("Select a page, or provide an external URL below."),
+    )
+    external_url = blocks.URLBlock(
+        required=False,
+        label=_("External URL"),
+        help_text=_("Used instead of the internal page when provided."),
+    )
+    icon = IconChooserBlock(required=False, label=_("Icon"))
+    open_in_new_tab = blocks.BooleanBlock(
+        required=False,
+        default=False,
+        label=_("Open in a new tab"),
+    )
+    enabled = blocks.BooleanBlock(
+        required=False,
+        default=True,
+        label=_("Enabled"),
+    )
+
+    def clean(self, value):
+        cleaned_value = super().clean(value)
+        if not cleaned_value.get("page") and not cleaned_value.get("external_url"):
+            raise blocks.StructBlockValidationError(
+                block_errors={
+                    "page": ErrorList(
+                        [ValidationError(_("Select an internal page or provide an external URL."))]
+                    )
+                }
+            )
+        return cleaned_value
+
+    class Meta:
+        icon = "link"
+        label = _("Header Utility Link")
 
 
 class CollapsibleTextBlock(blocks.StructBlock):

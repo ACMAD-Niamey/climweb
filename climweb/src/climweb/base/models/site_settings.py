@@ -22,7 +22,13 @@ from wagtail_color_panel.edit_handlers import NativeColorPanel
 from wagtail_color_panel.fields import ColorField
 from wagtailcache.cache import clear_cache
 
-from climweb.base.blocks import NavigationItemBlock, FooterNavigationItemBlock, LanguageItemBlock, SocialMediaBlock
+from climweb.base.blocks import (
+    FooterNavigationItemBlock,
+    HeaderUtilityLinkBlock,
+    LanguageItemBlock,
+    NavigationItemBlock,
+    SocialMediaBlock,
+)
 from climweb.base.constants import LANGUAGE_CHOICES, LANGUAGE_CHOICES_DICT, COUNTRY_CHOICES
 from climweb.base.utils import get_country_info
 
@@ -275,12 +281,21 @@ class NavigationSettings(BaseSiteSetting):
     main_menu = StreamField([
         ("navigation_item", NavigationItemBlock()),
     ], use_json_field=True, blank=True, null=True)
+    header_utility_links = StreamField(
+        [("utility_link", HeaderUtilityLinkBlock())],
+        use_json_field=True,
+        blank=True,
+        null=True,
+        verbose_name=_("Header utility links"),
+        help_text=_("Add, reorder, enable, or disable links shown in the header utility bar."),
+    )
     footer_menu = StreamField([
         ("navigation_item", FooterNavigationItemBlock()),
     ], use_json_field=True, blank=True, null=True)
     
     panels = [
         FieldPanel("main_menu"),
+        FieldPanel("header_utility_links"),
         FieldPanel("footer_menu"),
     ]
     
