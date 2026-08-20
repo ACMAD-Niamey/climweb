@@ -42,6 +42,11 @@ from .models import (
 
 
 def product_subscription_view(request):
+    from .models import ProductSubscriptionPage
+    page = ProductSubscriptionPage.objects.live().first()
+    if page:
+        return redirect(page.url)
+
     form = ProductSubscriptionForm(
         request.POST if request.method == "POST" else None
     )
@@ -119,6 +124,10 @@ def product_subscription_confirm_view(request, token):
 
 def product_subscription_preferences_view(request, token):
     subscriber = get_object_or_404(ProductSubscriber, unsubscribe_token=token)
+
+    from .models import ProductSubscriptionPage
+    page = ProductSubscriptionPage.objects.live().first()
+
     initial = {
         "name": subscriber.name,
         "email": subscriber.email,
@@ -129,36 +138,55 @@ def product_subscription_preferences_view(request, token):
             subscriber.preferences.values_list("product_family", flat=True)
         ),
     }
-    form = ProductSubscriptionPreferencesForm(
+
+    if subscriber.extra_data:
+        initial.update(subscriber.extra_data)
+
+    if page:
+        form_class = page.get_form_class()
+    else:
+        form_class = ProductSubscriptionPreferencesForm
+
+    form = form_class(
         request.POST if request.method == "POST" else None,
         initial=initial,
     )
-    form.fields["email"].disabled = True
+
+    if "email" in form.fields:
+        form.fields["email"].disabled = True
+
+    if "wagtailcaptcha" in form.fields:
+        del form.fields["wagtailcaptcha"]
+
+    if "consent" in form.fields:
+        del form.fields["consent"]
+
     if request.method == "POST" and form.is_valid():
-        subscriber.name = form.cleaned_data["name"].strip()
-        subscriber.sector = form.cleaned_data["sector"]
-        subscriber.organization_type = form.cleaned_data["organization_type"]
-        subscriber.organization_name = form.cleaned_data.get("organization_name", "").strip()
+        cleaned_data = form.cleaned_data.copy()
+        subscriber.name = cleaned_data.pop("name", "").strip()
+        subscriber.sector = cleaned_data.pop("sector", "")
+        subscriber.organization_type = cleaned_data.pop("organization_type", "")
+        subscriber.organization_name = cleaned_data.pop("organization_name", "").strip()
+        product_families = cleaned_data.pop("product_families", [])
+
+        cleaned_data.pop("email", None)
+        cleaned_data.pop("consent", None)
+        cleaned_data.pop("wagtailcaptcha", None)
+
+        if page:
+            subscriber.extra_data = cleaned_data
+
         subscriber.status = ProductSubscriber.STATUS_ACTIVE
         subscriber.unsubscribed_at = None
-        subscriber.save(
-            update_fields=[
-                "name",
-                "sector",
-                "organization_type",
-                "organization_name",
-                "status",
-                "unsubscribed_at",
-                "updated_at",
-            ]
-        )
+        subscriber.save()
+
         subscriber.preferences.all().delete()
         ProductSubscriptionPreference.objects.bulk_create(
             [
                 ProductSubscriptionPreference(
                     subscriber=subscriber, product_family=family
                 )
-                for family in form.cleaned_data["product_families"]
+                for family in product_families
             ]
         )
         return render(
@@ -173,8 +201,8 @@ def product_subscription_preferences_view(request, token):
         )
     return render(
         request,
-        "products/subscription_form.html",
-        {"form": form, "managing_preferences": True, "subscriber": subscriber},
+        "products/product_subscription_page.html" if page else "products/subscription_form.html",
+        {"form": form, "managing_preferences": True, "subscriber": subscriber, "page": page},
     )
 
 

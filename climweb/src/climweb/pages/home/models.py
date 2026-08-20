@@ -67,6 +67,7 @@ HOME_SUBPAGE_TYPES = [
     'webstories.WebStoryListPage',
     'dashboards.DashboardGalleryPage',
     'summer_school.SummerSchoolIndexPage',
+    'products.ProductSubscriptionPage',
 ]
 
 if "forecastmanager" in settings.INSTALLED_APPS:

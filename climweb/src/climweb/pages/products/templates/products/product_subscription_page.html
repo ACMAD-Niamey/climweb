@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% load i18n static wagtailcore_tags %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'products/css/subscription.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="product-subscribe-page section">
+    <div class="container product-subscribe-container">
+        <header class="product-subscribe-header">
+            <h1 class="title is-3">
+                {{ page.title }}
+            </h1>
+            {% if page.introduction_text %}
+            <div class="product-subscribe-intro">
+                {{ page.introduction_text|richtext }}
+            </div>
+            {% endif %}
+        </header>
+
+        <div class="product-subscribe-form-column">
+            <form method="post">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="product-subscribe-errors" role="alert">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+                {% for field in form %}
+                    {% if field.name == 'wagtailcaptcha' %}
+                        <div class="field">
+                            {{ field }}
+                            {{ field.errors }}
+                        </div>
+                    {% elif field.name == 'product_families' %}
+                        <div class="field product-subscribe-products-field">
+                            <div class="product-subscribe-products-heading">
+                                <label class="label">{% translate "Our Products" %}</label>
+                                <div class="product-subscribe-selection-actions">
+                                    <button type="button" data-select-products="all">{% translate "Select all" %}</button>
+                                    <button type="button" data-select-products="none">{% translate "Clear" %}</button>
+                                </div>
+                            </div>
+                            <div class="control product-subscribe-options">
+                                {{ field }}
+                            </div>
+                            <p class="help">
+                                {% translate "Choose one or more product families. Scheduled imports will notify you when new issues are published." %}
+                            </p>
+                            {{ field.errors }}
+                        </div>
+                    {% elif field.name == 'consent' %}
+                        <div class="field product-subscribe-consent">
+                            <label class="checkbox" for="{{ field.id_for_label }}">
+                                {{ field }}
+                                <span>{{ field.label }}</span>
+                            </label>
+                            {{ field.errors }}
+                        </div>
+                    {% else %}
+                        <div class="field">
+                            <label class="label" for="{{ field.id_for_label }}">
+                                {{ field.label }}{% if field.field.required %}<span class="required-mark">*</span>{% endif %}
+                            </label>
+                            <div class="control">
+                                {% if 'select' in field.widget_type or field.field.widget.input_type == 'select' or 'Select' in field.field.widget.__class__.__name__ %}
+                                    <span class="select">
+                                        {{ field }}
+                                    </span>
+                                {% else %}
+                                    {{ field }}
+                                {% endif %}
+                            </div>
+                            {% if field.help_text %}
+                                <p class="help">{{ field.help_text }}</p>
+                            {% endif %}
+                            {{ field.errors }}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+
+                <div class="field product-subscribe-submit-field">
+                    <button type="submit" class="button product-subscribe-submit has-no-border">
+                        {% translate "Subscribe" %}
+                    </button>
+                    <p class="help">{% translate "You will receive an email confirming your subscription." %}</p>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const productCheckboxes = document.querySelectorAll(
+            '#id_product_families input[type="checkbox"]'
+        );
+
+        document.querySelectorAll("[data-select-products]").forEach(function (button) {
+            button.addEventListener("click", function () {
+                const shouldSelect = button.dataset.selectProducts === "all";
+                productCheckboxes.forEach(function (checkbox) {
+                    checkbox.checked = shouldSelect;
+                });
+            });
+        });
+    });
+</script>
+{% endblock %}
