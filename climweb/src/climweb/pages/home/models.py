@@ -67,6 +67,7 @@ HOME_SUBPAGE_TYPES = [
     'webstories.WebStoryListPage',
     'dashboards.DashboardGalleryPage',
     'summer_school.SummerSchoolIndexPage',
+    'products.ProductSubscriptionPage',
 ]
 
 SIGNIFICANT_PRODUCT_SPECS = (
