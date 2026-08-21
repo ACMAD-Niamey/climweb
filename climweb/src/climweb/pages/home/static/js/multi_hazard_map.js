@@ -249,7 +249,24 @@
         });
     }
 
-    function renderLegend(mount, legend) {
+    // Above this many classes, a per-segment label under each strip
+    // segment gets too cramped to read inside the legend's ~240px width -
+    // fall back to labelling just the two ends, with the full label still
+    // reachable per-segment via the native title tooltip on hover/tap.
+    const LEGEND_STRIP_LABEL_LIMIT = 4;
+
+    function datasetTitle(layer) {
+        if (!layer) {
+            return null;
+        }
+        // Field name varies by how a given dataset was catalogued upstream -
+        // fall back through the ones the catalog API is known to use rather
+        // than assume one, same pattern as loadCategories()'s label fallback.
+        const dataset = layer.dataset || {};
+        return layer.title || layer.name || dataset.title || dataset.name || dataset.id || null;
+    }
+
+    function renderLegend(mount, legend, title) {
         clearByClass(mount, 'mhz-legend');
         const entries = Object.entries(legend || {});
         if (!entries.length) {
@@ -257,18 +274,43 @@
         }
         const wrapper = document.createElement('div');
         wrapper.className = 'mhz-legend';
+
+        if (title) {
+            const heading = document.createElement('div');
+            heading.className = 'mhz-legend-title';
+            heading.textContent = title;
+            wrapper.appendChild(heading);
+        }
+
+        const strip = document.createElement('div');
+        strip.className = 'mhz-legend-strip';
         entries.forEach(([label, color]) => {
-            const row = document.createElement('div');
-            row.className = 'mhz-legend-row';
-            const dot = document.createElement('span');
-            dot.className = 'mhz-legend-dot';
-            dot.style.backgroundColor = color;
-            const text = document.createElement('span');
-            text.textContent = label;
-            row.appendChild(dot);
-            row.appendChild(text);
-            wrapper.appendChild(row);
+            const segment = document.createElement('span');
+            segment.className = 'mhz-legend-segment';
+            segment.style.backgroundColor = color;
+            segment.title = label;
+            strip.appendChild(segment);
         });
+        wrapper.appendChild(strip);
+
+        const labels = document.createElement('div');
+        labels.className = 'mhz-legend-labels';
+        if (entries.length <= LEGEND_STRIP_LABEL_LIMIT) {
+            entries.forEach(([label]) => {
+                const item = document.createElement('span');
+                item.textContent = label;
+                labels.appendChild(item);
+            });
+        } else {
+            const first = document.createElement('span');
+            first.textContent = entries[0][0];
+            const last = document.createElement('span');
+            last.textContent = entries[entries.length - 1][0];
+            labels.appendChild(first);
+            labels.appendChild(last);
+        }
+        wrapper.appendChild(labels);
+
         mount.appendChild(wrapper);
     }
 
@@ -367,7 +409,7 @@
         setActiveTab(key);
         showNoData(mount, false);
         renderDateChip(mount, null);
-        renderLegend(mount, layer && layer.legend);
+        renderLegend(mount, layer && layer.legend, datasetTitle(layer));
         removeRasterLayer();
 
         if (!layer) {
