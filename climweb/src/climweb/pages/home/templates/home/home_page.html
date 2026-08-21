@@ -6,7 +6,7 @@
 {% block body_class %}template-homepage{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/home.css' %}?v=2.2">
+    <link rel="stylesheet" href="{% static 'css/home.css' %}?v=3.0">
     <link href="{% static 'css/hero.css' %}" type="text/css" rel="stylesheet"/>
     <link rel="stylesheet" type="text/css" href="{% static 'css/partners.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'css/project_detail.css' %}">
@@ -85,10 +85,10 @@
         
  
         {% if page.partners %}
-            <section class="section home-partners-section" id="partners">
-            <div class="container py-5 home-partners-layout">
+            <section class="section" id="partners">
+            <div class="container py-5">
 
-                <div class="mb-5 home-partners-heading">
+                <div class="mb-5">
                 <p class="is-uppercase has-text-weight-bold is-size-8 mb-1"
                     style="color:var(--primary-color) ; letter-spacing:0.08em;">
                     {% translate "Collaborators" %}
@@ -99,29 +99,31 @@
                 </p>
                 </div>
 
-                <div class="home-partner-grid">
+                <div class="columns is-multiline is-mobile is-centered partners-list">
                 {% for partner in page.partners %}
                     {% if partner.visible_on_homepage and partner.logo %}
-                        <a href="{% if partner.link %}{{ partner.link }}{% else %}#{% endif %}"
+                    <div class="column is-4-mobile is-3-tablet is-2-desktop">
+                        <a href="{% if partner.link %}{{ partner.link }}{% endif %}"
                         target="{% if partner.link %}_blank{% else %}_self{% endif %}"
-                        {% if partner.link %}rel="noopener noreferrer"{% endif %}
-                        class="home-partner-card"
-                        aria-label="{{ partner.name }}{% if partner.link %} ({% translate 'opens in a new tab' %}){% endif %}">
-                        <span class="home-partner-logo">
+                        rel="noopener"
+                        class="partner-card"
+                        title="{{ partner.name }}">
+                        <figure class="image partner-logo-figure">
                             {% image partner.logo original as p_logo %}
-                            <img class="progressive__img progressive--not-loaded home-partner-logo-img"
+                            <img class="progressive__img progressive--not-loaded partner-logo-img"
                                 data-progressive="{{ p_logo.url }}"
                                 src="{% lazy_image_url p_logo %}"
                                 alt="{{ partner.name }}" />
-                        </span>
+                        </figure>
                         </a>
+                    </div>
                     {% endif %}
                 {% endfor %}
                 </div>
 
                 {% if settings.base.ImportantPages.all_partners_page %}
                 <div class="has-text-centered mt-5">
-                    <a class="button is-primary" href="{{ settings.base.ImportantPages.all_partners_page.url }}">
+                    <a class="more-partners button is-primary" href="{{ settings.base.ImportantPages.all_partners_page.url }}">
                         {% translate "View More Partners" %}
                     </a>
                 </div>
