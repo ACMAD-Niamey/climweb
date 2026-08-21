@@ -40,10 +40,16 @@
                             <a href="{{ edition.url }}" class="home-summer-school-banner-btn-secondary">
                                 {% translate "Learn more" %}
                             </a>
-                            {% if edition.application_open and edition.application_page and edition.application_page.live %}
-                                <a href="{{ edition.application_page.url }}" class="home-summer-school-banner-btn-primary">
-                                    {{ edition.apply_button_text }}
-                                </a>
+                            {% if edition.application_page %}
+                                {% if edition.application_open and edition.application_page.live and not edition.application_page.is_closed %}
+                                    <a href="{{ edition.application_page.url }}" class="home-summer-school-banner-btn-primary">
+                                        {{ edition.apply_button_text }}
+                                    </a>
+                                {% elif not edition.application_open or edition.application_page.is_closed %}
+                                    <span class="home-summer-school-banner-closed">
+                                        {% translate "Applications closed" %}
+                                    </span>
+                                {% endif %}
                             {% endif %}
                         </div>
                     </div>
