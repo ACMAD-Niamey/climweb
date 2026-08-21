@@ -32,7 +32,7 @@
                             </ul>
                         {% endif %}
                         <div class="form-column">
-                            {% if not page.event.is_ended and page.event.registration_open %}
+                            {% if not page.event.is_ended and page.event.registration_open and not page.is_closed %}
                                 <form action="{% pageurl page %}" method="POST" enctype="multipart/form-data">
                                     {% csrf_token %}
                                     {{ form|bulma }}
@@ -49,7 +49,7 @@
                                     </span>
                                     {{ page.event.event_type.event_type }} {% translate "ended" %}.
                                 </h5>
-                            {% elif not page.event.registration_open %}
+                            {% elif not page.event.registration_open or page.is_closed %}
                                 <h5 style="color: red;display: flex">
                                     <span class="icon event-meta-item-icon" style="margin-right: 8px">
                                         {% svg_icon name="warning" %}

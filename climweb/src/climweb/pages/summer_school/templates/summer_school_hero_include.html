@@ -168,18 +168,20 @@
                         </div>
                     {% endif %}
 
-                    {% if not page.application_open and page.application_page %}
-                        <div class="ss-key-info-item">
-                            <span class="ss-icon-badge">
-                                {% svg_icon name="circle-xmark" %}
-                            </span>
-                            <div class="ss-key-info-item-body">
-                                <span class="ss-key-info-item-value">{% translate "Applications closed" %}</span>
+                    {% if page.application_page %}
+                        {% if not page.application_open or page.application_page.is_closed %}
+                            <div class="ss-key-info-item">
+                                <span class="ss-icon-badge">
+                                    {% svg_icon name="circle-xmark" %}
+                                </span>
+                                <div class="ss-key-info-item-body">
+                                    <span class="ss-key-info-item-value">{% translate "Applications closed" %}</span>
+                                </div>
                             </div>
-                        </div>
+                        {% endif %}
                     {% endif %}
 
-                    {% if page.application_open and page.application_page and not page.application_page.live %}
+                    {% if page.application_open and page.application_page and not page.application_page.live and not page.application_page.is_closed %}
                         <div class="ss-key-info-item">
                             <span class="ss-icon-badge">
                                 {% svg_icon name="hourglass-half" %}
@@ -190,7 +192,7 @@
                         </div>
                     {% endif %}
 
-                    {% if page.application_open and page.application_page and page.application_page.live %}
+                    {% if page.application_open and page.application_page and page.application_page.live and not page.application_page.is_closed %}
                         <a href="{{ page.application_page.url }}"
                            class="button is-fullwidth ss-apply-btn"
                            data-ga-action="click"
