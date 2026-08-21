@@ -1996,6 +1996,11 @@ a.ss-partner-card:hover {
     background: var(--primary-color-lightest);
 }
 
+.ss-index-featured-btn.is-closed {
+    color: #e0455f;
+    background: rgba(224, 69, 95, 0.08);
+}
+
 @media (max-width: 768px) {
     .ss-index-featured-card {
         flex-direction: column;

@@ -496,7 +496,13 @@ class SummerSchoolPage(MetadataPageMixin, Page):
 
     @cached_property
     def application_page(self):
-        return self.get_first_child()
+        # .specific, not the base Page get_first_child() returns - templates
+        # read SummerSchoolApplicationPage-only attributes off this (e.g.
+        # is_closed), which silently resolve to falsy/empty on a bare Page
+        # instance instead of raising, so a closed-applications check would
+        # look "off" forever. Same fix as EventPage.registration_page.
+        child = self.get_first_child()
+        return child.specific if child else None
 
     @cached_property
     def featured_display_image(self):

@@ -1,6 +1,7 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.conf import settings
+from django.utils import timezone
 from wagtail.test.utils import WagtailPageTestCase
 
 from climweb.base.seo_utils import get_html_meta_tags
@@ -9,6 +10,11 @@ from climweb.pages.products.tests.factories import (
     ProductIndexPageFactory,
     ProductItemPageFactory,
     ProductPageFactory,
+)
+from climweb.pages.summer_school.tests.factories import (
+    SummerSchoolIndexPageFactory,
+    SummerSchoolPageFactory,
+    SummerSchoolApplicationPageFactory,
 )
 from climweb.pages.home.models import canonical_public_page_url, get_significant_product_slides
 from .factories import get_or_create_homepage
@@ -179,3 +185,40 @@ class TestHomePage(WagtailPageTestCase):
         slides = get_significant_product_slides([thunderstorm, heat])
 
         self.assertEqual([slide["key"] for slide in slides], ["thunderstorm", "heat"])
+
+
+class TestHomeFeaturedSummerSchool(WagtailPageTestCase):
+    """
+    The summer school banner (home/section/summer_school_include.html) shows
+    an Apply button sourced from edition.application_page - which used to
+    silently disappear (no closed-state message) once application_open was
+    off or the deadline had passed, and read edition.application_page off a
+    property that returned the base Page (see
+    SummerSchoolPage.application_page), so is_closed always resolved falsy.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.page = get_or_create_homepage()
+        index_page = SummerSchoolIndexPageFactory(parent=cls.page)
+        cls.edition = SummerSchoolPageFactory(
+            parent=index_page, featured=True, is_visible_on_homepage=True,
+        )
+        cls.application_page = SummerSchoolApplicationPageFactory(parent=cls.edition)
+
+    def test_renders_with_open_application(self):
+        response = self.client.get(self.page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.application_page.url)
+        self.assertNotContains(response, "Applications closed")
+
+    def test_renders_closed_state_after_deadline(self):
+        self.application_page.application_deadline = timezone.now().date() - timedelta(days=1)
+        self.application_page.save()
+
+        response = self.client.get(self.page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Applications closed")
+        self.assertNotContains(response, self.application_page.url)

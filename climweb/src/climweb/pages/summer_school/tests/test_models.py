@@ -303,6 +303,60 @@ class TestSummerSchoolApplicationDeadline(WagtailPageTestCase):
         )
 
 
+class TestSummerSchoolApplyButtonClosedState(WagtailPageTestCase):
+    """
+    The Apply button/badge shown off SummerSchoolPage.application_page - on
+    the edition page's own key-info card (summer_school_hero_include.html)
+    and the index page's featured-edition card
+    (summer_school_featured_edition_include.html) - used to just silently
+    disappear once the deadline passed, with no "closed" message, because
+    application_page returned the base Page from get_first_child() instead
+    of .specific, so is_closed always resolved falsy.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        home_page = get_or_create_homepage()
+        cls.index_page = SummerSchoolIndexPageFactory(parent=home_page)
+        cls.edition = SummerSchoolPageFactory(parent=cls.index_page)
+        cls.application_page = SummerSchoolApplicationPageFactory(parent=cls.edition)
+
+    def test_application_page_property_returns_specific_instance(self):
+        self.assertIsInstance(self.edition.application_page, type(self.application_page))
+
+    def test_edition_page_shows_apply_button_when_open(self):
+        response = self.client.get(self.edition.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.application_page.url)
+        self.assertNotContains(response, "Applications closed")
+
+    def test_edition_page_shows_closed_state_after_deadline(self):
+        self.application_page.application_deadline = timezone.now().date() - timedelta(days=1)
+        self.application_page.save()
+
+        response = self.client.get(self.edition.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Applications closed")
+
+    def test_index_page_featured_card_shows_apply_button_when_open(self):
+        response = self.client.get(self.index_page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.application_page.url)
+        self.assertNotContains(response, "Applications closed")
+
+    def test_index_page_featured_card_shows_closed_state_after_deadline(self):
+        self.application_page.application_deadline = timezone.now().date() - timedelta(days=1)
+        self.application_page.save()
+
+        response = self.client.get(self.index_page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Applications closed")
+
+
 class TestFormCleanNameFallback(WagtailPageTestCase):
     """
     A field row created without going through AbstractFormField.save() (e.g.
