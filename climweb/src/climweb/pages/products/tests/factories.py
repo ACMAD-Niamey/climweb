@@ -23,14 +23,14 @@ class ProductItemTypeFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = ProductItemType
     
-    name = factory.Faker("word")
+    name = factory.Sequence(lambda n: f"Type {n}")
 
 
 class ProductCategoryFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = ProductCategory
     
-    name = factory.Faker("word")
+    name = factory.Sequence(lambda n: f"Category {n}")
     icon = factory.Faker("random_element", elements=["desktop", "comment", "date"])
     
     @factory.post_generation
