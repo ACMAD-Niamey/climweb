@@ -20,6 +20,11 @@
         </header>
 
         <div class="product-subscribe-form-column">
+            {% if page.is_closed %}
+                <p class="product-subscribe-closed-notice">
+                    {% translate "This form is no longer accepting submissions." %}
+                </p>
+            {% else %}
             <form method="post">
                 {% csrf_token %}
 
@@ -66,7 +71,7 @@
                                 {{ field.label }}{% if field.field.required %}<span class="required-mark">*</span>{% endif %}
                             </label>
                             <div class="control">
-                                {% if 'select' in field.widget_type or field.field.widget.input_type == 'select' or 'Select' in field.field.widget.__class__.__name__ %}
+                                {% if 'select' in field.widget_type or field.field.widget.input_type == 'select' %}
                                     <span class="select">
                                         {{ field }}
                                     </span>
@@ -90,6 +95,7 @@
                 </div>
 
             </form>
+            {% endif %}
         </div>
     </div>
 </main>

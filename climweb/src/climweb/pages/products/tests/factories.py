@@ -14,9 +14,17 @@ fake = Faker()
 class ProductIndexPageFactory(wagtail_factories.PageFactory):
     class Meta:
         model = models.ProductIndexPage
-    
+
     title = "Products Index Page"
     banner_title = "Explore our Products"
+
+
+class ProductSubscriptionPageFactory(wagtail_factories.PageFactory):
+    class Meta:
+        model = models.ProductSubscriptionPage
+
+    title = "Subscribe to Products"
+    introduction_text = "Subscribe to receive product notifications."
 
 
 class ProductItemTypeFactory(factory.django.DjangoModelFactory):

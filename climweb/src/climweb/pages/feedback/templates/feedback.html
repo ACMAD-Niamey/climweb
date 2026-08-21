@@ -53,7 +53,11 @@
               <h2 class="fb-form-title">{% translate "Share your thoughts" %}</h2>
             </div>
 
-            {% if form.fields %}
+            {% if page.is_closed %}
+              <p class="fb-form-closed-notice">
+                {% translate "This form is no longer accepting submissions." %}
+              </p>
+            {% elif form.fields %}
               <form action="{% pageurl page %}" method="POST" class="fb-form">
                 {% csrf_token %}
                 {{ form|bulma }}
