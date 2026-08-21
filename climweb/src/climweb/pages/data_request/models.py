@@ -22,13 +22,14 @@ from climweb.base.forms import (
 )
 from climweb.base.mail import get_default_from_email
 from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin, FormPageClosingDateMixin,
-                                 FormFieldMaxLengthMixin, FormCleanNameFallbackMixin)
+                                 FormPageManualCloseMixin, FormFieldMaxLengthMixin, FormCleanNameFallbackMixin)
 from climweb.base.models import FormFileSubmission
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import get_duplicates
 
 
-class DataRequestPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageClosingDateMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
+class DataRequestPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageClosingDateMixin,
+                      FormPageManualCloseMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
     required_css_class = 'required'
     form_builder = CustomWagtailCaptchaFormBuilder
     submissions_list_view_class = CustomSubmissionsListView
@@ -73,7 +74,8 @@ class DataRequestPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageClo
             ]),
             FieldPanel('subject'),
         ], "Email"),
-    ] + FormPageReviewSettingsMixin.submission_review_settings_panels + FormPageClosingDateMixin.closing_date_panels
+    ] + FormPageManualCloseMixin.form_open_panels + FormPageReviewSettingsMixin.submission_review_settings_panels \
+        + FormPageClosingDateMixin.closing_date_panels
 
     def get_meta_image(self):
         meta_image = super().get_meta_image()

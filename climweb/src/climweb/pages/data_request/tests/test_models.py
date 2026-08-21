@@ -74,3 +74,43 @@ class TestDataRequestPageClosingDate(WagtailPageTestCase):
             submission_class.objects.filter(page=self.page).count(),
             starting_count,
         )
+
+
+class TestDataRequestPageManualClose(WagtailPageTestCase):
+    """
+    Data Request has no natural deadline, so it also gets a manual on/off
+    switch (form_open, FormPageManualCloseMixin) independent of the closing
+    date - editors can stop accepting submissions immediately.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        home_page = get_or_create_homepage()
+        cls.page = DataRequestPageFactory(parent=home_page)
+
+        cls.email_field = cls.page.datarequest_form_fields.create(
+            label="Email address", field_type="email", required=True, sort_order=0,
+        )
+        cls.page.save()
+
+    def test_form_open_by_default(self):
+        self.assertTrue(self.page.form_open)
+        self.assertFalse(self.page.is_closed)
+
+    def test_is_closed_when_form_open_is_off(self):
+        self.page.form_open = False
+        self.assertTrue(self.page.is_closed)
+
+    def test_is_closed_when_form_open_is_off_even_with_future_closing_date(self):
+        self.page.form_open = False
+        self.page.submissions_closing_date = timezone.now().date() + timedelta(days=30)
+        self.assertTrue(self.page.is_closed)
+
+    def test_get_rejects_form_when_form_open_is_off(self):
+        self.page.form_open = False
+        self.page.save()
+
+        response = self.client.get(self.page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["form"])
