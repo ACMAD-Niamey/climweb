@@ -754,7 +754,14 @@ class SummerSchoolApplicationPage(MetadataPageMixin, FormCleanNameFallbackMixin,
         return should_process
 
     def serve(self, request, *args, **kwargs):
-        if request.method == 'POST':
+        if self.is_closed:
+            form = None
+            if request.method == 'POST':
+                messages.add_message(
+                    request, messages.ERROR,
+                    "Applications for this summer school have closed."
+                )
+        elif request.method == 'POST':
             form = self.get_form(request.POST, request.FILES, page=self, user=request.user)
 
             if form.is_valid():

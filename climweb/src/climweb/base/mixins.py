@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy
 from django.utils.translation import gettext_lazy as _
 from wagtail import blocks
@@ -109,6 +110,18 @@ class FormPageReviewSettingsMixin(models.Model):
 
     def get_notification_emails(self):
         return [block.value for block in self.notification_emails if block.value]
+
+    @property
+    def is_closed(self):
+        """Whether get_submissions_closing_date() has passed - still open ON
+        that date itself, closed from the day after. False when no closing
+        date is configured. Pages that want the form to actually stop
+        accepting submissions past their deadline (rather than just emailing
+        a reminder) should check this in serve() and their template."""
+        closing_date = self.get_submissions_closing_date()
+        if not closing_date:
+            return False
+        return timezone.now().date() > closing_date
 
 
 class FormPageClosingDateMixin(models.Model):

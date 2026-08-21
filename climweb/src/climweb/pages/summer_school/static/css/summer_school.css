@@ -129,6 +129,14 @@
     backdrop-filter: none;
 }
 
+/* Closed-applications state - overrides the primary-color pill above
+   with a red/closed treatment once the deadline has passed. */
+.ss-pill--closed {
+    border-color: #e0455f;
+    color: #e0455f;
+    background: rgba(224, 69, 95, 0.08);
+}
+
 .ss-hero-cta {
     display: flex;
     flex-wrap: wrap;
@@ -1430,6 +1438,16 @@ a.ss-partner-card:hover {
 
 .ss-application-form {
     padding: 1.75rem 2rem;
+}
+
+.ss-application-closed-notice {
+    margin: 1.75rem 2rem;
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    background: rgba(224, 69, 95, 0.08);
+    color: #e0455f;
+    font-weight: 600;
+    font-size: 14px;
 }
 
 /* Bulma field overrides — same treatment as feedback.css so a
