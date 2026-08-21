@@ -1,5 +1,6 @@
 import json
 
+from django.contrib import messages
 from django.contrib.gis.db import models
 from django.core.mail import mail_admins
 from django.template.response import TemplateResponse
@@ -83,9 +84,16 @@ class ContactPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageClosing
         return form_class
     
     def serve(self, request, *args, **kwargs):
-        if request.method == 'POST':
+        if self.is_closed:
+            form = None
+            if request.method == 'POST':
+                messages.add_message(
+                    request, messages.ERROR,
+                    "This form is no longer accepting submissions."
+                )
+        elif request.method == 'POST':
             form = self.get_form(request.POST, request.FILES, page=self, user=request.user)
-            
+
             if form.is_valid():
                 form_submission = None
                 

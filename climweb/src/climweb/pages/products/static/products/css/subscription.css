@@ -197,6 +197,15 @@
     padding: 0.5rem 0.75rem;
 }
 
+.product-subscribe-closed-notice {
+    border-left: 3px solid #b42318;
+    background: rgba(180, 35, 24, 0.06);
+    color: #b42318;
+    font-weight: 600;
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+}
+
 .product-subscribe-form-column .errorlist {
     margin: 0.35rem 0 0;
 }

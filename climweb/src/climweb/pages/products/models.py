@@ -1391,7 +1391,16 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
     def serve(self, request, *args, **kwargs):
         import django.shortcuts
         import django.template.response
-        if request.method == 'POST':
+        from django.contrib import messages
+
+        if self.is_closed:
+            form = None
+            if request.method == 'POST':
+                messages.add_message(
+                    request, messages.ERROR,
+                    "This form is no longer accepting submissions."
+                )
+        elif request.method == 'POST':
             form = self.get_form(request.POST, request.FILES, page=self, user=request.user)
 
             if form.is_valid():

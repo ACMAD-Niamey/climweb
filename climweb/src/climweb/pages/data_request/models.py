@@ -1,5 +1,6 @@
 from os.path import splitext
 
+from django.contrib import messages
 from django.core.mail import mail_admins
 from django.db import models
 from django.template.defaultfilters import truncatechars
@@ -111,9 +112,16 @@ class DataRequestPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageClo
         return super().save(*args, **kwargs)
     
     def serve(self, request, *args, **kwargs):
-        if request.method == 'POST':
+        if self.is_closed:
+            form = None
+            if request.method == 'POST':
+                messages.add_message(
+                    request, messages.ERROR,
+                    "This form is no longer accepting submissions."
+                )
+        elif request.method == 'POST':
             form = self.get_form(request.POST, request.FILES, page=self, user=request.user)
-            
+
             if form.is_valid():
                 form_submission = None
                 try:

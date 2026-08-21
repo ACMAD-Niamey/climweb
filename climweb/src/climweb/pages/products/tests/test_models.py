@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import wagtail_factories
 from django.utils import timezone
 from wagtail.test.utils import WagtailPageTestCase
@@ -5,7 +7,12 @@ from wagtail.test.utils import WagtailPageTestCase
 from climweb.base.seo_utils import get_html_meta_tags
 from climweb.base.test_utils import test_page_meta_tags
 from climweb.pages.home.tests.factories import get_or_create_homepage
-from .factories import ProductIndexPageFactory, ProductPageFactory, ProductItemPageFactory
+from .factories import (
+    ProductIndexPageFactory,
+    ProductPageFactory,
+    ProductItemPageFactory,
+    ProductSubscriptionPageFactory,
+)
 
 
 class TestProductPages(WagtailPageTestCase):
@@ -94,3 +101,55 @@ class TestProductPages(WagtailPageTestCase):
         )
 
         self.assertEqual(product_page.listing_image, default_thumbnail)
+
+
+class TestProductSubscriptionPage(WagtailPageTestCase):
+    @classmethod
+    def setUpTestData(cls):
+        home_page = get_or_create_homepage()
+        cls.page = ProductSubscriptionPageFactory(parent=home_page)
+
+    def test_default_route_rendering(self):
+        self.assertPageIsRenderable(self.page)
+
+
+class TestProductSubscriptionPageClosingDate(WagtailPageTestCase):
+    """
+    submissions_closing_date (FormPageClosingDateMixin) used to only drive
+    the pre-deadline reminder email - it never actually stopped submissions
+    after the date passed. is_closed (FormPageReviewSettingsMixin) + the
+    serve() guard below fix that.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        home_page = get_or_create_homepage()
+        cls.page = ProductSubscriptionPageFactory(parent=home_page)
+
+    def test_is_closed_false_when_no_closing_date_set(self):
+        self.assertFalse(self.page.is_closed)
+
+    def test_is_closed_true_after_closing_date(self):
+        self.page.submissions_closing_date = timezone.now().date() - timedelta(days=1)
+        self.assertTrue(self.page.is_closed)
+
+    def test_get_rejects_form_after_closing_date(self):
+        self.page.submissions_closing_date = timezone.now().date() - timedelta(days=1)
+        self.page.save()
+
+        response = self.client.get(self.page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["form"])
+
+    def test_post_after_closing_date_does_not_create_a_subscriber(self):
+        from ..models import ProductSubscriber
+
+        self.page.submissions_closing_date = timezone.now().date() - timedelta(days=1)
+        self.page.save()
+
+        starting_count = ProductSubscriber.objects.count()
+
+        self.client.post(self.page.url, data={"email": "late@example.com"})
+
+        self.assertEqual(ProductSubscriber.objects.count(), starting_count)
