@@ -389,7 +389,12 @@ class EventPage(MetadataPageMixin, Page):
     
     @cached_property
     def registration_page(self):
-        return self.get_first_child()
+        # .specific, not the base Page get_first_child() returns - templates
+        # read EventRegistrationPage-only attributes off this (e.g. is_closed),
+        # which silently resolve to falsy/empty on a bare Page instance instead
+        # of raising, so the closed-registration checks would look "off" forever.
+        child = self.get_first_child()
+        return child.specific if child else None
     
     @cached_property
     def sessions_data(self):
@@ -582,7 +587,14 @@ class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormP
     def serve(self, request, *args, **kwargs):
         # Set self.request so wagtailzoom and other mixins can access it
         self.request = request
-        if request.method == "POST":
+        if self.is_closed:
+            form = None
+            if request.method == "POST":
+                messages.add_message(
+                    request, messages.ERROR,
+                    "Registration for this event has closed."
+                )
+        elif request.method == "POST":
             form = self.get_form(
                 request.POST, request.FILES, page=self, user=request.user
             )

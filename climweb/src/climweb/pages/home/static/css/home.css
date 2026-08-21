@@ -844,6 +844,17 @@
     background: var(--primary-color-lightest);
 }
 
+.home-summer-school-banner-closed {
+    display: inline-flex;
+    align-items: center;
+    padding: 11px 24px;
+    border-radius: var(--border-radius, 8px);
+    font-size: 14px;
+    font-weight: 700;
+    color: #e0455f;
+    background: rgba(224, 69, 95, 0.08);
+}
+
 @media (max-width: 768px) {
     .home-summer-school-banner {
         flex-direction: column;

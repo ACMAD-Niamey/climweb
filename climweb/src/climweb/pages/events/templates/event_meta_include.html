@@ -106,19 +106,21 @@
             </div>
         </div>
     {% endif %}
-    {% if not page.is_ended and page.registration_page and not page.registration_open %}
-        <div class="event-meta-item">
-            <div class="event-meta-item-pre">
-                <span class="event-meta-item-icon">
-                    {% svg_icon name="circle-xmark" %}
-                </span>
-                <div class="event-meta-item-title">
-                    {% translate "Registration closed" %}
+    {% if not page.is_ended and page.registration_page %}
+        {% if not page.registration_open or page.registration_page.is_closed %}
+            <div class="event-meta-item">
+                <div class="event-meta-item-pre">
+                    <span class="event-meta-item-icon">
+                        {% svg_icon name="circle-xmark" %}
+                    </span>
+                    <div class="event-meta-item-title">
+                        {% translate "Registration closed" %}
+                    </div>
                 </div>
             </div>
-        </div>
+        {% endif %}
     {% endif %}
-    {% if page.registration_open and not page.is_ended and page.registration_page and not page.registration_page.live %}
+    {% if page.registration_open and not page.is_ended and page.registration_page and not page.registration_page.live and not page.registration_page.is_closed %}
         <div class="event-meta-item">
             <div class="event-meta-item-pre">
                 <span class="event-meta-item-icon">
@@ -132,7 +134,7 @@
     {% endif %}
 
     {% if page.registration_open and not page.is_ended %}
-        {% if page.registration_page and page.registration_page.live %}
+        {% if page.registration_page and page.registration_page.live and not page.registration_page.is_closed %}
             <div class="registration-button">
                 <a href="{{ page.registration_page.url }}"
                    data-ga-action="click"
