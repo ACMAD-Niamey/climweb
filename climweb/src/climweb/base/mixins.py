@@ -124,6 +124,38 @@ class FormPageReviewSettingsMixin(models.Model):
         return timezone.now().date() > closing_date
 
 
+class FormPageManualCloseMixin(models.Model):
+    """Manual on/off switch for forms that have no natural deadline (e.g.
+    Contact, Feedback, Data Request, Product Subscription - see
+    FormPageClosingDateMixin for the scheduled-date alternative used by
+    Events/Summer School). Editors can stop accepting submissions
+    immediately, independent of - and in addition to - any closing date
+    configured below: is_closed is true if EITHER this flag is off OR the
+    closing date (if any) has passed.
+
+    Must appear before FormPageReviewSettingsMixin in a page's base classes
+    so this is_closed override's super() call resolves to
+    FormPageReviewSettingsMixin.is_closed.
+    """
+    class Meta:
+        abstract = True
+
+    form_open = models.BooleanField(
+        default=True,
+        verbose_name=_("Form open"),
+        help_text=_("Turn off to immediately stop accepting submissions, "
+                    "regardless of any closing date configured below."),
+    )
+
+    form_open_panels = [
+        FieldPanel('form_open'),
+    ]
+
+    @property
+    def is_closed(self):
+        return not self.form_open or super().is_closed
+
+
 class FormPageClosingDateMixin(models.Model):
     """Generic 'submissions closing date' field for form pages that don't
     already have their own deadline-like field. Pages that DO (e.g.

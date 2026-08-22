@@ -1,5 +1,6 @@
 import json
 
+from django.contrib import messages
 from django.contrib.gis.db import models
 from django.core.mail import mail_admins
 from django.template.response import TemplateResponse
@@ -19,12 +20,13 @@ from wagtailgeowidget.panels import LeafletPanel, GeoAddressPanel
 from climweb.base.forms import CustomWagtailCaptchaFormBuilder
 from climweb.base.mail import send_mail, get_default_from_email
 from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin, FormPageClosingDateMixin,
-                                 FormFieldMaxLengthMixin, FormCleanNameFallbackMixin)
+                                 FormPageManualCloseMixin, FormFieldMaxLengthMixin, FormCleanNameFallbackMixin)
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import get_duplicates
 
 
-class ContactPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageClosingDateMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
+class ContactPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageClosingDateMixin,
+                  FormPageManualCloseMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
     form_builder = CustomWagtailCaptchaFormBuilder
     template = 'contact/contact_page.html'
     parent_page_types = ['home.HomePage']
@@ -66,7 +68,8 @@ class ContactPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageClosing
             ]),
             FieldPanel('subject'),
         ], _("Email")),
-    ] + FormPageReviewSettingsMixin.submission_review_settings_panels + FormPageClosingDateMixin.closing_date_panels
+    ] + FormPageManualCloseMixin.form_open_panels + FormPageReviewSettingsMixin.submission_review_settings_panels \
+        + FormPageClosingDateMixin.closing_date_panels
 
     def get_meta_image(self):
         return get_homepage_meta_image(self.get_site())
@@ -83,9 +86,16 @@ class ContactPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageClosing
         return form_class
     
     def serve(self, request, *args, **kwargs):
-        if request.method == 'POST':
+        if self.is_closed:
+            form = None
+            if request.method == 'POST':
+                messages.add_message(
+                    request, messages.ERROR,
+                    "This form is no longer accepting submissions."
+                )
+        elif request.method == 'POST':
             form = self.get_form(request.POST, request.FILES, page=self, user=request.user)
-            
+
             if form.is_valid():
                 form_submission = None
                 

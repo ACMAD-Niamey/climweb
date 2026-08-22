@@ -30,8 +30,8 @@ from climweb.base.choosers import register_searchable_chooser
 
 from climweb.base.blocks import UUIDModelChooserBlock
 from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin,
-                                 FormPageClosingDateMixin, FormFieldMaxLengthMixin,
-                                 FormCleanNameFallbackMixin)
+                                 FormPageClosingDateMixin, FormPageManualCloseMixin,
+                                 FormFieldMaxLengthMixin, FormCleanNameFallbackMixin)
 from climweb.base.models import Product, ProductItemType
 from climweb.base.models import ServiceCategory, AbstractIntroPage
 from climweb.base.utils import paginate, query_param_to_list, get_first_non_empty_p_string, get_duplicates
@@ -1316,7 +1316,8 @@ class SubNationalProductPage(BaseProductPage):
         return super().serve(request, *args, **kwargs)
 
 
-class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageClosingDateMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
+class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageClosingDateMixin,
+                              FormPageManualCloseMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
     form_builder = CustomWagtailCaptchaFormBuilder
     template = 'products/product_subscription_page.html'
     parent_page_types = ['home.HomePage', 'products.ProductIndexPage']
@@ -1339,7 +1340,8 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
             ]),
             FieldPanel('subject'),
         ], _("Email")),
-    ] + FormPageReviewSettingsMixin.submission_review_settings_panels + FormPageClosingDateMixin.closing_date_panels
+    ] + FormPageManualCloseMixin.form_open_panels + FormPageReviewSettingsMixin.submission_review_settings_panels \
+        + FormPageClosingDateMixin.closing_date_panels
 
     def get_meta_image(self):
         meta_image = super().get_meta_image()
@@ -1391,7 +1393,16 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
     def serve(self, request, *args, **kwargs):
         import django.shortcuts
         import django.template.response
-        if request.method == 'POST':
+        from django.contrib import messages
+
+        if self.is_closed:
+            form = None
+            if request.method == 'POST':
+                messages.add_message(
+                    request, messages.ERROR,
+                    "This form is no longer accepting submissions."
+                )
+        elif request.method == 'POST':
             form = self.get_form(request.POST, request.FILES, page=self, user=request.user)
 
             if form.is_valid():
