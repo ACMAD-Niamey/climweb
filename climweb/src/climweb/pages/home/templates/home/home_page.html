@@ -142,7 +142,7 @@
         {% if IS_METEOROLOGICAL %}
             {# met mode: vanilla maplibre multi-hazard map card #}
             <script defer src="{% static 'js/maplibre-gl.js' %}"></script>
-            <script defer src="{% static 'js/multi_hazard_map.js' %}"></script>
+            <script defer src="{% static 'js/multi_hazard_map.js' %}?v={% now 'U' %}"></script>
         {% else %}
             {# non-met mode: Vue home-map bundle and its helpers #}
             <script src="{% static 'js/maplibre-gl.js' %}"></script>
