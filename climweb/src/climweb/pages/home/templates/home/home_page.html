@@ -13,7 +13,7 @@
     {% if IS_METEOROLOGICAL %}
         {# met homepage redesign — card row + services strip styles #}
         <link rel="stylesheet" href="{% static 'css/home_redesign.css' %}?v=1.1">
-    <link rel="stylesheet" href="{% static 'css/hero_product_widget.css' %}?v=1.1">
+    <link rel="stylesheet" href="{% static 'css/hero_product_widget.css' %}?v={% now 'U' %}">
     {% endif %}
     {% if page.show_weather_watch %}
         {# map-only styles — loaded only when the weather watch map section is enabled #}

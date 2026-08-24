@@ -91,10 +91,10 @@
 
 .hero-product-africa {
   position: absolute;
-  top: -45px;
-  right: 24px;
-  width: 165px;
-  height: 205px;
+  top: 15px;
+  right: 65px;
+  width: 105px;
+  height: 120px;
   fill: color-mix(in srgb, var(--theme-accent) 20%, transparent);
   stroke: color-mix(in srgb, var(--theme-accent) 72%, white);
   stroke-width: 1.4;
@@ -226,7 +226,7 @@
   letter-spacing: -0.02em;
 }
 
-.hero-product-body > p {
+.hero-product-body>p {
   max-width: 340px;
   margin: 7px 0 13px;
   color: var(--theme-muted);
@@ -417,6 +417,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .hero-product-primary,
   .hero-product-arrows button,
   .hero-product-dots button {
