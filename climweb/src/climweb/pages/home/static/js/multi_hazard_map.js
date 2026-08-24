@@ -196,7 +196,7 @@
             container: mount,
             style: baseStyle,
             center: [17, 2],
-            zoom: 2.4,
+            zoom: 1, // Dummy initial zoom, overridden by fitBounds
             scrollZoom: false,
             attributionControl: false,
         });
@@ -206,6 +206,9 @@
         const bounds = parseBounds(config.countryBounds);
         if (bounds) {
             map.fitBounds(bounds, {padding: 20, duration: 0});
+        } else {
+            // Default to fitting the entire African continent
+            map.fitBounds([[-20.0, -35.0], [52.0, 38.0]], {padding: 20, duration: 0});
         }
     }
 
