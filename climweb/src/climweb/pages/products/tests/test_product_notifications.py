@@ -143,6 +143,59 @@ class TestProductNotifications(TestCase):
         self.assertEqual(duplicate_ids, [])
         self.assertEqual(ProductNotificationEvent.objects.count(), 1)
 
+    @patch("climweb.pages.products.tasks.send_product_notification.delay")
+    def test_automatic_import_queues_only_latest_touched_source(self, delay):
+        started_at = timezone.now()
+        historical = ProductSourceImport.objects.create(
+            product=self.product,
+            source_url="https://example.com/rainfall-20210104.jpg",
+            source_system="Test source",
+            source_published_date=date(2021, 1, 4),
+            checksum_sha256="b" * 64,
+            status=ProductSourceImport.STATUS_IMPORTED,
+        )
+        latest = ProductSourceImport.objects.create(
+            product=self.product,
+            source_url="https://example.com/rainfall-20260818.jpg",
+            source_system="Test source",
+            source_published_date=date(2026, 8, 18),
+            checksum_sha256="c" * 64,
+            status=ProductSourceImport.STATUS_IMPORTED,
+        )
+
+        with self.captureOnCommitCallbacks(execute=True):
+            event_ids = queue_automatic_product_notifications(
+                "rainfall", started_at
+            )
+
+        event = ProductNotificationEvent.objects.get(pk=event_ids[0])
+        self.assertEqual(event.source_import, latest)
+        self.assertFalse(
+            ProductNotificationEvent.objects.filter(source_import=historical).exists()
+        )
+        delay.assert_called_once_with(event.pk)
+
+    @patch("climweb.pages.products.tasks.send_product_notification.delay")
+    def test_automatic_import_ignores_historical_backfill(self, delay):
+        started_at = timezone.now()
+        ProductSourceImport.objects.create(
+            product=self.product,
+            source_url="https://example.com/rainfall-20240104.jpg",
+            source_system="Test source",
+            source_published_date=date(2024, 1, 4),
+            checksum_sha256="d" * 64,
+            status=ProductSourceImport.STATUS_IMPORTED,
+        )
+
+        with self.captureOnCommitCallbacks(execute=True):
+            event_ids = queue_automatic_product_notifications(
+                "rainfall", started_at
+            )
+
+        self.assertEqual(event_ids, [])
+        self.assertFalse(ProductNotificationEvent.objects.exists())
+        delay.assert_not_called()
+
     def test_delivery_only_targets_active_matching_subscribers(self):
         active = ProductSubscriber.objects.create(
             email="active@example.com", status=ProductSubscriber.STATUS_ACTIVE
