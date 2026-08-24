@@ -12,8 +12,8 @@
     <link rel="stylesheet" type="text/css" href="{% static 'css/project_detail.css' %}">
     {% if IS_METEOROLOGICAL %}
         {# met homepage redesign — card row + services strip styles #}
-        <link rel="stylesheet" href="{% static 'css/home_redesign.css' %}?v=1.1">
-    <link rel="stylesheet" href="{% static 'css/hero_product_widget.css' %}?v=1.1">
+        <link rel="stylesheet" href="{% static 'css/home_redesign.css' %}">
+        <link rel="stylesheet" href="{% static 'css/hero_product_widget.css' %}">
     {% endif %}
     {% if page.show_weather_watch %}
         {# map-only styles — loaded only when the weather watch map section is enabled #}
@@ -142,7 +142,7 @@
         {% if IS_METEOROLOGICAL %}
             {# met mode: vanilla maplibre multi-hazard map card #}
             <script defer src="{% static 'js/maplibre-gl.js' %}"></script>
-            <script defer src="{% static 'js/multi_hazard_map.js' %}"></script>
+            <script defer src="{% static 'js/multi_hazard_map.js' %}?v={% now 'U' %}"></script>
         {% else %}
             {# non-met mode: Vue home-map bundle and its helpers #}
             <script src="{% static 'js/maplibre-gl.js' %}"></script>

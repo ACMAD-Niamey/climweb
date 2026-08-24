@@ -84,8 +84,19 @@ def _product_url(source_import):
     return source_import.source_url
 
 
+def _latest_successful_source_import(definition):
+    return (
+        ProductSourceImport.objects.filter(
+            product__name__in=definition["product_names"],
+            status=ProductSourceImport.STATUS_IMPORTED,
+        )
+        .order_by("-source_published_date", "-imported_at", "-pk")
+        .first()
+    )
+
+
 def queue_automatic_product_notifications(product_family, started_at):
-    """Queue successful records touched by one automatic importer execution."""
+    """Queue only the latest product when it was touched by this automatic run."""
     config = ProductFamilyNotificationConfig.objects.filter(product_family=product_family).first()
     if config and not config.notifications_enabled:
         return []
@@ -94,32 +105,25 @@ def queue_automatic_product_notifications(product_family, started_at):
     if definition is None:
         return []
 
-    source_imports = ProductSourceImport.objects.filter(
-        product__name__in=definition["product_names"],
-        status=ProductSourceImport.STATUS_IMPORTED,
-        updated_at__gte=started_at,
-    ).order_by("source_published_date", "pk")
+    source_import = _latest_successful_source_import(definition)
+    if source_import is None or source_import.updated_at < started_at:
+        return []
 
-    event_ids = []
-    for source_import in source_imports:
-        event, created = ProductNotificationEvent.objects.get_or_create(
-            automatic_key=f"automatic:{source_import.pk}",
-            defaults={
-                "product_family": product_family,
-                "source_import": source_import,
-                "trigger": ProductNotificationEvent.TRIGGER_AUTOMATIC,
-            },
-        )
-        if created:
-            event_ids.append(event.pk)
+    event, created = ProductNotificationEvent.objects.get_or_create(
+        automatic_key=f"automatic:{source_import.pk}",
+        defaults={
+            "product_family": product_family,
+            "source_import": source_import,
+            "trigger": ProductNotificationEvent.TRIGGER_AUTOMATIC,
+        },
+    )
 
-    if event_ids:
+    if created:
         from .tasks import send_product_notification
 
-        transaction.on_commit(
-            lambda: [send_product_notification.delay(event_id) for event_id in event_ids]
-        )
-    return event_ids
+        transaction.on_commit(lambda: send_product_notification.delay(event.pk))
+        return [event.pk]
+    return []
 
 
 def queue_latest_product_notification(product_family, requested_by):
@@ -130,14 +134,7 @@ def queue_latest_product_notification(product_family, requested_by):
     definition = get_product_import_definition(product_family)
     if definition is None:
         return None
-    source_import = (
-        ProductSourceImport.objects.filter(
-            product__name__in=definition["product_names"],
-            status=ProductSourceImport.STATUS_IMPORTED,
-        )
-        .order_by("-source_published_date", "-imported_at")
-        .first()
-    )
+    source_import = _latest_successful_source_import(definition)
     if source_import is None:
         return None
 

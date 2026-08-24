@@ -267,24 +267,40 @@
 
 /* ── Latest Updates card ────────────────────────────────────────────────── */
 .hc-update-item {
+  position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding-block: 10px;
+  gap: 16px;
+  padding: 12px;
+  margin-inline: -12px;
+  border-radius: calc(var(--border-radius, 8px) / 2);
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hc-update-item:hover {
+  background: var(--primary-color-lightest, #f4f6f9);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  transform: translateY(-2px);
+  z-index: 1;
 }
 
 .hc-update-item + .hc-update-item {
   border-block-start: 1px solid #f8f8f8;
 }
 
+.hc-update-item:hover + .hc-update-item {
+  border-block-start-color: transparent;
+}
+
 .hc-update-thumb {
-  width: 64px;
-  height: 64px;
+  width: 80px;
+  height: 80px;
   flex-shrink: 0;
   border-radius: calc(var(--border-radius, 8px) / 2);
   overflow: hidden;
-  background: #f4f6f9; /* placeholder tone while the lazy image loads */
+  background: var(--primary-color-light, #eef3f9);
   margin: 0;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.06);
 }
 
 .hc-update-thumb img {
@@ -296,22 +312,28 @@
 
 .hc-update-body {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .hc-update-meta {
-  font-size: 11px;
-  font-weight: 600;
+  align-self: flex-start;
+  font-size: 10.5px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #999;
-  margin: 0 0 2px 0;
+  color: var(--primary-color, #0a2240);
+  background: var(--primary-color-light, #eef3f9);
+  padding: 3px 8px;
+  border-radius: 12px;
+  margin: 0 0 6px 0;
 }
 
 .hc-update-title {
-  font-size: 13.5px;
-  font-weight: 600;
-  line-height: 1.4;
-  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 0 0 6px 0;
 }
 
 .hc-update-title a {
@@ -319,19 +341,36 @@
   text-decoration: none;
 }
 
-.hc-update-title a:hover {
+.hc-update-title a::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 2;
+}
+
+.hc-update-item:hover .hc-update-title a {
   color: var(--primary-color, #0a2240);
 }
 
 .hc-update-readmore {
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--primary-color, #0a2240);
   text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  z-index: 3;
 }
 
-.hc-update-readmore:hover {
-  text-decoration: underline;
+.hc-update-readmore::after {
+  content: "→";
+  transition: transform 0.2s ease;
+}
+
+.hc-update-item:hover .hc-update-readmore::after {
+  transform: translateX(4px);
 }
 
 /* ── Services strip ───────────────────────────────────────────────────────
