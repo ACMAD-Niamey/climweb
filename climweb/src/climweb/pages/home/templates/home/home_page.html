@@ -12,7 +12,7 @@
     <link rel="stylesheet" type="text/css" href="{% static 'css/project_detail.css' %}">
     {% if IS_METEOROLOGICAL %}
         {# met homepage redesign — card row + services strip styles #}
-        <link rel="stylesheet" href="{% static 'css/home_redesign.css' %}?v=1.1">
+        <link rel="stylesheet" href="{% static 'css/home_redesign.css' %}?v={% now 'U' %}">
     <link rel="stylesheet" href="{% static 'css/hero_product_widget.css' %}?v={% now 'U' %}">
     {% endif %}
     {% if page.show_weather_watch %}
