@@ -2,10 +2,10 @@
     'use strict';
 
     const FALLBACK_CATEGORIES = [
-        {key: 'weather', label: 'Weather'},
-        {key: 'drought', label: 'Drought'},
-        {key: 'climate', label: 'Climate'},
-        {key: 'flood', label: 'Flood'},
+        { key: 'weather', label: 'Weather' },
+        { key: 'drought', label: 'Drought' },
+        { key: 'climate', label: 'Climate' },
+        { key: 'flood', label: 'Flood' },
     ];
 
     // The homepage card only ever shows these four tabs — never "Boundary
@@ -67,7 +67,7 @@
     function fetchJson(url, timeoutMs) {
         const controller = new AbortController();
         const timeout = window.setTimeout(() => controller.abort(), timeoutMs || 15000);
-        return fetch(url, {signal: controller.signal})
+        return fetch(url, { signal: controller.signal })
             .then((response) => {
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status} for ${url}`);
@@ -200,15 +200,15 @@
             scrollZoom: false,
             attributionControl: false,
         });
-        map.addControl(new maplibregl.NavigationControl({showCompass: false}), 'top-right');
-        map.addControl(new maplibregl.AttributionControl({compact: true}), 'bottom-right');
+        map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+        map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
 
         const bounds = parseBounds(config.countryBounds);
         if (bounds) {
-            map.fitBounds(bounds, {padding: 20, duration: 0});
+            map.fitBounds(bounds, { padding: 20, duration: 0 });
         } else {
             // Default to fitting the entire African continent
-            map.fitBounds([[-20.0, -35.0], [52.0, 38.0]], {padding: 20, duration: 0});
+            map.fitBounds([[-20.0, -35.0], [52.0, 38.0]], { padding: 20, duration: 0 });
         }
     }
 
@@ -332,7 +332,7 @@
                 id: RASTER_LAYER_ID,
                 type: 'raster',
                 source: RASTER_SOURCE_ID,
-                paint: {'raster-opacity': 0.82},
+                paint: { 'raster-opacity': 0.82 },
             });
         };
 
