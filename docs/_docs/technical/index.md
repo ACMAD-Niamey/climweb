@@ -57,6 +57,11 @@ automatic scheduling, historical imports, source configuration, initial producti
 The Product Importer feature guide documents the shared dashboard, manual and automatic workflows, progress, stopping,
 retry, source/schema configuration, and the complete lifecycle for dashboard-created importers.
 
+### Product Subscriptions and Notifications
+
+The product subscriptions guide documents the public subscription flow, subscriber dashboard, per-product notification
+controls, automatic and manual safety rules, SMTP/Mailgun deployment, testing, privacy, and troubleshooting.
+
 ```{toctree}
 ---
 maxdepth: 1
@@ -67,6 +72,7 @@ backup-restore
 management-commands
 ../products/product-importer-feature
 ../products/acmad-product-migrations
+../products/product-subscriptions-and-notifications
 extending-climweb/index
 deployment
 subdomain-deployment
