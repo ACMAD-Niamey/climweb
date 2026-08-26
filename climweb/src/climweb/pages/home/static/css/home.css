@@ -1018,6 +1018,202 @@
   .acmad-service-icon svg { width: 22px; height: 22px; }
 }
 
+/* --- Director General message --- */
+.dg-message-section {
+  position: relative;
+  overflow: hidden;
+  padding-block: 48px;
+  background:
+    radial-gradient(circle at 88% 18%, rgba(244, 200, 74, 0.2), transparent 28%),
+    linear-gradient(135deg, var(--primary-color-lightest, #eaf4f8) 0%, #f7fafc 58%, #fff8e8 100%);
+}
+
+.dg-message-section::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--primary-color, #0c447c);
+}
+
+.dg-message-layout {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.78fr);
+  min-height: 310px;
+  overflow: hidden;
+  border: 1px solid var(--theme-border, rgba(12, 68, 124, 0.14));
+  border-radius: var(--theme-border-radius, 5px);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-sm, 0 14px 38px rgba(14, 43, 65, 0.1));
+}
+
+.dg-message-profile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 34px 38px;
+  text-align: center;
+  color: white;
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.07), transparent 48%),
+    var(--theme-header-dark, var(--primary-color, #0c447c));
+}
+
+.dg-message-profile::after {
+  content: "";
+  position: absolute;
+  right: -46px;
+  bottom: -64px;
+  width: 190px;
+  height: 190px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  box-shadow: 0 0 0 32px rgba(255, 255, 255, 0.035);
+}
+
+.dg-message-copy .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  color: var(--primary-color, #0c447c);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.dg-message-copy .eyebrow span {
+  width: 32px;
+  height: 2px;
+  background: var(--yellow-400, #f4c84a);
+}
+
+.dg-profile-photo {
+  position: relative;
+  z-index: 1;
+  width: 90%;
+  height: auto;
+  aspect-ratio: 21 / 22;
+  display: grid;
+  place-items: center;
+  margin-bottom: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: var(--theme-border-radius, 5px);
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.dg-profile-photo svg {
+  width: 78px;
+  height: 78px;
+  fill: rgba(255, 255, 255, 0.08);
+  stroke: rgba(255, 255, 255, 0.58);
+  stroke-width: 2;
+}
+
+.dg-profile-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dg-message-copy h2 {
+  max-width: 680px;
+  margin: 0;
+  color: var(--navy-900, #0a192f);
+  font: 700 clamp(1.55rem, 2.3vw, 2.2rem)/1.12 'Manrope', sans-serif;
+  letter-spacing: -0.035em;
+}
+
+.dg-profile-details {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.76rem;
+}
+
+.dg-profile-details strong {
+  color: white;
+  font-size: 1rem;
+}
+
+.dg-profile-details small {
+  margin-top: 3px;
+  color: var(--yellow-400, #f4c84a);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+}
+
+.dg-message-copy {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin: 0;
+  padding: 36px clamp(32px, 5vw, 64px);
+  border: 0;
+  background: transparent;
+}
+
+.dg-message-quote-mark {
+  display: block;
+  margin-top: 7px;
+  height: 40px;
+  color: var(--primary-color-lightest, #dceaf3);
+  font: 700 4.5rem/0.9 Georgia, serif;
+}
+
+.dg-message-copy p {
+  max-width: 800px;
+  margin: 0;
+  color: var(--navy-900, #0a192f);
+  font: 500 clamp(1.08rem, 1.55vw, 1.38rem)/1.48 'Manrope', sans-serif;
+  letter-spacing: -0.018em;
+}
+
+.dg-message-copy footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+  color: var(--muted, #666);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+}
+
+.dg-message-copy footer span {
+  flex: 0 0 42px;
+  height: 2px;
+  background: var(--primary-color, #0c447c);
+}
+
+@media (max-width: 900px) {
+  .dg-message-section { padding-block: 36px; }
+  .dg-message-layout { grid-template-columns: 1fr; }
+  .dg-message-profile { padding: 30px 34px; }
+  .dg-profile-photo { width: min(90%, 280px); }
+  .dg-message-copy h2 { max-width: 600px; }
+  .dg-message-copy { padding: 32px 34px 36px; }
+}
+
+@media (max-width: 520px) {
+  .dg-message-section { padding-block: 28px; }
+  .dg-message-profile,
+  .dg-message-copy { padding: 26px 22px; }
+  .dg-profile-photo { width: min(90%, 240px); margin-bottom: 14px; }
+  .dg-message-copy p { font-size: 1.08rem; line-height: 1.58; }
+  .dg-message-copy footer { align-items: flex-start; }
+}
+
 /* Regional section */
 .regional-section { background: var(--theme-header-dark, var(--primary-color)) !important; color: white; overflow: hidden; padding-block: 60px; }
 .regional-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 100px; align-items: center; }

@@ -1,9 +1,13 @@
 # Product subscriptions and notifications roadmap
 
+For the complete administrator and deployment guide, see
+[`_docs/products/product-subscriptions-and-notifications.md`](_docs/products/product-subscriptions-and-notifications.md).
+
 ## Implemented foundation
 
 - Store subscribers, consent metadata, confirmation state and product-family preferences in ClimWeb/PostgreSQL.
-- Provide public subscribe, double-opt-in confirmation, preference-management and unsubscribe routes.
+- Provide public subscribe, preference-management and unsubscribe routes. The current public flow activates subscribers
+  immediately; enforcing double opt-in remains a follow-up if required by ACMAD policy.
 - Send through Django's email backend, allowing production to use Mailgun SMTP without coupling application data to Mailgun.
 - Create notification events only after scheduled automatic importer commands complete successfully.
 - Deduplicate automatic notifications by imported source record.
