@@ -35,6 +35,7 @@ from climweb.config.settings.base import SUMMARY_RICHTEXT_FEATURES
 from climweb.pages.events.models import EventPage
 from climweb.pages.news.models import NewsPage
 from climweb.pages.organisation_pages.partners.models import Partner
+from climweb.pages.organisation_pages.staff.models import StaffMember
 from climweb.pages.products.models import ProductItemPage, ProductPage
 from climweb.pages.publications.models import PublicationPage
 from climweb.pages.services.models import ServicePage
@@ -556,6 +557,10 @@ class HomePage(MetadataPageMixin, Page):
             })
         
         context['IS_METEOROLOGICAL'] = settings.IS_METEOROLOGICAL
+        context["dg_staff_member"] = StaffMember.objects.filter(
+            models.Q(role__icontains="Director General")
+            | models.Q(name__icontains="Ousmane Ndiaye")
+        ).select_related("photo").first()
         if settings.IS_METEOROLOGICAL:
             selected_products = [block.value for block in self.hero_featured_products] if self.hero_featured_products else None
             context["hero_significant_products"] = get_significant_product_slides(selected_products)

@@ -6,10 +6,12 @@
 
     <div class="section-heading split-heading mb-6">
       <div>
-        <div class="eyebrow"><span style="background-color: var(--primary-color);"></span> {% translate "What We Offer" %}</div>
+        <div class="eyebrow"><span style="background-color: var(--primary-color);"></span> {% translate "What We Offer"
+          %}</div>
         <h2 class="title is-2" style="margin-top: 8px;">{% translate "Science that supports better decisions" %}</h2>
       </div>
-      <p style="max-width: 500px; color: var(--muted, #666);">{% translate "We provide expert climate and meteorological services to support better decisions and mitigate risks." %}</p>
+      <p style="max-width: 500px; color: var(--muted, #666);">{% translate "We provide expert climate and meteorological
+        services to support better decisions and mitigate risks." %}</p>
     </div>
 
     <div class="service-grid">
@@ -45,6 +47,58 @@
   </div>
 </section>
 {% endif %}
+
+<section class="section dg-message-section" aria-labelledby="dg-message-title">
+  <div class="container">
+    <div class="dg-message-layout">
+      <blockquote class="dg-message-copy">
+        <div class="eyebrow">
+          <span aria-hidden="true"></span>
+          {% translate "DG/CEO's message" %}
+        </div>
+        <span class="dg-message-quote-mark" aria-hidden="true">“</span>
+        <p>
+          {% blocktranslate trimmed %}
+          Across Africa, climate information becomes most valuable when it reaches people in time to guide action.
+          ACMAD is committed to turning science, regional cooperation and innovation into trusted services that help
+          institutions and communities anticipate risk and build lasting resilience.
+          {% endblocktranslate %}
+        </p>
+        <footer>
+          <span aria-hidden="true"></span>
+          {% translate "Science in service of people, partnerships and preparedness." %}
+        </footer>
+      </blockquote>
+
+      <aside class="dg-message-profile" aria-label="{% translate 'Director General profile' %}">
+        <div class="dg-profile-photo">
+          {% if dg_staff_member.photo %}
+          {% image dg_staff_member.photo fill-420x440 as dg_profile_image %}
+          <img src="{{ dg_profile_image.url }}" alt="{{ dg_staff_member.name }}">
+          {% else %}
+          <span role="img" aria-label="{% translate 'Director General photograph placeholder' %}">
+          <svg viewBox="0 0 64 64" aria-hidden="true">
+            <circle cx="32" cy="23" r="11"></circle>
+            <path d="M12 55c1.8-12.4 9-18.5 20-18.5S50.2 42.6 52 55"></path>
+          </svg>
+          </span>
+          {% endif %}
+        </div>
+        <div class="dg-profile-details">
+          {% if dg_staff_member %}
+          <strong>{{ dg_staff_member.name }}</strong>
+          <span>{{ dg_staff_member.role }}</span>
+          {% else %}
+          <strong>{% translate "Dr. Ousmane Ndiaye" %}</strong>
+          <span>{% translate "Director General / Chief Executive Officer" %}</span>
+          {% endif %}
+          <small>{% translate "ACMAD" %}</small>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
 <section class="section regional-section" id="about">
   <div class="container regional-layout">
     <div class="africa-panel" aria-label="ACMAD continental coverage illustration">
