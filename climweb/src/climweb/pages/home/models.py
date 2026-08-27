@@ -311,6 +311,40 @@ class HomePage(MetadataPageMixin, Page):
     ], null=True, blank=True, use_json_field=True, max_num=5, verbose_name=_("Services Strip"),
         help_text=_("Compact link strip below the cards. Leave empty to derive from Service pages."))
 
+    show_dg_message = models.BooleanField(
+        default=True,
+        verbose_name=_("Show DG/CEO message section"),
+    )
+    dg_message_heading = models.CharField(
+        max_length=120,
+        default="DG/CEO's message",
+        verbose_name=_("Section heading"),
+    )
+    dg_message = RichTextField(
+        features=SUMMARY_RICHTEXT_FEATURES,
+        default=(
+            "Across Africa, climate information becomes most valuable when it reaches people in time to guide action. "
+            "ACMAD is committed to turning science, regional cooperation and innovation into trusted services that help "
+            "institutions and communities anticipate risk and build lasting resilience."
+        ),
+        verbose_name=_("Message"),
+    )
+    dg_message_closing = models.CharField(
+        max_length=200,
+        blank=True,
+        default="Science in service of people, partnerships and preparedness.",
+        verbose_name=_("Closing statement"),
+    )
+    dg_message_staff_member = models.ForeignKey(
+        StaffMember,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("DG/CEO staff member"),
+        help_text=_("Select the staff profile whose name, title and photograph should appear with the message."),
+    )
+
     youtube_playlist = models.ForeignKey(
         YoutubePlaylist,
         null=True,
@@ -374,6 +408,13 @@ class HomePage(MetadataPageMixin, Page):
         MultiFieldPanel([
             FieldPanel('services_strip'),
         ], heading=_("Services Strip")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
+        MultiFieldPanel([
+            FieldPanel('show_dg_message'),
+            FieldPanel('dg_message_heading'),
+            FieldPanel('dg_message'),
+            FieldPanel('dg_message_closing'),
+            FieldPanel('dg_message_staff_member'),
+        ], heading=_("DG/CEO Message")),
         MultiFieldPanel([
             FieldPanel('youtube_playlist'),
         ], heading=_("Media Section")),
@@ -557,7 +598,7 @@ class HomePage(MetadataPageMixin, Page):
             })
         
         context['IS_METEOROLOGICAL'] = settings.IS_METEOROLOGICAL
-        context["dg_staff_member"] = StaffMember.objects.filter(
+        context["dg_staff_member"] = self.dg_message_staff_member or StaffMember.objects.filter(
             models.Q(role__icontains="Director General")
             | models.Q(name__icontains="Ousmane Ndiaye")
         ).select_related("photo").first()

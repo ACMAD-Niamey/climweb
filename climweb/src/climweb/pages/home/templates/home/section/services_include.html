@@ -6,12 +6,10 @@
 
     <div class="section-heading split-heading mb-6">
       <div>
-        <div class="eyebrow"><span style="background-color: var(--primary-color);"></span> {% translate "What We Offer"
-          %}</div>
+        <div class="eyebrow"><span style="background-color: var(--primary-color);"></span> {% translate "What We Offer" %}</div>
         <h2 class="title is-2" style="margin-top: 8px;">{% translate "Science that supports better decisions" %}</h2>
       </div>
-      <p style="max-width: 500px; color: var(--muted, #666);">{% translate "We provide expert climate and meteorological
-        services to support better decisions and mitigate risks." %}</p>
+      <p style="max-width: 500px; color: var(--muted, #666);">{% translate "We provide expert climate and meteorological services to support better decisions and mitigate risks." %}</p>
     </div>
 
     <div class="service-grid">
@@ -48,26 +46,23 @@
 </section>
 {% endif %}
 
+{% if page.show_dg_message %}
 <section class="section dg-message-section" aria-labelledby="dg-message-title">
   <div class="container">
     <div class="dg-message-layout">
       <blockquote class="dg-message-copy">
-        <div class="eyebrow">
+        <div class="eyebrow" id="dg-message-title">
           <span aria-hidden="true"></span>
-          {% translate "DG/CEO's message" %}
+          {{ page.dg_message_heading }}
         </div>
         <span class="dg-message-quote-mark" aria-hidden="true">“</span>
-        <p>
-          {% blocktranslate trimmed %}
-          Across Africa, climate information becomes most valuable when it reaches people in time to guide action.
-          ACMAD is committed to turning science, regional cooperation and innovation into trusted services that help
-          institutions and communities anticipate risk and build lasting resilience.
-          {% endblocktranslate %}
-        </p>
+        <div class="dg-message-body">{{ page.dg_message|richtext }}</div>
+        {% if page.dg_message_closing %}
         <footer>
           <span aria-hidden="true"></span>
-          {% translate "Science in service of people, partnerships and preparedness." %}
+          {{ page.dg_message_closing }}
         </footer>
+        {% endif %}
       </blockquote>
 
       <aside class="dg-message-profile" aria-label="{% translate 'Director General profile' %}">
@@ -98,6 +93,7 @@
     </div>
   </div>
 </section>
+{% endif %}
 
 <section class="section regional-section" id="about">
   <div class="container regional-layout">

@@ -152,6 +152,35 @@ class TableInfoBlock(blocks.StructBlock):
         template = "streams/table_block.html"
 
 
+class MetServicesDirectoryBlock(blocks.StructBlock):
+    heading = blocks.CharBlock(
+        max_length=120,
+        default=_("African National Meteorological Services"),
+        label=_("Section heading"),
+    )
+    introduction = blocks.RichTextBlock(
+        required=False,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        label=_("Introduction"),
+        default=_(
+            "Explore the official meteorological and hydrological services serving countries across Africa."
+        ),
+    )
+    show_search = blocks.BooleanBlock(default=True, required=False, label=_("Show directory search"))
+
+    def get_context(self, value, parent_context=None):
+        context = super().get_context(value, parent_context=parent_context)
+        from climweb.pages.services.models import MeteorologicalService
+
+        context["met_services"] = MeteorologicalService.objects.filter(is_active=True).select_related("logo")
+        return context
+
+    class Meta:
+        template = "streams/met_services_directory.html"
+        icon = "globe"
+        label = _("Meteorological Services Directory")
+
+
 class SocialMediaBlock(blocks.StructBlock):
     name = blocks.CharBlock(max_length=60, )
     icon = IconChooserBlock(required=False, label=_("Icon"))

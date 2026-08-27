@@ -6,6 +6,7 @@ from modelcluster.fields import ParentalKey
 from wagtail.admin.panels import (FieldPanel, MultiFieldPanel, PageChooserPanel, InlinePanel)
 from wagtail.fields import RichTextField, StreamField
 from wagtail.models import Page, Orderable
+from wagtail.snippets.models import register_snippet
 from wagtailmetadata.models import MetadataPageMixin
 
 from climweb.base import blocks
@@ -20,6 +21,55 @@ from climweb.pages.products.models import ProductPage, SubNationalProductPage
 from climweb.pages.publications.models import PublicationPage
 from climweb.pages.videos.models import YoutubePlaylist
 from . import blocks as local_blocks
+
+
+@register_snippet
+class MeteorologicalService(models.Model):
+    country = models.CharField(max_length=100, verbose_name=_("Country"))
+    name = models.CharField(max_length=255, verbose_name=_("Service name"))
+    acronym = models.CharField(max_length=30, blank=True, verbose_name=_("Acronym"))
+    website_url = models.URLField(
+        max_length=500,
+        verbose_name=_("Website URL"),
+        help_text=_("The official website opened when a visitor selects the card."),
+    )
+    logo = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Logo"),
+        help_text=_("Upload the official service logo. A sourced fallback is used when empty."),
+    )
+    logo_source_url = models.URLField(
+        max_length=500,
+        blank=True,
+        verbose_name=_("Fallback logo URL"),
+        help_text=_("Optional external fallback used until a logo is uploaded."),
+    )
+    wmo_member_id = models.PositiveIntegerField(null=True, blank=True, unique=True, editable=False)
+    order = models.PositiveIntegerField(default=0, verbose_name=_("Display order"))
+    is_active = models.BooleanField(default=True, verbose_name=_("Visible on the directory"))
+
+    panels = [
+        FieldPanel("country"),
+        FieldPanel("name"),
+        FieldPanel("acronym"),
+        FieldPanel("website_url"),
+        FieldPanel("logo"),
+        FieldPanel("logo_source_url"),
+        FieldPanel("order"),
+        FieldPanel("is_active"),
+    ]
+
+    class Meta:
+        ordering = ("order", "country", "name")
+        verbose_name = _("Meteorological Service")
+        verbose_name_plural = _("Meteorological Services")
+
+    def __str__(self):
+        return f"{self.country} — {self.name}"
 
 
 class ServiceIndexPage(MetadataPageMixin, Page):
