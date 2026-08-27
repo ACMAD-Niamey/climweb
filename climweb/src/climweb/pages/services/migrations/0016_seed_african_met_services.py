@@ -35,17 +35,19 @@ def seed_african_met_services(apps, schema_editor):
         )
 
     page = FlexPage.objects.filter(title__iexact="Met Services").first()
-    if page and not any(block.block_type == "met_services_directory" for block in page.content):
-        raw_content = list(page.content.raw_data)
-        raw_content.append(
-            {
-                "type": "met_services_directory",
-                "value": DIRECTORY_BLOCK_VALUE,
-                "id": str(uuid.uuid4()),
-            }
-        )
-        page.content = raw_content
-        page.save(update_fields=["content"])
+    if page:
+        existing_content = page.content or []
+        if not any(block.block_type == "met_services_directory" for block in existing_content):
+            raw_content = list(page.content.raw_data) if page.content else []
+            raw_content.append(
+                {
+                    "type": "met_services_directory",
+                    "value": DIRECTORY_BLOCK_VALUE,
+                    "id": str(uuid.uuid4()),
+                }
+            )
+            page.content = raw_content
+            page.save(update_fields=["content"])
 
 
 class Migration(migrations.Migration):
