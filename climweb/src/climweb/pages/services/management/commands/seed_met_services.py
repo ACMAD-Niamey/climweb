@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from django.core.files.base import ContentFile
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 from django.utils.text import slugify
 from wagtail.images import get_image_model
 from wagtail.models import Page
@@ -87,10 +87,14 @@ class Command(BaseCommand):
         if matching_page:
             specific = matching_page.specific
             if not isinstance(specific, FlexPage):
-                raise CommandError(
-                    f'"{title}" exists as {specific.__class__.__name__}. '
-                    "Create it as a Flex Page or add the directory block to another Flex Page."
+                self.stdout.write(
+                    self.style.WARNING(
+                        f'"{title}" exists as {specific.__class__.__name__}; the meteorological '
+                        "services directory requires a Flex Page. The snippet inventory was seeded, "
+                        "but the page was left unchanged."
+                    )
                 )
+                return None
             return specific
 
         if not create_page:
@@ -103,7 +107,13 @@ class Command(BaseCommand):
 
         home_page = HomePage.objects.live().first() or HomePage.objects.first()
         if not home_page:
-            raise CommandError("A Home Page is required before the Met Services page can be created.")
+            self.stdout.write(
+                self.style.WARNING(
+                    'No Home Page exists yet, so the "Met Services" page could not be created. '
+                    "It will be created on a later application startup after the site is configured."
+                )
+            )
+            return None
 
         page = FlexPage(
             title=title,
