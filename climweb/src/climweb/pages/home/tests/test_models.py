@@ -27,6 +27,26 @@ class TestHomePage(WagtailPageTestCase):
     
     def test_default_route_rendering(self):
         self.assertPageIsRenderable(self.page)
+
+    def test_dg_message_uses_homepage_editor_content(self):
+        self.page.dg_message_heading = "A message from leadership"
+        self.page.dg_message = "Custom dashboard-managed DG message."
+        self.page.dg_message_closing = "A custom closing statement."
+        self.page.save_revision().publish()
+
+        response = self.client.get(self.page.url)
+
+        self.assertContains(response, "A message from leadership")
+        self.assertContains(response, "Custom dashboard-managed DG message.")
+        self.assertContains(response, "A custom closing statement.")
+
+    def test_dg_message_section_can_be_hidden(self):
+        self.page.show_dg_message = False
+        self.page.save_revision().publish()
+
+        response = self.client.get(self.page.url)
+
+        self.assertNotContains(response, 'class="section dg-message-section"')
     
     def test_default_seo_image(self):
         self.assertEqual(self.page.get_meta_image(), self.page.hero_banner)
