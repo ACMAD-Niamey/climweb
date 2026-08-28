@@ -1216,18 +1216,65 @@
 
 /* Regional section */
 .regional-section { background: var(--theme-header-dark, var(--primary-color)) !important; color: white; overflow: hidden; padding-block: 60px; }
-.regional-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 100px; align-items: center; }
-.africa-panel { min-height: 430px; position: relative; display: grid; place-items: center; color: #71c9b0; border: 1px solid rgba(255,255,255,.1); background: radial-gradient(circle, rgba(18,112,97,.38), transparent 65%); }
-.orbit { position: absolute; border: 1px solid rgba(255,255,255,.1); border-radius: 50%; }
-.orbit-one { width: 300px; height: 300px; }
-.orbit-two { width: 410px; height: 410px; }
-.map-point { position: absolute; font-size: .65rem; color: rgba(255,255,255,.72); display: flex; gap: 7px; align-items: center; }
-.map-point i { width: 7px; height: 7px; border-radius: 50%; background: var(--yellow-400, #f4c84a); box-shadow: 0 0 0 5px rgba(244,200,74,.13); }
-.point-one { left: 13%; top: 40%; }
-.point-two { right: 9%; top: 33%; }
-.point-three { right: 16%; bottom: 23%; }
-.point-four { left: 32%; top: 12%; }
-.point-five { left: 43%; top: 52%; }
+.regional-layout { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); gap: clamp(54px, 7vw, 100px); align-items: center; }
+.africa-panel {
+  position: relative;
+  isolation: isolate;
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 24px 17px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: max(8px, var(--border-radius));
+  background:
+    radial-gradient(circle at 48% 46%, rgba(18,112,97,.45), transparent 52%),
+    linear-gradient(145deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 28px 70px rgba(0,0,0,.18);
+}
+.regional-map-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.regional-map-header > div { display: grid; gap: 3px; }
+.regional-map-header span:not(.regional-map-count) { color: rgba(255,255,255,.52); font-size: .64rem; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+.regional-map-header strong { color: white; font-size: .94rem; letter-spacing: -.01em; }
+.regional-map-count { flex: 0 0 auto; padding: 5px 9px; border: 1px solid rgba(255,255,255,.14); border-radius: 999px; color: var(--yellow-400, #f4c84a); background: rgba(255,255,255,.045); font-size: .62rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.regional-map-canvas { flex: 1; min-height: 0; display: grid; place-items: center; padding: 8px 0 2px; }
+.regional-africa-map { width: auto; max-width: 100%; height: 405px; aspect-ratio: 8 / 9; overflow: visible; }
+.regional-africa-land,
+.regional-africa-island { fill: rgba(67,184,151,.18); stroke: rgba(117,215,187,.76); stroke-width: .8; vector-effect: non-scaling-stroke; }
+.regional-africa-island { opacity: .82; }
+.rcc-marker-pulse { fill: rgba(244,200,74,.12); stroke: rgba(244,200,74,.58); stroke-width: .7; }
+.rcc-marker-dot { fill: var(--yellow-400, #f4c84a); stroke: #fff; stroke-width: .7; }
+.rcc-marker--demonstration .rcc-marker-pulse { fill: rgba(110,208,178,.12); stroke: rgba(110,208,178,.58); }
+.rcc-marker--demonstration .rcc-marker-dot { fill: #6ed0b2; }
+.rcc-marker--mixed .rcc-marker-pulse { stroke-dasharray: 2 1.5; }
+.rcc-map-link,
+.rcc-map-link .rcc-marker,
+.rcc-map-link .rcc-marker-pulse,
+.rcc-map-link .rcc-marker-dot,
+.rcc-map-link .rcc-marker-line,
+.rcc-map-link .rcc-marker text { cursor: pointer; }
+.rcc-map-link { outline: none; }
+.rcc-marker-line,
+.rcc-marker text { opacity: 0; transition: opacity .18s ease; }
+.rcc-map-link:hover .rcc-marker-line,
+.rcc-map-link:hover .rcc-marker text,
+.rcc-map-link:focus .rcc-marker-line,
+.rcc-map-link:focus .rcc-marker text,
+.rcc-marker--primary .rcc-marker-line,
+.rcc-marker--primary .rcc-marker-name { opacity: 1; }
+.rcc-map-link:hover .rcc-marker-dot,
+.rcc-map-link:focus .rcc-marker-dot { transform: scale(1.18); transform-box: fill-box; transform-origin: center; }
+.rcc-map-link:focus .rcc-marker-pulse { stroke-width: 1.25; }
+.rcc-marker-dot { transition: transform .18s ease; }
+.rcc-marker-line { fill: none; stroke: rgba(255,255,255,.42); stroke-width: .65; }
+.rcc-marker text { pointer-events: none; paint-order: stroke; stroke: var(--theme-header-dark, #071f2e); stroke-width: 1.8px; stroke-linejoin: round; }
+.rcc-marker-name { fill: #fff; font: 800 5.5px/1 'Manrope', sans-serif; letter-spacing: -.08px; }
+.rcc-marker-place { fill: rgba(255,255,255,.7); font: 600 4.6px/1 'DM Sans', sans-serif; }
+.rcc-marker-city { fill: var(--yellow-400, #f4c84a); font: 700 4.2px/1 'DM Sans', sans-serif; letter-spacing: .16px; text-transform: uppercase; }
+.regional-map-legend { display: flex; flex-wrap: wrap; gap: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.09); }
+.regional-map-legend span { display: inline-flex; align-items: center; gap: 7px; color: rgba(255,255,255,.58); font-size: .64rem; font-weight: 700; }
+.regional-map-legend i { width: 7px; height: 7px; border-radius: 50%; background: var(--yellow-400, #f4c84a); box-shadow: 0 0 0 3px rgba(244,200,74,.12); }
+.regional-map-legend i.is-demonstration { background: #6ed0b2; box-shadow: 0 0 0 3px rgba(110,208,178,.12); }
 .regional-copy h2 { color: white; font: 700 clamp(2rem, 3.4vw, 3.25rem)/1.12 'Manrope', sans-serif; letter-spacing: -.035em; margin-bottom: 22px; }
 .regional-copy > p { color: rgba(255,255,255,.66); margin-top: 22px; }
 .regional-copy ul { list-style: none; margin-top: 27px; display: grid; gap: 12px; }
@@ -1238,5 +1285,16 @@
 .regional-copy .eyebrow span { width: 32px; height: 2px; background: var(--yellow-400, #f4c84a); }
 @media (max-width: 900px) {
   .regional-layout { grid-template-columns: 1fr; gap: 50px; }
+  .africa-panel { width: min(100%, 620px); min-height: 480px; margin-inline: auto; }
   .regional-copy h2 { font-size: 2.2rem; }
+}
+@media (max-width: 520px) {
+  .africa-panel { min-height: 430px; padding: 18px 15px 14px; }
+  .regional-map-header strong { font-size: .84rem; }
+  .regional-africa-map { height: 350px; }
+  .regional-map-legend { gap: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rcc-marker-line,
+  .rcc-marker text { transition: none; }
 }

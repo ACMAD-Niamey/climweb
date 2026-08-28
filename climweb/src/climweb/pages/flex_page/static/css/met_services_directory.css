@@ -1,50 +1,8 @@
 .met-services-directory {
-    padding: 72px 0 84px;
+    padding: 0 0 84px;
     background:
         radial-gradient(circle at 92% 4%, rgba(244, 200, 74, 0.16), transparent 24%),
         linear-gradient(180deg, #f7fafc 0%, #ffffff 42%);
-}
-
-.met-services-heading {
-    display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.75fr);
-    gap: clamp(36px, 7vw, 96px);
-    align-items: end;
-    margin-bottom: 42px;
-}
-
-.met-services-eyebrow {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
-    color: var(--primary-color, #0c447c);
-    font-size: 0.72rem;
-    font-weight: 800;
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
-}
-
-.met-services-eyebrow span {
-    width: 32px;
-    height: 2px;
-    background: var(--yellow-400, #f4c84a);
-}
-
-.met-services-heading h2 {
-    max-width: 720px;
-    margin: 0;
-    color: var(--navy-900, #0a192f);
-    font: 700 clamp(2rem, 4vw, 3.35rem)/1.08 'Manrope', sans-serif;
-    letter-spacing: -0.04em;
-}
-
-.met-services-introduction,
-.met-services-introduction p {
-    margin: 0;
-    color: var(--muted, #5f6874);
-    font-size: 1rem;
-    line-height: 1.75;
 }
 
 .met-services-tools {
@@ -113,6 +71,10 @@
     color: inherit;
     box-shadow: 0 10px 28px rgba(10, 25, 47, 0.06);
     transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.met-service-card[hidden] {
+    display: none !important;
 }
 
 .met-service-card:hover,
@@ -210,12 +172,11 @@
 .met-services-no-results p { margin: 0; color: var(--muted, #66717d); }
 
 @media (max-width: 980px) {
-    .met-services-heading { grid-template-columns: 1fr; gap: 20px; }
     .met-services-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 620px) {
-    .met-services-directory { padding: 48px 0 58px; }
+    .met-services-directory { padding: 0 0 58px; }
     .met-services-tools { align-items: stretch; flex-direction: column; gap: 8px; }
     .met-services-grid { grid-template-columns: 1fr; }
     .met-service-card { grid-template-columns: 118px 1fr; grid-template-rows: 1fr; min-height: 150px; }
