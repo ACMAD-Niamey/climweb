@@ -2,19 +2,6 @@
 
 <div class="met-services-directory" data-met-services-directory>
     <div class="container">
-        <header class="met-services-heading">
-            <div>
-                <div class="met-services-eyebrow">
-                    <span aria-hidden="true"></span>
-                    {% translate "Continental directory" %}
-                </div>
-                <h2>{{ value.heading }}</h2>
-            </div>
-            {% if value.introduction %}
-                <div class="met-services-introduction format-text">{{ value.introduction|richtext }}</div>
-            {% endif %}
-        </header>
-
         {% if value.show_search %}
             <div class="met-services-tools">
                 <label class="met-services-search">
