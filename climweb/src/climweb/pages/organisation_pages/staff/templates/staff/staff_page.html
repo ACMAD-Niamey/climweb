@@ -1,120 +1,82 @@
 {% extends "base.html" %}
-{% load static wagtailsettings_tags i18n wagtailcore_tags wagtailimages_tags lazyimages_tags %}
-{% get_settings use_default_site=True %}
+{% load static i18n wagtailcore_tags wagtailimages_tags %}
 
 {% block extra_css %}
-    <style>
-        /* Styles for desktop screens and wider */
-        @media (min-width: 769px) {
-            .staff-modal-content {
-                min-width: 60rem
-            }
-        }
-
-        .staff-role {
-            text-transform: uppercase;
-        }
-    </style>
-
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'staff/css/staff_page.css' %}">
 {% endblock extra_css %}
 
-
 {% block content %}
-    <main class="is-index">
+    <main class="is-index staff-page">
         {% include 'hero.html' with page=page %}
 
-        {% if  page.introduction_title and page.introduction_heading and page.introduction_text %}
+        {% if page.introduction_title and page.introduction_heading and page.introduction_text %}
             <section class="nmhs-work is-desktop">
                 <div class="work container">
                     <div class="columns is-centered has-text-centered intro-section-wrapper">
                         <div class="column is-7 has-text-centered">
-                            <p class="subtitle"> {{ page.introduction_heading }}
-                            <P>
-                                {% if page.introduction_title %}
-                                    <h2 class="title is-3">
-                                        {{ page.introduction_title }}
-                                    </h2>
-                                {% endif %}
-                            {% if page.introduction_text %}
-                                <div class="intro-description format-text">
-                                    {{ page.introduction_text|richtext }}
-                                </div>
-                            {% endif %}
+                            <p class="subtitle">{{ page.introduction_heading }}</p>
+                            <h2 class="title is-3">{{ page.introduction_title }}</h2>
+                            <div class="intro-description format-text">{{ page.introduction_text|richtext }}</div>
                         </div>
                     </div>
                 </div>
             </section>
         {% endif %}
 
-        <section>
+        <section class="staff-section">
             <div class="container">
                 {% for department in page.all_departments.all %}
                     <div class="pb-6 mb-6">
                         <h3 class="has-text-centered pb-6">{{ department.department__name }}</h3>
-                        <div class="columns is-mobile is-tablet is-multiline is-centered">
+                        <div class="columns is-multiline is-centered staff-grid">
                             {% for staffmember in page.staffmembers.all %}
                                 {% if department.department__name == staffmember.department.name %}
-                                    <div id="{{ staffmember.name }}-{{ staffmember.role }}" class="modal">
-                                        <div class="modal-background"></div>
-                                        <div class="modal-content staff-modal-content">
-                                            <div class="box">
-                                                <div class="columns">
-                                                    <div class="column is-one-third-desktop is-full-tablet is-full-mobile">
-                                                        <div class="card elevation-0">
-                                                            <div class="card-image">
-                                                                <figure class="image is-5by4">
-                                                                    {% if staffmember.photo %}
-                                                                        {% image staffmember.photo original as staffmember_img_modal %}
-                                                                        <img class="progressive__img progressive--not-loaded lazy_load"
-                                                                             data-progressive="{{ staffmember_img_modal.url }}"
-                                                                             style="height: 100%;width: 100%;object-fit: cover; "
-                                                                             src="{% lazy_image_url staffmember_img_modal %}"
-                                                                             alt="products"/>
-                                                                    {% endif %}
-                                                                </figure>
-                                                            </div>
+                                    <div class="column is-one-quarter-desktop is-half-tablet is-full-mobile">
+                                        <button type="button" class="staff-card" data-staff-modal="staff-modal-{{ staffmember.pk }}"
+                                                aria-haspopup="dialog" aria-controls="staff-modal-{{ staffmember.pk }}"
+                                                aria-labelledby="staff-name-{{ staffmember.pk }}">
+                                            <span class="staff-figure">
+                                                {% if staffmember.photo %}
+                                                    {% image staffmember.photo width-600 as portrait %}
+                                                    <img src="{{ portrait.url }}" alt="{{ staffmember.name }}" loading="lazy" width="{{ portrait.width }}" height="{{ portrait.height }}">
+                                                {% else %}
+                                                    <img src="{% static 'images/person.svg' %}" alt="" loading="lazy" width="150" height="150">
+                                                {% endif %}
+                                            </span>
+                                            <span id="staff-name-{{ staffmember.pk }}" class="staff-name">{{ staffmember.name }}</span>
+                                            <span class="staff-position">{{ staffmember.role }}</span>
+                                            <span class="staff-badge">{{ staffmember.department.name }}</span>
+                                            <span class="staff-view-bio">{% if staffmember.bio %}{% translate "View bio" %}{% else %}{% translate "View profile" %}{% endif %}</span>
+                                        </button>
+                                        <div id="staff-modal-{{ staffmember.pk }}" class="modal staff-modal" role="dialog"
+                                             aria-modal="true" aria-labelledby="staff-modal-name-{{ staffmember.pk }}" aria-hidden="true" tabindex="-1">
+                                            <div class="modal-background" data-staff-close></div>
+                                            <div class="modal-content staff-modal-content">
+                                                <div class="box">
+                                                    <div class="columns">
+                                                        <div class="column is-one-third-desktop is-full-tablet is-full-mobile">
+                                                            <figure class="staff-figure">
+                                                                {% if staffmember.photo %}
+                                                                    {% image staffmember.photo width-600 as modal_portrait %}
+                                                                    <img src="{{ modal_portrait.url }}" alt="{{ staffmember.name }}" loading="lazy" width="{{ modal_portrait.width }}" height="{{ modal_portrait.height }}">
+                                                                {% else %}
+                                                                    <img src="{% static 'images/person.svg' %}" alt="" loading="lazy" width="300" height="300">
+                                                                {% endif %}
+                                                            </figure>
                                                         </div>
-                                                    </div>
-                                                    <div class="column">
-                                                        <h3>{{ staffmember.name }}</h3>
-                                                        <p class="subtitle staff-role"
-                                                           style="font-size:12px">{{ staffmember.role }}</p>
-                                                        <hr>
-                                                        {% if staffmember.bio %}
-                                                            <div style="max-height:20rem">
-                                                                <p>{{ staffmember.bio|richtext }}</p></div>
-                                                        {% endif %}
+                                                        <div class="column staff-details">
+                                                            <h3 id="staff-modal-name-{{ staffmember.pk }}" class="staff-name">{{ staffmember.name }}</h3>
+                                                            <p class="staff-position">{{ staffmember.role }}</p>
+                                                            <span class="staff-badge">{{ staffmember.department.name }}</span>
+                                                            {% if staffmember.bio %}
+                                                                <div class="staff-bio format-text">{{ staffmember.bio|richtext }}</div>
+                                                            {% endif %}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <button class="modal-close is-large" aria-label="close"></button>
-                                    </div>
-                                    <div data-target="{{ staffmember.name }}-{{ staffmember.role }}"
-                                         class="js-modal-trigger column is-one-quarter-desktop is-one-third-tablet is-one-quarter-fullhd is-half-mobile">
-                                        <div class="card elevation-1">
-                                            <div class="card-image">
-                                                <figure class="image is-4by3">
-                                                    {% if staffmember.photo %}
-
-                                                        {% image staffmember.photo original as staffmember_img %}
-                                                        <img class="progressive__img progressive--not-loaded"
-                                                             data-progressive="{{ staffmember_img.url }}"
-                                                             style="height: 100%;width: 100%;object-fit: cover; "
-                                                             src="{% lazy_image_url staffmember_img %}" alt="products"/>
-                                                    {% endif %}
-                                                </figure>
-                                            </div>
-                                        </div>
-                                        <div class="block pt-4">
-                                            <h4> {{ staffmember.name }} </h4>
-                                            <p style="margin-bottom: 0px;
-                                margin-top: 5px;
-                                line-height: 1.5;
-                                font-size: 14px;
-                                color: #4a5255;
-                                font-weight: 400;"
-                                               class="staff-role"> {{ staffmember.role }} </p>
+                                            <button type="button" class="modal-close is-large" data-staff-close aria-label="{% translate 'Close' %}"></button>
                                         </div>
                                     </div>
                                 {% endif %}
@@ -128,57 +90,6 @@
 {% endblock content %}
 
 {% block extra_js %}
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Functions to open and close a modal
-            function openModal($el) {
-                $el.classList.add('is-active');
-            }
-
-            function closeModal($el) {
-                $el.classList.remove('is-active');
-            }
-
-            function closeAllModals() {
-                (document.querySelectorAll('.modal') || []).forEach(($modal) => {
-                    closeModal($modal);
-                });
-            }
-
-            // Add a click event on buttons to open a specific modal
-            (document.querySelectorAll('.js-modal-trigger') || []).forEach(($trigger) => {
-                const modal = $trigger.dataset.target;
-                const $target = document.getElementById(modal);
-                var lazy_img = document.getElementsByClassName('lazy_load');
-
-
-                $trigger.addEventListener('click', () => {
-                    for (var i = 0; i < lazy_img.length; i++) {
-                        lazy_img[i].setAttribute('src', lazy_img[i].getAttribute('data-progressive'));
-                    }
-
-                    openModal($target);
-                });
-            });
-
-            // Add a click event on various child elements to close the parent modal
-            (document.querySelectorAll('.modal-background, .modal-close, .modal-card-head .delete, .modal-card-foot .button') || []).forEach(($close) => {
-                const $target = $close.closest('.modal');
-
-                $close.addEventListener('click', () => {
-                    closeModal($target);
-
-
-                });
-            });
-
-            // Add a keyboard event to close all modals
-            document.addEventListener('keydown', (event) => {
-                if (event.key === "Escape") {
-                    closeAllModals();
-                }
-            });
-        });
-    </script>
-
+    {{ block.super }}
+    <script src="{% static 'staff/js/staff_page.js' %}" defer></script>
 {% endblock extra_js %}
