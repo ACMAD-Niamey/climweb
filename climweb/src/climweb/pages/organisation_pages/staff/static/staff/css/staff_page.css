@@ -20,16 +20,33 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    cursor: pointer;
     transition: box-shadow 0.15s, border-color 0.15s;
 }
 
-.staff-card:hover {
+.staff-card-trigger {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    width: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font: inherit;
+    text-align: inherit;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+.staff-card:hover,
+.staff-card:focus-within {
     box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
     border-color: #e2e2e2;
 }
 
-.staff-card:focus-visible,
+.staff-card-trigger:focus-visible,
+.staff-profile-links a:focus-visible,
 .staff-modal .modal-close:focus-visible {
     outline: 3px solid var(--primary-color, #307461);
     outline-offset: 4px;
@@ -131,12 +148,26 @@
 }
 
 .staff-profile-links a {
-    padding: 6px 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
     border-radius: 999px;
     background: var(--primary-color-lightest, #f3f7f5);
     color: var(--primary-color, #307461);
     font-size: 13px;
     font-weight: 600;
+}
+
+.staff-card .staff-profile-links {
+    justify-content: center;
+}
+
+.staff-profile-links a:hover {
+    color: #fff;
+    background: var(--primary-color, #307461);
 }
 
 @media (max-width: 1280px) {

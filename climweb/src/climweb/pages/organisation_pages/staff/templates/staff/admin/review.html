@@ -1,7 +1,11 @@
 {% extends "wagtailadmin/base.html" %}
 {% load static wagtailcore_tags wagtailimages_tags %}
 {% block titletag %}Review staff profile{% endblock %}
-{% block extra_css %}{{ block.super }}<link rel="stylesheet" href="{% static 'staff/css/portal.css' %}">{% endblock %}
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'staff/css/portal.css' %}">
+    <link rel="stylesheet" href="{% static 'staff/css/admin.css' %}">
+{% endblock %}
 {% block content %}
 {% include "wagtailadmin/shared/header.html" with title="Review staff profile" icon="user" %}
 <div class="nice-padding staff-admin">
@@ -13,11 +17,17 @@
             {% if member.photo %}{% image member.photo width-300 class="portal-photo" %}{% endif %}
             <div>{{ member.bio|richtext }}</div>
             <p>{{ member.website }}</p><p>{{ member.linkedin }}</p>
+            <p>GitHub: {{ member.github|default:"—" }}</p>
+            <p>Publications: {{ member.publications|default:"—" }}</p>
+            <p>Registered email (read-only): {{ member.registered_email|default:"—" }}</p>
         </section>
         <section class="portal-panel"><h2>Submitted changes</h2>
             {% if update.photo_data %}<img class="portal-photo" src="{% url 'staff_portal:photo' update.pk %}" alt="Submitted staff photo">{% else %}<p>Photo unchanged.</p>{% endif %}
             <div class="portal-biography">{{ update.biography|linebreaksbr }}</div>
             <p>{{ update.website }}</p><p>{{ update.linkedin }}</p>
+            <p>GitHub: {{ update.github|default:"—" }}</p>
+            <p>Publications: {{ update.publications|default:"—" }}</p>
+            <p>The email icon uses the registered account email; submissions cannot change it.</p>
         </section>
     </div>
     {% if update.status == "submitted" %}

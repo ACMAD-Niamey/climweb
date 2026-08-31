@@ -60,13 +60,25 @@ class StaffPage(AbstractBannerPage):
             FieldPanel('introduction_title'),
             FieldPanel('introduction_text'),
         ], heading=_('Introduction Section')),
-        InlinePanel('staffmembers', heading=_("Staff"), label=_("Staff")),
+        InlinePanel('selected_staff', heading=_("Staff shown on this page"), label=_("Staff selection"), help_text=_("Select and order existing staff. Manage their details under Staff Profiles.")),
     ]
+
+    @cached_property
+    def current_staffmembers(self):
+        # Lifecycle is outside page revisions: publishing an old draft must not
+        # accidentally reinstate someone who has left.
+        selected_ids = [entry.member_id for entry in self.selected_staff.all()]
+        from django.db.models import Case, When, IntegerField
+        return StaffMember.objects.filter(pk__in=selected_ids).exclude(
+            employment__status__in=["retired", "left"]
+        ).select_related("department", "photo", "profile_access__user").order_by(
+            Case(*[When(pk=pk, then=order) for order, pk in enumerate(selected_ids)], output_field=IntegerField())
+        )
 
     @cached_property
     def all_departments(self):
         # Annotate the queryset with the count of employees per department
-        departments_with_staff_count = StaffMember.objects.values('department__name').annotate(
+        departments_with_staff_count = self.current_staffmembers.order_by().values('department__name').annotate(
             staffmembers_count=Count('department')).order_by('department__order')
         # Filter departments with at least one employee
         departments_with_staff = departments_with_staff_count.filter(staffmembers_count__gt=0)
@@ -85,6 +97,9 @@ class StaffMember(Orderable):
                             help_text=_("The role/position of the Staff member"))
     website = models.URLField(blank=True, verbose_name=_("Professional website"))
     linkedin = models.URLField(blank=True, verbose_name=_("LinkedIn profile"))
+    github = models.URLField(blank=True, verbose_name=_("GitHub profile"))
+    publications = models.URLField(blank=True, verbose_name=_("Publications URL"), help_text=_("Link to Google Scholar, ORCID or your publications page."))
+    public_email = models.EmailField(blank=True, verbose_name=_("Public contact email"), help_text=_("Optional. Published on the website; separate from your private account email."))
     bio = RichTextField(features=SUMMARY_RICHTEXT_FEATURES, null=True, blank=True,
                         verbose_name=_("Staff member Biography"),
                         help_text=_("Optional Summary biography of the Staff member"))
@@ -108,6 +123,8 @@ class StaffMember(Orderable):
         FieldPanel("photo"),
         FieldPanel("website"),
         FieldPanel("linkedin"),
+        FieldPanel("github"),
+        FieldPanel("publications"),
     ]
 
     class Meta:
@@ -117,6 +134,50 @@ class StaffMember(Orderable):
 
     def __str__(self):
         return self.name
+
+    @property
+    def is_current_staff(self):
+        return not StaffEmployment.objects.filter(member_id=self.pk).exclude(status="active").exists()
+
+    @property
+    def registered_email(self):
+        access = getattr(self, "profile_access", None)
+        return access.user.email if access else ""
+
+
+class StaffPageSelection(Orderable):
+    page = ParentalKey(StaffPage, on_delete=models.CASCADE, related_name="selected_staff")
+    member = models.ForeignKey(StaffMember, on_delete=models.CASCADE, related_name="page_selections", verbose_name=_("Staff member"))
+
+    panels = [FieldPanel("member")]
+
+    class Meta:
+        ordering = ["sort_order", "pk"]
+
+
+class StaffEmployment(models.Model):
+    class Status(models.TextChoices):
+        ACTIVE = "active", _("Current")
+        RETIRED = "retired", _("Retired")
+        LEFT = "left", _("Left")
+
+    # Protect retained records/history against deletion through the inline editor.
+    member = models.OneToOneField(StaffMember, on_delete=models.PROTECT, related_name="employment")
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.ACTIVE)
+    effective_date = models.DateField()
+
+
+class StaffEmploymentEvent(models.Model):
+    employment = models.ForeignKey(StaffEmployment, on_delete=models.PROTECT, related_name="events")
+    previous_status = models.CharField(max_length=12, choices=StaffEmployment.Status.choices)
+    status = models.CharField(max_length=12, choices=StaffEmployment.Status.choices)
+    effective_date = models.DateField()
+    account_disabled = models.BooleanField(default=False)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="staff_employment_events")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
 
 
 class StaffProfileAccess(models.Model):
@@ -138,11 +199,15 @@ class StaffProfileUpdate(models.Model):
         SUBMITTED = "submitted", _("Awaiting review")
         APPROVED = "approved", _("Approved")
         CHANGES_REQUESTED = "changes_requested", _("Changes requested")
+        WITHDRAWN = "withdrawn", _("Withdrawn on offboarding")
 
     access = models.ForeignKey(StaffProfileAccess, on_delete=models.CASCADE, related_name="updates")
     biography = models.TextField(blank=True)
     website = models.URLField(blank=True)
     linkedin = models.URLField(blank=True)
+    github = models.URLField(blank=True)
+    publications = models.URLField(blank=True)
+    public_email = models.EmailField(blank=True)
     # Keep unapproved photos out of the public media library. Limit and re-encode
     # uploads in the form; the authenticated preview endpoint serves these bytes.
     photo_data = models.BinaryField(blank=True, default=bytes)

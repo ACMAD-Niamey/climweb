@@ -1,0 +1,31 @@
+{% extends "wagtailadmin/base.html" %}
+{% load static %}
+{% block titletag %}Add staff member{% endblock %}
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'staff/css/portal.css' %}">
+    <link rel="stylesheet" href="{% static 'staff/css/admin.css' %}">
+{% endblock %}
+{% block content %}
+{% include "wagtailadmin/shared/header.html" with title="Add staff member" icon="user" %}
+<div class="nice-padding staff-admin">
+    <p><a href="{% url 'staff_profile_dashboard' %}">← Staff Profiles</a></p>
+    {% if console_email %}<div class="portal-notice">Local console email mode is enabled. Invitations are printed in the application terminal, not delivered to an inbox.</div>{% endif %}
+    <section class="portal-panel">
+        <h2>Create a public team profile</h2>
+        <p>This adds the staff member to the Our Team page and publishes the change. Optionally send an invitation so they can manage their own biography and photo.</p>
+        {% if has_team_page %}
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <div class="portal-actions">
+                    <button type="submit" class="button">Add and publish staff member</button>
+                    <a href="{% url 'staff_profile_dashboard' %}">Cancel</a>
+                </div>
+            </form>
+        {% else %}
+            <p>No published Our Team page is available. Create and publish a Staff Page under Organisation in Pages first, then return here.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

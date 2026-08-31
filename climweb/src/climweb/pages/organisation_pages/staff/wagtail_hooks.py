@@ -9,6 +9,10 @@ from . import views
 def staff_admin_urls():
     return [
         path("staff-profiles/", views.dashboard, name="staff_profile_dashboard"),
+        path("staff-profiles/add/", views.create_member, name="staff_profile_create"),
+        path("staff-profiles/member/<int:member_id>/edit/", views.edit_member, name="staff_profile_edit"),
+        path("staff-profiles/member/<int:member_id>/offboard/", views.employment_change, {"action": "offboard"}, name="staff_profile_offboard"),
+        path("staff-profiles/member/<int:member_id>/reactivate/", views.employment_change, {"action": "reactivate"}, name="staff_profile_reactivate"),
         path("staff-profiles/<int:update_id>/", views.review, name="staff_profile_review"),
     ]
 

@@ -9,11 +9,13 @@
         <p>{{ member.role }}{% if member.department %} · {{ member.department.name }}{% endif %}</p>
         {% if member.photo %}{% image member.photo width-300 class="portal-photo" %}{% endif %}
         <p class="portal-help">Your name, official role and department are managed by the administrator.</p>
+        <p class="portal-help">Public email: {{ member.registered_email|default:"No account email linked" }}. This is your registered account email and cannot be changed here.</p>
         {% if submitted %}
             <div class="portal-notice">Awaiting review — your public profile has not changed.</div>
             <h3>Submitted biography</h3>
             <div class="portal-biography">{{ update.biography|linebreaksbr }}</div>
             <p>{{ update.website }}</p><p>{{ update.linkedin }}</p>
+            <p>{{ update.github }}</p><p>{{ update.publications }}</p>
         {% else %}
             <form method="post" enctype="multipart/form-data">{% csrf_token %}
                 {{ form.as_p }}

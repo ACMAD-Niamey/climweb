@@ -1,0 +1,40 @@
+{% extends "wagtailadmin/base.html" %}
+{% load static %}
+{% block titletag %}{% if offboarding %}Offboard{% else %}Reactivate{% endif %} staff member{% endblock %}
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'staff/css/portal.css' %}">
+    <link rel="stylesheet" href="{% static 'staff/css/admin.css' %}">
+{% endblock %}
+{% block content %}
+{% include "wagtailadmin/shared/header.html" with title=member.name icon="user" %}
+<div class="nice-padding staff-admin">
+    <p><a href="{% url 'staff_profile_dashboard' %}">← Staff Profiles</a></p>
+    <section class="portal-panel">
+        <h2>{% if offboarding %}Offboard{% else %}Reactivate{% endif %} {{ member.name }}</h2>
+        <p>{{ member.role }} · {{ member.department.name }}</p>
+        <p>Linked account: {% if account %}{{ account.user.email }} — {% if account.user.is_active %}enabled{% else %}disabled{% endif %}{% else %}none{% endif %}</p>
+        {% if offboarding %}
+            <div class="portal-notice">This immediately hides their public team card and inherited homepage DG identity, blocks staff profile access, cancels invitations and withdraws pending submissions. Their profile and history are retained. It does not publish pending page edits. Review any separately written homepage DG message as needed.</div>
+        {% else %}
+            <div class="portal-notice">This restores the existing profile on the public team page. It does not enable a disabled account, restore old invitations or reopen withdrawn submissions.</div>
+        {% endif %}
+        <form method="post">
+            {% csrf_token %}{{ form.as_p }}
+            <div class="portal-actions">
+                <button type="submit" class="button">{% if offboarding %}Confirm offboarding{% else %}Reactivate staff member{% endif %}</button>
+                <a href="{% url 'staff_profile_dashboard' %}">Cancel</a>
+            </div>
+        </form>
+    </section>
+    <section class="portal-panel">
+        <h2>Employment history</h2>
+        <div class="portal-table"><table class="listing">
+            <thead><tr><th>Change</th><th>Effective date</th><th>Recorded by</th><th>Recorded at</th><th>Account disabled</th></tr></thead>
+            <tbody>{% for event in events %}
+                <tr><td>{{ event.get_previous_status_display }} → {{ event.get_status_display }}</td><td>{{ event.effective_date }}</td><td>{{ event.actor|default:"Deleted administrator" }}</td><td>{{ event.created_at }}</td><td>{{ event.account_disabled|yesno:"Yes,No" }}</td></tr>
+            {% empty %}<tr><td colspan="5">No employment changes recorded.</td></tr>{% endfor %}</tbody>
+        </table></div>
+    </section>
+</div>
+{% endblock %}

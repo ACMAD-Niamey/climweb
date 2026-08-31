@@ -5,6 +5,7 @@ from datetime import timedelta
 from io import BytesIO
 
 from django.conf import settings
+from django.core.cache import cache
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
@@ -12,24 +13,141 @@ from django.core.mail import send_mail
 from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.html import format_html_join
+from django.utils.html import format_html_join, strip_tags
 from wagtail.images import get_image_model
+from wagtailcache.cache import clear_cache
 from PIL import Image
 
-from .models import StaffMember, StaffPage, StaffProfileAccess, StaffProfileUpdate
+from .models import StaffEmployment, StaffEmploymentEvent, StaffMember, StaffPage, StaffPageSelection, StaffProfileAccess, StaffProfileUpdate
 
 
 INVITATION_LIFETIME = timedelta(hours=48)
 
 
+@transaction.atomic
+def change_staff_employment(member_id, administrator, status, effective_date, disable_account=False):
+    if not administrator.is_active or not administrator.is_superuser:
+        raise ValidationError("Only a superuser can offboard or reactivate staff.")
+    if status not in StaffEmployment.Status.values or effective_date > timezone.localdate():
+        raise ValidationError("Choose a valid status and an effective date no later than today.")
+    member = StaffMember.objects.select_for_update().get(pk=member_id)
+    employment = StaffEmployment.objects.filter(member=member).first()
+    previous_status = employment.status if employment else StaffEmployment.Status.ACTIVE
+    if previous_status == status or (previous_status != "active" and status != "active"):
+        raise ValidationError("This staff member's status has changed. Reload the page before continuing.")
+    access = StaffProfileAccess.objects.select_for_update().filter(member=member).first()
+    if disable_account and (status == "active" or not access or access.user_id == administrator.pk):
+        raise ValidationError("You cannot disable this account through this action.")
+    if not employment:
+        employment = StaffEmployment(member=member)
+    employment.status = status
+    employment.effective_date = effective_date
+    employment.save()
+    if access and status != "active":
+        access.invitation_digest = ""
+        access.save(update_fields=["invitation_digest"])
+        access.updates.filter(status__in=["draft", "submitted"]).update(
+            status=StaffProfileUpdate.Status.WITHDRAWN, reviewed_by=administrator,
+            reviewed_at=timezone.now(), reviewer_comment="Withdrawn because the staff member was offboarded.",
+        )
+        if disable_account:
+            User = get_user_model()
+            User.objects.filter(pk=access.user_id).update(is_active=False)
+    StaffEmploymentEvent.objects.create(
+        employment=employment, previous_status=previous_status, status=status,
+        effective_date=effective_date, actor=administrator, account_disabled=disable_account,
+    )
+    # Public team and homepage DG identity are cached independently of revisions.
+    transaction.on_commit(clear_cache)
+    transaction.on_commit(cache.clear)
+    return employment
+
+
+def biography_html(text):
+    return str(format_html_join("", "<p>{}</p>", ((part.strip(),) for part in text.split("\n\n") if part.strip())))
+
+
+def save_staff_portrait(name, photo_data):
+    with Image.open(BytesIO(bytes(photo_data))) as portrait:
+        width, height = portrait.size
+    image = get_image_model()(title=f"{name} — staff profile", width=width, height=height)
+    image.file.save(f"staff-{secrets.token_hex(12)}.jpg", ContentFile(bytes(photo_data)), save=False)
+    image.width, image.height = width, height
+    image.save()
+    return image
+
+
+@transaction.atomic
+def create_staff_member(data, administrator):
+    """Publish a new inline record without publishing unrelated page drafts."""
+    if not administrator.is_active or not administrator.is_superuser:
+        raise ValidationError("Only an administrator can add a staff member here.")
+    page = StaffPage.objects.select_for_update().get(pk=data["team_page"].pk)
+    if not page.permissions_for_user(administrator).can_publish():
+        raise ValidationError("You need permission to publish the Our Team page.")
+    if not page.live or page.has_unpublished_changes or page.locked:
+        raise ValidationError("The Our Team page is unpublished, locked, or has an unpublished draft. Resolve that draft or lock in Pages before adding a staff member here.")
+    if page.staffmembers.filter(name__iexact=data["name"], role__iexact=data["role"], department=data["department"]).exists():
+        raise ValidationError("A staff member with this name, job title and department already exists. Use the existing member in the invitation form instead.")
+    members = list(page.staffmembers.all())
+    member = StaffMember(
+        page=page, name=data["name"], role=data["role"], department=data["department"],
+        bio=biography_html(data["biography"]), website=data["website"], linkedin=data["linkedin"],
+        github=data["github"], publications=data["publications"],
+        sort_order=max((item.sort_order or 0 for item in members), default=-1) + 1,
+    )
+    if data.get("photo"):
+        member.photo = save_staff_portrait(member.name, data["photo"])
+    # Give the inline a stable ID before revision serialization. This insertion
+    # and the page publication are in one transaction and roll back together.
+    member.full_clean()
+    member.save()
+    page.staffmembers.set([*members, member])
+    selections = list(page.selected_staff.all())
+    page.selected_staff.add(StaffPageSelection(member=member, sort_order=max((entry.sort_order or 0 for entry in selections), default=-1) + 1))
+    page.save_revision(user=administrator).publish(user=administrator)
+    return member
+
+
+@transaction.atomic
+def edit_staff_member(member_id, data, administrator):
+    if not administrator.is_active or not administrator.is_superuser:
+        raise ValidationError("Only a superuser can edit official staff details.")
+    member = StaffMember.objects.select_for_update().get(pk=member_id)
+    if member_fingerprint(member) != data["source_fingerprint"]:
+        raise ValidationError("This profile changed while you were editing. Reload the form before saving.")
+    page = StaffPage.objects.select_for_update().get(pk=member.page_id)
+    if not page.permissions_for_user(administrator).can_publish() or not page.live or page.has_unpublished_changes or page.locked:
+        raise ValidationError("Resolve unpublished drafts or locks on the Our Team page before editing staff details.")
+    members = list(page.staffmembers.all())
+    member = next(item for item in members if item.pk == member_id)
+    for field in ["name", "role", "department", "website", "linkedin", "github", "publications"]:
+        setattr(member, field, data[field])
+    original_text = strip_tags((member.bio or "").replace("</p>", "\n\n")).strip()
+    if data["biography"] != original_text:
+        member.bio = biography_html(data["biography"])
+    if data.get("photo"):
+        member.photo = save_staff_portrait(member.name, data["photo"])
+    member.full_clean()
+    page.staffmembers.set(members)
+    page.save_revision(user=administrator).publish(user=administrator)
+    transaction.on_commit(clear_cache)
+    transaction.on_commit(cache.clear)
+    return member
+
+
 def member_fingerprint(member):
     values = [member.name, member.role, member.department_id, member.bio, member.photo_id, member.website, member.linkedin]
+    # Keep pre-upgrade pending submissions valid when all new fields are empty.
+    contact_fields = [member.github, member.publications, member.public_email]
+    if any(contact_fields):
+        values.extend(contact_fields)
     return hashlib.sha256(json.dumps(values).encode()).hexdigest()
 
 
 def invitation_valid(access, token):
     return bool(
-        access.user.is_active and access.invitation_digest and access.invited_at
+        access.user.is_active and access.member.is_current_staff and access.invitation_digest and access.invited_at
         and timezone.now() < access.invited_at + INVITATION_LIFETIME
         and secrets.compare_digest(access.invitation_digest, hashlib.sha256(token.encode()).hexdigest())
     )
@@ -41,6 +159,8 @@ def invite_staff(member, email, request):
     with transaction.atomic():
         # Serialize invitations for the same existing staff record.
         member = StaffMember.objects.select_for_update().get(pk=member.pk)
+        if not member.is_current_staff:
+            raise ValidationError("Former staff cannot be invited. Reactivate the staff profile first.")
         access = StaffProfileAccess.objects.filter(member=member).select_related("user").first()
         if access:
             if access.accepted_at or not access.user.is_active:
@@ -82,6 +202,10 @@ def invite_staff(member, email, request):
 def review_update(update_id, reviewer, action, comment):
     if not reviewer.is_active or not reviewer.has_perm("staff.review_staff_profiles"):
         raise ValidationError("You do not have permission to review staff profiles.")
+    member_id = StaffProfileUpdate.objects.values_list("access__member_id", flat=True).get(pk=update_id)
+    member = StaffMember.objects.select_for_update().get(pk=member_id)
+    if not member.is_current_staff:
+        raise ValidationError("Former staff submissions cannot be reviewed or published.")
     update = StaffProfileUpdate.objects.select_for_update().select_related("access__member", "access__user").get(pk=update_id)
     if update.status != StaffProfileUpdate.Status.SUBMITTED:
         raise ValidationError("This submission has already been reviewed or is not ready for review.")
@@ -101,17 +225,13 @@ def review_update(update_id, reviewer, action, comment):
         member = next((item for item in members if item.pk == update.access.member_id), None)
         if member is None or member_fingerprint(member) != update.source_fingerprint:
             raise ValidationError("The public profile changed after this draft was created. Request changes so the staff member can prepare a fresh submission.")
-        member.bio = str(format_html_join("", "<p>{}</p>", ((part.strip(),) for part in update.biography.split("\n\n") if part.strip())))
+        member.bio = biography_html(update.biography)
         member.website = update.website
         member.linkedin = update.linkedin
+        member.github = update.github
+        member.publications = update.publications
         if update.photo_data:
-            with Image.open(BytesIO(bytes(update.photo_data))) as portrait:
-                width, height = portrait.size
-            image = get_image_model()(title=f"{member.name} — staff profile", width=width, height=height)
-            image.file.save(f"staff-{member.pk}-{secrets.token_hex(8)}.jpg", ContentFile(bytes(update.photo_data)), save=False)
-            image.width, image.height = width, height
-            image.save()
-            member.photo = image
+            member.photo = save_staff_portrait(member.name, update.photo_data)
         page.staffmembers.set(members)
         page.save_revision(user=reviewer).publish(user=reviewer)
         update.status = StaffProfileUpdate.Status.APPROVED

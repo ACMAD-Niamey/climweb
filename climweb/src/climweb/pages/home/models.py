@@ -745,7 +745,10 @@ class HomePage(MetadataPageMixin, Page):
             })
         
         context['IS_METEOROLOGICAL'] = settings.IS_METEOROLOGICAL
-        context["dg_staff_member"] = self.dg_message_staff_member or StaffMember.objects.filter(
+        selected_dg = self.dg_message_staff_member
+        context["dg_staff_member"] = (selected_dg if selected_dg and selected_dg.is_current_staff else None) or StaffMember.objects.exclude(
+            employment__status__in=["retired", "left"]
+        ).filter(
             models.Q(role__icontains="Director General")
             | models.Q(name__icontains="Ousmane Ndiaye")
         ).select_related("photo").first()
