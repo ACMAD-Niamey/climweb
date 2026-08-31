@@ -72,6 +72,12 @@
                                                             {% if staffmember.bio %}
                                                                 <div class="staff-bio format-text">{{ staffmember.bio|richtext }}</div>
                                                             {% endif %}
+                                                            {% if staffmember.website or staffmember.linkedin %}
+                                                                <div class="staff-profile-links">
+                                                                    {% if staffmember.website %}<a href="{{ staffmember.website }}" target="_blank" rel="noopener noreferrer">{% translate "Website" %}</a>{% endif %}
+                                                                    {% if staffmember.linkedin %}<a href="{{ staffmember.linkedin }}" target="_blank" rel="noopener noreferrer">LinkedIn</a>{% endif %}
+                                                                </div>
+                                                            {% endif %}
                                                         </div>
                                                     </div>
                                                 </div>

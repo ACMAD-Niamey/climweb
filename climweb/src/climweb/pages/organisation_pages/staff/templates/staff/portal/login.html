@@ -1,0 +1,10 @@
+{% extends "staff/portal/base.html" %}
+{% block content %}
+<section class="portal-panel portal-narrow">
+    <h1>Staff sign in</h1>
+    <p>Use the work email address associated with your invitation.</p>
+    <form method="post">{% csrf_token %}{{ form.as_p }}<button class="portal-button" type="submit">Sign in</button></form>
+    <p><a href="{% url 'staff_portal:password_reset' %}">Forgot your password?</a></p>
+    <p>Accounts are invitation-only. Contact your website administrator if you need access.</p>
+</section>
+{% endblock %}

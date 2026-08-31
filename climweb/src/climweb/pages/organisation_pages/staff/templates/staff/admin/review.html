@@ -1,0 +1,27 @@
+{% extends "wagtailadmin/base.html" %}
+{% load static wagtailcore_tags wagtailimages_tags %}
+{% block titletag %}Review staff profile{% endblock %}
+{% block extra_css %}{{ block.super }}<link rel="stylesheet" href="{% static 'staff/css/portal.css' %}">{% endblock %}
+{% block content %}
+{% include "wagtailadmin/shared/header.html" with title="Review staff profile" icon="user" %}
+<div class="nice-padding staff-admin">
+    <p><a href="{% url 'staff_profile_dashboard' %}">← Staff Profiles</a></p>
+    <h2>{{ member.name }} — {{ member.role }}</h2>
+    <p>Status: {{ update.get_status_display }}</p>
+    <div class="portal-grid">
+        <section class="portal-panel"><h2>Current public profile</h2>
+            {% if member.photo %}{% image member.photo width-300 class="portal-photo" %}{% endif %}
+            <div>{{ member.bio|richtext }}</div>
+            <p>{{ member.website }}</p><p>{{ member.linkedin }}</p>
+        </section>
+        <section class="portal-panel"><h2>Submitted changes</h2>
+            {% if update.photo_data %}<img class="portal-photo" src="{% url 'staff_portal:photo' update.pk %}" alt="Submitted staff photo">{% else %}<p>Photo unchanged.</p>{% endif %}
+            <div class="portal-biography">{{ update.biography|linebreaksbr }}</div>
+            <p>{{ update.website }}</p><p>{{ update.linkedin }}</p>
+        </section>
+    </div>
+    {% if update.status == "submitted" %}
+        <section class="portal-panel"><form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit" class="button">Apply review decision</button></form></section>
+    {% else %}<p>{{ update.reviewer_comment|linebreaksbr }}</p>{% endif %}
+</div>
+{% endblock %}

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.db.models import Count
 from django.utils.functional import cached_property
@@ -82,6 +83,8 @@ class StaffMember(Orderable):
                             help_text=_("First and Last names of Staff member"))
     role = models.CharField(max_length=100, verbose_name=_("Staff member's role"),
                             help_text=_("The role/position of the Staff member"))
+    website = models.URLField(blank=True, verbose_name=_("Professional website"))
+    linkedin = models.URLField(blank=True, verbose_name=_("LinkedIn profile"))
     bio = RichTextField(features=SUMMARY_RICHTEXT_FEATURES, null=True, blank=True,
                         verbose_name=_("Staff member Biography"),
                         help_text=_("Optional Summary biography of the Staff member"))
@@ -102,7 +105,9 @@ class StaffMember(Orderable):
         FieldPanel("role"),
         FieldPanel("bio"),
         FieldPanel("department"),
-        FieldPanel("photo")
+        FieldPanel("photo"),
+        FieldPanel("website"),
+        FieldPanel("linkedin"),
     ]
 
     class Meta:
@@ -112,3 +117,47 @@ class StaffMember(Orderable):
 
     def __str__(self):
         return self.name
+
+
+class StaffProfileAccess(models.Model):
+    """Account ownership lives outside the page's revisioned inline records."""
+
+    member = models.OneToOneField(StaffMember, on_delete=models.CASCADE, related_name="profile_access")
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="staff_profile_access")
+    invitation_digest = models.CharField(max_length=64, blank=True)
+    invited_at = models.DateTimeField(null=True, blank=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return self.member.name
+
+
+class StaffProfileUpdate(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = "draft", _("Draft")
+        SUBMITTED = "submitted", _("Awaiting review")
+        APPROVED = "approved", _("Approved")
+        CHANGES_REQUESTED = "changes_requested", _("Changes requested")
+
+    access = models.ForeignKey(StaffProfileAccess, on_delete=models.CASCADE, related_name="updates")
+    biography = models.TextField(blank=True)
+    website = models.URLField(blank=True)
+    linkedin = models.URLField(blank=True)
+    # Keep unapproved photos out of the public media library. Limit and re-encode
+    # uploads in the form; the authenticated preview endpoint serves these bytes.
+    photo_data = models.BinaryField(blank=True, default=bytes)
+    status = models.CharField(max_length=24, choices=Status.choices, default=Status.DRAFT)
+    source_fingerprint = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="reviewed_staff_updates")
+    reviewer_comment = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        permissions = [("review_staff_profiles", "Can review staff profile submissions")]
+        constraints = [
+            models.UniqueConstraint(fields=["access"], condition=models.Q(status__in=["draft", "submitted"]), name="staff_one_open_profile_update"),
+        ]

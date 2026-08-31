@@ -123,6 +123,22 @@
     height: auto;
 }
 
+.staff-profile-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.staff-profile-links a {
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: var(--primary-color-lightest, #f3f7f5);
+    color: var(--primary-color, #307461);
+    font-size: 13px;
+    font-weight: 600;
+}
+
 @media (max-width: 1280px) {
     .staff-card .staff-figure {
         width: 110px;

@@ -1,0 +1,40 @@
+{% extends "wagtailadmin/base.html" %}
+{% load static %}
+{% block titletag %}Staff Profiles{% endblock %}
+{% block extra_css %}{{ block.super }}<link rel="stylesheet" href="{% static 'staff/css/portal.css' %}">{% endblock %}
+{% block content %}
+{% include "wagtailadmin/shared/header.html" with title="Staff Profiles" icon="user" %}
+<div class="nice-padding staff-admin">
+    <p>Invite staff to their own profile portal. Review changes before publishing them on the Our Team page.</p>
+    {% if console_email %}<div class="portal-notice">Local console email mode is enabled. Invitations are printed in the application terminal, not delivered to an inbox. Configure the SMTP email backend before inviting real staff.</div>{% endif %}
+    {% if user.is_superuser %}
+    <section class="portal-panel">
+        <h2>Invite a staff member / resend a pending invitation</h2>
+        <p>The account uses their work email as the login. They choose their own password through a single-use link valid for 48 hours. Resending invalidates the previous invitation.</p>
+        <form method="post">{% csrf_token %}{{ form.as_p }}<button class="button" type="submit">Send invitation</button></form>
+    </section>
+    {% endif %}
+    <section class="portal-panel">
+        <h2>Awaiting review</h2>
+        <div class="portal-table"><table class="listing"><thead><tr><th>Staff member</th><th>Submitted</th><th>Action</th></tr></thead><tbody>
+        {% for entry in submissions %}<tr><td>{{ entry.access.member.name }}</td><td>{{ entry.submitted_at }}</td><td><a href="{% url 'staff_profile_review' entry.pk %}">Review changes</a></td></tr>
+        {% empty %}<tr><td colspan="3">No submissions awaiting review.</td></tr>{% endfor %}
+        </tbody></table></div>
+    </section>
+    <section class="portal-panel">
+        <h2>Staff accounts</h2>
+        <div class="portal-table"><table class="listing"><thead><tr><th>Staff member</th><th>Email / login</th><th>Status</th><th>Last invitation</th></tr></thead><tbody>
+        {% for account in accounts %}<tr><td>{{ account.member.name }}</td><td>{{ account.user.email }}</td><td>{% if not account.user.is_active %}Disabled{% elif account.accepted_at %}Active{% else %}Invitation pending{% endif %}</td><td>{{ account.invited_at }}</td></tr>
+        {% empty %}<tr><td colspan="4">No accounts invited yet.</td></tr>{% endfor %}
+        </tbody></table></div>
+        <p>Staff sign in at <a href="{% url 'staff_portal:login' %}">{% url 'staff_portal:login' %}</a>. Administrators can disable an account in Settings → Users. Do not add CMS permissions to profile-only accounts.</p>
+    </section>
+    <section class="portal-panel">
+        <h2>Recent reviews</h2>
+        <div class="portal-table"><table class="listing"><thead><tr><th>Staff member</th><th>Status</th><th>Reviewer</th><th>Reviewed</th></tr></thead><tbody>
+        {% for entry in recent %}<tr><td><a href="{% url 'staff_profile_review' entry.pk %}">{{ entry.access.member.name }}</a></td><td>{{ entry.get_status_display }}</td><td>{{ entry.reviewed_by }}</td><td>{{ entry.reviewed_at }}</td></tr>
+        {% empty %}<tr><td colspan="4">No reviews yet.</td></tr>{% endfor %}
+        </tbody></table></div>
+    </section>
+</div>
+{% endblock %}
