@@ -14,21 +14,25 @@ from django.urls import reverse
 from django.utils import timezone
 from PIL import Image
 from wagtail.images import get_image_model
-from wagtail.models import GroupPagePermission
+from wagtail.models import GroupPagePermission, Page, Site
 
-from climweb.pages.home.tests.factories import get_or_create_homepage
+from climweb.pages.home.tests.factories import HomePageFactory, get_or_create_homepage
 from climweb.pages.organisation_pages.organisation.tests.factories import OrganisationIndexPageFactory
 from .factories import StaffPageFactory
 from ..forms import StaffProfileForm
 from ..models import Department, StaffEmployment, StaffMember, StaffPageSelection, StaffProfileAccess, StaffProfileUpdate
-from ..services import change_staff_employment, invite_staff, member_fingerprint, review_update
+from ..services import change_staff_employment, invite_staff, link_existing_staff_user, member_fingerprint, review_update
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend", AXES_ENABLED=False)
 class StaffPortalTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        home = get_or_create_homepage()
+        # CMS dashboard/explorer require one common tree root.
+        home = HomePageFactory(parent=Page.get_first_root_node())
+        site = Site.objects.get(is_default_site=True)
+        site.root_page = home
+        site.save()
         organisation = OrganisationIndexPageFactory(parent=home)
         cls.page = StaffPageFactory(parent=organisation)
         department = Department.objects.create(name="Research")
@@ -46,6 +50,155 @@ class StaffPortalTests(TestCase):
 
     def login_staff(self):
         self.client.force_login(self.user)
+
+    def unlinked_member(self):
+        return StaffMember.objects.create(page=self.page, name="Existing Account Staff", role="Scientist", department=self.member.department)
+
+    def test_link_existing_admin_preserves_password_groups_and_dashboard_access(self):
+        member = self.unlinked_member()
+        group = Group.objects.create(name="Existing admin group")
+        self.admin.groups.add(group)
+        password = self.admin.password
+        access = link_existing_staff_user(member.pk, self.admin.pk, self.admin)
+        self.admin.refresh_from_db()
+        self.assertEqual(self.admin.password, password)
+        self.assertTrue(self.admin.is_superuser)
+        self.assertTrue(self.admin.is_staff)
+        self.assertTrue(self.admin.groups.filter(pk=group.pk).exists())
+        self.assertFalse(access.profile_only)
+        self.assertEqual(access.linked_by, self.admin)
+        self.assertIsNotNone(access.linked_at)
+        self.assertEqual(access.invitation_digest, "")
+        self.assertEqual(len(mail.outbox), 0)
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.get("/cms-admin/").status_code, 200)
+        self.assertContains(self.client.get(reverse("staff_portal:profile")), member.name)
+        self.assertContains(self.client.get(reverse("staff_portal:profile")), "CMS dashboard")
+
+    def test_link_existing_editor_retains_permissions_and_can_login_by_email(self):
+        member = self.unlinked_member()
+        user = get_user_model().objects.create_user(username="legacy-editor", email="editor@example.test", password="Editor-safe-9274!")
+        permission = Permission.objects.get(codename="access_admin")
+        user.user_permissions.add(permission)
+        password = user.password
+        access = link_existing_staff_user(member.pk, user.pk, self.admin)
+        response = self.client.post(reverse("staff_portal:login"), {"username": "EDITOR@example.test", "password": "Editor-safe-9274!"})
+        self.assertRedirects(response, reverse("staff_portal:profile"))
+        user.refresh_from_db()
+        self.assertEqual(user.username, "legacy-editor")
+        self.assertEqual(user.password, password)
+        self.assertTrue(user.has_perm("wagtailadmin.access_admin"))
+        self.assertFalse(user.has_perm("staff.review_staff_profiles"))
+        self.assertEqual(self.client.get("/cms-admin/").status_code, 200)
+        self.assertFalse(access.profile_only)
+
+    def test_link_regular_account_does_not_grant_cms_permissions(self):
+        member = self.unlinked_member()
+        user = get_user_model().objects.create_user(username="existing-regular", email="regular@example.test")
+        user.set_unusable_password()
+        user.save()
+        access = link_existing_staff_user(member.pk, user.pk, self.admin)
+        user.refresh_from_db()
+        self.assertFalse(user.is_staff)
+        self.assertFalse(user.is_superuser)
+        self.assertFalse(user.has_usable_password())
+        self.assertFalse(user.has_perm("wagtailadmin.access_admin"))
+        self.client.force_login(user)
+        self.assertContains(self.client.get(reverse("staff_portal:profile")), member.name)
+        self.assertNotContains(self.client.get(reverse("staff_portal:profile")), "CMS dashboard")
+        self.assertFalse(access.profile_only)
+
+    def test_link_form_requires_confirmation_and_does_not_send_invitation(self):
+        member = self.unlinked_member()
+        self.client.force_login(self.admin)
+        url = reverse("staff_profile_link_user", args=[member.pk])
+        self.assertContains(self.client.get(reverse("staff_profile_dashboard")), url)
+        self.assertContains(self.client.get(url), "Link existing user")
+        self.assertFalse(StaffProfileAccess.objects.filter(member=member).exists())
+        response = self.client.post(url, {"user": self.admin.pk})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(StaffProfileAccess.objects.filter(member=member).exists())
+        response = self.client.post(url, {"user": self.admin.pk, "confirm": "on"})
+        self.assertRedirects(response, reverse("staff_profile_dashboard"))
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_link_rejects_disabled_duplicate_and_missing_email_accounts(self):
+        member = self.unlinked_member()
+        User = get_user_model()
+        disabled = User.objects.create_user(username="disabled-existing", email="disabled@example.test", is_active=False)
+        missing = User.objects.create_user(username="no-email")
+        duplicate = User.objects.create_user(username="duplicate-email", email=self.admin.email.upper())
+        for user in [disabled, missing, duplicate]:
+            with self.assertRaises(ValidationError):
+                link_existing_staff_user(member.pk, user.pk, self.admin)
+        self.assertFalse(StaffProfileAccess.objects.filter(member=member).exists())
+
+    def test_link_cannot_replace_existing_link_or_reuse_an_account(self):
+        member = self.unlinked_member()
+        with self.assertRaises(ValidationError):
+            link_existing_staff_user(self.member.pk, self.admin.pk, self.admin)
+        with self.assertRaises(ValidationError):
+            link_existing_staff_user(member.pk, self.user.pk, self.admin)
+        self.access.refresh_from_db()
+        self.assertEqual(self.access.user_id, self.user.pk)
+        self.assertTrue(self.access.profile_only)
+
+    def test_link_cannot_attach_former_staff(self):
+        member = self.unlinked_member()
+        self.offboard(member)
+        with self.assertRaises(ValidationError):
+            link_existing_staff_user(member.pk, self.admin.pk, self.admin)
+        self.assertFalse(StaffProfileAccess.objects.filter(member=member).exists())
+
+    def test_link_is_superuser_only_and_csrf_protected(self):
+        member = self.unlinked_member()
+        url = reverse("staff_profile_link_user", args=[member.pk])
+        with self.assertRaises(ValidationError):
+            link_existing_staff_user(member.pk, self.admin.pk, self.user)
+        reviewer = get_user_model().objects.create_user(username="link-reviewer")
+        reviewer.user_permissions.add(Permission.objects.get(codename="review_staff_profiles"), Permission.objects.get(codename="access_admin"))
+        self.client.force_login(reviewer)
+        response = self.client.post(url, {"user": self.admin.pk, "confirm": "on"})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse("wagtailadmin_home"))
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.admin)
+        self.assertEqual(client.post(url, {"user": self.admin.pk, "confirm": "on"}).status_code, 403)
+        self.assertFalse(StaffProfileAccess.objects.filter(member=member).exists())
+
+    def test_linked_admin_offboarding_preserves_cms_but_blocks_profile(self):
+        member = self.unlinked_member()
+        link_existing_staff_user(member.pk, self.admin.pk, self.admin)
+        self.offboard(member)
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.get("/cms-admin/").status_code, 200)
+        self.assertEqual(self.client.get(reverse("staff_portal:profile")).status_code, 403)
+        self.admin.refresh_from_db()
+        self.assertTrue(self.admin.is_active)
+
+    def test_linked_admin_cms_root_is_not_intercepted_by_profile_middleware(self):
+        from django.http import HttpResponse
+        from ..middleware import StaffPortalRestrictionMiddleware
+        member = self.unlinked_member()
+        link_existing_staff_user(member.pk, self.admin.pk, self.admin)
+        request = RequestFactory().get("/cms-admin/")
+        request.user = get_user_model().objects.get(pk=self.admin.pk)
+        # Also verify root pass-through independently of CMS page rendering.
+        middleware = StaffPortalRestrictionMiddleware(lambda request: HttpResponse("CMS root reached"))
+        self.assertEqual(middleware(request).content, b"CMS root reached")
+
+    def test_linked_existing_user_gets_my_profile_cms_menu(self):
+        from ..wagtail_hooks import MyStaffProfileMenuItem
+        item = MyStaffProfileMenuItem("My Staff Profile", reverse("staff_portal:profile"))
+        request = RequestFactory().get("/cms-admin/")
+        request.user = self.admin
+        self.assertFalse(item.is_shown(request))
+        member = self.unlinked_member()
+        link_existing_staff_user(member.pk, self.admin.pk, self.admin)
+        request.user = get_user_model().objects.get(pk=self.admin.pk)
+        self.assertTrue(item.is_shown(request))
+        self.offboard(member)
+        self.assertFalse(item.is_shown(request))
 
     def test_new_contact_fields_follow_review_and_do_not_change_login_email(self):
         self.login_staff()

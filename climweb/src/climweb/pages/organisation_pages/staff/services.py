@@ -8,6 +8,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.core.files.base import ContentFile
 from django.core.mail import send_mail
 from django.db import transaction
@@ -22,6 +23,35 @@ from .models import StaffEmployment, StaffEmploymentEvent, StaffMember, StaffPag
 
 
 INVITATION_LIFETIME = timedelta(hours=48)
+
+
+@transaction.atomic
+def link_existing_staff_user(member_id, user_id, administrator):
+    if not administrator.is_active or not administrator.is_superuser:
+        raise ValidationError("Only a superuser can link existing accounts.")
+    member = StaffMember.objects.select_for_update().get(pk=member_id)
+    if not member.is_current_staff:
+        raise ValidationError("Reactivate this staff profile before linking an account.")
+    User = get_user_model()
+    user = User.objects.select_for_update().get(pk=user_id)
+    if not user.is_active:
+        raise ValidationError("This account is disabled. Review its access in Settings → Users first.")
+    if not user.email:
+        raise ValidationError("This account needs a registered email address before it can be linked.")
+    validate_email(user.email)
+    if User.objects.filter(email__iexact=user.email).exclude(pk=user.pk).exists():
+        raise ValidationError("More than one account uses this email. Resolve the duplicate addresses in Settings → Users first.")
+    if StaffProfileAccess.objects.filter(member=member).exists():
+        raise ValidationError("This staff profile is already linked to an account. Existing links cannot be replaced here.")
+    if StaffProfileAccess.objects.filter(user=user).exists():
+        raise ValidationError("This account is already linked to another staff profile.")
+    now = timezone.now()
+    # Do not modify the User, password, flags, groups or permissions. Existing
+    # platform access remains governed by the platform's normal authorization.
+    return StaffProfileAccess.objects.create(
+        member=member, user=user, profile_only=False, accepted_at=now,
+        linked_at=now, linked_by=administrator,
+    )
 
 
 @transaction.atomic
@@ -169,7 +199,7 @@ def invite_staff(member, email, request):
                 raise ValidationError("This profile is already linked to another email address.")
         else:
             if User.objects.filter(email__iexact=email).exists() or User.objects.filter(**{f"{User.USERNAME_FIELD}__iexact": email}).exists():
-                raise ValidationError("An account already uses this email. Existing accounts are not automatically linked or given new permissions.")
+                raise ValidationError("An account already uses this email. Use Link existing user for this staff member instead of sending a new invitation.")
             user = User(**{User.USERNAME_FIELD: email})
             user.email = email
             user.is_active = True

@@ -16,6 +16,7 @@
     <section class="portal-panel" id="staff-invitation">
         <h2>Invite a staff member / resend a pending invitation</h2>
         <p>The account uses their work email as the login. They choose their own password through a single-use link valid for 48 hours. Resending invalidates the previous invitation.</p>
+        <p>Already registered on the platform? Use <strong>Link existing user</strong> beside their name below. This preserves their existing password and permissions.</p>
         <form method="post">{% csrf_token %}{{ form.as_p }}<button class="button" type="submit">Send invitation</button></form>
     </section>
     {% endif %}
@@ -35,7 +36,7 @@
         <tr>
             <td>{{ member.name }}</td>
             <td>{{ member.role }}{% if member.department %}<br>{{ member.department.name }}{% endif %}</td>
-            <td>{{ account.user.email|default:"—" }}</td>
+            <td>{{ account.user.email|default:"—" }}{% if account and not account.profile_only %}<small class="portal-help">Existing platform account · linked {{ account.linked_at }}<br>By {{ account.linked_by|default:"Deleted administrator" }}</small>{% endif %}</td>
             <td>{{ member.employment.get_status_display|default:"Current" }}{% if member.employment %}<br>{{ member.employment.effective_date }}{% endif %}</td>
             <td>{% if member.employment.status == "retired" or member.employment.status == "left" %}Profile access blocked{% elif not account %}Not invited{% elif not account.user.is_active %}Disabled{% elif account.accepted_at %}Active{% else %}Invitation pending{% endif %}</td>
             <td>{{ account.invited_at|default:"—" }}</td>
@@ -44,7 +45,7 @@
                 {% if member.employment.status == "retired" or member.employment.status == "left" %}
                     <a href="{% url 'staff_profile_reactivate' member.pk %}">Reactivate / history</a>
                 {% else %}
-                    {% if not account %}<a href="{% url 'staff_profile_dashboard' %}?member={{ member.pk }}#staff-invitation">Invite</a><br>{% endif %}
+                    {% if not account %}<a href="{% url 'staff_profile_dashboard' %}?member={{ member.pk }}#staff-invitation">Invite</a><br><a href="{% url 'staff_profile_link_user' member.pk %}">Link existing user</a><br>{% endif %}
                     <a href="{% url 'staff_profile_offboard' member.pk %}">Offboard / history</a>
                 {% endif %}
             </td>{% endif %}
@@ -52,7 +53,7 @@
         {% endwith %}
         {% empty %}<tr><td colspan="{% if user.is_superuser %}7{% else %}6{% endif %}">No staff members.</td></tr>{% endfor %}
         </tbody></table></div>
-        <p>Staff sign in at <a href="{% url 'staff_portal:login' %}">{% url 'staff_portal:login' %}</a>. Administrators can disable an account in Settings → Users. Do not add CMS permissions to profile-only accounts.</p>
+        <p>Staff sign in at <a href="{% url 'staff_portal:login' %}">{% url 'staff_portal:login' %}</a>. Linked existing users can also sign in through their usual platform login. Administrators can disable an account in Settings → Users. Do not add CMS permissions to profile-only accounts.</p>
     </section>
     <section class="portal-panel">
         <h2>Recent reviews</h2>

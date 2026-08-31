@@ -11,7 +11,7 @@ class StaffPortalRestrictionMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.user.is_authenticated and hasattr(request.user, "staff_profile_access"):
+        if request.user.is_authenticated and hasattr(request.user, "staff_profile_access") and request.user.staff_profile_access.profile_only:
             path = request.path_info
             admin_path = getattr(settings, "ADMIN_URL_PATH", "") or ""
             admin_root = "/" + admin_path.strip("/") + "/" if admin_path else None

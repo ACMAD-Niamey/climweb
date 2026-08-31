@@ -19,9 +19,9 @@ from django.utils.html import strip_tags
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
-from .forms import StaffAuthenticationForm, StaffCreateForm, StaffEditForm, StaffInvitationForm, StaffOffboardingForm, StaffReactivationForm, StaffPasswordResetForm, StaffProfileForm, StaffReviewForm
+from .forms import StaffAuthenticationForm, StaffCreateForm, StaffEditForm, StaffInvitationForm, StaffLinkUserForm, StaffOffboardingForm, StaffReactivationForm, StaffPasswordResetForm, StaffProfileForm, StaffReviewForm
 from .models import StaffEmploymentEvent, StaffMember, StaffProfileAccess, StaffProfileUpdate
-from .services import change_staff_employment, create_staff_member, edit_staff_member, invitation_valid, invite_staff, member_fingerprint, review_update
+from .services import change_staff_employment, create_staff_member, edit_staff_member, invitation_valid, invite_staff, link_existing_staff_user, member_fingerprint, review_update
 
 logger = logging.getLogger(__name__)
 
@@ -229,7 +229,7 @@ def dashboard(request):
             else:
                 messages.success(request, "Invitation sent. The staff member will choose their own password.")
                 return redirect("staff_profile_dashboard")
-    members = StaffMember.objects.select_related("department", "profile_access__user", "employment").order_by("name", "pk")
+    members = StaffMember.objects.select_related("department", "profile_access__user", "profile_access__linked_by", "employment").order_by("name", "pk")
     return render(request, "staff/admin/dashboard.html", {
         "form": form,
         "staff_members": members,
@@ -237,6 +237,31 @@ def dashboard(request):
         "submissions": StaffProfileUpdate.objects.filter(status="submitted").select_related("access__member"),
         "recent": StaffProfileUpdate.objects.filter(status__in=["approved", "changes_requested", "withdrawn"]).select_related("access__member", "reviewed_by")[:20],
     })
+
+
+@reviewer_required
+@require_http_methods(["GET", "POST"])
+def link_user(request, member_id):
+    if not request.user.is_superuser:
+        raise PermissionDenied
+    member = get_object_or_404(StaffMember.objects.select_related("profile_access__user", "profile_access__linked_by"), pk=member_id)
+    access = getattr(member, "profile_access", None)
+    form = StaffLinkUserForm(request.POST if request.method == "POST" else None)
+    eligible = member.is_current_staff and not access
+    if request.method == "POST":
+        if not eligible:
+            form.add_error(None, "This profile is already linked or is no longer current. Existing account links cannot be replaced here.")
+        elif form.is_valid():
+            try:
+                link_existing_staff_user(member.pk, form.cleaned_data["user"].pk, request.user)
+            except ValidationError as exc:
+                form.add_error(None, exc)
+            except IntegrityError:
+                form.add_error(None, "An account link was created by another request. Reload and check the staff list.")
+            else:
+                messages.success(request, "Existing account linked. Its password, permissions and platform access are unchanged. No password-setup invitation was sent.")
+                return redirect("staff_profile_dashboard")
+    return render(request, "staff/admin/link_user.html", {"member": member, "account": access, "form": form, "eligible": eligible})
 
 
 @reviewer_required

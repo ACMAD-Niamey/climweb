@@ -18,14 +18,35 @@ class StaffAuthenticationForm(AuthenticationForm):
     username = forms.EmailField(label="Work email", widget=forms.EmailInput(attrs={"autofocus": True, "autocomplete": "username"}))
 
     def clean_username(self):
-        return self.cleaned_data["username"].strip().lower()
-
+        email = self.cleaned_data["username"].strip().lower()
+        # Existing platform usernames need not be email addresses. Authenticate
+        # through the configured backend with the account's original username.
+        User = get_user_model()
+        matches = list(User.objects.filter(email__iexact=email, staff_profile_access__isnull=False)[:2])
+        if len(matches) > 1:
+            raise forms.ValidationError("Unable to sign in with this email. Contact your administrator.")
+        return matches[0].get_username() if matches else email
     def confirm_login_allowed(self, user):
         super().confirm_login_allowed(user)
         if not hasattr(user, "staff_profile_access"):
-            raise forms.ValidationError("This login is for invited staff profile accounts only.", code="invalid_login")
+            raise forms.ValidationError("This login is for linked staff profile accounts only.", code="invalid_login")
         if not user.staff_profile_access.member.is_current_staff:
             raise forms.ValidationError("This staff profile is no longer active. Contact your administrator.", code="inactive")
+
+
+class ExistingStaffUserField(forms.ModelChoiceField):
+    def label_from_instance(self, user):
+        name = user.get_full_name() or user.get_username()
+        return f"{name} — {user.email} (username: {user.get_username()})"
+
+
+class StaffLinkUserForm(forms.Form):
+    user = ExistingStaffUserField(
+        queryset=get_user_model().objects.filter(is_active=True, staff_profile_access__isnull=True).exclude(email="").order_by("email"),
+        label="Existing platform account",
+        help_text="Only active accounts not already linked to a staff profile are listed. Check the name, email and username carefully.",
+    )
+    confirm = forms.BooleanField(label="I have verified this account belongs to this staff member and understand that its registered email will be shown publicly.")
 
 
 class StaffPasswordResetForm(PasswordResetForm):
@@ -118,7 +139,7 @@ class StaffCreateForm(StaffProfileForm):
             else:
                 User = get_user_model()
                 if User.objects.filter(email__iexact=email).exists() or User.objects.filter(**{f"{User.USERNAME_FIELD}__iexact": email}).exists():
-                    self.add_error("email", "An account already uses this email address. Use a different email, or create the staff record without an invitation.")
+                    self.add_error("email", "An account already uses this email address. Create the staff record without an invitation, then choose Link existing user on Staff Profiles.")
                 data["email"] = email
         return data
 

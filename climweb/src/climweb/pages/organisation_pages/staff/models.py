@@ -188,6 +188,9 @@ class StaffProfileAccess(models.Model):
     invitation_digest = models.CharField(max_length=64, blank=True)
     invited_at = models.DateTimeField(null=True, blank=True)
     accepted_at = models.DateTimeField(null=True, blank=True)
+    profile_only = models.BooleanField(default=True)
+    linked_at = models.DateTimeField(null=True, blank=True)
+    linked_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="staff_accounts_linked")
 
     def __str__(self):
         return self.member.name

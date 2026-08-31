@@ -10,9 +10,10 @@ ordering and membership of the public team remain administrator-managed.
 Email icons use the linked user's registered email address, not an editable
 profile field.
 
-The portal is intentionally separate from the Wagtail CMS. It has only My Profile,
-Change password and Sign out navigation. It does not give staff permission to edit
-the shared Our Team page or browse the rest of the CMS.
+The portal is separate from the Wagtail CMS. Invitation-created accounts have
+only My Profile, Change password and Sign out navigation. Linking an existing
+platform account preserves its existing access without granting new CMS permissions;
+linked users who already have CMS access also see a CMS dashboard link.
 
 ## Create and invite a new staff member
 
@@ -54,7 +55,37 @@ do not create the person again. Use **Staff Profiles → Edit details** for exis
 - The email icon always uses the linked account's registered email. Without a
   linked account there is no email icon. Manage account emails under **Settings →
   Users**, checking the email-based username/login separately where necessary.
-  Linking an already existing platform account is still a separate planned feature.
+  Use **Link existing user** for an already registered account, as described below.
+
+## Link an existing platform user
+
+1. As a superuser, open **Staff Profiles** and find the staff member.
+2. Click **Link existing user**. It appears for current staff who have no linked
+   account yet. If you are creating the staff record first, leave **Send an
+   invitation** unchecked, save, then use this action.
+3. Select the existing account. Check its displayed name, registered email and
+   username against the actual person.
+4. Confirm that the account belongs to this staff member and that its email will
+   appear publicly. Click **Link existing user**.
+
+No password is changed, no invitation email is sent, and no groups, permissions,
+staff/superuser flags or existing platform access are changed. The dashboard
+records the linking administrator and timestamp. One account can belong to only
+one staff profile, and existing links cannot be replaced through this action.
+Disabled accounts, missing/invalid emails and duplicate registered email addresses
+must be resolved in Settings → Users before linking. Former staff must first be
+reactivated.
+
+Existing users can continue their normal platform sign-in and visit `/staff/profile/`.
+CMS users get a **My Staff Profile** menu item. Local-password users can also use
+their registered email and existing password at `/staff/login/`, even when their
+platform username is not an email address. External/SSO accounts retain their
+existing sign-in method; linking does not create a local password.
+
+Offboarding a linked existing user blocks the staff portal but retains their
+other platform access unless **Also disable the entire linked platform account**
+is explicitly selected. Invitation-created profile-only accounts retain their
+original restrictions, even if someone later grants them CMS permissions.
 
 The **Staff members** table includes saved staff records, even without a
 portal account. Such records show **Not invited**, with an **Invite** link for
@@ -109,7 +140,6 @@ Reactivation does not re-enable a disabled platform account. If appropriate,
 enable it separately under **Settings → Users** after checking its permissions.
 Cancelled invitations must be resent; withdrawn submissions are not reopened.
 An already activated, enabled account can use its existing password again.
-Existing platform-user linking remains a separate, not-yet-implemented workflow.
 
 ## Pilot: invite an existing staff member
 
@@ -141,9 +171,9 @@ deployed HTTPS website. This feature does not send invitations automatically.
 - Resend by selecting the same staff member and email in the invitation form.
 - If SMTP delivery fails, the passwordless account remains available for resend.
   Correct the email settings before trying again.
-- Existing accounts are not automatically linked or downgraded. This prevents
-  unintentionally repurposing an administrator account. Account transfer and email
-  correction need a separate, verified administrator procedure in a later phase.
+- Existing accounts are not automatically linked by the invitation form. Use
+  the explicit, superuser-only **Link existing user** action to preserve their
+  access. Transferring an already linked profile to another account is not supported.
 - Activated staff can use **Forgot your password?** or **Change password**.
   Password resets use Django's configured password-reset timeout. They are only
   emailed for active, password-enabled staff profile accounts.
@@ -164,7 +194,8 @@ normal Wagtail admin-access permission to a trusted communications reviewer.
 Their Wagtail group must also have Edit and Publish page permissions on the
 specific Our Team page; approval respects Wagtail's existing publish permission.
 Reviewers do not gain invitation/account-creation rights from that permission.
-Do not link a reviewer account to a profile-only staff account.
+Use **Link existing user** if a reviewer also needs a personal staff profile;
+do not turn an invitation-created profile-only account into a CMS reviewer.
 
 Only one draft or pending submission is allowed per account. Pending submissions
 cannot be edited. A request for changes closes the previous submission; the next
@@ -249,6 +280,10 @@ python manage.py shell -c 'from wagtailcache.cache import clear_cache; from djan
 
 Subsequent linked-account email changes invalidate public caches automatically.
 
+Migration `staff.0007_staff_existing_accounts` adds the access mode and linking
+audit fields. Existing invitation-created accounts remain profile-only by default.
+The migration does not automatically link anyone or change user permissions.
+
 Invitations and password-reset messages use the existing Django email settings:
 `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`,
 `EMAIL_USE_TLS` / `EMAIL_USE_SSL`, and `DEFAULT_FROM_EMAIL`. Use a verified sender
@@ -291,6 +326,6 @@ Test emails use Django's in-memory email backend, not real staff inboxes.
 ## Later phases
 
 - Email alerts for new submissions and review decisions; periodic update reminders.
-- Administrator-verified account linking, email changes and account transfers.
+- Administrator-verified account transfers and a dedicated email-change workflow.
 - Submission retention/cleanup and a richer text editor if required.
 - Optional dedicated portal theme settings and MFA for profile-only accounts.

@@ -15,6 +15,7 @@
     {% if user.is_authenticated %}
     <nav aria-label="Staff navigation">
         <a href="{% url 'staff_portal:profile' %}">My Profile</a>
+        {% if user.staff_profile_access and not user.staff_profile_access.profile_only and perms.wagtailadmin.access_admin %}<a href="{% url 'wagtailadmin_home' %}">CMS dashboard</a>{% endif %}
         <a href="{% url 'staff_portal:password_change' %}">Change password</a>
         <form method="post" action="{% url 'staff_portal:logout' %}">{% csrf_token %}<button type="submit">Sign out</button></form>
     </nav>
