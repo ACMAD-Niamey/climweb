@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from decimal import Decimal
 
 from django.conf import settings
 from django.utils import timezone
@@ -16,7 +17,11 @@ from climweb.pages.summer_school.tests.factories import (
     SummerSchoolPageFactory,
     SummerSchoolApplicationPageFactory,
 )
-from climweb.pages.home.models import canonical_public_page_url, get_significant_product_slides
+from climweb.pages.home.models import (
+    RegionalClimateCentre,
+    canonical_public_page_url,
+    get_significant_product_slides,
+)
 from .factories import get_or_create_homepage
 
 
@@ -47,6 +52,58 @@ class TestHomePage(WagtailPageTestCase):
         response = self.client.get(self.page.url)
 
         self.assertNotContains(response, 'class="section dg-message-section"')
+
+    def test_regional_climate_centres_are_managed_by_snippets(self):
+        RegionalClimateCentre.objects.all().delete()
+        RegionalClimateCentre.objects.create(
+            display_name="Editable RCC",
+            full_name="Editable Regional Climate Centre",
+            city="Test City",
+            country="Test Country",
+            website_url="https://rcc.example.com/",
+            status=RegionalClimateCentre.STATUS_DESIGNATED,
+            map_x=Decimal("80.0"),
+            map_y=Decimal("90.0"),
+            label_position=RegionalClimateCentre.LABEL_UPPER_RIGHT,
+            is_primary=True,
+            order=10,
+        )
+        RegionalClimateCentre.objects.create(
+            display_name="Hidden RCC",
+            full_name="Hidden Regional Climate Centre",
+            city="Hidden City",
+            country="Hidden Country",
+            website_url="https://hidden.example.com/",
+            status=RegionalClimateCentre.STATUS_DEMONSTRATION,
+            map_x=Decimal("100.0"),
+            map_y=Decimal("100.0"),
+            is_active=False,
+            order=20,
+        )
+
+        response = self.client.get(self.page.url)
+
+        self.assertContains(response, "Editable RCC")
+        self.assertContains(response, "Test City")
+        self.assertContains(response, "https://rcc.example.com/")
+        self.assertContains(response, "1 RCCs")
+        self.assertNotContains(response, "Hidden RCC")
+
+    def test_regional_climate_centre_exposes_marker_geometry(self):
+        centre = RegionalClimateCentre(
+            display_name="Geometry RCC",
+            full_name="Geometry Regional Climate Centre",
+            city="Map City",
+            country="Map Country",
+            website_url="https://geometry.example.com/",
+            map_x=Decimal("34.5"),
+            map_y=Decimal("15.9"),
+            label_position=RegionalClimateCentre.LABEL_UPPER_LEFT,
+        )
+
+        self.assertEqual(centre.marker_transform, "translate(34.5 15.9)")
+        self.assertEqual(centre.label_geometry["text_anchor"], "end")
+        self.assertEqual(centre.marker_title, "Geometry Regional Climate Centre — Map City, Map Country")
     
     def test_default_seo_image(self):
         self.assertEqual(self.page.get_meta_image(), self.page.hero_banner)

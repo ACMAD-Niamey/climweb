@@ -107,7 +107,7 @@ def clear_wagtailcache(request, page):
 
 
 @hooks.register('after_create_snippet')
-@hooks.register('after_create_snippet')
+@hooks.register('after_edit_snippet')
 @hooks.register('after_delete_snippet')
 def clear_cache_after_snippet_edit(request, snippet):
     clear_cache()

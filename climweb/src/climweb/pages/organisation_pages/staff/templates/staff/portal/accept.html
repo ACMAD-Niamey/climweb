@@ -1,0 +1,13 @@
+{% extends "staff/portal/base.html" %}
+{% block content %}
+<section class="portal-panel portal-narrow">
+    <h1>Set your password</h1>
+    {% if valid %}
+        <p>Choose a private password for your staff profile account. Do not share it.</p>
+        <form method="post">{% csrf_token %}{{ form.as_p }}<button class="portal-button" type="submit">Activate my account</button></form>
+    {% else %}
+        <p>This invitation has expired, was replaced, or has already been used. Ask your administrator to resend it, or sign in if you have already set your password.</p>
+        <a href="{% url 'staff_portal:login' %}">Staff sign in</a>
+    {% endif %}
+</section>
+{% endblock %}

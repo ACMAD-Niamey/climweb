@@ -36,6 +36,7 @@ DJANGO_ADMIN_URL_PATH = getattr(settings, "DJANGO_ADMIN_URL_PATH", None)
 CLIMWEB_ADDITIONAL_APPS = getattr(settings, "CLIMWEB_ADDITIONAL_APPS", [])
 
 urlpatterns = [
+    path("staff/", include("climweb.pages.organisation_pages.staff.urls")),
     path("documents/", include(wagtaildocs_urls)),
     
     path("", include("climweb.pages.home.urls")),

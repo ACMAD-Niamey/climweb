@@ -1,0 +1,29 @@
+{% load static i18n %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="same-origin">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{% block title %}ACMAD · Staff Profile{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'staff/css/portal.css' %}">
+</head>
+<body>
+<header class="portal-header">
+    <a href="{% url 'staff_portal:profile' %}">ACMAD <span>Staff Profile</span></a>
+    {% if user.is_authenticated %}
+    <nav aria-label="Staff navigation">
+        <a href="{% url 'staff_portal:profile' %}">My Profile</a>
+        {% if user.staff_profile_access and not user.staff_profile_access.profile_only and perms.wagtailadmin.access_admin %}<a href="{% url 'wagtailadmin_home' %}">CMS dashboard</a>{% endif %}
+        <a href="{% url 'staff_portal:password_change' %}">Change password</a>
+        <form method="post" action="{% url 'staff_portal:logout' %}">{% csrf_token %}<button type="submit">Sign out</button></form>
+    </nav>
+    {% endif %}
+</header>
+<main class="portal-main">
+    {% for message in messages %}<div role="status" class="portal-notice">{{ message }}</div>{% endfor %}
+    {% block content %}{% endblock %}
+</main>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{% extends "staff/portal/base.html" %}
+{% block content %}
+<section class="portal-panel portal-narrow">
+    <h1>{{ title }}</h1>
+    <form method="post">{% csrf_token %}{{ form.as_p }}<button class="portal-button" type="submit">{{ button_label }}</button></form>
+</section>
+{% endblock %}

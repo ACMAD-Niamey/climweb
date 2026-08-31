@@ -1,0 +1,41 @@
+{% extends "staff/portal/base.html" %}
+{% load wagtailimages_tags %}
+{% block content %}
+<h1>My Profile</h1>
+<p>Update your biography, photo and professional links. An administrator reviews changes before they appear on the website.</p>
+<div class="portal-grid">
+    <section class="portal-panel">
+        <h2>{{ member.name }}</h2>
+        <p>{{ member.role }}{% if member.department %} · {{ member.department.name }}{% endif %}</p>
+        {% if member.photo %}{% image member.photo width-300 class="portal-photo" %}{% endif %}
+        <p class="portal-help">Your name, official role and department are managed by the administrator.</p>
+        <p class="portal-help">Public email: {{ member.registered_email|default:"No account email linked" }}. This is your registered account email and cannot be changed here.</p>
+        {% if submitted %}
+            <div class="portal-notice">Awaiting review — your public profile has not changed.</div>
+            <h3>Submitted biography</h3>
+            <div class="portal-biography">{{ update.biography|linebreaksbr }}</div>
+            <p>{{ update.website }}</p><p>{{ update.linkedin }}</p>
+            <p>{{ update.github }}</p><p>{{ update.publications }}</p>
+        {% else %}
+            <form method="post" enctype="multipart/form-data">{% csrf_token %}
+                {{ form.as_p }}
+                <div class="portal-actions">
+                    <button class="portal-button portal-secondary" name="action" value="save" type="submit">Save draft</button>
+                    <button class="portal-button" name="action" value="submit" type="submit">Submit for review</button>
+                </div>
+            </form>
+        {% endif %}
+        {% if update.photo_data %}<h3>Draft photo</h3><img class="portal-photo" src="{% url 'staff_portal:photo' update.pk %}" alt="Your draft profile photo">{% endif %}
+    </section>
+    <aside class="portal-panel">
+        <h2>Recent activity</h2>
+        {% for entry in history %}
+            <article class="portal-history">
+                <strong>{{ entry.get_status_display }}</strong>
+                <p>{{ entry.updated_at|date:"d M Y H:i" }}</p>
+                {% if entry.reviewer_comment %}<p>{{ entry.reviewer_comment|linebreaksbr }}</p>{% endif %}
+            </article>
+        {% empty %}<p>No updates yet.</p>{% endfor %}
+    </aside>
+</div>
+{% endblock %}
