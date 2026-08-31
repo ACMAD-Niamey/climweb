@@ -51,7 +51,7 @@
     display: flex;
     align-items: center;
     min-height: 220px;
-    padding: 1rem 1.5rem;
+    padding: 0.75rem 1.5rem;
     position: relative;
     background: linear-gradient(135deg, var(--background-color) 0%, #f8f9fb 100%);
   }
@@ -391,7 +391,7 @@
   /* ── Responsive ───────────────────────────────────────────────── */
   @media (max-width: 1024px) {
     .met-banner {
-      padding: 2rem 2rem;
+      padding: 1rem 2rem;
     }
 
     .bottom-row {
@@ -410,7 +410,7 @@
   @media (max-width: 768px) {
     .met-banner {
       grid-template-columns: 1fr;
-      padding: 1.5rem 1.25rem;
+      padding: 1rem 1.25rem;
       min-height: unset;
     }
 
@@ -529,7 +529,7 @@
     /* Small mobile */
     @media (max-width: 480px) {
       .met-banner {
-        padding: 2.5rem 1rem;
+        padding: 1rem;
       }
 
       .met-title {
@@ -559,7 +559,7 @@
   <section class="section met-banner">
     {% endif %}
 
-    <div class="container met-banner-layout">
+    <div class="container met-banner-layout{% if not hero_updates %} met-banner-layout--no-updates{% endif %}">
       <div class="met-banner-copy">
 
         {% if self.pre_title %}
@@ -594,7 +594,7 @@
 
       </div>
 
-      {% include "home/section/hero_product_widget.html" %}
+      {% include "home/section/hero_updates_widget.html" %}
     </div>
 
   </section>

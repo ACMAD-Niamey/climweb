@@ -14,6 +14,7 @@
         {# met homepage redesign — card row + services strip styles #}
         <link rel="stylesheet" href="{% static 'css/home_redesign.css' %}">
         <link rel="stylesheet" href="{% static 'css/hero_product_widget.css' %}">
+        <link rel="stylesheet" href="{% static 'css/hero_updates_widget.css' %}?v=4">
     {% endif %}
     {% if page.show_weather_watch %}
         {# map-only styles — loaded only when the weather watch map section is enabled #}
@@ -382,18 +383,18 @@
     /* ── boot ── */
     $(document).ready(function () {
 
-      const heroProductCarousel = document.getElementById('hero-product-carousel');
+      const heroProductCarousel = document.getElementById('hero-updates-carousel');
       if (heroProductCarousel && typeof Glide !== 'undefined') {
         const slideCount = heroProductCarousel.querySelectorAll('.glide__slide').length;
         const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-        window.heroProductGlide = new Glide('#hero-product-carousel', {
+        window.heroProductGlide = new Glide('#hero-updates-carousel', {
           type: 'slider',
           perView: 1,
           gap: 0,
           rewind: true,
           autoplay: !reduceMotion && slideCount > 1 ? 7500 : false,
-          hoverpause: true,
+          hoverpause: false,
           animationDuration: reduceMotion ? 0 : 550,
           swipeThreshold: 60,
           dragThreshold: 80,
@@ -407,16 +408,28 @@
               control.tabIndex = active ? 0 : -1;
             });
           });
+          heroProductCarousel.querySelectorAll('.hero-product-dots button').forEach((dot, index) => {
+            dot.setAttribute('aria-current', index === window.heroProductGlide.index ? 'true' : 'false');
+          });
         };
 
         window.heroProductGlide.on(['mount.after', 'run.after'], syncHeroProductAccessibility);
         window.heroProductGlide.mount();
         syncHeroProductAccessibility();
 
-        heroProductCarousel.addEventListener('focusin', () => window.heroProductGlide.pause());
-        heroProductCarousel.addEventListener('focusout', () => {
-          if (!reduceMotion && slideCount > 1) window.heroProductGlide.play(7500);
-        });
+        const syncPlayback = () => {
+          if (reduceMotion || document.hidden || heroProductCarousel.matches(':hover') || heroProductCarousel.contains(document.activeElement)) {
+            window.heroProductGlide.pause();
+          } else if (slideCount > 1) {
+            window.heroProductGlide.play(7500);
+          }
+        };
+        heroProductCarousel.addEventListener('focusin', syncPlayback);
+        heroProductCarousel.addEventListener('focusout', () => setTimeout(syncPlayback, 0));
+        heroProductCarousel.addEventListener('mouseenter', syncPlayback);
+        heroProductCarousel.addEventListener('mouseleave', syncPlayback);
+        document.addEventListener('visibilitychange', syncPlayback);
+        syncPlayback();
       }
 
       const isSsrRendered = weatherWidgetWrapper.length
