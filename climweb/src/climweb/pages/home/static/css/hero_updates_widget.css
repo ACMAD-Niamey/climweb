@@ -1,0 +1,60 @@
+.hero-update-image {
+  position: relative;
+  height: 150px;
+  overflow: hidden;
+  background: var(--theme-header-dark);
+}
+.hero-update-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.hero-update-badge {
+  position: absolute;
+  bottom: 14px;
+  left: 20px;
+  padding: 5px 12px;
+  border-radius: max(4px, var(--border-radius));
+  background: var(--theme-surface);
+  color: var(--theme-primary);
+  font-size: .65rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.hero-update-placeholder {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  background: linear-gradient(125deg, var(--theme-header-dark), var(--theme-primary));
+}
+.hero-update-placeholder span:first-child { font-size: 2rem; font-weight: 800; letter-spacing: .12em; }
+.hero-update-placeholder span:last-child { font-size: .75rem; }
+.hero-update-body { display: flex; flex-direction: column; min-height: 140px; padding: 12px 18px 14px; }
+.hero-update-body .hero-update-date { margin: 0 0 8px; font-size: .68rem; color: var(--theme-muted); }
+.hero-update-body h2 { font-size: 1rem; line-height: 1.3; margin-bottom: 12px; }
+.hero-update-body h2 a { color: inherit; }
+.hero-update-body h2 a:hover { color: var(--theme-primary); }
+.hero-update-body h2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.hero-update-link { margin-top: auto; flex-shrink: 0; }
+.hero-updates-carousel { padding-bottom: 0; }
+.hero-update-controls { display: flex; align-items: center; justify-content: center; gap: 12px; padding-top: 8px; }
+.hero-update-controls .hero-product-dots { position: static; }
+.hero-update-controls .hero-product-dots button { min-width: 24px; height: 24px; background-clip: content-box; padding: 8px 0; }
+.hero-updates-carousel a:focus-visible, .hero-updates-carousel button:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 3px; }
+.met-banner-layout--no-updates { grid-template-columns: 1fr; }
+@media (max-width: 900px) {
+  .met-banner-layout { row-gap: 1.25rem; }
+  .hero-updates-carousel { width: 100%; max-width: min(560px, calc(100% - 70px)); margin-inline: auto; }
+}
+@media (max-width: 480px) {
+  .hero-updates-carousel { max-width: 100%; padding-bottom: 12px; }
+  .hero-updates-carousel .hero-product-arrows { bottom: 10px; }
+  .hero-update-image { height: 130px; }
+  .hero-update-controls { padding-inline: 36px; gap: 8px; }
+}

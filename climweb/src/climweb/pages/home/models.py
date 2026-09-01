@@ -443,9 +443,24 @@ class HomePage(MetadataPageMixin, Page):
     hero_featured_products = StreamField([
         ('product', blocks.PageChooserBlock(page_type=['products.ProductPage'])),
     ], null=True, blank=True, use_json_field=True, max_num=3,
-        verbose_name=_("Hero Featured Products"),
-        help_text=_("Choose up to three product families for the rotating hero card. "
+        verbose_name=_("Utility Navbar Products"),
+        help_text=_("Choose up to three product families for the rotating utility bar. "
                     "Their latest published items are shown in this order. Leave empty to use the defaults."))
+
+    hero_updates_mode = models.CharField(
+        max_length=10, default="automatic",
+        choices=[("automatic", _("Automatic")), ("manual", _("Manual"))],
+        verbose_name=_("Update selection"),
+        help_text=_("Automatic shows the nearest upcoming/ongoing event, then the newest news. "
+                    "Only public, published pages from this homepage are included."),
+    )
+    hero_featured_updates = StreamField([
+        ('news', blocks.PageChooserBlock(page_type=['news.NewsPage'])),
+        ('event', blocks.PageChooserBlock(page_type=['events.EventPage'])),
+    ], null=True, blank=True, use_json_field=True, max_num=3,
+        verbose_name=_("Selected updates"),
+        help_text=_("In Manual mode, choose and order up to three news or event pages. "
+                    "An empty selection hides the hero card. Edit titles, images and text on the original pages."))
 
     services_strip = StreamField([
         ('item', blocks.StructBlock([
@@ -551,7 +566,11 @@ class HomePage(MetadataPageMixin, Page):
         ], heading=_("Featured Products")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
         MultiFieldPanel([
             FieldPanel('hero_featured_products'),
-        ], heading=_("Hero Product Carousel")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
+        ], heading=_("Utility Navbar Products")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
+        MultiFieldPanel([
+            FieldPanel('hero_updates_mode'),
+            FieldPanel('hero_featured_updates'),
+        ], heading=_("Hero Latest Updates")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
         MultiFieldPanel([
             FieldPanel('services_strip'),
         ], heading=_("Services Strip")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
@@ -754,9 +773,46 @@ class HomePage(MetadataPageMixin, Page):
         ).select_related("photo").first()
         context["regional_climate_centres"] = RegionalClimateCentre.objects.filter(is_active=True)
         if settings.IS_METEOROLOGICAL:
-            selected_products = [block.value for block in self.hero_featured_products] if self.hero_featured_products else None
-            context["hero_significant_products"] = get_significant_product_slides(selected_products)
+            context["hero_updates"] = self.get_hero_updates(request)
         return context
+
+    def get_hero_updates(self, request=None):
+        """Use live database copies, never a chooser's stale/draft page instance."""
+        now = timezone.now()
+        news = NewsPage.objects.live().public().descendant_of(self).filter(
+            locale_id=self.locale_id, date__lte=now,
+        )
+        events = EventPage.objects.live().public().descendant_of(self).filter(locale_id=self.locale_id)
+        if self.hero_updates_mode == "manual":
+            selected_ids = [block.value.pk for block in self.hero_featured_updates if block.value]
+            eligible = {item.pk: item for item in news.filter(pk__in=selected_ids)}
+            eligible.update({item.pk: item for item in events.filter(pk__in=selected_ids)})
+            pages = [eligible[pk] for pk in dict.fromkeys(selected_ids) if pk in eligible][:3]
+        else:
+            # Include single-day events for their whole day; exclude finished multi-day events.
+            current_events = list(events.filter(
+                models.Q(date_to__gte=now)
+                | models.Q(date_to__isnull=True, date_from__date__gte=timezone.localdate())
+            ).order_by("date_from", "pk")[:3])
+            latest_news = list(news.order_by("-date", "-pk")[:3])
+            pages = (current_events[:1] + latest_news + current_events[1:])[:3]
+
+        slides = []
+        for item in pages:
+            is_event = isinstance(item, EventPage)
+            url = item.get_url(request=request)
+            if not url:
+                continue
+            slides.append({
+                "id": item.pk,
+                "title": item.title,
+                "kind": "event" if is_event else "news",
+                "date": item.date_from if is_event else item.date,
+                "end_date": item.date_to if is_event else None,
+                "image": item.get_meta_image(),
+                "url": canonical_public_page_url(url),
+            })
+        return slides
 
     @cached_property
     def partners(self):
