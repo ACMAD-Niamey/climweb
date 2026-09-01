@@ -79,7 +79,7 @@ class HeroUpdatesTests(WagtailPageTestCase):
         form = type(self.home).get_edit_handler().get_form_class()
         self.assertIn("hero_updates_mode", form.base_fields)
         self.assertIn("hero_featured_updates", form.base_fields)
-        self.assertNotIn("hero_featured_products", form.base_fields)
+        self.assertIn("hero_featured_products", form.base_fields)
         self.manual(*(self.news(-day) for day in range(1, 5)))
         with self.assertRaises(StreamBlockValidationError):
             self.home.hero_featured_updates.stream_block.clean(self.home.hero_featured_updates)

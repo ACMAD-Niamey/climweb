@@ -263,6 +263,33 @@ class TestHomePage(WagtailPageTestCase):
 
         self.assertEqual([slide["key"] for slide in slides], ["thunderstorm", "heat"])
 
+    def test_utility_navbar_rotates_latest_items_in_dashboard_order(self):
+        product_index = ProductIndexPageFactory(parent=self.page)
+        first_family = ProductPageFactory(parent=product_index, title="First utility family")
+        second_family = ProductPageFactory(parent=product_index, title="Second utility family")
+        first_item = ProductItemPageFactory(
+            parent=first_family, title="Latest first utility product", date=date(2026, 8, 30),
+        )
+        second_item = ProductItemPageFactory(
+            parent=second_family, title="Latest second utility product", date=date(2026, 8, 31),
+        )
+        ProductItemPageFactory(
+            parent=first_family, title="Older first utility product", date=date(2026, 8, 1),
+        )
+        self.page.hero_featured_products = [("product", second_family), ("product", first_family)]
+        self.page.save_revision().publish()
+
+        response = self.client.get(self.page.url)
+        content = response.content.decode()
+        header = content[content.index('<header class="site-header">'):content.index("</header>")]
+
+        self.assertContains(response, second_item.title)
+        self.assertContains(response, first_item.title)
+        self.assertNotContains(response, "Older first utility product")
+        self.assertLess(content.index(second_item.title), content.index(first_item.title))
+        self.assertNotIn("African Regional Climate Centre", header)
+        self.assertNotIn("Continental Multi-Hazard Advisory Centre", header)
+
 
 class TestHomeFeaturedSummerSchool(WagtailPageTestCase):
     """

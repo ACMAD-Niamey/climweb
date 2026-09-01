@@ -245,15 +245,84 @@ header {
 }
 
 .site-header-context {
+  position: relative;
+  display: block;
+  width: min(600px, 50vw);
+  height: 36px;
+  overflow: hidden;
   color: inherit;
   font-size: 0.76rem;
   letter-spacing: 0.025em;
   white-space: nowrap;
 }
 
-.site-header-context span {
-  margin-inline: 0.35rem;
-  opacity: 0.72;
+.site-header-product {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  overflow: hidden;
+  color: inherit;
+  visibility: hidden;
+  opacity: 0;
+  transform: perspective(400px) rotateX(-90deg);
+  transform-origin: center bottom;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-delay: var(--utility-product-delay);
+}
+
+.site-header-products--2 .site-header-product {
+  animation-name: utility-product-flip-2;
+  animation-duration: 8s;
+}
+.site-header-products--3 .site-header-product {
+  animation-name: utility-product-flip-3;
+  animation-duration: 12s;
+}
+
+.site-header-product:hover,
+.site-header-product:focus-visible {
+  color: #fff;
+  text-decoration: none;
+}
+
+.site-header-product-label {
+  flex: none;
+  color: var(--theme-accent, #f4c84a);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.site-header-product-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-header-products:hover .site-header-product,
+.site-header-products:focus-within .site-header-product {
+  animation-play-state: paused;
+}
+
+@keyframes utility-product-flip-2 {
+  0%, 40% { visibility: visible; opacity: 1; transform: perspective(400px) rotateX(0); }
+  45%, 100% { visibility: hidden; opacity: 0; transform: perspective(400px) rotateX(90deg); }
+}
+
+@keyframes utility-product-flip-3 {
+  0%, 27% { visibility: visible; opacity: 1; transform: perspective(400px) rotateX(0); }
+  31%, 100% { visibility: hidden; opacity: 0; transform: perspective(400px) rotateX(90deg); }
+}
+
+.site-header-products--1 .site-header-product {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  animation: none;
 }
 
 /* LOGO */
@@ -814,6 +883,11 @@ header {
   .site-header-utils {
     gap: 16px;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-header-product { display: none; animation: none; }
+  .site-header-product.is-first { display: flex; visibility: visible; opacity: 1; transform: none; }
 }
 
 @media (max-width: 560px) {

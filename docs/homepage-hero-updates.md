@@ -38,4 +38,8 @@ Apply migrations (`manage.py migrate`) and collect static assets
 the application and invalidate the homepage cache if the previous layout persists.
 Migration `home.0044` adds the configuration fields and defaults to Automatic.
 Existing hero product selections are retained in the database for reversibility,
-but their editor panel and the hero product widget are no longer displayed.
+and now drive the rotating product links in the top utility navbar. Editors manage
+their order under **Pages → Homepage → Utility Navbar Products**. Each link uses the
+latest published item from its selected product family; leaving the selection empty
+uses the three original significant-product defaults. The rotation pauses on hover
+or keyboard focus and shows only its first item when reduced motion is requested.

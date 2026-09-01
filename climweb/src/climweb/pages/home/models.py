@@ -443,8 +443,8 @@ class HomePage(MetadataPageMixin, Page):
     hero_featured_products = StreamField([
         ('product', blocks.PageChooserBlock(page_type=['products.ProductPage'])),
     ], null=True, blank=True, use_json_field=True, max_num=3,
-        verbose_name=_("Hero Featured Products"),
-        help_text=_("Choose up to three product families for the rotating hero card. "
+        verbose_name=_("Utility Navbar Products"),
+        help_text=_("Choose up to three product families for the rotating utility bar. "
                     "Their latest published items are shown in this order. Leave empty to use the defaults."))
 
     hero_updates_mode = models.CharField(
@@ -564,6 +564,9 @@ class HomePage(MetadataPageMixin, Page):
         MultiFieldPanel([
             FieldPanel('featured_products'),
         ], heading=_("Featured Products")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
+        MultiFieldPanel([
+            FieldPanel('hero_featured_products'),
+        ], heading=_("Utility Navbar Products")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
         MultiFieldPanel([
             FieldPanel('hero_updates_mode'),
             FieldPanel('hero_featured_updates'),

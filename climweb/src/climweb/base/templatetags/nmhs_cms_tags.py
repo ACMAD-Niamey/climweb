@@ -20,6 +20,29 @@ from django.utils.safestring import mark_safe
 register = template.Library()
 
 
+@register.simple_tag(takes_context=True)
+def utility_product_updates(context):
+    """Return the latest items for the homepage's utility-bar product choices."""
+    from climweb.pages.home.models import HomePage, get_significant_product_slides
+
+    request = context.get("request")
+    site = Site.find_for_request(request) if request else None
+    if not site:
+        return []
+
+    homepage = site.root_page.specific
+    if not isinstance(homepage, HomePage):
+        homepage = HomePage.objects.live().descendant_of(site.root_page, inclusive=True).first()
+    if not homepage:
+        return []
+
+    selected_products = (
+        [block.value for block in homepage.hero_featured_products if block.value]
+        if homepage.hero_featured_products else None
+    )
+    return get_significant_product_slides(selected_products)
+
+
 @register.simple_tag
 def cms_version():
     return __version__
