@@ -123,8 +123,36 @@ class ServicePage(AbstractBannerWithIntroPage):
     parent_page_types = ['services.ServiceIndexPage']
     subpage_types = ['flex_page.FlexPage', ]
     show_in_menus_default = True
+
+    introduction_title = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name=_("Introduction Title"),
+        help_text=_("Optional introduction section title"),
+    )
     
     service = models.OneToOneField(ServiceCategory, on_delete=models.PROTECT, verbose_name=_("Service"))
+
+    sector_heading = models.CharField(
+        max_length=180,
+        blank=True,
+        default="",
+        verbose_name=_("Sector section heading"),
+    )
+    sector_introduction = RichTextField(
+        blank=True,
+        default="",
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Sector section introduction"),
+    )
+    service_sectors = StreamField(
+        [("sector", local_blocks.SectorServiceBlock())],
+        blank=True,
+        null=True,
+        use_json_field=True,
+        verbose_name=_("Service sectors"),
+    )
     
     what_we_do_items = StreamField([
         ('what_we_do', base_blocks.WhatWeDoBlock()),
@@ -171,6 +199,11 @@ class ServicePage(AbstractBannerWithIntroPage):
     content_panels = Page.content_panels + [
         FieldPanel('service'),
         *AbstractBannerWithIntroPage.content_panels,
+        MultiFieldPanel([
+            FieldPanel("sector_heading"),
+            FieldPanel("sector_introduction"),
+            FieldPanel("service_sectors"),
+        ], heading=_("Sector-based service content")),
         MultiFieldPanel([
             FieldPanel('what_we_do_items'),
             FieldPanel('what_we_do_button_text'),
