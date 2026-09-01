@@ -20,6 +20,19 @@ from django.utils.safestring import mark_safe
 register = template.Library()
 
 
+@register.filter
+def public_page_url(page_or_url):
+    """Return a public URL without the internal restored HomePage slug."""
+    if not page_or_url:
+        return ""
+    url = getattr(page_or_url, "url", page_or_url)
+    if url == "/home-page" or url == "/home-page/":
+        return "/"
+    if isinstance(url, str) and url.startswith("/home-page/"):
+        return url[len("/home-page"):]
+    return url
+
+
 @register.simple_tag(takes_context=True)
 def utility_product_updates(context):
     """Return the latest items for the homepage's utility-bar product choices."""
