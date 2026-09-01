@@ -1,6 +1,9 @@
+import requests
+from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
-from django.utils.text import slugify
-from wagtail.models import Page
+from django.db.models import Q
+from wagtail.documents import get_document_model
+from wagtail.models import Collection, Page
 
 from climweb.base.models import ServiceCategory
 from climweb.pages.home.models import HomePage
@@ -11,16 +14,38 @@ from climweb.pages.services.models import ServiceIndexPage, ServicePage
 SERVICE_NAME = "Climate User Interface Platform"
 PAGE_TITLE = "African Continental User Interface Platform (CUIP)"
 CONTINENTAL_TOR_RECORD = {
+    "key": "continental-cuip-workshop-concept-note",
     "title": "Continental CUIP workshop concept note and adoption programme",
     "description": "Official 2022 ACMAD workshop record covering the development and adoption of sector TORs and rules of procedure.",
-    "url": "https://acmad.org/wp-content/uploads/2019/03/ConceptNoteUserInterfaceWorkshop.pdf",
+    "source_url": "https://acmad.org/wp-content/uploads/2019/03/ConceptNoteUserInterfaceWorkshop.pdf",
+    "filename": "continental-cuip-workshop-concept-note.pdf",
     "link_label": "View official PDF",
 }
 AGRICULTURE_DRR_TOR_RECORD = {
+    "key": "agriculture-drr-consultation-tor",
     "title": "Agriculture and DRR user-platform consultation TOR",
     "description": "Official French TOR for the 2024 Cameroon consultation and operationalization workshop; relevant to Agriculture and DRR.",
-    "url": "https://acmad.org/wp-content/uploads/2019/03/TDRs-Atelier-de-concertation-pour-mise-en-place-des-interfaces-utilisateursnotrackchange.pdf",
+    "source_url": "https://acmad.org/wp-content/uploads/2019/03/TDRs-Atelier-de-concertation-pour-mise-en-place-des-interfaces-utilisateursnotrackchange.pdf",
+    "filename": "agriculture-drr-user-platform-consultation-tor.pdf",
     "link_label": "View official PDF",
+}
+ANTICIPATORY_ACTION_TOR_RECORD = {
+    "key": "anticipatory-action-task-force-tor",
+    "title": "Anticipatory Action Task Force meeting TOR",
+    "description": "Official November 2023 TOR linked from the old Agriculture CUIP page for formalizing the regional anticipatory-action task force for food security.",
+    "source_url": "https://acmad.org/wp-content/uploads/2019/03/TDR_Task-Force-AA_SECAL_Reunion-Nov-2023_Final.pdf",
+    "filename": "anticipatory-action-task-force-food-security-tor.pdf",
+    "link_label": "View official PDF",
+}
+
+CUIP_DOCUMENTS = (
+    CONTINENTAL_TOR_RECORD,
+    AGRICULTURE_DRR_TOR_RECORD,
+    ANTICIPATORY_ACTION_TOR_RECORD,
+)
+
+LEGACY_DOCUMENT_URLS = {
+    "https://acmad.org/wp-content/uploads/2019/03/TOR-AGRICULTURE-CLIMATE-SERVICES-TECHNICAL-MEETING.pdf": ANTICIPATORY_ACTION_TOR_RECORD["key"],
 }
 
 PRODUCTS_BY_SECTOR = {
@@ -47,7 +72,17 @@ PRODUCTS_BY_SECTOR = {
 }
 
 
-def sector_content(products):
+def document_link(record, documents=None):
+    document = (documents or {}).get(record["key"])
+    return {
+        "title": record["title"],
+        "description": record["description"],
+        "url": document.url if document else record["source_url"],
+        "link_label": record["link_label"],
+    }
+
+
+def sector_content(products, documents=None):
     return [
         (
             "sector",
@@ -63,14 +98,17 @@ def sector_content(products):
                 "institutions": ["ACMAD", "Pan African Farmers' Organization (PAFO)", "AGRHYMET", "PROPAC", "CILSS", "FAO", "ICPAC", "SADC Climate Services Centre", "WFP", "FEWS NET", "Agricultural research and producer organisations"],
                 "rules_of_procedure": "",
                 "platform_composition": [],
-                "tor_documents": [CONTINENTAL_TOR_RECORD, AGRICULTURE_DRR_TOR_RECORD],
+                "tor_documents": [
+                    document_link(CONTINENTAL_TOR_RECORD, documents),
+                    document_link(AGRICULTURE_DRR_TOR_RECORD, documents),
+                ],
                 "products": products["agriculture"],
                 "external_tools": [],
                 "meetings": [
                     {
                         "title": "Technical meeting on climate services for agriculture",
                         "details": "Reference material from the original CUIP programme.",
-                        "url": "https://acmad.org/wp-content/uploads/2019/03/TOR-AGRICULTURE-CLIMATE-SERVICES-TECHNICAL-MEETING.pdf",
+                        "url": document_link(ANTICIPATORY_ACTION_TOR_RECORD, documents)["url"],
                     }
                 ],
             },
@@ -89,7 +127,7 @@ def sector_content(products):
                 "institutions": ["World Meteorological Organization", "Regional Climate-Health Network", "ACMAD", "OCEAC", "West African Health Organisation", "Africa Centres for Disease Control and Prevention", "AGRHYMET", "ICPAC", "SADC Climate Services Centre"],
                 "rules_of_procedure": "<ul><li>Chair elected from the ClimHealth Network</li><li>Secretariat provided by ACMAD</li><li>Meetings twice a year, with ad hoc meetings when required</li></ul>",
                 "platform_composition": ["WMO", "Regional Climate-Health Network", "ACMAD", "OCEAC", "West African Health Organisation", "Africa CDC", "AGRHYMET", "ICPAC", "SADC Climate Services Centre"],
-                "tor_documents": [CONTINENTAL_TOR_RECORD],
+                "tor_documents": [document_link(CONTINENTAL_TOR_RECORD, documents)],
                 "products": products["health"],
                 "external_tools": [
                     {
@@ -116,7 +154,7 @@ def sector_content(products):
                 "institutions": ["African Union Commission", "African Ministers' Council on Water", "Regional economic communities", "WMO", "WHO", "ACMAD", "UNESCO", "FAO", "African river-basin organisations and water networks"],
                 "rules_of_procedure": "",
                 "platform_composition": [],
-                "tor_documents": [CONTINENTAL_TOR_RECORD],
+                "tor_documents": [document_link(CONTINENTAL_TOR_RECORD, documents)],
                 "products": products["water"],
                 "external_tools": [],
                 "meetings": [],
@@ -136,7 +174,10 @@ def sector_content(products):
                 "institutions": ["African Union Commission", "Regional economic communities", "WMO", "WHO", "UNDRR", "OCHA", "IFRC", "IOM", "WFP", "ASECNA", "National disaster-management and meteorological agencies", "Humanitarian and civil-protection partners"],
                 "rules_of_procedure": "",
                 "platform_composition": [],
-                "tor_documents": [CONTINENTAL_TOR_RECORD, AGRICULTURE_DRR_TOR_RECORD],
+                "tor_documents": [
+                    document_link(CONTINENTAL_TOR_RECORD, documents),
+                    document_link(AGRICULTURE_DRR_TOR_RECORD, documents),
+                ],
                 "products": products["disaster-risk-reduction"],
                 "external_tools": [],
                 "meetings": [],
@@ -148,7 +189,15 @@ def sector_content(products):
 class Command(BaseCommand):
     help = "Create the editable CUIP service page and connect existing ACMAD products."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--download-documents",
+            action="store_true",
+            help="Download the audited CUIP PDFs into the Wagtail document library.",
+        )
+
     def handle(self, *args, **options):
+        documents = self._download_documents() if options["download_documents"] else {}
         service, _ = ServiceCategory.objects.get_or_create(
             name=SERVICE_NAME,
             defaults={"icon": "people-group", "order": 20},
@@ -193,13 +242,13 @@ class Command(BaseCommand):
                 ),
                 sector_heading="Climate services for priority sectors",
                 sector_introduction="<p>Choose a sector to explore its risks, services, partners, products and supporting resources.</p>",
-                service_sectors=sector_content(products),
+                service_sectors=sector_content(products, documents),
             )
             index.add_child(instance=page)
             page.save_revision().publish()
             self.stdout.write(self.style.SUCCESS(f'Created and published "{PAGE_TITLE}" at {page.url}.'))
         elif not page.service_sectors:
-            page.service_sectors = sector_content(products)
+            page.service_sectors = sector_content(products, documents)
             page.sector_heading = page.sector_heading or "Climate services for priority sectors"
             page.sector_introduction = page.sector_introduction or "<p>Choose a sector to explore its products and supporting resources.</p>"
             page.save_revision().publish()
@@ -207,7 +256,7 @@ class Command(BaseCommand):
         else:
             seeded_by_anchor = {
                 value["anchor"]: value
-                for _, value in sector_content(products)
+                for _, value in sector_content(products, documents)
             }
             raw_sectors = list(page.service_sectors.raw_data)
             tor_fields = (
@@ -239,6 +288,8 @@ class Command(BaseCommand):
                     for field in core_tor_fields:
                         value[field] = seeded[field]
                     changed = True
+                if documents:
+                    changed = self._replace_external_document_urls(value, documents) or changed
             if changed:
                 page.service_sectors = raw_sectors
                 page.save_revision().publish()
@@ -253,3 +304,71 @@ class Command(BaseCommand):
                     product.other_services.add(service)
                     linked.add(product.pk)
         self.stdout.write(self.style.SUCCESS(f"CUIP ready with four sectors and {len(linked)} linked product families."))
+
+    def _download_documents(self):
+        Document = get_document_model()
+        collection = Collection.objects.filter(name="CUIP Documents").first()
+        if not collection:
+            collection = Collection.get_first_root_node().add_child(name="CUIP Documents")
+
+        documents = {}
+        for record in CUIP_DOCUMENTS:
+            document = Document.objects.filter(
+                Q(title=record["title"]) | Q(file__endswith=record["filename"])
+            ).first()
+            if not document:
+                try:
+                    response = requests.get(
+                        record["source_url"],
+                        timeout=(10, 60),
+                        headers={"User-Agent": "ACMAD-ClimWeb/1.0"},
+                        allow_redirects=True,
+                    )
+                    response.raise_for_status()
+                    content = response.content
+                    if not content.startswith(b"%PDF-"):
+                        raise ValueError("source did not return a PDF")
+                    if len(content) > 20 * 1024 * 1024:
+                        raise ValueError("PDF exceeds the 20 MiB CUIP document limit")
+                    document = Document(title=record["title"], collection=collection)
+                    document.file.save(
+                        f"cuip/{record['filename']}",
+                        ContentFile(content),
+                        save=True,
+                    )
+                    document.tags.add("CUIP")
+                    self.stdout.write(f"Stored CUIP document: {record['title']}")
+                except (requests.RequestException, ValueError) as exc:
+                    self.stderr.write(f"CUIP document download skipped for {record['source_url']}: {exc}")
+                    continue
+            documents[record["key"]] = document
+        return documents
+
+    @staticmethod
+    def _replace_external_document_urls(sector, documents):
+        replacements = {
+            record["source_url"]: documents[record["key"]].url
+            for record in CUIP_DOCUMENTS
+            if record["key"] in documents
+        }
+        replacements.update(
+            {
+                url: documents[key].url
+                for url, key in LEGACY_DOCUMENT_URLS.items()
+                if key in documents
+            }
+        )
+        # Replace both document cards and meeting links while preserving all
+        # editor-authored titles, descriptions and ordering.
+        changed = False
+        for field in ("tor_documents", "meetings"):
+            for item in sector.get(field, []):
+                # ListBlock values are wrapped as {type, value, id} in raw
+                # StreamField data, but may also be plain dictionaries for
+                # newly seeded content.
+                value = item.get("value", item)
+                local_url = replacements.get(value.get("url"))
+                if local_url and value.get("url") != local_url:
+                    value["url"] = local_url
+                    changed = True
+        return changed

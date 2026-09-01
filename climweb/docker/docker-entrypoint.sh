@@ -84,8 +84,8 @@ run_setup_commands_if_configured() {
 
     # Create the editable CUIP service page after products have been restored or
     # imported. Existing dashboard content is never overwritten.
-    echo "python /climweb/web/src/climweb/manage.py seed_cuip_service"
-    /climweb/web/src/climweb/manage.py seed_cuip_service
+    echo "python /climweb/web/src/climweb/manage.py seed_cuip_service --download-documents"
+    /climweb/web/src/climweb/manage.py seed_cuip_service --download-documents
 
         # collect staticfiles
     if [ "$COLLECT_STATICFILES_ON_STARTUP" = "true" ]; then
