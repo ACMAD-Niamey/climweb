@@ -10,17 +10,19 @@
 
       {% utility_product_updates as utility_products %}
       {% if utility_products %}
-      <div class="site-header-context site-header-products site-header-products--{{ utility_products|length }}"
+      <div class="site-header-context site-header-products"
            aria-label="{% translate 'Latest products' %}">
-        {% for product in utility_products %}
-          {% cycle "0s" "4s" "8s" as utility_product_delay silent %}
-          <a class="site-header-product{% if forloop.first %} is-first{% endif %}"
-             href="{{ product.page_url }}"
-             style="--utility-product-delay: {{ utility_product_delay }}">
-            <span class="site-header-product-label">{% translate "Latest product" %}</span>
-            <span class="site-header-product-title">{{ product.item_title }}</span>
-          </a>
-        {% endfor %}
+        <span class="site-header-product-label">{% translate "Latest product" %}</span>
+        <div class="site-header-product-rotator site-header-product-rotator--{{ utility_products|length }}">
+          {% for product in utility_products %}
+            {% cycle "0s" "4s" "8s" as utility_product_delay silent %}
+            <a class="site-header-product{% if forloop.first %} is-first{% endif %}"
+               href="{{ product.page_url }}"
+               style="--utility-product-delay: {{ utility_product_delay }}">
+              <span class="site-header-product-title">{{ product.item_title }}</span>
+            </a>
+          {% endfor %}
+        </div>
       </div>
       {% endif %}
 

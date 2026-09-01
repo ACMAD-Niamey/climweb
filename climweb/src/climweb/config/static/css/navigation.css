@@ -246,7 +246,9 @@ header {
 
 .site-header-context {
   position: relative;
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   width: min(600px, 50vw);
   height: 36px;
   overflow: hidden;
@@ -256,12 +258,19 @@ header {
   white-space: nowrap;
 }
 
+.site-header-product-rotator {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 36px;
+  overflow: hidden;
+}
+
 .site-header-product {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
-  gap: 0.45rem;
   overflow: hidden;
   color: inherit;
   visibility: hidden;
@@ -273,10 +282,12 @@ header {
   animation-delay: var(--utility-product-delay);
 }
 
+.site-header-product-rotator--2 .site-header-product,
 .site-header-products--2 .site-header-product {
   animation-name: utility-product-flip-2;
   animation-duration: 8s;
 }
+.site-header-product-rotator--3 .site-header-product,
 .site-header-products--3 .site-header-product {
   animation-name: utility-product-flip-3;
   animation-duration: 12s;
@@ -304,7 +315,9 @@ header {
 }
 
 .site-header-products:hover .site-header-product,
-.site-header-products:focus-within .site-header-product {
+.site-header-products:focus-within .site-header-product,
+.site-header-product-rotator:hover .site-header-product,
+.site-header-product-rotator:focus-within .site-header-product {
   animation-play-state: paused;
 }
 
@@ -318,6 +331,7 @@ header {
   31%, 100% { visibility: hidden; opacity: 0; transform: perspective(400px) rotateX(90deg); }
 }
 
+.site-header-product-rotator--1 .site-header-product,
 .site-header-products--1 .site-header-product {
   visibility: visible;
   opacity: 1;

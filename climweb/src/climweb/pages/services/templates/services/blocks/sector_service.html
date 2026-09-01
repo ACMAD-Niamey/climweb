@@ -1,0 +1,139 @@
+{% load i18n wagtailcore_tags wagtailimages_tags wagtailiconchooser_tags %}
+<article id="{{ value.anchor }}" class="sector-panel">
+    <header class="sector-panel__header">
+        {% if value.icon %}<span class="sector-panel__icon">{% svg_icon name=value.icon %}</span>{% endif %}
+        <div>
+            <p class="sector-panel__label">{% translate "Sector" %}</p>
+            <h3>{{ value.title }}</h3>
+            <p>{{ value.summary }}</p>
+        </div>
+    </header>
+
+    <section class="sector-panel__tor" aria-labelledby="{{ value.anchor }}-tor-heading">
+        <div class="sector-panel__tor-heading">
+            <div>
+                <p>{% translate "Governance framework" %}</p>
+                <h4 id="{{ value.anchor }}-tor-heading">{% translate "Terms of Reference" %}</h4>
+            </div>
+            <span>{% translate "Aim · risks · services · activities" %}</span>
+        </div>
+
+        {% if value.aim %}
+            <div class="sector-panel__aim format-text">{{ value.aim|richtext }}</div>
+        {% endif %}
+
+        <div class="sector-panel__details">
+        {% if value.risks %}
+            <section>
+                <h4>{% translate "Key climate risks" %}</h4>
+                <ul>{% for item in value.risks %}<li>{{ item }}</li>{% endfor %}</ul>
+            </section>
+        {% endif %}
+        {% if value.climate_services %}
+            <section>
+                <h4>{% translate "Climate services" %}</h4>
+                <ul>{% for item in value.climate_services %}<li>{{ item }}</li>{% endfor %}</ul>
+            </section>
+        {% endif %}
+        {% if value.activities %}
+            <section>
+                <h4>{% translate "Activities and outcomes" %}</h4>
+                <ul>{% for item in value.activities %}<li>{{ item }}</li>{% endfor %}</ul>
+            </section>
+        {% endif %}
+        {% if value.institutions %}
+            <section>
+                <h4>{% translate "Participating institutions" %}</h4>
+                <ul>{% for item in value.institutions %}<li>{{ item }}</li>{% endfor %}</ul>
+            </section>
+        {% endif %}
+        </div>
+
+        {% if value.rules_of_procedure or value.platform_composition %}
+            <div class="sector-panel__governance">
+                {% if value.rules_of_procedure %}
+                    <section>
+                        <h4>{% translate "Rules of procedure" %}</h4>
+                        <div class="format-text">{{ value.rules_of_procedure|richtext }}</div>
+                    </section>
+                {% endif %}
+                {% if value.platform_composition %}
+                    <section>
+                        <h4>{% translate "Platform composition" %}</h4>
+                        <ul>{% for item in value.platform_composition %}<li>{{ item }}</li>{% endfor %}</ul>
+                    </section>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        {% if value.tor_documents %}
+            <div class="sector-panel__tor-documents">
+                <h4>{% translate "TOR documents and adoption records" %}</h4>
+                <div>
+                    {% for document in value.tor_documents %}
+                        <a class="sector-tor-document" href="{{ document.url }}" target="_blank" rel="noopener noreferrer">
+                            <span class="sector-tor-document__icon">{% svg_icon name="doc-full" %}</span>
+                            <span>
+                                <strong>{{ document.title }}</strong>
+                                {% if document.description %}<small>{{ document.description }}</small>{% endif %}
+                                <em>{{ document.link_label }} ↗</em>
+                            </span>
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </section>
+
+    {% if value.products %}
+        <section class="sector-panel__products">
+            <div class="sector-panel__section-heading">
+                <h4>{% translate "Related ACMAD products" %}</h4>
+                <a href="/products/">{% translate "Explore all products" %}</a>
+            </div>
+            <div class="sector-product-grid">
+                {% for product in value.products %}
+                    <a class="sector-product-card" href="{% pageurl product %}">
+                        {% if product.listing_image %}
+                            {% image product.listing_image fill-640x360 as product_image %}
+                            <img src="{{ product_image.url }}" alt="">
+                        {% endif %}
+                        <span class="sector-product-card__content">
+                            <strong>{{ product.title }}</strong>
+                            <span>{% translate "View product" %} →</span>
+                        </span>
+                    </a>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+
+    {% if value.external_tools or value.meetings %}
+        <div class="sector-panel__resources">
+            {% if value.external_tools %}
+                <section>
+                    <h4>{% translate "Tools and resources" %}</h4>
+                    {% for tool in value.external_tools %}
+                        <a class="sector-resource" href="{{ tool.url }}" target="_blank" rel="noopener noreferrer">
+                            <strong>{{ tool.title }}</strong>
+                            {% if tool.description %}<span>{{ tool.description }}</span>{% endif %}
+                            <em>{{ tool.link_label }} ↗</em>
+                        </a>
+                    {% endfor %}
+                </section>
+            {% endif %}
+            {% if value.meetings %}
+                <section>
+                    <h4>{% translate "Meetings and activities" %}</h4>
+                    {% for meeting in value.meetings %}
+                        {% if meeting.url %}<a class="sector-resource" href="{{ meeting.url }}" target="_blank" rel="noopener noreferrer">{% else %}<div class="sector-resource">{% endif %}
+                            <strong>{{ meeting.title }}</strong>
+                            {% if meeting.details %}<span>{{ meeting.details }}</span>{% endif %}
+                            {% if meeting.url %}<em>{% translate "View document" %} ↗</em>{% endif %}
+                        {% if meeting.url %}</a>{% else %}</div>{% endif %}
+                    {% endfor %}
+                </section>
+            {% endif %}
+        </div>
+    {% endif %}
+</article>

@@ -3,6 +3,41 @@
 
 }
 
+/* Keep every service introduction visually connected to the page banner. */
+.service_page .service-introduction {
+    margin: 0;
+    padding: 1.75rem 0 1.25rem;
+}
+
+.service_page .service-introduction .intro-section {
+    padding: 0;
+}
+
+.service_page .service-introduction .title:first-child {
+    margin-top: 0;
+}
+
+.service_page .service-introduction .intro-description > :last-child,
+.service_page .service-introduction .intro-body > :last-child {
+    margin-bottom: 0;
+}
+
+/* The first content block should follow the introduction without a large void. */
+.service_page .service-introduction + section {
+    margin-top: 0;
+    padding-top: 2rem;
+}
+
+@media screen and (max-width: 768px) {
+    .service_page .service-introduction {
+        padding: 1.25rem 0 1rem;
+    }
+
+    .service_page .service-introduction + section {
+        padding-top: 1.5rem;
+    }
+}
+
 .more-container {
     display: flex;;
     justify-content: space-between;
