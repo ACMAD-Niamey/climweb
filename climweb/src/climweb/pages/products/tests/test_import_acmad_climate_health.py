@@ -81,13 +81,14 @@ class TestClimateHealthSources(SimpleTestCase):
 
         assets = parse_media_inventory(payload)
 
-        self.assertEqual(len(assets), 4)
+        self.assertEqual(len(assets), 5)
         self.assertEqual(
             {asset["key"] for asset in assets},
             {
                 "weekly-meningitis-bulletin",
                 "climate-health-technical-note",
                 "relative-humidity-forecast",
+                "meningitis-outlook-verification-report",
             },
         )
         dated_bulletin = next(
@@ -103,6 +104,13 @@ class TestClimateHealthSources(SimpleTestCase):
             if asset["filename"] == "ACMAD_Meningitis_Bulletin_15_2022.pdf"
         )
         self.assertEqual(weekly_bulletin["date"], date(2022, 4, 26))
+        verification_report = next(
+            asset
+            for asset in assets
+            if asset["key"] == "meningitis-outlook-verification-report"
+        )
+        self.assertEqual(verification_report["date"], date(2024, 4, 8))
+        self.assertEqual(verification_report["kind"], "document")
 
     def test_known_health_images_use_product_issue_dates(self):
         payload = [
