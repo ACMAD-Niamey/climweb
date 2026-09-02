@@ -333,7 +333,7 @@ class ServicePage(AbstractBannerWithIntroPage):
 
 class OnTheJobTrainingPage(AbstractBannerWithIntroPage):
     template = "services/on_the_job_training_page.html"
-    parent_page_types = ["services.ServicePage"]
+    parent_page_types = ["home.HomePage", "services.ServicePage"]
     subpage_types = []
     show_in_menus_default = True
 
