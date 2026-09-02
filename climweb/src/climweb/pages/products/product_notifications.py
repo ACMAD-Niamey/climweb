@@ -55,7 +55,7 @@ def _get_email_context():
         org = OrganisationSetting.for_site(site)
         if org.logo:
             logo_url = org.logo.get_rendition("max-200x100").url
-            context["logo_url"] = f"{site.root_url.rstrip('/')}{logo_url}"
+            context["logo_url"] = _public_url(logo_url)
             
         if org.social_media_accounts:
             context["social_media"] = [
@@ -70,8 +70,18 @@ def _get_email_context():
 
 
 def _public_url(path):
+    if not path:
+        return ""
+    if str(path).startswith(("http://", "https://", "//")):
+        return str(path)
     site = Site.objects.filter(is_default_site=True).first()
-    return f"{site.root_url.rstrip('/')}{path}" if site else path
+    if not site:
+        return str(path)
+    root_url = site.root_url.rstrip("/")
+    path_str = str(path)
+    if not path_str.startswith("/"):
+        path_str = f"/{path_str}"
+    return f"{root_url}{path_str}"
 
 
 def _source_filename(source_import):
@@ -79,8 +89,12 @@ def _source_filename(source_import):
 
 
 def _product_url(source_import):
-    if source_import.product_item_page_id:
-        return _public_url(source_import.product_item_page.url)
+    if source_import.product_item_page_id and source_import.product_item_page:
+        page = source_import.product_item_page
+        if page.full_url:
+            return _public_url(page.full_url)
+        if page.url:
+            return _public_url(page.url)
     return source_import.source_url
 
 
