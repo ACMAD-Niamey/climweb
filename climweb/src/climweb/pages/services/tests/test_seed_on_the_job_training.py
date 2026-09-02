@@ -54,3 +54,19 @@ class TestSeedOnTheJobTraining(WagtailPageTestCase):
         page.refresh_from_db()
 
         self.assertEqual(page.location, "Editor supplied location")
+
+    def test_admin_edit_page_renders_successfully(self):
+        from django.contrib.auth import get_user_model
+
+        user = get_user_model().objects.create_superuser(
+            username="admin_test",
+            email="admin@test.com",
+            password="password",
+        )
+        call_command("seed_on_the_job_training", stdout=StringIO())
+        page = OnTheJobTrainingPage.objects.get(slug="on-the-job-training")
+        self.client.force_login(user)
+        response = self.client.get(f"/cms-admin/pages/{page.id}/edit/")
+        self.assertEqual(response.status_code, 200)
+
+

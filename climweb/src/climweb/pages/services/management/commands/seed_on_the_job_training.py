@@ -83,8 +83,8 @@ class Command(BaseCommand):
                 "early-warning and AI skills; supporting ACMAD-NMHS product co-production; and building a continent-wide practitioner network.</p>"
             ),
             eligibility=(
-                "<p><strong>On-the-Job Training:</strong> junior to mid-career NMHS professionals.<br>"
-                "<strong>Secondment:</strong> mid-career NMHS professionals and experts involved in WMO programmes.</p>"
+                "<p><strong>On-the-Job Training:</strong> junior to mid-career NMHS professionals.</p>"
+                "<p><strong>Secondment:</strong> mid-career NMHS professionals and experts involved in WMO programmes.</p>"
             ),
             duration="On-the-Job Training: 2-6 months · Secondment: 1-12 months",
             location="ACMAD Headquarters, Niamey, Niger",
