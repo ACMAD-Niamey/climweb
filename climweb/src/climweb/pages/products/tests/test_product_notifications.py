@@ -228,6 +228,32 @@ class TestProductNotifications(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, ["active@example.com"])
 
+    def test_public_url_and_product_url_do_not_duplicate_base_url(self):
+        from climweb.pages.products.product_notifications import _public_url, _product_url
+        from unittest.mock import MagicMock
+        from wagtail.models import Site
+
+        # Relative path
+        self.assertTrue(_public_url("/products/test/").endswith("/products/test/"))
+        self.assertFalse(_public_url("/products/test/").startswith("http://http://"))
+
+        # Explicit site passed
+        site = Site.objects.filter(is_default_site=True).first()
+        self.assertTrue(_public_url("/products/test/", site=site).endswith("/products/test/"))
+
+        # Already absolute URL
+        absolute_url = "https://new.acmad.org/products/sample-product/"
+        self.assertEqual(_public_url(absolute_url), absolute_url)
+
+        # Source import with product item page returning absolute URL
+        mock_page = MagicMock()
+        mock_page.full_url = "https://new.acmad.org/products/sample-product/"
+        mock_page.url = "https://new.acmad.org/products/sample-product/"
+        mock_import = MagicMock()
+        mock_import.product_item_page_id = 123
+        mock_import.product_item_page = mock_page
+        self.assertEqual(_product_url(mock_import), "https://new.acmad.org/products/sample-product/")
+
     @patch("climweb.pages.products.tasks.send_product_notification.delay")
     def test_dashboard_can_queue_latest_product_notification(self, delay):
         user = get_user_model().objects.create_superuser(
