@@ -71,6 +71,7 @@ HOME_SUBPAGE_TYPES = [
     'dashboards.DashboardGalleryPage',
     'summer_school.SummerSchoolIndexPage',
     'products.ProductSubscriptionPage',
+    'services.OnTheJobTrainingPage',
 ]
 
 SIGNIFICANT_PRODUCT_SPECS = (

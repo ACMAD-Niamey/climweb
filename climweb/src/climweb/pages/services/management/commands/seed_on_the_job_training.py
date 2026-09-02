@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
-from wagtail.models import Page
+from wagtail.models import Page, Site
 
+from climweb.pages.home.models import HomePage
 from climweb.pages.services.models import OnTheJobTrainingPage, ServicePage
 
 
@@ -53,31 +54,40 @@ class Command(BaseCommand):
     help = "Create the editable On-the-Job Training and Secondment Programme page."
 
     def handle(self, *args, **options):
-        parent = ServicePage.objects.filter(slug="capacity-building").first()
+        site = Site.objects.filter(is_default_site=True).first()
+        parent = site.root_page.specific if site and site.root_page else HomePage.objects.first()
         if not parent:
-            self.stderr.write("Capacity Development service page was not found; training page creation was deferred.")
+            parent = HomePage.objects.first()
+        if not parent:
+            self.stderr.write("Home page was not found; training page creation was deferred.")
             return
 
-        existing = Page.objects.child_of(parent).filter(slug="on-the-job-training").first()
+        existing = OnTheJobTrainingPage.objects.filter(slug="on-the-job-training").first()
         if existing:
-            if isinstance(existing.specific, OnTheJobTrainingPage):
-                self.stdout.write("On-the-Job Training page already exists; dashboard content was preserved.")
+            if existing.get_parent().id != parent.id:
+                existing.move(parent, pos="last-child")
+                existing.save_revision().publish()
+                self.stdout.write(self.style.SUCCESS(f"Moved On-the-Job Training page under Home at {existing.url}"))
             else:
-                self.stderr.write("The existing on-the-job-training child is a different page type and was left unchanged.")
+                self.stdout.write("On-the-Job Training page already exists under Home; dashboard content was preserved.")
             return
+
+        capacity_page = ServicePage.objects.filter(slug="capacity-building").first()
+        banner_img = capacity_page.banner_image if capacity_page else None
+        intro_img = capacity_page.introduction_image if capacity_page else None
 
         page = OnTheJobTrainingPage(
             title="On-the-Job Training and Secondment Programme",
             slug="on-the-job-training",
             banner_title="Build operational expertise for a changing climate",
             banner_subtitle="On-the-Job Training and Secondment Programme",
-            banner_image=parent.banner_image,
+            banner_image=banner_img,
             introduction_title="Building a skilled African meteorological workforce",
             introduction_text=(
                 "<p>ACMAD's programme strengthens African meteorological experts in advanced operational methods and tools, "
                 "scaling effective climate services from regional to national level through practical case studies and professional exchange.</p>"
             ),
-            introduction_image=parent.introduction_image,
+            introduction_image=intro_img,
             objectives=(
                 "<p>The programme strengthens NMHS capacity for accurate weather and climate services by advancing forecasting, data management, "
                 "early-warning and AI skills; supporting ACMAD-NMHS product co-production; and building a continent-wide practitioner network.</p>"
@@ -114,3 +124,4 @@ class Command(BaseCommand):
         parent.add_child(instance=page)
         page.save_revision().publish()
         self.stdout.write(self.style.SUCCESS(f"Created On-the-Job Training page at {page.url}"))
+
