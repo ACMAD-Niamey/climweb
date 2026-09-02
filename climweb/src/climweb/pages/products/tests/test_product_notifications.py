@@ -228,13 +228,18 @@ class TestProductNotifications(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, ["active@example.com"])
 
-    def test_public_url_does_not_duplicate_scheme(self):
+    def test_public_url_and_product_url_do_not_duplicate_base_url(self):
         from climweb.pages.products.product_notifications import _public_url, _product_url
         from unittest.mock import MagicMock
+        from wagtail.models import Site
 
         # Relative path
         self.assertTrue(_public_url("/products/test/").endswith("/products/test/"))
         self.assertFalse(_public_url("/products/test/").startswith("http://http://"))
+
+        # Explicit site passed
+        site = Site.objects.filter(is_default_site=True).first()
+        self.assertTrue(_public_url("/products/test/", site=site).endswith("/products/test/"))
 
         # Already absolute URL
         absolute_url = "https://new.acmad.org/products/sample-product/"

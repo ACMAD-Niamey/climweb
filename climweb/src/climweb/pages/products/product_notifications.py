@@ -55,7 +55,7 @@ def _get_email_context():
         org = OrganisationSetting.for_site(site)
         if org.logo:
             logo_url = org.logo.get_rendition("max-200x100").url
-            context["logo_url"] = _public_url(logo_url)
+            context["logo_url"] = _public_url(logo_url, site=site)
             
         if org.social_media_accounts:
             context["social_media"] = [
@@ -69,12 +69,13 @@ def _get_email_context():
     return context
 
 
-def _public_url(path):
+def _public_url(path, site=None):
     if not path:
         return ""
     if str(path).startswith(("http://", "https://", "//")):
         return str(path)
-    site = Site.objects.filter(is_default_site=True).first()
+    if site is None:
+        site = Site.objects.filter(is_default_site=True).first()
     if not site:
         return str(path)
     root_url = site.root_url.rstrip("/")
