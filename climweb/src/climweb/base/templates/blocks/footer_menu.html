@@ -1,3 +1,4 @@
+{% load wagtailcore_tags nmhs_cms_tags %}
 {% if value.has_sub_items %}
 <div class="column is-half-mobile is-one-quarter-desktop">
 
@@ -5,7 +6,7 @@
 
   {% if value.page %}
     {% for sub_page in value.page.get_children.live.in_menu|slice:":6" %}
-        <a href="{{ sub_page.url }}" class="footer-nav-link">
+        <a href="{{ sub_page|public_page_url }}" class="footer-nav-link">
           {{ sub_page.title }}
         </a>
     {% endfor %}
@@ -16,7 +17,7 @@
       {% if item.value.is_action %}
         <a class="footer-nav-action button is-small is-rounded is-outlined"
            {% if item.value.page.url %}
-             href="{{ item.value.page.url }}"
+             href="{{ item.value.page|public_page_url }}"
            {% else %}
              href="{{ item.value.external_url }}"
              target="_blank"
@@ -27,7 +28,7 @@
       {% else %}
         <a class="footer-nav-link"
            {% if item.value.page.url %}
-             href="{{ item.value.page.url }}"
+             href="{{ item.value.page|public_page_url }}"
            {% else %}
              href="{{ item.value.external_url }}"
              target="_blank"

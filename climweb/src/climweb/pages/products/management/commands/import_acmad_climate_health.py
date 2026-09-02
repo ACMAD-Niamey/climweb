@@ -53,6 +53,10 @@ TECHNICAL_NOTE = re.compile(
     r"acmad_meningitis-climenv-factors_tn_(20\d{6})\.pdf$",
     re.I,
 )
+VERIFICATION_REPORT = re.compile(
+    r"draft-meningitis-vigilance-map-verification\.pdf$",
+    re.I,
+)
 
 IMAGE_SPECS = {
     "meningitis_bulletin": {
@@ -118,6 +122,14 @@ def parse_media_inventory(payload):
                 "name": "Meningitis Climate and Environmental Factors Technical Note",
                 "kind": "document",
                 "date": compact_date(technical_match.group(1)),
+            }
+        elif mime_type == "application/pdf" and VERIFICATION_REPORT.fullmatch(filename):
+            definition = {
+                "key": "meningitis-outlook-verification-report",
+                "name": "Meningitis Outlook Verification Report",
+                "kind": "document",
+                # The PDF states that it verifies the outlook for 2-8 April 2024.
+                "date": date(2024, 4, 8),
             }
         elif mime_type == "application/pdf" and WEEKLY_BULLETIN.fullmatch(filename):
             date_match = COMPACT_DATE.search(filename)

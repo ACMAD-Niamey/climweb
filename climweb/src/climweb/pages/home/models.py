@@ -4,6 +4,7 @@ from typing import Optional
 from adminboundarymanager.models import AdminBoundarySettings
 from django.conf import settings
 from django.contrib.gis.db import models
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.template.defaultfilters import truncatechars
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -23,6 +24,7 @@ from wagtail.contrib.settings.models import BaseSiteSetting
 from wagtail.contrib.settings.registry import register_setting
 from wagtail.fields import RichTextField, StreamField
 from wagtail.models import Page
+from wagtail.snippets.models import register_snippet
 from wagtail_color_panel.fields import ColorField
 from wagtailiconchooser.blocks import IconChooserBlock
 from wagtailiconchooser.utils import get_svg_sprite_for_icons
@@ -175,6 +177,151 @@ def get_significant_product_slides(product_pages=None):
 
     return slides
 
+
+@register_snippet
+class RegionalClimateCentre(models.Model):
+    STATUS_DESIGNATED = "designated"
+    STATUS_DEMONSTRATION = "demonstration"
+    STATUS_CHOICES = (
+        (STATUS_DESIGNATED, _("WMO designated")),
+        (STATUS_DEMONSTRATION, _("In demonstration")),
+    )
+
+    LABEL_UPPER_RIGHT = "upper_right"
+    LABEL_LOWER_RIGHT = "lower_right"
+    LABEL_UPPER_LEFT = "upper_left"
+    LABEL_LOWER_LEFT = "lower_left"
+    LABEL_POSITION_CHOICES = (
+        (LABEL_UPPER_RIGHT, _("Upper right")),
+        (LABEL_LOWER_RIGHT, _("Lower right")),
+        (LABEL_UPPER_LEFT, _("Upper left")),
+        (LABEL_LOWER_LEFT, _("Lower left")),
+    )
+
+    display_name = models.CharField(
+        max_length=100,
+        unique=True,
+        verbose_name=_("Map label"),
+        help_text=_("Short centre name displayed beside the map marker."),
+    )
+    full_name = models.CharField(max_length=255, verbose_name=_("Full name"))
+    city = models.CharField(max_length=100, verbose_name=_("City"))
+    country = models.CharField(max_length=100, verbose_name=_("Country"))
+    website_url = models.URLField(
+        max_length=500,
+        verbose_name=_("Website URL"),
+        help_text=_("Official website opened when the marker is selected."),
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_DESIGNATED,
+        verbose_name=_("RCC status"),
+    )
+    map_x = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        validators=[MinValueValidator(0), MaxValueValidator(240)],
+        verbose_name=_("Horizontal map position"),
+        help_text=_("SVG horizontal coordinate from 0 (left) to 240 (right)."),
+    )
+    map_y = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        validators=[MinValueValidator(0), MaxValueValidator(270)],
+        verbose_name=_("Vertical map position"),
+        help_text=_("SVG vertical coordinate from 0 (top) to 270 (bottom)."),
+    )
+    label_position = models.CharField(
+        max_length=20,
+        choices=LABEL_POSITION_CHOICES,
+        default=LABEL_LOWER_RIGHT,
+        verbose_name=_("Label position"),
+    )
+    is_primary = models.BooleanField(
+        default=False,
+        verbose_name=_("Keep label visible"),
+        help_text=_("Keep this centre's label visible when the map is not being hovered."),
+    )
+    order = models.PositiveIntegerField(default=0, verbose_name=_("Display order"))
+    is_active = models.BooleanField(default=True, verbose_name=_("Visible on homepage"))
+
+    panels = [
+        MultiFieldPanel(
+            [
+                FieldPanel("display_name"),
+                FieldPanel("full_name"),
+                FieldPanel("city"),
+                FieldPanel("country"),
+                FieldPanel("website_url"),
+                FieldPanel("status"),
+            ],
+            heading=_("Centre information"),
+        ),
+        MultiFieldPanel(
+            [
+                FieldPanel("map_x"),
+                FieldPanel("map_y"),
+                FieldPanel("label_position"),
+            ],
+            heading=_("Map placement"),
+        ),
+        MultiFieldPanel(
+            [FieldPanel("is_primary"), FieldPanel("order"), FieldPanel("is_active")],
+            heading=_("Homepage display"),
+        ),
+    ]
+
+    class Meta:
+        ordering = ("order", "display_name")
+        verbose_name = _("Regional Climate Centre")
+        verbose_name_plural = _("Regional Climate Centres")
+
+    def __str__(self):
+        return self.display_name
+
+    @property
+    def marker_transform(self):
+        return f"translate({self.map_x} {self.map_y})"
+
+    @property
+    def marker_title(self):
+        return f"{self.full_name} — {self.city}, {self.country}"
+
+    @property
+    def label_geometry(self):
+        geometries = {
+            self.LABEL_UPPER_RIGHT: {
+                "line_path": "M6 -2 L14 -8",
+                "text_x": "17",
+                "name_y": "-9",
+                "place_y": "-1",
+                "text_anchor": "start",
+            },
+            self.LABEL_LOWER_RIGHT: {
+                "line_path": "M5 1 L14 6",
+                "text_x": "17",
+                "name_y": "5",
+                "place_y": "13",
+                "text_anchor": "start",
+            },
+            self.LABEL_UPPER_LEFT: {
+                "line_path": "M-5 0 L-13 -7",
+                "text_x": "-16",
+                "name_y": "-8",
+                "place_y": "0",
+                "text_anchor": "end",
+            },
+            self.LABEL_LOWER_LEFT: {
+                "line_path": "M-5 1 L-12 7",
+                "text_x": "-15",
+                "name_y": "6",
+                "place_y": "14",
+                "text_anchor": "end",
+            },
+        }
+        return geometries[self.label_position]
+
 if "forecastmanager" in settings.INSTALLED_APPS:
     HOME_SUBPAGE_TYPES += ['weather.WeatherDetailPage', 'cityclimate.CityClimateDataPage']
 
@@ -296,9 +443,24 @@ class HomePage(MetadataPageMixin, Page):
     hero_featured_products = StreamField([
         ('product', blocks.PageChooserBlock(page_type=['products.ProductPage'])),
     ], null=True, blank=True, use_json_field=True, max_num=3,
-        verbose_name=_("Hero Featured Products"),
-        help_text=_("Choose up to three product families for the rotating hero card. "
+        verbose_name=_("Utility Navbar Products"),
+        help_text=_("Choose up to three product families for the rotating utility bar. "
                     "Their latest published items are shown in this order. Leave empty to use the defaults."))
+
+    hero_updates_mode = models.CharField(
+        max_length=10, default="automatic",
+        choices=[("automatic", _("Automatic")), ("manual", _("Manual"))],
+        verbose_name=_("Update selection"),
+        help_text=_("Automatic shows the nearest upcoming/ongoing event, then the newest news. "
+                    "Only public, published pages from this homepage are included."),
+    )
+    hero_featured_updates = StreamField([
+        ('news', blocks.PageChooserBlock(page_type=['news.NewsPage'])),
+        ('event', blocks.PageChooserBlock(page_type=['events.EventPage'])),
+    ], null=True, blank=True, use_json_field=True, max_num=3,
+        verbose_name=_("Selected updates"),
+        help_text=_("In Manual mode, choose and order up to three news or event pages. "
+                    "An empty selection hides the hero card. Edit titles, images and text on the original pages."))
 
     services_strip = StreamField([
         ('item', blocks.StructBlock([
@@ -404,7 +566,11 @@ class HomePage(MetadataPageMixin, Page):
         ], heading=_("Featured Products")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
         MultiFieldPanel([
             FieldPanel('hero_featured_products'),
-        ], heading=_("Hero Product Carousel")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
+        ], heading=_("Utility Navbar Products")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
+        MultiFieldPanel([
+            FieldPanel('hero_updates_mode'),
+            FieldPanel('hero_featured_updates'),
+        ], heading=_("Hero Latest Updates")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
         MultiFieldPanel([
             FieldPanel('services_strip'),
         ], heading=_("Services Strip")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
@@ -598,14 +764,55 @@ class HomePage(MetadataPageMixin, Page):
             })
         
         context['IS_METEOROLOGICAL'] = settings.IS_METEOROLOGICAL
-        context["dg_staff_member"] = self.dg_message_staff_member or StaffMember.objects.filter(
+        selected_dg = self.dg_message_staff_member
+        context["dg_staff_member"] = (selected_dg if selected_dg and selected_dg.is_current_staff else None) or StaffMember.objects.exclude(
+            employment__status__in=["retired", "left"]
+        ).filter(
             models.Q(role__icontains="Director General")
             | models.Q(name__icontains="Ousmane Ndiaye")
         ).select_related("photo").first()
+        context["regional_climate_centres"] = RegionalClimateCentre.objects.filter(is_active=True)
         if settings.IS_METEOROLOGICAL:
-            selected_products = [block.value for block in self.hero_featured_products] if self.hero_featured_products else None
-            context["hero_significant_products"] = get_significant_product_slides(selected_products)
+            context["hero_updates"] = self.get_hero_updates(request)
         return context
+
+    def get_hero_updates(self, request=None):
+        """Use live database copies, never a chooser's stale/draft page instance."""
+        now = timezone.now()
+        news = NewsPage.objects.live().public().descendant_of(self).filter(
+            locale_id=self.locale_id, date__lte=now,
+        )
+        events = EventPage.objects.live().public().descendant_of(self).filter(locale_id=self.locale_id)
+        if self.hero_updates_mode == "manual":
+            selected_ids = [block.value.pk for block in self.hero_featured_updates if block.value]
+            eligible = {item.pk: item for item in news.filter(pk__in=selected_ids)}
+            eligible.update({item.pk: item for item in events.filter(pk__in=selected_ids)})
+            pages = [eligible[pk] for pk in dict.fromkeys(selected_ids) if pk in eligible][:3]
+        else:
+            # Include single-day events for their whole day; exclude finished multi-day events.
+            current_events = list(events.filter(
+                models.Q(date_to__gte=now)
+                | models.Q(date_to__isnull=True, date_from__date__gte=timezone.localdate())
+            ).order_by("date_from", "pk")[:3])
+            latest_news = list(news.order_by("-date", "-pk")[:3])
+            pages = (current_events[:1] + latest_news + current_events[1:])[:3]
+
+        slides = []
+        for item in pages:
+            is_event = isinstance(item, EventPage)
+            url = item.get_url(request=request)
+            if not url:
+                continue
+            slides.append({
+                "id": item.pk,
+                "title": item.title,
+                "kind": "event" if is_event else "news",
+                "date": item.date_from if is_event else item.date,
+                "end_date": item.date_to if is_event else None,
+                "image": item.get_meta_image(),
+                "url": canonical_public_page_url(url),
+            })
+        return slides
 
     @cached_property
     def partners(self):

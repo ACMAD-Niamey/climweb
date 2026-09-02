@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from decimal import Decimal
 
 from django.conf import settings
 from django.utils import timezone
@@ -16,7 +17,11 @@ from climweb.pages.summer_school.tests.factories import (
     SummerSchoolPageFactory,
     SummerSchoolApplicationPageFactory,
 )
-from climweb.pages.home.models import canonical_public_page_url, get_significant_product_slides
+from climweb.pages.home.models import (
+    RegionalClimateCentre,
+    canonical_public_page_url,
+    get_significant_product_slides,
+)
 from .factories import get_or_create_homepage
 
 
@@ -47,6 +52,58 @@ class TestHomePage(WagtailPageTestCase):
         response = self.client.get(self.page.url)
 
         self.assertNotContains(response, 'class="section dg-message-section"')
+
+    def test_regional_climate_centres_are_managed_by_snippets(self):
+        RegionalClimateCentre.objects.all().delete()
+        RegionalClimateCentre.objects.create(
+            display_name="Editable RCC",
+            full_name="Editable Regional Climate Centre",
+            city="Test City",
+            country="Test Country",
+            website_url="https://rcc.example.com/",
+            status=RegionalClimateCentre.STATUS_DESIGNATED,
+            map_x=Decimal("80.0"),
+            map_y=Decimal("90.0"),
+            label_position=RegionalClimateCentre.LABEL_UPPER_RIGHT,
+            is_primary=True,
+            order=10,
+        )
+        RegionalClimateCentre.objects.create(
+            display_name="Hidden RCC",
+            full_name="Hidden Regional Climate Centre",
+            city="Hidden City",
+            country="Hidden Country",
+            website_url="https://hidden.example.com/",
+            status=RegionalClimateCentre.STATUS_DEMONSTRATION,
+            map_x=Decimal("100.0"),
+            map_y=Decimal("100.0"),
+            is_active=False,
+            order=20,
+        )
+
+        response = self.client.get(self.page.url)
+
+        self.assertContains(response, "Editable RCC")
+        self.assertContains(response, "Test City")
+        self.assertContains(response, "https://rcc.example.com/")
+        self.assertContains(response, "1 RCCs")
+        self.assertNotContains(response, "Hidden RCC")
+
+    def test_regional_climate_centre_exposes_marker_geometry(self):
+        centre = RegionalClimateCentre(
+            display_name="Geometry RCC",
+            full_name="Geometry Regional Climate Centre",
+            city="Map City",
+            country="Map Country",
+            website_url="https://geometry.example.com/",
+            map_x=Decimal("34.5"),
+            map_y=Decimal("15.9"),
+            label_position=RegionalClimateCentre.LABEL_UPPER_LEFT,
+        )
+
+        self.assertEqual(centre.marker_transform, "translate(34.5 15.9)")
+        self.assertEqual(centre.label_geometry["text_anchor"], "end")
+        self.assertEqual(centre.marker_title, "Geometry Regional Climate Centre — Map City, Map Country")
     
     def test_default_seo_image(self):
         self.assertEqual(self.page.get_meta_image(), self.page.hero_banner)
@@ -205,6 +262,33 @@ class TestHomePage(WagtailPageTestCase):
         slides = get_significant_product_slides([thunderstorm, heat])
 
         self.assertEqual([slide["key"] for slide in slides], ["thunderstorm", "heat"])
+
+    def test_utility_navbar_rotates_latest_items_in_dashboard_order(self):
+        product_index = ProductIndexPageFactory(parent=self.page)
+        first_family = ProductPageFactory(parent=product_index, title="First utility family")
+        second_family = ProductPageFactory(parent=product_index, title="Second utility family")
+        first_item = ProductItemPageFactory(
+            parent=first_family, title="Latest first utility product", date=date(2026, 8, 30),
+        )
+        second_item = ProductItemPageFactory(
+            parent=second_family, title="Latest second utility product", date=date(2026, 8, 31),
+        )
+        ProductItemPageFactory(
+            parent=first_family, title="Older first utility product", date=date(2026, 8, 1),
+        )
+        self.page.hero_featured_products = [("product", second_family), ("product", first_family)]
+        self.page.save_revision().publish()
+
+        response = self.client.get(self.page.url)
+        content = response.content.decode()
+        header = content[content.index('<header class="site-header">'):content.index("</header>")]
+
+        self.assertContains(response, second_item.title)
+        self.assertContains(response, first_item.title)
+        self.assertNotContains(response, "Older first utility product")
+        self.assertLess(content.index(second_item.title), content.index(first_item.title))
+        self.assertNotIn("African Regional Climate Centre", header)
+        self.assertNotIn("Continental Multi-Hazard Advisory Centre", header)
 
 
 class TestHomeFeaturedSummerSchool(WagtailPageTestCase):

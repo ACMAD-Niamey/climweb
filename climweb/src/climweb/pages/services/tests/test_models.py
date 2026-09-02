@@ -26,6 +26,19 @@ class TestServicesPages(WagtailPageTestCase):
     def test_news_page_render(self):
         self.assertPageIsRenderable(self.service1_page)
         self.assertPageIsRenderable(self.service2_page)
+
+    def test_service_introduction_title_is_optional(self):
+        title_field = self.service1_page._meta.get_field("introduction_title")
+
+        self.assertTrue(title_field.blank)
+
+        self.service1_page.introduction_title = ""
+        self.service1_page.save_revision().publish()
+
+        response = self.client.get(self.service1_page.get_url())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, '<h2 class="intro-title"></h2>', html=True)
     
     def test_news_page_meta_tags(self):
         resp = self.client.get(self.service1_page.get_url())
