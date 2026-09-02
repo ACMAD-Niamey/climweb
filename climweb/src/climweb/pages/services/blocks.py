@@ -1,5 +1,7 @@
 from django.utils.translation import gettext_lazy as _
 from wagtail import blocks
+from wagtail.documents.blocks import DocumentChooserBlock
+from wagtail.images.blocks import ImageChooserBlock
 from wagtailiconchooser.blocks import IconChooserBlock
 
 from climweb.config.settings.base import SUMMARY_RICHTEXT_FEATURES
@@ -89,3 +91,72 @@ class SectorServiceBlock(blocks.StructBlock):
         template = "services/blocks/sector_service.html"
         icon = "folder-open-inverse"
         label = _("Sector")
+
+
+class TrainingModuleBlock(blocks.StructBlock):
+    title = blocks.CharBlock(max_length=160)
+    description = blocks.TextBlock()
+
+    class Meta:
+        icon = "pick"
+        label = _("Training module")
+
+
+class ApplicationStepBlock(blocks.StructBlock):
+    title = blocks.CharBlock(max_length=120)
+    description = blocks.RichTextBlock(features=SUMMARY_RICHTEXT_FEATURES)
+
+    class Meta:
+        icon = "list-ol"
+        label = _("Application step")
+
+
+class VisitorReportBlock(blocks.StructBlock):
+    title = blocks.CharBlock(max_length=180)
+    visitor_name = blocks.CharBlock(max_length=120)
+    country_or_institution = blocks.CharBlock(max_length=160, required=False)
+    date = blocks.DateBlock(required=False)
+    summary = blocks.TextBlock(required=False)
+    document = DocumentChooserBlock(required=True)
+
+    class Meta:
+        icon = "doc-full"
+        label = _("Visitor report")
+
+
+class TrainingTestimonialBlock(blocks.StructBlock):
+    name = blocks.CharBlock(max_length=120)
+    organisation = blocks.CharBlock(max_length=160, required=False)
+    quote = blocks.TextBlock()
+    photo = ImageChooserBlock(required=False)
+
+    class Meta:
+        icon = "openquote"
+        label = _("Trainee testimony")
+
+
+class TrainingGalleryItemBlock(blocks.StructBlock):
+    media_type = blocks.ChoiceBlock(
+        choices=(("image", _("Image")), ("video", _("Video"))),
+        default="image",
+    )
+    image = ImageChooserBlock(required=False)
+    video_url = blocks.URLBlock(required=False, help_text=_("YouTube or Vimeo URL"))
+    caption = blocks.CharBlock(max_length=180, required=False)
+
+    class Meta:
+        icon = "image"
+        label = _("Gallery item")
+
+
+class TrainingAccommodationBlock(blocks.StructBlock):
+    name = blocks.CharBlock(max_length=160)
+    description = blocks.TextBlock(required=False)
+    address = blocks.CharBlock(max_length=220, required=False)
+    website = blocks.URLBlock(required=False)
+    contact = blocks.CharBlock(max_length=120, required=False)
+    image = ImageChooserBlock(required=False)
+
+    class Meta:
+        icon = "home"
+        label = _("Accommodation option")

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% load static i18n wagtailcore_tags wagtailimages_tags wagtailembeds_tags wagtailiconchooser_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/on_the_job_training.css' %}?v=2">
+{% endblock %}
+
+{% block body_class %}ojt-page{% endblock %}
+
+{% block content %}
+<main>
+    {% if page.banner_image %}
+        {% include "hero.html" with page=page %}
+    {% else %}
+        <section class="page-hero ojt-simple-hero">
+            <div class="page-hero-overlay"></div>
+            <div class="page-hero-body">
+                <div class="container">
+                    <span class="page-hero-badge">{% translate "Capacity Development" %}</span>
+                    <h1 class="page-hero-title">{{ page.banner_title }}</h1>
+                    {% if page.banner_subtitle %}<p class="page-hero-subtitle">{{ page.banner_subtitle }}</p>{% endif %}
+                </div>
+            </div>
+        </section>
+    {% endif %}
+
+    <nav class="ojt-nav" aria-label="{% translate 'Page sections' %}">
+        <div class="container">
+            <a href="#programme">{% translate "Programme" %}</a>
+            <a href="#training">{% translate "Training offered" %}</a>
+            <a href="#apply">{% translate "How to apply" %}</a>
+            <a href="#reports">{% translate "Reports" %}</a>
+            <a href="#testimonies">{% translate "Testimonies" %}</a>
+            <a href="#gallery">{% translate "Gallery" %}</a>
+            <a href="#accommodation">{% translate "Accommodation" %}</a>
+        </div>
+    </nav>
+
+    <section id="programme" class="ojt-section ojt-overview">
+        <div class="container">
+            <div class="ojt-intro">
+                <div>
+                    <p class="ojt-eyebrow">{% translate "About the programme" %}</p>
+                    <h2>{{ page.introduction_title }}</h2>
+                    <div class="format-text">{{ page.introduction_text|richtext }}</div>
+                    <h3>{% translate "Objectives" %}</h3>
+                    <div class="format-text">{{ page.objectives|richtext }}</div>
+                </div>
+                {% if page.introduction_image %}
+                    {% image page.introduction_image fill-760x620 as intro_image %}
+                    <img src="{{ intro_image.url }}" alt="" class="ojt-intro-image">
+                {% endif %}
+            </div>
+            <div class="ojt-facts">
+                <article><span>{% translate "Who can apply" %}</span><div class="format-text">{{ page.eligibility|richtext }}</div></article>
+                <article><span>{% translate "Duration" %}</span><strong>{{ page.duration }}</strong></article>
+                <article><span>{% translate "Location" %}</span><strong>{{ page.location }}</strong></article>
+                <article><span>{% translate "Languages" %}</span><strong>{{ page.languages }}</strong></article>
+            </div>
+            <div class="ojt-benefits format-text">{{ page.benefits|richtext }}</div>
+        </div>
+    </section>
+
+    <section id="training" class="ojt-section ojt-muted">
+        <div class="container">
+            <p class="ojt-eyebrow">{% translate "Learning by doing" %}</p>
+            <h2>{% translate "Training offered" %}</h2>
+            <div class="ojt-module-grid">
+                {% for block in page.training_modules %}
+                    <article><span>{{ forloop.counter|stringformat:"02d" }}</span><h3>{{ block.value.title }}</h3><p>{{ block.value.description }}</p></article>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section id="apply" class="ojt-section ojt-apply">
+        <div class="container">
+            <p class="ojt-eyebrow">{% translate "Application pathway" %}</p>
+            <h2>{% translate "How to apply" %}</h2>
+            <div class="format-text ojt-lead">{{ page.application_introduction|richtext }}</div>
+            <div class="ojt-steps">
+                {% for block in page.application_steps %}
+                    <article><span>{{ forloop.counter }}</span><div><h3>{{ block.value.title }}</h3><div class="format-text">{{ block.value.description|richtext }}</div></div></article>
+                {% endfor %}
+            </div>
+            <a class="ojt-button" href="mailto:{{ page.application_email }}">{% translate "Contact the programme" %}</a>
+            {% if page.brochure %}<a class="ojt-button ojt-button--light" href="{{ page.brochure.url }}">{% translate "Download brochure" %}</a>{% endif %}
+        </div>
+    </section>
+
+    <section id="reports" class="ojt-section">
+        <div class="container">
+            <p class="ojt-eyebrow">{% translate "Knowledge returned home" %}</p>
+            <h2>{% translate "Visitor reports" %}</h2>
+            <div class="format-text ojt-lead">{{ page.reports_introduction|richtext }}</div>
+            {% if page.visitor_reports %}
+                <div class="ojt-report-grid">
+                    {% for block in page.visitor_reports %}<a href="{{ block.value.document.url }}"><strong>{{ block.value.title }}</strong><span>{{ block.value.visitor_name }}{% if block.value.country_or_institution %} · {{ block.value.country_or_institution }}{% endif %}{% if block.value.date %} · {{ block.value.date }}{% endif %}</span>{% if block.value.summary %}<p>{{ block.value.summary }}</p>{% endif %}</a>{% endfor %}
+                </div>
+            {% else %}<p class="ojt-empty">{% translate "Visitor reports will be published here as they are received." %}</p>{% endif %}
+        </div>
+    </section>
+
+    <section id="testimonies" class="ojt-section ojt-testimonies">
+        <div class="container">
+            <p class="ojt-eyebrow">{% translate "Trainee voices" %}</p>
+            <h2>{% translate "Testimonies" %}</h2>
+            <div class="ojt-testimony-grid">
+                {% for block in page.testimonials %}
+                    <article>
+                        {% if block.value.photo %}{% image block.value.photo fill-180x180 as photo %}<img src="{{ photo.url }}" alt="{{ block.value.name }}">{% endif %}
+                        <blockquote>“{{ block.value.quote }}”</blockquote><strong>{{ block.value.name }}</strong><span>{{ block.value.organisation }}</span>
+                    </article>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section id="gallery" class="ojt-section">
+        <div class="container">
+            <p class="ojt-eyebrow">{% translate "Programme moments" %}</p><h2>{% translate "Gallery" %}</h2>
+            {% if page.gallery %}<div class="ojt-gallery">{% for block in page.gallery %}<figure>{% if block.value.media_type == "video" and block.value.video_url %}{% embed block.value.video_url max_width=720 %}{% elif block.value.image %}{% image block.value.image fill-720x480 as gallery_image %}<img src="{{ gallery_image.url }}" alt="{{ block.value.caption }}">{% endif %}{% if block.value.caption %}<figcaption>{{ block.value.caption }}</figcaption>{% endif %}</figure>{% endfor %}</div>{% else %}<p class="ojt-empty">{% translate "Photos and videos will be added from the dashboard." %}</p>{% endif %}
+        </div>
+    </section>
+
+    <section id="accommodation" class="ojt-section ojt-muted">
+        <div class="container">
+            <p class="ojt-eyebrow">{% translate "Plan your stay" %}</p><h2>{% translate "Accommodation" %}</h2>
+            <div class="format-text ojt-lead">{{ page.accommodation_introduction|richtext }}</div>
+            {% if page.accommodation_options %}<div class="ojt-accommodation-grid">{% for block in page.accommodation_options %}<article>{% if block.value.image %}{% image block.value.image fill-640x360 as stay_image %}<img src="{{ stay_image.url }}" alt="">{% endif %}<div><h3>{{ block.value.name }}</h3><p>{{ block.value.description }}</p><span>{{ block.value.address }}</span>{% if block.value.contact %}<span>{{ block.value.contact }}</span>{% endif %}{% if block.value.website %}<a href="{{ block.value.website }}" target="_blank" rel="noopener">{% translate "Visit website" %} ↗</a>{% endif %}</div></article>{% endfor %}</div>{% else %}<p class="ojt-empty">{% translate "Contact the programme team for current accommodation guidance in Niamey." %}</p>{% endif %}
+        </div>
+    </section>
+</main>
+{% endblock %}
