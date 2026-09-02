@@ -121,7 +121,7 @@ class ServiceIndexPage(MetadataPageMixin, Page):
 class ServicePage(AbstractBannerWithIntroPage):
     template = 'services/service_page.html'
     parent_page_types = ['services.ServiceIndexPage']
-    subpage_types = ['flex_page.FlexPage', ]
+    subpage_types = ['flex_page.FlexPage', 'services.OnTheJobTrainingPage']
     show_in_menus_default = True
 
     introduction_title = models.CharField(
@@ -329,6 +329,111 @@ class ServicePage(AbstractBannerWithIntroPage):
             context['youtube_playlist_url'] = self.youtube_playlist.get_playlist_items_api_url(request)
         
         return context
+
+
+class OnTheJobTrainingPage(AbstractBannerWithIntroPage):
+    template = "services/on_the_job_training_page.html"
+    parent_page_types = ["services.ServicePage"]
+    subpage_types = []
+    show_in_menus_default = True
+
+    objectives = RichTextField(features=SUMMARY_RICHTEXT_FEATURES)
+    eligibility = RichTextField(features=SUMMARY_RICHTEXT_FEATURES)
+    duration = models.CharField(max_length=120, default="2-6 months")
+    location = models.CharField(max_length=160, default="ACMAD Headquarters, Niamey, Niger")
+    languages = models.CharField(max_length=120, default="English and French")
+    benefits = RichTextField(features=SUMMARY_RICHTEXT_FEATURES)
+    training_modules = StreamField(
+        [("module", local_blocks.TrainingModuleBlock())],
+        blank=True,
+        use_json_field=True,
+    )
+    application_introduction = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    application_steps = StreamField(
+        [("step", local_blocks.ApplicationStepBlock())],
+        blank=True,
+        use_json_field=True,
+    )
+    application_email = models.EmailField(default="secretariat@acmad.org")
+    reports_introduction = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    visitor_reports = StreamField(
+        [("report", local_blocks.VisitorReportBlock())],
+        blank=True,
+        use_json_field=True,
+    )
+    testimonials = StreamField(
+        [("testimony", local_blocks.TrainingTestimonialBlock())],
+        blank=True,
+        use_json_field=True,
+    )
+    gallery = StreamField(
+        [("item", local_blocks.TrainingGalleryItemBlock())],
+        blank=True,
+        use_json_field=True,
+    )
+    accommodation_introduction = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    accommodation_options = StreamField(
+        [("accommodation", local_blocks.TrainingAccommodationBlock())],
+        blank=True,
+        use_json_field=True,
+    )
+    brochure = models.ForeignKey(
+        "wagtaildocs.Document",
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    content_panels = Page.content_panels + [
+        *AbstractBannerWithIntroPage.content_panels,
+        MultiFieldPanel(
+            [
+                FieldPanel("objectives"),
+                FieldPanel("eligibility"),
+                FieldPanel("duration"),
+                FieldPanel("location"),
+                FieldPanel("languages"),
+                FieldPanel("benefits"),
+            ],
+            heading=_("Programme overview"),
+        ),
+        FieldPanel("training_modules"),
+        MultiFieldPanel(
+            [
+                FieldPanel("application_introduction"),
+                FieldPanel("application_steps"),
+                FieldPanel("application_email"),
+            ],
+            heading=_("How to apply"),
+        ),
+        MultiFieldPanel(
+            [FieldPanel("reports_introduction"), FieldPanel("visitor_reports")],
+            heading=_("Visitor reports"),
+        ),
+        FieldPanel("testimonials"),
+        FieldPanel("gallery"),
+        MultiFieldPanel(
+            [
+                FieldPanel("accommodation_introduction"),
+                FieldPanel("accommodation_options"),
+            ],
+            heading=_("Accommodation"),
+        ),
+        FieldPanel("brochure"),
+    ]
+
+    class Meta:
+        verbose_name = _("On-the-Job Training Page")
 
 
 class ServiceApplication(Orderable):
