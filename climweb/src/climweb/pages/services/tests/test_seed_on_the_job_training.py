@@ -15,9 +15,9 @@ from climweb.pages.services.models import (
 class TestSeedOnTheJobTraining(WagtailPageTestCase):
     @classmethod
     def setUpTestData(cls):
-        home = get_or_create_homepage()
+        cls.home = get_or_create_homepage()
         index = ServiceIndexPage(title="Services", slug="services")
-        home.add_child(instance=index)
+        cls.home.add_child(instance=index)
         category = ServiceCategory.objects.create(name="Capacity Development")
         parent = ServicePage(
             title="Capacity Development",
@@ -35,6 +35,7 @@ class TestSeedOnTheJobTraining(WagtailPageTestCase):
 
         page = OnTheJobTrainingPage.objects.get(slug="on-the-job-training")
         self.assertTrue(page.live)
+        self.assertEqual(page.get_parent().specific, self.home)
         self.assertEqual(len(page.training_modules), 13)
         self.assertEqual(len(page.application_steps), 3)
         self.assertEqual(len(page.testimonials), 2)
