@@ -1,57 +1,150 @@
 {% extends 'base.html' %}
-{% load wagtailcore_tags static wagtailimages_tags lazyimages_tags i18n %}
-
+{% load wagtailcore_tags static wagtailimages_tags lazyimages_tags i18n get_share_url wagtailiconchooser_tags %}
 
 {% block extra_css %}
-    <link rel="stylesheet" type="text/css" href="{% static 'css/event_detail.css' %}">
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/event_detail.css' %}?v=5">
 {% endblock %}
 
-{% block body_class %}event-detail{% endblock %}
+{% block body_class %}ev-page{% endblock %}
 
 {% block content %}
-    {% include 'breadcrumbs_include.html' with page=page %}
-    <main>
-        <section class="event-detail-section">
+<main>
+    <section class="page-hero ev-simple-hero">
+        <div class="page-hero-overlay"></div>
+        <div class="page-hero-body">
             <div class="container">
+                <span class="page-hero-badge">
+                    {% if page.event_type %}{{ page.event_type.event_type }}{% else %}{% translate "Event" %}{% endif %}
+                </span>
+                <h1 class="page-hero-title">{{ page.title }}</h1>
+                <p class="page-hero-subtitle">
+                    {{ page.date_from|date:"d M Y" }}{% if page.date_to and page.date_to|date:"Y-m-d" != page.date_from|date:"Y-m-d" %} – {{ page.date_to|date:"d M Y" }}{% endif %}
+                </p>
+            </div>
+        </div>
+    </section>
 
-                <div class="columns is-centered">
-                    <div class="column is-offset-1-desktop is-full-mobile event-detail-wrapper">
+    <nav class="ev-nav" aria-label="{% translate 'Page sections' %}">
+        <div class="container">
+            <a href="#about">{% translate "About the Event" %}</a>
+            {% if page.additional_materials %}<a href="#materials">{% translate "Materials" %}</a>{% endif %}
+            {% if page.panelists and not page.sessions_data %}<a href="#panelists">{% translate "Panelists" %}</a>{% endif %}
+            {% if page.sessions_data and not page.panelists %}<a href="#sessions">{% translate "Sessions" %}</a>{% endif %}
+            {% if page.sponsors %}<a href="#sponsors">{% translate "Acknowledgements" %}</a>{% endif %}
+        </div>
+    </nav>
 
-                        <div class="event-detail-body">
-
-                            {% include 'event_header.html' %}
-
-                            {% if page.zoom_events_details %}
-                                {% include 'zoom_events_details_include.html' %}
-                            {% else %}
-                                {% if page.panelists and not page.sessions_data %}
-                                    <div style="padding-top: 20px">
-                                        <div class="panelists-heading">
-                                            <h3>{% translate "Panelists" %}  </h3>
-                                        </div>
-                                        {% include 'panelists_include.html' with panelists=page.panelists %}
-                                    </div>
-                                {% endif %}
-                                {% if page.sessions_data and not page.panelists %}
-                                    {% include 'event_sessions_include.html' with sessions=page.sessions_data %}
-                                {% endif %}
-                                {% if page.sponsors %}
-                                    <h4 class="center" style="padding-top: 40px">
-
-                                     {% translate "Acknowledgements" %}
-
-                                    </h4>
-                                    {% include 'event_sponsors_include.html' with sponsors=page.sponsors %}
-                                {% endif %}
-                            {% endif %}
-                        </div>
-                    </div>
+    <section id="about" class="ev-section ev-overview">
+        <div class="container">
+            <div class="ev-intro{% if not page.image %} ev-intro--no-image{% endif %}">
+                <div>
+                    <p class="ev-eyebrow">{% translate "About the event" %}</p>
+                    <div class="format-text">{{ page.description|richtext }}</div>
+                    {% if page.agenda_document %}
+                        <br>
+                        <a class="ev-button" href="{{ page.agenda_document.url }}" target="_blank">
+                            <span class="icon">{% svg_icon name="download" %}</span>
+                            <span>{% translate "Download Agenda" %}</span>
+                        </a>
+                    {% endif %}
                 </div>
+                {% if page.image %}
+                    {% image page.image original as evt_img %}
+                    <img src="{{ evt_img.url }}" alt="{{ page.title }}" class="ev-intro-image">
+                {% endif %}
+            </div>
+            
+            <div class="ev-facts">
+                <article><span>{% translate "Start Date:" %}</span><strong>{{ page.date_from|date:"d M, Y h:i A" }}</strong></article>
+                {% if page.date_to %}
+                <article><span>{% translate "End Date:" %}</span><strong>{{ page.date_to|date:"d M, Y h:i A" }}</strong></article>
+                {% endif %}
+                <article><span>{% translate "Location:" %}</span><strong>{{ page.location|default:"TBD" }}</strong></article>
+                <article><span>{% translate "Timezone:" %}</span><strong>{{ page.timezone|default:"GMT" }} ({{ page.tz_gmt_offset }})</strong></article>
+                {% if page.cost %}
+                <article><span>{% translate "Cost:" %}</span><strong>{{ page.cost }}</strong></article>
+                {% endif %}
+            </div>
+            
+            {% if page.is_ended %}
+                <div class="ev-benefits"><strong>{% translate "Status:" %}</strong> {% translate "This event has already taken place." %}</div>
+            {% elif page.registration_open and not page.is_ended %}
+                {% if page.registration_page and page.registration_page.live and not page.registration_page.is_closed %}
+                    <div class="ev-benefits">
+                        <strong>{% translate "Join This Event:" %}</strong> {% translate "Reserve your place by completing the registration form." %}
+                        <br><br>
+                        <a href="{{ page.registration_page.url }}" class="ev-button">{% translate "Register" %}</a>
+                    </div>
+                {% elif page.zoom_events_id and page.zoom_events_url %}
+                    <div class="ev-benefits">
+                        <strong>{% translate "Join This Event:" %}</strong> {% translate "Join the live session online via Zoom." %}
+                        <br><br>
+                        <a href="{{ page.zoom_events_url }}" target="_blank" rel="noopener" class="ev-button">{% translate "Register on Zoom" %}</a>
+                    </div>
+                {% endif %}
+            {% elif not page.registration_open or page.registration_page and page.registration_page.is_closed %}
+                <div class="ev-benefits"><strong>{% translate "Status:" %}</strong> {% translate "Registration for this event is closed." %}</div>
+            {% endif %}
+        </div>
+    </section>
+
+    {% if page.additional_materials %}
+    <section id="materials" class="ev-section ev-muted">
+        <div class="container">
+            <p class="ev-eyebrow">{% translate "Resources" %}</p>
+            <h2>{% translate "Additional Materials" %}</h2>
+            <div class="ev-report-grid">
+                {% for material in page.additional_materials %}
+                    <a class="ev-empty" href="{% if material.value.document %}{{ material.value.document.url }}{% else %}{{ material.value.image.file.url }}{% endif %}" download="{{ material.value.title }}">
+                        <strong>{{ material.value.title }}</strong>
+                        <span>
+                            <span class="icon">{% svg_icon name="download" %}</span> Download
+                        </span>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if page.zoom_events_details %}
+        <section id="zoom" class="ev-section">
+            <div class="container">
+                {% include 'zoom_events_details_include.html' %}
             </div>
         </section>
-    </main>
+    {% else %}
+        {% if page.panelists and not page.sessions_data %}
+            <section id="panelists" class="ev-section">
+                <div class="container">
+                    <p class="ev-eyebrow">{% translate "Speakers" %}</p>
+                    <h2>{% translate "Panelists" %}</h2>
+                    {% include 'panelists_include.html' with panelists=page.panelists %}
+                </div>
+            </section>
+        {% endif %}
+        {% if page.sessions_data and not page.panelists %}
+            <section id="sessions" class="ev-section">
+                <div class="container">
+                    <p class="ev-eyebrow">{% translate "Schedule" %}</p>
+                    <h2>{% translate "Event Sessions" %}</h2>
+                    {% include 'event_sessions_include.html' with sessions=page.sessions_data %}
+                </div>
+            </section>
+        {% endif %}
+        {% if page.sponsors %}
+            <section id="sponsors" class="ev-section ev-muted">
+                <div class="container">
+                    <p class="ev-eyebrow">{% translate "Acknowledgements" %}</p>
+                    <h2>{% translate "Sponsors" %}</h2>
+                    {% include 'event_sponsors_include.html' with sponsors=page.sponsors %}
+                </div>
+            </section>
+        {% endif %}
+    {% endif %}
+</main>
 {% endblock content %}
-
 
 {% block extra_js %}
     {{ block.super }}
@@ -86,7 +179,6 @@
             }
         });
 
-
         function getTimeRemaining(endTime) {
             const total = Date.parse(endTime) - Date.parse(new Date());
             const seconds = Math.floor((total / 1000) % 60);
@@ -103,9 +195,9 @@
             };
         }
 
-
         function initializeCountDown(id, endTime) {
             const countdown = document.getElementById(id);
+            if (!countdown) return;
 
             function updateCountDown() {
                 const t = getTimeRemaining(endTime);
@@ -123,14 +215,7 @@
             }
 
             updateCountDown();
-
             const timeInterval = setInterval(updateCountDown, 1000);
-
         }
-
-
-
     </script>
 {% endblock %}
-
-

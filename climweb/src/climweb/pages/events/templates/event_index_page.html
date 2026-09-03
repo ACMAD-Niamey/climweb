@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load wagtailcore_tags static i18n %}
+{% load wagtailcore_tags static i18n nmhs_cms_tags %}
 
 {% block extra_css %}
   <link rel="stylesheet" type="text/css" href="{% static 'css/publication.css' %}">
@@ -20,7 +20,7 @@
             <p class="ei-eyebrow">{% translate "Spotlight" %}</p>
             <h2 class="ei-section-title">{% translate "Featured Event" %}</h2>
           </div>
-          {% include 'featured_item_include.html' with item_image=featured_event.image item_title=featured_event.title item_text=featured_event.listing_summary item_url=featured_event.url item_meta=featured_event.date_from %}
+          {% include 'featured_item_include.html' with item_image=featured_event.image item_title=featured_event.title item_text=featured_event.listing_summary item_url=featured_event.url|public_page_url item_meta=featured_event.date_from %}
         </div>
       </section>
     {% endif %}
