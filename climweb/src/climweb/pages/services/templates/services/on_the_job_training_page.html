@@ -4,6 +4,7 @@
 {% block extra_css %}
     {{ block.super }}
     <link rel="stylesheet" href="{% static 'css/on_the_job_training.css' %}?v=3">
+    {% if page.show_participant_map %}{% include "base/includes/participant_map_css.html" %}{% endif %}
 {% endblock %}
 
 {% block body_class %}ojt-page{% endblock %}
@@ -33,6 +34,7 @@
             <a href="#reports">{% translate "Reports" %}</a>
             <a href="#testimonies">{% translate "Testimonies" %}</a>
             <a href="#gallery">{% translate "Gallery" %}</a>
+            {% if page.show_participant_map %}<a href="#participants">{% translate "Participants" %}</a>{% endif %}
             <a href="#accommodation">{% translate "Accommodation" %}</a>
         </div>
     </nav>
@@ -124,6 +126,19 @@
         </div>
     </section>
 
+    {% if page.show_participant_map %}
+    <section id="participants" class="ojt-section">
+        <div class="container">
+            <p class="ojt-eyebrow">{% translate "Reach across the continent" %}</p>
+            <h2>{{ page.participant_map_heading }}</h2>
+            {% if page.participant_map_introduction %}
+                <div class="format-text ojt-lead">{{ page.participant_map_introduction|richtext }}</div>
+            {% endif %}
+            {% include "base/includes/participant_map.html" %}
+        </div>
+    </section>
+    {% endif %}
+
     <section id="accommodation" class="ojt-section ojt-muted">
         <div class="container">
             <p class="ojt-eyebrow">{% translate "Plan your stay" %}</p><h2>{% translate "Accommodation" %}</h2>
@@ -132,4 +147,9 @@
         </div>
     </section>
 </main>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    {% if page.show_participant_map %}{% include "base/includes/participant_map_js.html" %}{% endif %}
 {% endblock %}

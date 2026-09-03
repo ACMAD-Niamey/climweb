@@ -1,0 +1,150 @@
+/* Participant choropleth map - used by ParticipantMapBlock and the OJT page. */
+
+.participant-map {
+  position: relative;
+  margin-block: 1.5rem;
+}
+
+.participant-map__canvas {
+  width: 100%;
+  height: clamp(360px, 60vh, 620px);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #eef3f6;
+  border: 1px solid #e2e8f0;
+}
+
+.participant-map__canvas .maplibregl-canvas {
+  outline: none;
+}
+
+.participant-map__legend {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+}
+
+.participant-map__legend-title {
+  margin: 0 0 0.35rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.7rem;
+  color: #475569;
+}
+
+.participant-map__legend-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.participant-map__legend-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.participant-map__swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  flex: none;
+}
+
+.participant-map__popup-wrap .maplibregl-popup-content {
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.18);
+}
+
+.participant-map__popup-country {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.participant-map__popup-total {
+  margin: 0.1rem 0 0.5rem;
+  color: #475569;
+  font-size: 0.85rem;
+}
+
+.participant-map__popup-group {
+  border-top: 1px solid #eef2f6;
+  padding-top: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.participant-map__popup-group:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.participant-map__popup-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  font-size: 0.82rem;
+}
+
+.participant-map__popup-row span:last-child {
+  font-variant-numeric: tabular-nums;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.participant-map__table {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.participant-map__table summary {
+  cursor: pointer;
+  color: #2563eb;
+}
+
+.participant-map__table ul {
+  columns: 2;
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.participant-map__empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #64748b;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+}
+
+.participant-map-block__heading {
+  margin-bottom: 0.5rem;
+}
+
+.participant-map-block__intro {
+  max-width: 60ch;
+  color: #475569;
+}
+
+@media (max-width: 600px) {
+  .participant-map__legend {
+    position: static;
+    margin-top: 0.75rem;
+    box-shadow: none;
+  }
+  .participant-map__table ul {
+    columns: 1;
+  }
+}

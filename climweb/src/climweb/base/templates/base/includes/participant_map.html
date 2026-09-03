@@ -1,0 +1,49 @@
+{% load i18n %}
+{% comment %}
+Reusable participant choropleth widget.
+
+Context expected:
+  map_dom_id              unique DOM id (string, no leading '#')
+  participants_by_country dict keyed by ISO alpha-3 -> aggregate counts (no names)
+  participant_map_config  dict: {boundariesUrl, bounds, showLegend}
+  total_participants       int
+
+The host page template must also include, once:
+  base/includes/participant_map_css.html   (inside {% block extra_css %})
+  base/includes/participant_map_js.html     (inside {% block extra_js %})
+{% endcomment %}
+
+<div class="participant-map" data-participant-map>
+    {% if total_participants %}
+        <div id="{{ map_dom_id }}"
+             class="participant-map__canvas"
+             role="img"
+             aria-label="{% blocktranslate %}Map of Africa showing {{ total_participants }} capacity-building participants by country{% endblocktranslate %}"
+             data-participant-map-canvas
+             data-counts-id="{{ map_dom_id }}-data"
+             data-config-id="{{ map_dom_id }}-config"></div>
+
+        {% if participant_map_config.showLegend %}
+            <div id="{{ map_dom_id }}-legend" class="participant-map__legend" data-participant-map-legend></div>
+        {% endif %}
+
+        {# Text alternative for assistive tech and no-JS clients #}
+        <details class="participant-map__table">
+            <summary>{% translate "View participant counts as a list" %}</summary>
+            <ul>
+                {% for iso, row in participants_by_country.items %}
+                    <li><strong>{{ row.name }}</strong>: {{ row.total }}</li>
+                {% endfor %}
+            </ul>
+        </details>
+    {% else %}
+        <p class="participant-map__empty">
+            {% translate "Participant figures will appear here once the register has entries." %}
+        </p>
+    {% endif %}
+</div>
+
+{% if total_participants %}
+    {{ participants_by_country|json_script:counts_dom_id }}
+    {{ participant_map_config|json_script:config_dom_id }}
+{% endif %}

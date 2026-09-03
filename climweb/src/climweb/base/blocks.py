@@ -181,6 +181,62 @@ class MetServicesDirectoryBlock(blocks.StructBlock):
         label = _("Meteorological Services Directory")
 
 
+class ParticipantMapBlock(blocks.StructBlock):
+    """Africa choropleth of capacity-building participants per country.
+
+    Reads from the ``CapacityBuildingParticipant`` register and renders an
+    aggregate-only map (counts, gender split, category split - never names).
+    Reusable on any page whose ``content`` StreamField includes it; the host
+    template must load ``maplibre-gl`` + ``base/js/participant_map.js``.
+    """
+
+    heading = blocks.CharBlock(
+        max_length=120,
+        default=_("Capacity building across Africa"),
+        label=_("Section heading"),
+    )
+    introduction = blocks.RichTextBlock(
+        required=False,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        label=_("Introduction"),
+    )
+    categories = blocks.MultipleChoiceBlock(
+        required=False,
+        choices=[
+            ("ojt", _("On-the-job training")),
+            ("secondment", _("Secondment")),
+        ],
+        label=_("Categories to include"),
+        help_text=_("Leave empty to include every category."),
+    )
+    date_from = blocks.DateBlock(required=False, label=_("From date"))
+    date_to = blocks.DateBlock(required=False, label=_("To date"))
+    show_legend = blocks.BooleanBlock(default=True, required=False, label=_("Show legend"))
+
+    def get_context(self, value, parent_context=None):
+        context = super().get_context(value, parent_context=parent_context)
+        from climweb.base.models import CapacityBuildingParticipant
+        from climweb.base.models.participants import build_participant_map_context
+
+        by_country = CapacityBuildingParticipant.aggregate_by_country(
+            categories=value.get("categories") or None,
+            date_from=value.get("date_from"),
+            date_to=value.get("date_to"),
+        )
+        map_dom_id = f"participant-map-{uuid.uuid4().hex[:8]}"
+        context.update(build_participant_map_context(
+            map_dom_id=map_dom_id,
+            by_country=by_country,
+            show_legend=bool(value.get("show_legend")),
+        ))
+        return context
+
+    class Meta:
+        template = "streams/participant_map.html"
+        icon = "site"
+        label = _("Participant map")
+
+
 class SocialMediaBlock(blocks.StructBlock):
     name = blocks.CharBlock(max_length=60, )
     icon = IconChooserBlock(required=False, label=_("Icon"))

@@ -394,6 +394,46 @@ class OnTheJobTrainingPage(AbstractBannerWithIntroPage):
         related_name="+",
     )
 
+    PARTICIPANT_MAP_SCOPE_BOTH = "both"
+    PARTICIPANT_MAP_SCOPE_OJT = "ojt"
+    PARTICIPANT_MAP_SCOPE_SECONDMENT = "secondment"
+    PARTICIPANT_MAP_SCOPE_CHOICES = (
+        (PARTICIPANT_MAP_SCOPE_BOTH, _("On-the-job training and secondment")),
+        (PARTICIPANT_MAP_SCOPE_OJT, _("On-the-job training only")),
+        (PARTICIPANT_MAP_SCOPE_SECONDMENT, _("Secondment only")),
+    )
+
+    show_participant_map = models.BooleanField(
+        default=False,
+        verbose_name=_("Show participant map"),
+        help_text=_("Display an Africa choropleth of participants per country, "
+                    "built from the Capacity Building Participants register."),
+    )
+    participant_map_heading = models.CharField(
+        max_length=120,
+        default="Where our participants come from",
+        verbose_name=_("Participant map heading"),
+    )
+    participant_map_introduction = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Participant map introduction"),
+    )
+    participant_map_scope = models.CharField(
+        max_length=20,
+        choices=PARTICIPANT_MAP_SCOPE_CHOICES,
+        default=PARTICIPANT_MAP_SCOPE_BOTH,
+        verbose_name=_("Participants to include"),
+    )
+    participant_map_date_from = models.DateField(
+        null=True, blank=True, verbose_name=_("From date"),
+        help_text=_("Optional. Only count engagements active on or after this date."),
+    )
+    participant_map_date_to = models.DateField(
+        null=True, blank=True, verbose_name=_("To date"),
+        help_text=_("Optional. Only count engagements that started on or before this date."),
+    )
+
     content_panels = Page.content_panels + [
         *AbstractBannerWithIntroPage.content_panels,
         MultiFieldPanel(
@@ -430,10 +470,46 @@ class OnTheJobTrainingPage(AbstractBannerWithIntroPage):
             heading=_("Accommodation"),
         ),
         FieldPanel("brochure"),
+        MultiFieldPanel(
+            [
+                FieldPanel("show_participant_map"),
+                FieldPanel("participant_map_heading"),
+                FieldPanel("participant_map_introduction"),
+                FieldPanel("participant_map_scope"),
+                FieldPanel("participant_map_date_from"),
+                FieldPanel("participant_map_date_to"),
+            ],
+            heading=_("Participant map"),
+        ),
     ]
 
     class Meta:
         verbose_name = _("On-the-Job Training Page")
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+
+        if self.show_participant_map:
+            from climweb.base.models import CapacityBuildingParticipant
+            from climweb.base.models.participants import build_participant_map_context
+
+            if self.participant_map_scope == self.PARTICIPANT_MAP_SCOPE_BOTH:
+                categories = None
+            else:
+                categories = [self.participant_map_scope]
+
+            by_country = CapacityBuildingParticipant.aggregate_by_country(
+                categories=categories,
+                date_from=self.participant_map_date_from,
+                date_to=self.participant_map_date_to,
+            )
+            context.update(build_participant_map_context(
+                map_dom_id="ojt-participant-map",
+                by_country=by_country,
+                show_legend=True,
+            ))
+
+        return context
 
 
 class ServiceApplication(Orderable):
