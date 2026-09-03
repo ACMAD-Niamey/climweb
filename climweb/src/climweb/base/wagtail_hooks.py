@@ -25,7 +25,7 @@ from wagtailcache.cache import clear_cache
 
 from climweb.utils.version import get_main_version, check_version_greater_than_current
 from .cap import create_cap_geomanager_dataset
-from .models import Theme, ServiceCategory, CAPGeomanagerSettings
+from .models import Theme, ServiceCategory, CAPGeomanagerSettings, CapacityBuildingParticipant
 from .utils import get_latest_cms_release
 from .views import (cms_version_view, plugin_manager_view, cms_upgrade_status_view, submission_review_view,
                     submissions_ratings_view, compose_submission_email_view, request_submission_export_view,
@@ -83,6 +83,20 @@ class ServiceViewSet(SnippetViewSet):
 
 
 register_snippet(ServiceViewSet)
+
+
+class CapacityBuildingParticipantViewSet(SnippetViewSet):
+    model = CapacityBuildingParticipant
+    icon = "group"
+    menu_label = _("Capacity Building Participants")
+    menu_order = 220
+    list_display = ("full_name", "country", "category", "gender", "start_date", "end_date", "is_active")
+    list_filter = ("category", "gender", "is_active", "country")
+    search_fields = ("full_name", "institution")
+    list_per_page = 50
+
+
+register_snippet(CapacityBuildingParticipantViewSet)
 
 
 class ThemeSettings(ModelAdmin):

@@ -39,6 +39,7 @@ urlpatterns = [
     path("staff/", include("climweb.pages.organisation_pages.staff.urls")),
     path("documents/", include(wagtaildocs_urls)),
     
+    path("", include("climweb.base.urls")),
     path("", include("climweb.pages.home.urls")),
     path("", include("climweb.pages.products.urls")),
     *([path("", include("climweb.pages.wdqms.urls"))] if "climweb.pages.wdqms" in settings.INSTALLED_APPS else []),

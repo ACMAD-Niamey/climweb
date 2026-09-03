@@ -560,3 +560,61 @@ def download_submission_export_view(request, page_id, token):
     response = FileResponse(open(file_path, 'rb'), content_type='application/zip')
     response['Content-Disposition'] = f'attachment; filename="{job.file_name}"'
     return response
+
+
+# Bundled fallback boundaries, read straight from the source tree so it works
+# regardless of whether collectstatic has run.
+_BUNDLED_AFRICA_GEOJSON = os.path.join(
+    os.path.dirname(__file__), "static", "base", "data", "africa.json"
+)
+
+
+def participant_map_boundaries(request):
+    """Serve the country boundaries for the participant choropleth as GeoJSON.
+
+    Returns the site's uploaded boundary file (normalised to ``iso_a3`` / ``name``
+    properties) when one is configured in Participant map settings, otherwise the
+    bundled Africa boundaries. A bad upload degrades to the bundled file rather
+    than breaking the page.
+    """
+    import logging
+
+    from climweb.base.boundary_utils import load_boundary_upload
+    from climweb.base.models import ParticipantMapSettings
+
+    logger = logging.getLogger(__name__)
+    map_settings = ParticipantMapSettings.for_request(request)
+    boundary_file = map_settings.boundary_file
+
+    geojson = None
+    if boundary_file:
+        try:
+            cache_key = (
+                f"participant-map:boundaries:{map_settings.pk}:"
+                f"{boundary_file.name}:{boundary_file.size}:"
+                f"{map_settings.iso3_property}:{map_settings.name_property}"
+            )
+        except (OSError, ValueError):
+            cache_key = None
+
+        geojson = cache.get(cache_key) if cache_key else None
+        if geojson is None:
+            try:
+                geojson = load_boundary_upload(
+                    boundary_file,
+                    map_settings.iso3_property or "iso_a3",
+                    map_settings.name_property or "name",
+                )
+                if cache_key:
+                    cache.set(cache_key, geojson, 60 * 60 * 24)
+            except Exception:  # noqa: BLE001 - never let a bad upload break the page
+                logger.exception("Could not read the uploaded participant-map boundary file")
+                geojson = None
+
+    if geojson is None:
+        with open(_BUNDLED_AFRICA_GEOJSON, encoding="utf-8") as fh:
+            geojson = json.load(fh)
+
+    response = JsonResponse(geojson)
+    response["Cache-Control"] = "public, max-age=3600"
+    return response
