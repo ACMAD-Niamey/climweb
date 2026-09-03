@@ -3,14 +3,20 @@ import json
 import ssl
 import html
 import re
+import os
+import tempfile
 from datetime import datetime, timezone
 import pytz
+from urllib.parse import urlparse
 
 from django.core.management.base import BaseCommand
+from django.core.files import File
+from wagtail.images.models import Image
+from climweb.base.models import CustomDocumentModel
 from climweb.pages.events.models import EventPage, EventIndexPage, EventType
 
 class Command(BaseCommand):
-    help = 'Imports missing events from acmad.org'
+    help = 'Imports missing events from acmad.org including documents and images'
 
     def handle(self, *args, **options):
         self.stdout.write("Fetching events from acmad.org...")
@@ -27,6 +33,37 @@ class Command(BaseCommand):
             except Exception as e:
                 self.stderr.write(f"Error fetching {url}: {e}")
                 return []
+                
+        def download_file(url, is_image=False):
+            if not url or url.startswith('data:'):
+                return None
+            try:
+                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, context=ctx, timeout=30) as response:
+                    filename = os.path.basename(urlparse(url).path)
+                    if not filename:
+                        filename = "downloaded_file"
+                    
+                    temp = tempfile.NamedTemporaryFile(delete=False)
+                    temp.write(response.read())
+                    temp.flush()
+                    temp.close()
+                    
+                    if is_image:
+                        obj = Image(title=filename)
+                        with open(temp.name, 'rb') as f:
+                            obj.file.save(filename, File(f), save=True)
+                        os.unlink(temp.name)
+                        return obj
+                    else:
+                        obj = CustomDocumentModel(title=filename)
+                        with open(temp.name, 'rb') as f:
+                            obj.file.save(filename, File(f), save=True)
+                        os.unlink(temp.name)
+                        return obj
+            except Exception as e:
+                self.stderr.write(f"Error downloading {url}: {e}")
+                return None
 
         events_data = []
 
@@ -86,23 +123,56 @@ class Command(BaseCommand):
                 skipped_count += 1
                 continue
 
-            # Extract data
             content = p.get('content', {}).get('rendered', '')
-            date_str = p.get('date_gmt') or p.get('date')
             
+            # Process embedded images
+            img_pattern = re.compile(r'<img[^>]*src="([^"]+)"[^>]*>')
+            for match in img_pattern.finditer(content):
+                img_url = match.group(1)
+                image_obj = download_file(img_url, is_image=True)
+                if image_obj:
+                    embed_tag = f'<embed embedtype="image" id="{image_obj.id}" format="fullwidth" alt="{image_obj.title}"/>'
+                    content = content.replace(match.group(0), embed_tag)
+                    self.stdout.write(f"  Downloaded embedded image: {img_url}")
+            
+            # Process documents
+            doc_pattern = re.compile(r'<a[^>]*href="([^"]+\.(?:pdf|doc|docx|ppt|pptx|xls|xlsx))"[^>]*>(.*?)</a>', re.IGNORECASE)
+            agenda_doc = None
+            for match in doc_pattern.finditer(content):
+                doc_url = match.group(1)
+                link_text = match.group(2)
+                doc_obj = download_file(doc_url, is_image=False)
+                if doc_obj:
+                    if not agenda_doc:
+                        agenda_doc = doc_obj
+                    link_tag = f'<a linktype="document" id="{doc_obj.id}">{link_text}</a>'
+                    content = content.replace(match.group(0), link_tag)
+                    self.stdout.write(f"  Downloaded document: {doc_url}")
+
+            # Featured Image
+            featured_media_id = p.get('featured_media')
+            featured_image_obj = None
+            if featured_media_id:
+                media_data = fetch_json(f'https://acmad.org/wp-json/wp/v2/media/{featured_media_id}')
+                if isinstance(media_data, dict) and 'source_url' in media_data:
+                    featured_image_obj = download_file(media_data['source_url'], is_image=True)
+                    self.stdout.write(f"  Downloaded featured image: {media_data['source_url']}")
+
+            date_str = p.get('date_gmt') or p.get('date')
             try:
                 dt = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=pytz.UTC)
             except:
                 dt = datetime.now(pytz.UTC)
 
-            # Create EventPage
             page = EventPage(
                 title=title,
                 date_from=dt,
-                location='Niamey, Niger',  # Default fallback
+                location='Niamey, Niger',
                 description=content,
                 event_type=default_event_type,
-                registration_open=False, # default to False for old events
+                registration_open=False,
+                image=featured_image_obj,
+                agenda_document=agenda_doc
             )
             
             try:
