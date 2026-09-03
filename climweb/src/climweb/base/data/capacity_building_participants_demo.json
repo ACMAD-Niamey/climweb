@@ -1,0 +1,182 @@
+[
+  {
+    "full_name": "Benin participant 1",
+    "country": "BJ",
+    "institution": "",
+    "gender": "female",
+    "category": "ojt",
+    "start_date": "2024-02-01",
+    "end_date": "2024-07-31",
+    "is_active": true
+  },
+  {
+    "full_name": "Benin participant 2",
+    "country": "BJ",
+    "institution": "",
+    "gender": "male",
+    "category": "ojt",
+    "start_date": "2024-09-01",
+    "end_date": "2025-02-28",
+    "is_active": true
+  },
+  {
+    "full_name": "Cameroon participant 1",
+    "country": "CM",
+    "institution": "",
+    "gender": "female",
+    "category": "secondment",
+    "start_date": "2025-04-01",
+    "end_date": "2025-09-30",
+    "is_active": true
+  },
+  {
+    "full_name": "Central African Republic participant 1",
+    "country": "CF",
+    "institution": "",
+    "gender": "male",
+    "category": "ojt",
+    "start_date": "2025-11-01",
+    "end_date": "2026-04-30",
+    "is_active": true
+  },
+  {
+    "full_name": "Comoros participant 1",
+    "country": "KM",
+    "institution": "",
+    "gender": "undisclosed",
+    "category": "ojt",
+    "start_date": "2026-03-01",
+    "end_date": "2026-08-31",
+    "is_active": true
+  },
+  {
+    "full_name": "Comoros participant 2",
+    "country": "KM",
+    "institution": "",
+    "gender": "female",
+    "category": "secondment",
+    "start_date": "2024-02-01",
+    "end_date": "2024-07-31",
+    "is_active": true
+  },
+  {
+    "full_name": "Comoros participant 3",
+    "country": "KM",
+    "institution": "",
+    "gender": "male",
+    "category": "ojt",
+    "start_date": "2024-09-01",
+    "end_date": "2025-02-28",
+    "is_active": true
+  },
+  {
+    "full_name": "Comoros participant 4",
+    "country": "KM",
+    "institution": "",
+    "gender": "female",
+    "category": "ojt",
+    "start_date": "2025-04-01",
+    "end_date": "2025-09-30",
+    "is_active": true
+  },
+  {
+    "full_name": "Comoros participant 5",
+    "country": "KM",
+    "institution": "",
+    "gender": "male",
+    "category": "secondment",
+    "start_date": "2025-11-01",
+    "end_date": "2026-04-30",
+    "is_active": true
+  },
+  {
+    "full_name": "Djibouti participant 1",
+    "country": "DJ",
+    "institution": "",
+    "gender": "undisclosed",
+    "category": "ojt",
+    "start_date": "2026-03-01",
+    "end_date": "2026-08-31",
+    "is_active": true
+  },
+  {
+    "full_name": "Gambia participant 1",
+    "country": "GM",
+    "institution": "",
+    "gender": "female",
+    "category": "ojt",
+    "start_date": "2024-02-01",
+    "end_date": "2024-07-31",
+    "is_active": true
+  },
+  {
+    "full_name": "Gambia participant 2",
+    "country": "GM",
+    "institution": "",
+    "gender": "male",
+    "category": "secondment",
+    "start_date": "2024-09-01",
+    "end_date": "2025-02-28",
+    "is_active": true
+  },
+  {
+    "full_name": "Ghana participant 1",
+    "country": "GH",
+    "institution": "",
+    "gender": "female",
+    "category": "ojt",
+    "start_date": "2025-04-01",
+    "end_date": "2025-09-30",
+    "is_active": true
+  },
+  {
+    "full_name": "Rwanda participant 1",
+    "country": "RW",
+    "institution": "",
+    "gender": "male",
+    "category": "ojt",
+    "start_date": "2025-11-01",
+    "end_date": "2026-04-30",
+    "is_active": true
+  },
+  {
+    "full_name": "Sierra Leone participant 1",
+    "country": "SL",
+    "institution": "",
+    "gender": "undisclosed",
+    "category": "secondment",
+    "start_date": "2026-03-01",
+    "end_date": "2026-08-31",
+    "is_active": true
+  },
+  {
+    "full_name": "Somalia participant 1",
+    "country": "SO",
+    "institution": "",
+    "gender": "female",
+    "category": "ojt",
+    "start_date": "2024-02-01",
+    "end_date": "2024-07-31",
+    "is_active": true
+  },
+  {
+    "full_name": "Sudan participant 1",
+    "country": "SD",
+    "institution": "",
+    "gender": "male",
+    "category": "ojt",
+    "start_date": "2024-09-01",
+    "end_date": "2025-02-28",
+    "is_active": true
+  },
+  {
+    "full_name": "Togo participant 1",
+    "country": "TG",
+    "institution": "",
+    "gender": "female",
+    "category": "secondment",
+    "start_date": "2025-04-01",
+    "end_date": "2025-09-30",
+    "is_active": true
+  }
+]
