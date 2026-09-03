@@ -113,17 +113,14 @@ class Command(BaseCommand):
 
         default_event_type, _ = EventType.objects.get_or_create(event_type="Other")
         imported_count = 0
-        skipped_count = 0
+        updated_count = 0
 
         for p in events_data:
             title = html.unescape(p.get('title', {}).get('rendered', '')).strip()
             
-            # Check if exists
-            if EventPage.objects.filter(title=title).exists():
-                skipped_count += 1
-                continue
-
             content = p.get('content', {}).get('rendered', '')
+            if not content:
+                content = "<p>Event details not provided.</p>"
             
             # Process embedded images
             img_pattern = re.compile(r'<img[^>]*src="([^"]+)"[^>]*>')
@@ -164,23 +161,33 @@ class Command(BaseCommand):
             except:
                 dt = datetime.now(pytz.UTC)
 
-            page = EventPage(
-                title=title,
-                date_from=dt,
-                location='Niamey, Niger',
-                description=content,
-                event_type=default_event_type,
-                registration_open=False,
-                image=featured_image_obj,
-                agenda_document=agenda_doc
-            )
-            
-            try:
-                index_page.add_child(instance=page)
-                page.save_revision().publish()
-                self.stdout.write(self.style.SUCCESS(f"Imported: {title}"))
-                imported_count += 1
-            except Exception as e:
-                self.stderr.write(f"Failed to import '{title}': {e}")
+            existing_page = EventPage.objects.filter(title=title).first()
+            if existing_page:
+                existing_page.description = content
+                if featured_image_obj:
+                    existing_page.image = featured_image_obj
+                if agenda_doc:
+                    existing_page.agenda_document = agenda_doc
+                existing_page.save_revision().publish()
+                self.stdout.write(self.style.SUCCESS(f"Updated existing: {title}"))
+                updated_count += 1
+            else:
+                page = EventPage(
+                    title=title,
+                    date_from=dt,
+                    location='Niamey, Niger',
+                    description=content,
+                    event_type=default_event_type,
+                    registration_open=False,
+                    image=featured_image_obj,
+                    agenda_document=agenda_doc
+                )
+                try:
+                    index_page.add_child(instance=page)
+                    page.save_revision().publish()
+                    self.stdout.write(self.style.SUCCESS(f"Imported new: {title}"))
+                    imported_count += 1
+                except Exception as e:
+                    self.stderr.write(f"Failed to import '{title}': {e}")
 
-        self.stdout.write(self.style.SUCCESS(f"\nDone! Imported {imported_count} new events. Skipped {skipped_count} existing ones."))
+        self.stdout.write(self.style.SUCCESS(f"\nDone! Imported {imported_count} new events. Updated {updated_count} existing events with images/documents."))
