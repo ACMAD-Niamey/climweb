@@ -4,8 +4,11 @@ Reusable participant choropleth widget.
 
 Context expected:
   map_dom_id              unique DOM id (string, no leading '#')
+  counts_dom_id           json_script id for participants_by_country (fallback view)
+  config_dom_id           json_script id for participant_map_config
   participants_by_country dict keyed by ISO alpha-3 -> aggregate counts (no names)
-  participant_map_config  dict: {boundariesUrl, bounds, showLegend}
+  participant_map_dataset filterable, name-free dataset for client-side re-aggregation
+  participant_map_config  {boundariesUrl, bounds, showLegend, colors, labels, text}
   total_participants       int
 
 The host page template must also include, once:
@@ -15,28 +18,43 @@ The host page template must also include, once:
 
 <div class="participant-map" data-participant-map>
     {% if total_participants %}
-        <div id="{{ map_dom_id }}"
-             class="participant-map__canvas"
-             role="img"
-             aria-label="{% blocktranslate %}Map of Africa showing {{ total_participants }} capacity-building participants by country{% endblocktranslate %}"
-             data-participant-map-canvas
-             data-counts-id="{{ counts_dom_id }}"
-             data-config-id="{{ config_dom_id }}"
-             data-legend-id="{{ map_dom_id }}-legend"></div>
+        <div class="participant-map__filters" data-participant-map-filters hidden></div>
 
-        {% if participant_map_config.showLegend %}
-            <div id="{{ map_dom_id }}-legend" class="participant-map__legend" data-participant-map-legend></div>
-        {% endif %}
+        <div class="participant-map__stage">
+            <div id="{{ map_dom_id }}"
+                 class="participant-map__canvas"
+                 role="img"
+                 aria-label="{% blocktranslate %}Map of Africa showing {{ total_participants }} capacity-building participants by country{% endblocktranslate %}"
+                 data-participant-map-canvas
+                 data-counts-id="{{ counts_dom_id }}"
+                 data-config-id="{{ config_dom_id }}"
+                 data-dataset-id="{{ dataset_dom_id }}"
+                 data-legend-id="{{ map_dom_id }}-legend"
+                 data-table-id="{{ map_dom_id }}-table"
+                 data-summary-id="{{ map_dom_id }}-summary"></div>
 
-        {# Text alternative for assistive tech and no-JS clients #}
-        <details class="participant-map__table">
-            <summary>{% translate "View participant counts as a list" %}</summary>
-            <ul>
-                {% for iso, row in participants_by_country.items %}
-                    <li><strong>{{ row.name }}</strong>: {{ row.total }}</li>
-                {% endfor %}
-            </ul>
-        </details>
+            {% if participant_map_config.showLegend %}
+                <div id="{{ map_dom_id }}-legend" class="participant-map__legend" data-participant-map-legend></div>
+            {% endif %}
+        </div>
+
+        <p class="participant-map__summary" id="{{ map_dom_id }}-summary" aria-live="polite"></p>
+
+        <div class="participant-map__table-wrap">
+            <table class="table is-fullwidth is-hoverable participant-map__table" id="{{ map_dom_id }}-table">
+                <thead>
+                    <tr>
+                        <th>{% translate "Country" %}</th>
+                        <th class="has-text-right">{% translate "Participants" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for iso, row in participants_by_country.items %}
+                        <tr><td>{{ row.name }}</td><td class="has-text-right">{{ row.total }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     {% else %}
         <p class="participant-map__empty">
             {% translate "Participant figures will appear here once the register has entries." %}
@@ -46,6 +64,6 @@ The host page template must also include, once:
 
 {% if total_participants %}
     {{ participants_by_country|json_script:counts_dom_id }}
+    {{ participant_map_dataset|json_script:dataset_dom_id }}
     {{ participant_map_config|json_script:config_dom_id }}
 {% endif %}
-{# json_script ids above use the same context values the canvas data-* attributes point at #}

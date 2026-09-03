@@ -490,7 +490,6 @@ class OnTheJobTrainingPage(AbstractBannerWithIntroPage):
         context = super().get_context(request, *args, **kwargs)
 
         if self.show_participant_map:
-            from climweb.base.models import CapacityBuildingParticipant
             from climweb.base.models.participants import build_participant_map_context
 
             if self.participant_map_scope == self.PARTICIPANT_MAP_SCOPE_BOTH:
@@ -498,15 +497,13 @@ class OnTheJobTrainingPage(AbstractBannerWithIntroPage):
             else:
                 categories = [self.participant_map_scope]
 
-            by_country = CapacityBuildingParticipant.aggregate_by_country(
+            context.update(build_participant_map_context(
+                map_dom_id="ojt-participant-map",
                 categories=categories,
                 date_from=self.participant_map_date_from,
                 date_to=self.participant_map_date_to,
-            )
-            context.update(build_participant_map_context(
-                map_dom_id="ojt-participant-map",
-                by_country=by_country,
                 show_legend=True,
+                request=request,
             ))
 
         return context

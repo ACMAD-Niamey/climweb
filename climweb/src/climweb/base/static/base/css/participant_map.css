@@ -1,13 +1,81 @@
-/* Participant choropleth map - used by ParticipantMapBlock and the OJT page. */
+/* Participant choropleth map + filter widget.
+   Bulma (globally loaded) provides .button / .buttons / .table base styles;
+   this file adds the widget layout, the pill filter bar and Poppins typography. */
 
 .participant-map {
-  position: relative;
+  --pm-accent: #1f6f6b;
+  font-family: "Poppins", "Open Sans", system-ui, sans-serif;
   margin-block: 1.5rem;
+}
+
+.participant-map *,
+.participant-map *::before,
+.participant-map *::after {
+  box-sizing: border-box;
+}
+
+/* ---- filter bar ---- */
+
+.participant-map__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem 2rem;
+  align-items: flex-end;
+  padding: 0.9rem 1rem;
+  margin-bottom: 1rem;
+  background: #f6f8f9;
+  border: 1px solid #e6ebec;
+  border-radius: 14px;
+}
+
+.participant-map__filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.participant-map__filter-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.participant-map__filter-buttons.buttons.has-addons {
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.participant-map__filter-buttons .button {
+  font-family: inherit;
+  font-weight: 500;
+  border-color: #d7dee0;
+  color: #334155;
+  background: #fff;
+}
+
+.participant-map__filter-buttons .button:hover {
+  border-color: var(--pm-accent);
+  color: var(--pm-accent);
+}
+
+.participant-map__filter-buttons .button.is-active {
+  background: var(--pm-accent);
+  border-color: var(--pm-accent);
+  color: #fff;
+  z-index: 1;
+}
+
+/* ---- map stage ---- */
+
+.participant-map__stage {
+  position: relative;
 }
 
 .participant-map__canvas {
   width: 100%;
-  height: clamp(360px, 60vh, 620px);
+  height: clamp(360px, 58vh, 600px);
   border-radius: 12px;
   overflow: hidden;
   background: #eef3f6;
@@ -22,7 +90,7 @@
   position: absolute;
   left: 12px;
   bottom: 12px;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.96);
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 0.6rem 0.75rem;
@@ -33,10 +101,10 @@
 
 .participant-map__legend-title {
   margin: 0 0 0.35rem;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: #475569;
 }
 
@@ -61,15 +129,50 @@
   flex: none;
 }
 
+/* ---- summary + table ---- */
+
+.participant-map__summary {
+  margin: 0.85rem 0 0.35rem;
+  font-weight: 500;
+  color: #475569;
+}
+
+.participant-map__table-wrap {
+  overflow-x: auto;
+}
+
+.participant-map__table.table {
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.participant-map__table.table th {
+  font-weight: 600;
+  color: #334155;
+  border-bottom-width: 2px;
+}
+
+.participant-map__table.table td {
+  vertical-align: middle;
+}
+
+.participant-map__table td.has-text-right,
+.participant-map__table th.has-text-right {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- popup ---- */
+
 .participant-map__popup-wrap .maplibregl-popup-content {
   padding: 0.75rem 0.9rem;
   border-radius: 10px;
+  font-family: "Poppins", "Open Sans", sans-serif;
   box-shadow: 0 6px 20px rgba(15, 23, 42, 0.18);
 }
 
 .participant-map__popup-country {
   margin: 0;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.95rem;
 }
 
@@ -104,22 +207,6 @@
   font-weight: 600;
 }
 
-.participant-map__table {
-  margin-top: 0.75rem;
-  font-size: 0.85rem;
-}
-
-.participant-map__table summary {
-  cursor: pointer;
-  color: #2563eb;
-}
-
-.participant-map__table ul {
-  columns: 2;
-  margin: 0.5rem 0 0;
-  padding-left: 1.1rem;
-}
-
 .participant-map__empty {
   padding: 2rem 1rem;
   text-align: center;
@@ -127,10 +214,12 @@
   background: #f8fafc;
   border: 1px dashed #cbd5e1;
   border-radius: 12px;
+  font-family: "Poppins", "Open Sans", sans-serif;
 }
 
 .participant-map-block__heading {
   margin-bottom: 0.5rem;
+  font-family: "Poppins", "Open Sans", sans-serif;
 }
 
 .participant-map-block__intro {
@@ -143,8 +232,5 @@
     position: static;
     margin-top: 0.75rem;
     box-shadow: none;
-  }
-  .participant-map__table ul {
-    columns: 1;
   }
 }

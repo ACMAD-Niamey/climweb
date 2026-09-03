@@ -215,19 +215,16 @@ class ParticipantMapBlock(blocks.StructBlock):
 
     def get_context(self, value, parent_context=None):
         context = super().get_context(value, parent_context=parent_context)
-        from climweb.base.models import CapacityBuildingParticipant
         from climweb.base.models.participants import build_participant_map_context
 
-        by_country = CapacityBuildingParticipant.aggregate_by_country(
-            categories=value.get("categories") or None,
-            date_from=value.get("date_from"),
-            date_to=value.get("date_to"),
-        )
         map_dom_id = f"participant-map-{uuid.uuid4().hex[:8]}"
         context.update(build_participant_map_context(
             map_dom_id=map_dom_id,
-            by_country=by_country,
+            categories=value.get("categories") or None,
+            date_from=value.get("date_from"),
+            date_to=value.get("date_to"),
             show_legend=bool(value.get("show_legend")),
+            request=(parent_context or {}).get("request"),
         ))
         return context
 

@@ -90,6 +90,25 @@ class AggregateByCountryTests(TestCase):
         self.assertNotIn("Distinctive", blob)
 
 
+class MapDatasetTests(TestCase):
+    def test_cells_carry_year_gender_category_and_no_names(self):
+        _make("Alpha Hidden", "KE", gender="female", category="ojt", start_date=date(2024, 2, 1))
+        _make("Beta Hidden", "KE", gender="male", category="secondment", start_date=date(2025, 6, 1))
+        _make("Gamma Hidden", "NG", gender="female", category="ojt", start_date=date(2024, 9, 1))
+
+        data = CapacityBuildingParticipant.map_dataset()
+
+        self.assertEqual(set(data["countries"]), {"KEN", "NGA"})
+        self.assertEqual(data["years"], [2024, 2025])
+        self.assertEqual(data["genders"], ["female", "male"])
+        self.assertEqual(sorted(data["categories"]), ["ojt", "secondment"])
+        self.assertEqual(sum(c["count"] for c in data["cells"]), 3)
+        # each participant lands in exactly one (country, gender, category, year) cell
+        ke_2024 = [c for c in data["cells"] if c["iso3"] == "KEN" and c["year"] == 2024]
+        self.assertEqual(sum(c["count"] for c in ke_2024), 1)
+        self.assertNotIn("Hidden", " ".join(_all_strings(data)))
+
+
 class ParticipantMapBlockTests(TestCase):
     def test_get_context_is_aggregate_only(self):
         _make("Secret Name Person", "KE")
@@ -106,7 +125,26 @@ class ParticipantMapBlockTests(TestCase):
         self.assertIn("KEN", context["participants_by_country"])
         blob = " ".join(_all_strings(context["participants_by_country"]))
         self.assertNotIn("Secret", blob)
-        self.assertIn("boundariesUrl", context["participant_map_config"])
+        blob_ds = " ".join(_all_strings(context["participant_map_dataset"]))
+        self.assertNotIn("Secret", blob_ds)
+        cfg = context["participant_map_config"]
+        self.assertIn("boundariesUrl", cfg)
+        self.assertEqual(len(cfg["colors"]["ramp"]), 5)
+
+    def test_admin_color_scheme_drives_the_ramp(self):
+        from wagtail.models import Site
+
+        from climweb.base.models import COLOR_SCHEMES, ParticipantMapSettings
+
+        _make("Someone", "KE")
+        site = Site.objects.get(is_default_site=True)
+        settings_obj = ParticipantMapSettings.for_site(site)
+        settings_obj.color_scheme = "blue"
+        settings_obj.save()
+
+        block = ParticipantMapBlock()
+        context = block.get_context(block.to_python({"show_legend": True}))
+        self.assertEqual(context["participant_map_config"]["colors"]["ramp"], COLOR_SCHEMES["blue"])
 
 
 class SeedDemoParticipantsTests(TestCase):
