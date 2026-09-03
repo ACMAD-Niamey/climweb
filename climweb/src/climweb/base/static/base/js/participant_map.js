@@ -154,8 +154,9 @@
     var maxCount = totals.length ? Math.max.apply(null, totals) : 0;
     var breaks = computeBreaks(maxCount);
 
-    var reduceMotion =
-      window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var reduceMotion = !!(
+      window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    );
 
     var map = new window.maplibregl.Map({
       container: canvas.id,
@@ -166,6 +167,8 @@
       },
       bounds: config.bounds || [-26, -38, 64, 40],
       fitBoundsOptions: { padding: 20, animate: false },
+      // Honour the OS "reduce motion" setting for any programmatic camera moves.
+      fadeDuration: reduceMotion ? 0 : 300,
       attributionControl: false,
       dragRotate: false,
       pitchWithRotate: false,
@@ -210,7 +213,7 @@
           });
 
           renderLegend(
-            document.getElementById(canvas.id + "-legend"),
+            document.getElementById(canvas.getAttribute("data-legend-id")),
             breaks,
             Object.keys(counts).length > 0
           );

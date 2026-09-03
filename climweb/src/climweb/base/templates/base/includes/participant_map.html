@@ -20,8 +20,9 @@ The host page template must also include, once:
              role="img"
              aria-label="{% blocktranslate %}Map of Africa showing {{ total_participants }} capacity-building participants by country{% endblocktranslate %}"
              data-participant-map-canvas
-             data-counts-id="{{ map_dom_id }}-data"
-             data-config-id="{{ map_dom_id }}-config"></div>
+             data-counts-id="{{ counts_dom_id }}"
+             data-config-id="{{ config_dom_id }}"
+             data-legend-id="{{ map_dom_id }}-legend"></div>
 
         {% if participant_map_config.showLegend %}
             <div id="{{ map_dom_id }}-legend" class="participant-map__legend" data-participant-map-legend></div>
@@ -47,3 +48,4 @@ The host page template must also include, once:
     {{ participants_by_country|json_script:counts_dom_id }}
     {{ participant_map_config|json_script:config_dom_id }}
 {% endif %}
+{# json_script ids above use the same context values the canvas data-* attributes point at #}

@@ -42,6 +42,10 @@ def normalise_feature_collection(raw: dict, iso3_property: str, name_property: s
 
     features = []
     for feature in raw.get("features", []):
+        geometry = feature.get("geometry")
+        if not geometry or not (geometry.get("coordinates") or geometry.get("geometries")):
+            # A feature with no drawable geometry is useless on the map - skip it.
+            continue
         props = feature.get("properties") or {}
         iso_a3 = _first_present(props, iso3_property, _ISO3_FALLBACKS).upper()
         if not iso_a3:
@@ -52,7 +56,7 @@ def normalise_feature_collection(raw: dict, iso3_property: str, name_property: s
         features.append({
             "type": "Feature",
             "properties": {"iso_a3": iso_a3, "iso_a2": iso_a2, "name": name},
-            "geometry": feature.get("geometry"),
+            "geometry": geometry,
         })
 
     if not features:

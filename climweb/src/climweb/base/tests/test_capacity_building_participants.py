@@ -125,6 +125,16 @@ class SeedDemoParticipantsTests(TestCase):
         self.assertEqual(result["BEN"]["total"], 2)
         self.assertEqual(result["TGO"]["total"], 1)
 
+    def test_wipe_only_removes_demo_rows(self):
+        real = _make("Benin participant 1", "NG")  # same name, different country
+        also_real = _make("A Real Trainee", "BJ")
+        call_command("seed_capacity_building_participants", stdout=StringIO())
+        call_command("seed_capacity_building_participants", "--wipe", stdout=StringIO())
+
+        self.assertEqual(CapacityBuildingParticipant.objects.count(), 18 + 2)
+        self.assertTrue(CapacityBuildingParticipant.objects.filter(pk=real.pk).exists())
+        self.assertTrue(CapacityBuildingParticipant.objects.filter(pk=also_real.pk).exists())
+
 
 class OnTheJobTrainingParticipantMapTests(WagtailPageTestCase):
     @classmethod
@@ -224,8 +234,17 @@ class ParticipantMapBoundariesViewTests(TestCase):
                 {
                     "type": "Feature",
                     "properties": {"ADM0_A3": "ken", "COUNTRY": "Kenya"},
-                    "geometry": {"type": "Point", "coordinates": [37, 0]},
-                }
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [[[34, -1], [42, -1], [42, 5], [34, 5], [34, -1]]],
+                    },
+                },
+                {
+                    # Geometry-less feature must be dropped, not emitted.
+                    "type": "Feature",
+                    "properties": {"ADM0_A3": "tza", "COUNTRY": "Tanzania"},
+                    "geometry": None,
+                },
             ],
         }
         site = Site.objects.get(is_default_site=True)

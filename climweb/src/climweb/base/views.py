@@ -589,7 +589,11 @@ def participant_map_boundaries(request):
     geojson = None
     if boundary_file:
         try:
-            cache_key = f"participant-map:boundaries:{boundary_file.name}:{boundary_file.size}"
+            cache_key = (
+                f"participant-map:boundaries:{map_settings.pk}:"
+                f"{boundary_file.name}:{boundary_file.size}:"
+                f"{map_settings.iso3_property}:{map_settings.name_property}"
+            )
         except (OSError, ValueError):
             cache_key = None
 

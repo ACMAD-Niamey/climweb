@@ -8,12 +8,16 @@ the programme office maintains by hand. The demo rows use placeholder names
 recognisable straight away. Editors then delete these and enter the real people.
 
     python manage.py seed_capacity_building_participants          # add demo rows
-    python manage.py seed_capacity_building_participants --wipe   # remove them first
+    python manage.py seed_capacity_building_participants --wipe   # re-seed from scratch
+
+``--wipe`` only deletes rows that exactly match the bundled demo data (by name +
+country), so hand-entered records are never affected.
 """
 import json
 from pathlib import Path
 
 from django.core.management.base import BaseCommand
+from django.db.models import Q
 
 from climweb.base.models import CapacityBuildingParticipant
 
@@ -27,16 +31,20 @@ class Command(BaseCommand):
         parser.add_argument(
             "--wipe",
             action="store_true",
-            help="Delete demo rows (matched by name suffix) before seeding.",
+            help="Delete the exact bundled demo rows before seeding.",
         )
 
     def handle(self, *args, **options):
         rows = json.loads(DATA_FILE.read_text(encoding="utf-8"))
 
         if options["wipe"]:
-            deleted, _ = CapacityBuildingParticipant.objects.filter(
-                full_name__contains=" participant "
-            ).delete()
+            # Only ever remove the exact rows this command seeds - matched by the
+            # (full_name, country) pair from the bundled JSON - so a real record
+            # is never touched.
+            match = Q()
+            for row in rows:
+                match |= Q(full_name=row["full_name"], country=row["country"])
+            deleted, _ = CapacityBuildingParticipant.objects.filter(match).delete()
             self.stdout.write(self.style.WARNING(f"Removed {deleted} demo record(s)."))
 
         created = 0
