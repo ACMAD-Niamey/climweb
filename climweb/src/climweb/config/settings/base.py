@@ -241,6 +241,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "climweb.base.middleware.StripHomePageSlugMiddleware",
     "wagtail.contrib.redirects.middleware.RedirectMiddleware",
     
     'wagtail_2fa.middleware.VerifyUserPermissionsMiddleware',
