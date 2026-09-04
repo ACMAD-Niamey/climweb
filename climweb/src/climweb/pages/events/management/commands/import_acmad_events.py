@@ -168,7 +168,9 @@ class Command(BaseCommand):
                     existing_page.image = featured_image_obj
                 if agenda_doc:
                     existing_page.agenda_document = agenda_doc
-                existing_page.save_revision().publish()
+                existing_page.save_revision()
+                if existing_page.live:
+                    existing_page.unpublish()
                 self.stdout.write(self.style.SUCCESS(f"Updated existing: {title}"))
                 updated_count += 1
             else:
@@ -180,11 +182,14 @@ class Command(BaseCommand):
                     event_type=default_event_type,
                     registration_open=False,
                     image=featured_image_obj,
-                    agenda_document=agenda_doc
+                    agenda_document=agenda_doc,
+                    live=False
                 )
                 try:
                     index_page.add_child(instance=page)
-                    page.save_revision().publish()
+                    page.save_revision()
+                    if page.live:
+                        page.unpublish()
                     self.stdout.write(self.style.SUCCESS(f"Imported new: {title}"))
                     imported_count += 1
                 except Exception as e:
