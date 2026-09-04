@@ -19,12 +19,10 @@ class Command(BaseCommand):
             soup = BeautifulSoup(content, 'html.parser')
             modified = False
 
-            # Find all <br> and <br/> tags
-            for br in soup.find_all('br'):
-                # Draft.js / html5lib crashes if a <br> is a direct child of a table, tbody, thead, tfoot, or tr.
-                # It expects them only inside <td> or <th>.
-                if br.parent and br.parent.name in ['table', 'tbody', 'thead', 'tfoot', 'tr']:
-                    br.decompose()
+            tags_to_unwrap = ['table', 'tbody', 'thead', 'tfoot', 'tr', 'td', 'th', 'div', 'span', 'font', 'section', 'article']
+            for tag_name in tags_to_unwrap:
+                for tag in soup.find_all(tag_name):
+                    tag.unwrap()
                     modified = True
             
             if modified:
