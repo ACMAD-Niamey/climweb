@@ -125,9 +125,10 @@ class Command(BaseCommand):
             else:
                 # Sanitize HTML to prevent Draftail errors (e.g. "Unmatched tags: expected br, got td")
                 soup = BeautifulSoup(content, 'html.parser')
-                for br in soup.find_all('br'):
-                    if br.parent and br.parent.name in ['table', 'tbody', 'thead', 'tfoot', 'tr']:
-                        br.decompose()
+                tags_to_unwrap = ['table', 'tbody', 'thead', 'tfoot', 'tr', 'td', 'th', 'div', 'span', 'font', 'section', 'article']
+                for tag_name in tags_to_unwrap:
+                    for tag in soup.find_all(tag_name):
+                        tag.unwrap()
                 content = str(soup)
             
             # Process embedded images
