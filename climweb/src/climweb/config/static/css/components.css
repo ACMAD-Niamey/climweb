@@ -415,7 +415,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 600px;
+  max-width: 280px;
 }
 
 /* ── RESPONSIVE ── */
@@ -425,7 +425,7 @@
   .bc-item     { font-size: 11px; }
   .bc-item--active {
     font-size: 11px;
-    max-width: 280px;
+    max-width: 180px;
   }
 
   .bc-sep svg  { width: 10px; height: 10px; }

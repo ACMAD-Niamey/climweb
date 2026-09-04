@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 from django.core.management.base import BaseCommand
 from django.core.files import File
 from wagtail.images.models import Image
+from bs4 import BeautifulSoup
 from climweb.base.models import CustomDocumentModel
 from climweb.pages.events.models import EventPage, EventIndexPage, EventType
 
@@ -121,6 +122,13 @@ class Command(BaseCommand):
             content = p.get('content', {}).get('rendered', '')
             if not content:
                 content = "<p>Event details not provided.</p>"
+            else:
+                # Sanitize HTML to prevent Draftail errors (e.g. "Unmatched tags: expected br, got td")
+                soup = BeautifulSoup(content, 'html.parser')
+                for br in soup.find_all('br'):
+                    if br.parent and br.parent.name in ['table', 'tbody', 'thead', 'tfoot', 'tr']:
+                        br.decompose()
+                content = str(soup)
             
             # Process embedded images
             img_pattern = re.compile(r'<img[^>]*src="([^"]+)"[^>]*>')
