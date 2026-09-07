@@ -20,40 +20,57 @@ The host page template must also include, once:
     {% if total_participants %}
         <div class="participant-map__filters" data-participant-map-filters hidden></div>
 
-        <div class="participant-map__stage">
-            <div id="{{ map_dom_id }}"
-                 class="participant-map__canvas"
-                 role="img"
-                 aria-label="{% blocktranslate %}Map of Africa showing {{ total_participants }} capacity-building participants by country{% endblocktranslate %}"
-                 data-participant-map-canvas
-                 data-counts-id="{{ counts_dom_id }}"
-                 data-config-id="{{ config_dom_id }}"
-                 data-dataset-id="{{ dataset_dom_id }}"
-                 data-legend-id="{{ map_dom_id }}-legend"
-                 data-table-id="{{ map_dom_id }}-table"
-                 data-summary-id="{{ map_dom_id }}-summary"></div>
+        <div class="participant-map__grid">
+            <div class="participant-map__stage">
+                <div id="{{ map_dom_id }}"
+                     class="participant-map__canvas"
+                     role="img"
+                     aria-label="{% blocktranslate %}Map of Africa showing {{ total_participants }} capacity-building participants by country{% endblocktranslate %}"
+                     data-participant-map-canvas
+                     data-counts-id="{{ counts_dom_id }}"
+                     data-config-id="{{ config_dom_id }}"
+                     data-dataset-id="{{ dataset_dom_id }}"
+                     data-legend-id="{{ map_dom_id }}-legend"
+                     data-table-id="{{ map_dom_id }}-table"
+                     data-summary-id="{{ map_dom_id }}-summary"
+                     data-pagination-id="{{ map_dom_id }}-pagination"></div>
 
-            {% if participant_map_config.showLegend %}
-                <div id="{{ map_dom_id }}-legend" class="participant-map__legend" data-participant-map-legend></div>
-            {% endif %}
-        </div>
+                {% if participant_map_config.showLegend %}
+                    <div id="{{ map_dom_id }}-legend" class="participant-map__legend" data-participant-map-legend></div>
+                {% endif %}
+            </div>
 
-        <p class="participant-map__summary" id="{{ map_dom_id }}-summary" aria-live="polite"></p>
+            <div class="participant-map__sidebar">
+                <div class="participant-map__summary-wrap">
+                    <p class="participant-map__summary" id="{{ map_dom_id }}-summary" aria-live="polite"></p>
+                </div>
 
-        <div class="participant-map__table-wrap">
-            <table class="table is-fullwidth is-hoverable participant-map__table" id="{{ map_dom_id }}-table">
-                <thead>
-                    <tr>
-                        <th>{% translate "Country" %}</th>
-                        <th class="has-text-right">{% translate "Participants" %}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for iso, row in participants_by_country.items %}
-                        <tr><td>{{ row.name }}</td><td class="has-text-right">{{ row.total }}</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                <div class="participant-map__table-wrap">
+                    <table class="table is-fullwidth is-hoverable participant-map__table" id="{{ map_dom_id }}-table">
+                        <thead>
+                            <tr>
+                                <th>{% translate "Country" %}</th>
+                                <th class="has-text-right">{% translate "Participants" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for iso, row in participants_by_country.items %}
+                                <tr data-iso="{{ iso }}"><td>{{ row.name }}</td><td class="has-text-right"><span class="participant-map__badge">{{ row.total }}</span></td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <nav class="participant-map__pagination" id="{{ map_dom_id }}-pagination" aria-label="{% translate 'Country list pagination' %}" hidden>
+                    <button type="button" class="button is-small is-rounded participant-map__pagination-btn" data-page-action="prev" aria-label="{% translate 'Previous page' %}">
+                        &lsaquo;
+                    </button>
+                    <div class="participant-map__pagination-pages" data-page-numbers></div>
+                    <button type="button" class="button is-small is-rounded participant-map__pagination-btn" data-page-action="next" aria-label="{% translate 'Next page' %}">
+                        &rsaquo;
+                    </button>
+                </nav>
+            </div>
         </div>
     {% else %}
         <p class="participant-map__empty">
