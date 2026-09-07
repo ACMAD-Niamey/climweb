@@ -1,7 +1,6 @@
 {% load i18n wagtailcore_tags %}
 
-{% if settings.base.FAQSettings.is_enabled %}
-  <div class="faq-drawer-shell" id="site-faq-drawer" aria-hidden="true">
+<div class="faq-drawer-shell" id="site-faq-drawer" aria-hidden="true">
     <button class="faq-drawer-backdrop js-faq-close"
             type="button"
             tabindex="-1"
@@ -56,5 +55,4 @@
         </footer>
       {% endif %}
     </aside>
-  </div>
-{% endif %}
+</div>

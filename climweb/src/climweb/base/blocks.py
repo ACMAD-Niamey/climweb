@@ -245,6 +245,15 @@ class SocialMediaBlock(blocks.StructBlock):
 
 
 class HeaderUtilityLinkBlock(blocks.StructBlock):
+    action = blocks.ChoiceBlock(
+        choices=[
+            ("link", _("Open a page or URL")),
+            ("faq", _("Open the FAQ drawer")),
+        ],
+        default="link",
+        label=_("Action"),
+        help_text=_("Choose FAQ drawer to add the slide-out FAQ without selecting a page."),
+    )
     label = blocks.CharBlock(max_length=60, label=_("Label"))
     page = blocks.PageChooserBlock(
         required=False,
@@ -270,7 +279,11 @@ class HeaderUtilityLinkBlock(blocks.StructBlock):
 
     def clean(self, value):
         cleaned_value = super().clean(value)
-        if not cleaned_value.get("page") and not cleaned_value.get("external_url"):
+        if (
+            cleaned_value.get("action") == "link"
+            and not cleaned_value.get("page")
+            and not cleaned_value.get("external_url")
+        ):
             raise blocks.StructBlockValidationError(
                 block_errors={
                     "page": ErrorList(

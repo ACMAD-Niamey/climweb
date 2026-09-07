@@ -554,15 +554,6 @@ def default_faq_items():
 
 @register_setting(icon="help")
 class FAQSettings(BaseSiteSetting):
-    is_enabled = models.BooleanField(
-        default=True,
-        verbose_name=_("Show FAQ in utility navigation"),
-    )
-    navigation_label = models.CharField(
-        max_length=30,
-        default=_("FAQ"),
-        verbose_name=_("Navigation label"),
-    )
     heading = models.CharField(
         max_length=120,
         default=_("Frequently asked questions"),
@@ -599,8 +590,6 @@ class FAQSettings(BaseSiteSetting):
     panels = [
         MultiFieldPanel(
             [
-                FieldPanel("is_enabled"),
-                FieldPanel("navigation_label"),
                 FieldPanel("heading"),
                 FieldPanel("introduction"),
             ],
