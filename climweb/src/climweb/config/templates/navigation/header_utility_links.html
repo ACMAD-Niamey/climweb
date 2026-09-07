@@ -1,4 +1,5 @@
 {% load i18n static wagtailiconchooser_tags %}
+{% translate "FAQ" as default_faq_label %}
 
 {% with utility_links=settings.base.NavigationSettings.header_utility_links %}
   {% if utility_links %}
@@ -56,3 +57,13 @@
     {% endif %}
   {% endif %}
 {% endwith %}
+
+{% if settings.base.FAQSettings.is_enabled %}
+  <button type="button"
+          class="js-faq-open {% if mobile %}button is-fullwidth mobile-util-link faq-util-button--mobile{% else %}util-link faq-util-button{% endif %}"
+          aria-controls="site-faq-panel"
+          aria-expanded="false">
+    <span>{{ settings.base.FAQSettings.navigation_label|default:default_faq_label }}</span>
+    <span class="faq-question-icon" aria-hidden="true">?</span>
+  </button>
+{% endif %}

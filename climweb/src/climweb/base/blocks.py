@@ -285,6 +285,18 @@ class HeaderUtilityLinkBlock(blocks.StructBlock):
         label = _("Header Utility Link")
 
 
+class FAQItemBlock(blocks.StructBlock):
+    question = blocks.CharBlock(max_length=255, label=_("Question"))
+    answer = blocks.RichTextBlock(
+        features=SUMMARY_RICHTEXT_FEATURES,
+        label=_("Answer"),
+    )
+
+    class Meta:
+        icon = "help"
+        label = _("FAQ item")
+
+
 class CollapsibleTextBlock(blocks.StructBlock):
     heading = blocks.CharBlock(max_length=255)
     description = blocks.RichTextBlock(features=SUMMARY_RICHTEXT_FEATURES)
