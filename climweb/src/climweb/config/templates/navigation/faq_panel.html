@@ -1,0 +1,58 @@
+{% load i18n wagtailcore_tags %}
+
+<div class="faq-drawer-shell" id="site-faq-drawer" aria-hidden="true">
+    <button class="faq-drawer-backdrop js-faq-close"
+            type="button"
+            tabindex="-1"
+            aria-label="{% translate 'Close frequently asked questions' %}"></button>
+
+    <aside class="faq-drawer"
+           id="site-faq-panel"
+           role="dialog"
+           aria-modal="true"
+           aria-labelledby="site-faq-heading"
+           tabindex="-1">
+      <header class="faq-drawer-header">
+        <div>
+          <span class="faq-drawer-eyebrow">{% translate "Help centre" %}</span>
+          <h2 id="site-faq-heading">{{ settings.base.FAQSettings.heading }}</h2>
+        </div>
+        <button class="faq-drawer-close js-faq-close"
+                type="button"
+                aria-label="{% translate 'Close frequently asked questions' %}">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M6 6l12 12M18 6L6 18"/>
+          </svg>
+        </button>
+      </header>
+
+      <div class="faq-drawer-body">
+        {% if settings.base.FAQSettings.introduction %}
+          <p class="faq-drawer-introduction">{{ settings.base.FAQSettings.introduction }}</p>
+        {% endif %}
+
+        <div class="faq-list">
+          {% for block in settings.base.FAQSettings.items %}
+            <details class="faq-item"{% if forloop.first %} open{% endif %}>
+              <summary>
+                <span>{{ block.value.question }}</span>
+                <span class="faq-item-toggle" aria-hidden="true"></span>
+              </summary>
+              <div class="faq-item-answer">{{ block.value.answer|richtext }}</div>
+            </details>
+          {% empty %}
+            <p class="faq-empty">{% translate "FAQ content is being prepared. Please check back soon." %}</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% if settings.base.FAQSettings.support_page and settings.base.FAQSettings.support_link_label %}
+        <footer class="faq-drawer-footer">
+          <a href="{{ settings.base.FAQSettings.support_page.url }}">
+            {{ settings.base.FAQSettings.support_link_label }}
+            <span aria-hidden="true">&rarr;</span>
+          </a>
+        </footer>
+      {% endif %}
+    </aside>
+</div>

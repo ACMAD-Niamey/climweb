@@ -1,11 +1,12 @@
 {% load i18n static wagtailiconchooser_tags %}
-
 {% with utility_links=settings.base.NavigationSettings.header_utility_links %}
   {% if utility_links %}
     {% for block in utility_links %}
       {% with item=block.value %}
         {% if item.enabled %}
-          {% if item.external_url or item.page %}
+          {% if item.action == "faq" %}
+            {% include "navigation/faq_utility_button.html" with label=item.label mobile=mobile %}
+          {% elif item.external_url or item.page %}
             <a href="{% if item.external_url %}{{ item.external_url }}{% else %}{{ item.page.url }}{% endif %}"
                class="{% if mobile %}button is-fullwidth mobile-util-link{% else %}util-link{% endif %}"
                {% if item.open_in_new_tab %}target="_blank" rel="noopener noreferrer"{% endif %}>
@@ -54,5 +55,8 @@
         {% translate "Feedback" %}
       </a>
     {% endif %}
+
+    {% translate "FAQ" as default_faq_label %}
+    {% include "navigation/faq_utility_button.html" with label=default_faq_label mobile=mobile %}
   {% endif %}
 {% endwith %}

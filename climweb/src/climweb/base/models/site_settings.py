@@ -23,6 +23,7 @@ from wagtail_color_panel.fields import ColorField
 from wagtailcache.cache import clear_cache
 
 from climweb.base.blocks import (
+    FAQItemBlock,
     FooterNavigationItemBlock,
     HeaderUtilityLinkBlock,
     LanguageItemBlock,
@@ -493,6 +494,121 @@ class NavigationSettings(BaseSiteSetting):
         verbose_name_plural = _("Navigation Settings")
 
 
+def default_faq_items():
+    return [
+        {
+            "type": "faq_item",
+            "value": {
+                "question": str(_("Where can I find the latest weather and climate products?")),
+                "answer": str(_(
+                    "<p>Use the Products menu to browse the latest forecasts, outlooks, "
+                    "bulletins, and maps. Product pages show their publication date and "
+                    "available downloads.</p>"
+                )),
+            },
+        },
+        {
+            "type": "faq_item",
+            "value": {
+                "question": str(_("How can I receive updates when new products are published?")),
+                "answer": str(_(
+                    "<p>Select Subscribe in the utility navigation, choose the product "
+                    "updates you want, and confirm your email address.</p>"
+                )),
+            },
+        },
+        {
+            "type": "faq_item",
+            "value": {
+                "question": str(_("How do I request climate data?")),
+                "answer": str(_(
+                    "<p>Open the data request page from the website menu and provide the "
+                    "location, period, variables, and intended use. The relevant team will "
+                    "review your request and contact you.</p>"
+                )),
+            },
+        },
+        {
+            "type": "faq_item",
+            "value": {
+                "question": str(_("What should I do when an alert is active?")),
+                "answer": str(_(
+                    "<p>Open the alert to review the affected area, severity, timing, and "
+                    "recommended actions. Always follow instructions from your national and "
+                    "local authorities.</p>"
+                )),
+            },
+        },
+        {
+            "type": "faq_item",
+            "value": {
+                "question": str(_("Who can help if I cannot find what I need?")),
+                "answer": str(_(
+                    "<p>Use the contact link below to send your question to the team. Include "
+                    "the page or product name so we can direct your request quickly.</p>"
+                )),
+            },
+        },
+    ]
+
+
+@register_setting(icon="help")
+class FAQSettings(BaseSiteSetting):
+    heading = models.CharField(
+        max_length=120,
+        default=_("Frequently asked questions"),
+        verbose_name=_("Panel heading"),
+    )
+    introduction = models.TextField(
+        blank=True,
+        default=_("Quick answers to common questions about our services and information."),
+        verbose_name=_("Panel introduction"),
+    )
+    items = StreamField(
+        [("faq_item", FAQItemBlock())],
+        use_json_field=True,
+        blank=True,
+        default=default_faq_items,
+        verbose_name=_("FAQ items"),
+        help_text=_("Add, edit, remove, and reorder the questions shown in the FAQ panel."),
+    )
+    support_link_label = models.CharField(
+        max_length=80,
+        blank=True,
+        default=_("Still need help? Contact us"),
+        verbose_name=_("Support link label"),
+    )
+    support_page = models.ForeignKey(
+        "wagtailcore.Page",
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Support page"),
+    )
+
+    panels = [
+        MultiFieldPanel(
+            [
+                FieldPanel("heading"),
+                FieldPanel("introduction"),
+            ],
+            heading=_("FAQ panel"),
+        ),
+        FieldPanel("items"),
+        MultiFieldPanel(
+            [
+                FieldPanel("support_link_label"),
+                PageChooserPanel("support_page"),
+            ],
+            heading=_("Support link"),
+        ),
+    ]
+
+    class Meta:
+        verbose_name = _("FAQ settings")
+
+
 @register_setting
 class ImportantPages(BaseSiteSetting):
     mailing_list_signup_page = models.ForeignKey(
@@ -570,6 +686,7 @@ class ImportantPages(BaseSiteSetting):
 @receiver(post_save, sender=LanguageSettings)
 @receiver(post_save, sender=Theme)
 @receiver(post_save, sender=NavigationSettings)
+@receiver(post_save, sender=FAQSettings)
 @receiver(post_save, sender=ImportantPages)
 def handle_clear_wagtail_cache(sender, **kwargs):
     logger.debug("[WAGTAIL_CACHE]: Clearing cache")
