@@ -1,8 +1,11 @@
+import uuid
 from datetime import timedelta
 
 from django.conf import settings
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.db import transaction
+from django.db.models import Count, Max, Q
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.response import TemplateResponse
@@ -15,6 +18,8 @@ from .forms import (
     ProductImportScheduleForm,
     ProductImportSourceConfigForm,
     ProductLayerForm,
+    ProductSubscriptionForm,
+    ProductSubscriptionPreferencesForm,
 )
 from .import_monitoring import (
     build_import_monitor_rows,
@@ -27,8 +32,201 @@ from .models import (
     ProductImportRun,
     ProductImportSchedule,
     ProductImportSourceConfig,
+    ProductNotificationDelivery,
+    ProductNotificationEvent,
     ProductPage,
+    ProductSubscriptionPreference,
+    ProductSubscriber,
+    ProductFamilyNotificationConfig,
 )
+
+
+def product_subscription_view(request):
+    from .models import ProductSubscriptionPage
+    page = ProductSubscriptionPage.objects.live().first()
+    if page:
+        return redirect(page.url)
+
+    form = ProductSubscriptionForm(
+        request.POST if request.method == "POST" else None
+    )
+    if request.method == "POST" and form.is_valid():
+        email = form.cleaned_data["email"].strip().lower()
+        subscriber, _ = ProductSubscriber.objects.update_or_create(
+            email=email,
+            defaults={
+                "name": form.cleaned_data["name"].strip(),
+                "sector": form.cleaned_data["sector"],
+                "organization_type": form.cleaned_data["organization_type"],
+                "organization_name": form.cleaned_data.get("organization_name", "").strip(),
+                "status": ProductSubscriber.STATUS_ACTIVE,
+                "confirmation_token": uuid.uuid4(),
+                "consented_at": timezone.now(),
+                "confirmed_at": timezone.now(),
+                "unsubscribed_at": None,
+                "consent_ip": request.META.get("REMOTE_ADDR") or None,
+                "consent_user_agent": request.META.get(
+                    "HTTP_USER_AGENT", ""
+                )[:500],
+            },
+        )
+        subscriber.preferences.all().delete()
+        ProductSubscriptionPreference.objects.bulk_create(
+            [
+                ProductSubscriptionPreference(
+                    subscriber=subscriber, product_family=family
+                )
+                for family in form.cleaned_data["product_families"]
+            ]
+        )
+        from .tasks import send_product_subscription_confirmation
+
+        send_product_subscription_confirmation.delay(subscriber.pk)
+        return render(
+            request,
+            "products/subscription_status.html",
+            {
+                "status_title": "Subscription Successful",
+                "status_message": (
+                    "You will now receive notifications for your selected ACMAD "
+                    "products."
+                ),
+            },
+        )
+    return render(request, "products/subscription_form.html", {"form": form})
+
+
+def product_subscription_confirm_view(request, token):
+    subscriber = get_object_or_404(ProductSubscriber, confirmation_token=token)
+    subscriber.status = ProductSubscriber.STATUS_ACTIVE
+    subscriber.confirmed_at = timezone.now()
+    subscriber.unsubscribed_at = None
+    subscriber.save(
+        update_fields=[
+            "status",
+            "confirmed_at",
+            "unsubscribed_at",
+            "updated_at",
+        ]
+    )
+    return render(
+        request,
+        "products/subscription_status.html",
+        {
+            "status_title": "Subscription confirmed",
+            "status_message": (
+                "You will now receive notifications for your selected ACMAD "
+                "products."
+            ),
+        },
+    )
+
+
+def product_subscription_preferences_view(request, token):
+    subscriber = get_object_or_404(ProductSubscriber, unsubscribe_token=token)
+
+    from .models import ProductSubscriptionPage
+    page = ProductSubscriptionPage.objects.live().first()
+
+    initial = {
+        "name": subscriber.name,
+        "email": subscriber.email,
+        "sector": subscriber.sector,
+        "organization_type": subscriber.organization_type,
+        "organization_name": subscriber.organization_name,
+        "product_families": list(
+            subscriber.preferences.values_list("product_family", flat=True)
+        ),
+    }
+
+    if subscriber.extra_data:
+        initial.update(subscriber.extra_data)
+
+    if page:
+        form_class = page.get_form_class()
+    else:
+        form_class = ProductSubscriptionPreferencesForm
+
+    form = form_class(
+        request.POST if request.method == "POST" else None,
+        initial=initial,
+    )
+
+    if "email" in form.fields:
+        form.fields["email"].disabled = True
+
+    if "wagtailcaptcha" in form.fields:
+        del form.fields["wagtailcaptcha"]
+
+    if "consent" in form.fields:
+        del form.fields["consent"]
+
+    if request.method == "POST" and form.is_valid():
+        cleaned_data = form.cleaned_data.copy()
+        subscriber.name = cleaned_data.pop("name", "").strip()
+        subscriber.sector = cleaned_data.pop("sector", "")
+        subscriber.organization_type = cleaned_data.pop("organization_type", "")
+        subscriber.organization_name = cleaned_data.pop("organization_name", "").strip()
+        product_families = cleaned_data.pop("product_families", [])
+
+        cleaned_data.pop("email", None)
+        cleaned_data.pop("consent", None)
+        cleaned_data.pop("wagtailcaptcha", None)
+
+        if page:
+            subscriber.extra_data = cleaned_data
+
+        subscriber.status = ProductSubscriber.STATUS_ACTIVE
+        subscriber.unsubscribed_at = None
+        subscriber.save()
+
+        subscriber.preferences.all().delete()
+        ProductSubscriptionPreference.objects.bulk_create(
+            [
+                ProductSubscriptionPreference(
+                    subscriber=subscriber, product_family=family
+                )
+                for family in product_families
+            ]
+        )
+        return render(
+            request,
+            "products/subscription_status.html",
+            {
+                "status_title": "Preferences updated",
+                "status_message": (
+                    "Your ACMAD product notification preferences have been saved."
+                ),
+            },
+        )
+    return render(
+        request,
+        "products/product_subscription_page.html" if page else "products/subscription_form.html",
+        {"form": form, "managing_preferences": True, "subscriber": subscriber, "page": page},
+    )
+
+
+def product_subscription_unsubscribe_view(request, token):
+    subscriber = get_object_or_404(ProductSubscriber, unsubscribe_token=token)
+    if request.method == "POST":
+        subscriber.status = ProductSubscriber.STATUS_UNSUBSCRIBED
+        subscriber.unsubscribed_at = timezone.now()
+        subscriber.save(update_fields=["status", "unsubscribed_at", "updated_at"])
+        return render(
+            request,
+            "products/subscription_status.html",
+            {
+                "status_title": "Unsubscribed",
+                "status_message": (
+                    "You will no longer receive ACMAD product notifications."
+                ),
+            },
+        )
+    return render(
+        request,
+        "products/subscription_unsubscribe.html",
+        {"subscriber": subscriber},
+    )
 
 
 def _record_importer_audit(importer, action, actor, changes=None):
@@ -107,6 +305,173 @@ def product_import_monitor_view(request):
             "summary": build_import_monitor_summary(rows),
         },
     )
+
+
+@user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
+def product_subscriber_dashboard_view(request):
+    """Track locally stored product subscribers and notification activity."""
+    from .import_registry import get_product_import_definitions
+
+    definitions = [
+        definition
+        for definition in get_product_import_definitions()
+        if not definition.get("is_archived")
+    ]
+    product_choices = [
+        (definition["key"], definition["label"])
+        for definition in definitions
+    ]
+    product_labels = dict(product_choices)
+    valid_statuses = dict(ProductSubscriber.STATUS_CHOICES)
+
+    search = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+    product_filter = request.GET.get("product", "").strip()
+    if status_filter not in valid_statuses:
+        status_filter = ""
+    if product_filter not in product_labels:
+        product_filter = ""
+
+    subscribers = ProductSubscriber.objects.prefetch_related("preferences")
+    if search:
+        subscribers = subscribers.filter(
+            Q(email__icontains=search) | Q(name__icontains=search)
+        )
+    if status_filter:
+        subscribers = subscribers.filter(status=status_filter)
+    if product_filter:
+        subscribers = subscribers.filter(
+            preferences__product_family=product_filter
+        )
+
+    subscribers = subscribers.annotate(
+        sent_delivery_count=Count(
+            "deliveries",
+            filter=Q(
+                deliveries__status=ProductNotificationDelivery.STATUS_SENT
+            ),
+            distinct=True,
+        ),
+        last_notified_at=Max("deliveries__sent_at"),
+    ).order_by("-created_at", "email")
+
+    page = Paginator(subscribers, 50).get_page(request.GET.get("page"))
+    for subscriber in page.object_list:
+        subscriber.selected_product_labels = [
+            product_labels.get(
+                preference.product_family, preference.product_family
+            )
+            for preference in subscriber.preferences.all()
+        ]
+
+    status_counts = {
+        row["status"]: row["count"]
+        for row in ProductSubscriber.objects.values("status").annotate(
+            count=Count("pk")
+        )
+    }
+    events_queryset = ProductNotificationEvent.objects.select_related("source_import").order_by("-created_at")
+    event_page = Paginator(events_queryset, 5).get_page(request.GET.get("event_page"))
+    recent_events = list(event_page.object_list)
+    for event in recent_events:
+        event.product_label = product_labels.get(
+            event.product_family, event.product_family
+        )
+
+    return TemplateResponse(
+        request,
+        "products/subscriber_dashboard.html",
+        {
+            "subscriber_page": page,
+            "total_subscribers": ProductSubscriber.objects.count(),
+            "status_counts": status_counts,
+            "status_choices": ProductSubscriber.STATUS_CHOICES,
+            "product_choices": product_choices,
+            "search": search,
+            "status_filter": status_filter,
+            "product_filter": product_filter,
+            "recent_events": recent_events,
+            "event_page": event_page,
+        },
+    )
+
+
+@user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
+def product_subscriber_export_csv_view(request):
+    """Export subscribers as a CSV file matching the dashboard filters."""
+    import csv
+    from django.http import HttpResponse
+    from .import_registry import get_product_import_definitions
+
+    definitions = [
+        definition
+        for definition in get_product_import_definitions()
+        if not definition.get("is_archived")
+    ]
+    product_choices = [
+        (definition["key"], definition["label"])
+        for definition in definitions
+    ]
+    product_labels = dict(product_choices)
+    valid_statuses = dict(ProductSubscriber.STATUS_CHOICES)
+
+    search = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+    product_filter = request.GET.get("product", "").strip()
+    if status_filter not in valid_statuses:
+        status_filter = ""
+    if product_filter not in product_labels:
+        product_filter = ""
+
+    subscribers = ProductSubscriber.objects.prefetch_related("preferences")
+    if search:
+        subscribers = subscribers.filter(
+            Q(email__icontains=search) | Q(name__icontains=search)
+        )
+    if status_filter:
+        subscribers = subscribers.filter(status=status_filter)
+    if product_filter:
+        subscribers = subscribers.filter(
+            preferences__product_family=product_filter
+        )
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="subscribers_export.csv"'
+    writer = csv.writer(response)
+    writer.writerow([
+        "Email", 
+        "Name",
+        "Status", 
+        "Confirmed At", 
+        "Unsubscribed At", 
+        "Sector",
+        "Organization Type",
+        "Organization Name",
+        "Preferred Product Families"
+    ])
+
+    def csv_safe(value):
+        value = str(value or "")
+        return f"'{value}" if value.lstrip().startswith(("=", "+", "-", "@")) else value
+
+    for subscriber in subscribers:
+        preferred_products = ", ".join(
+            product_labels.get(pref.product_family, pref.product_family)
+            for pref in subscriber.preferences.all()
+        )
+        writer.writerow([
+            csv_safe(subscriber.email),
+            csv_safe(subscriber.name),
+            subscriber.get_status_display(),
+            subscriber.confirmed_at.strftime('%Y-%m-%d %H:%M') if subscriber.confirmed_at else "",
+            subscriber.unsubscribed_at.strftime('%Y-%m-%d %H:%M') if subscriber.unsubscribed_at else "",
+            subscriber.get_sector_display() if subscriber.sector else "",
+            subscriber.get_organization_type_display() if subscriber.organization_type else "",
+            csv_safe(subscriber.organization_name),
+            preferred_products
+        ])
+
+    return response
 
 
 @user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
@@ -629,6 +994,36 @@ def product_import_family_view(request, family_key):
             retry=True,
         )
         return redirect("product_import_family", family_key=family_key)
+    elif request.method == "POST" and action == "send_latest_notification":
+        from .product_notifications import queue_latest_product_notification
+
+        event = queue_latest_product_notification(family_key, request.user)
+        if event is None:
+            messages.warning(
+                request,
+                "There is no successfully imported file to notify subscribers about.",
+            )
+        else:
+            messages.success(
+                request,
+                f"Notification for the latest {definition['label']} product was queued.",
+            )
+        return redirect("product_import_family", family_key=family_key)
+    elif request.method == "POST" and action == "update_notification_config":
+        notifications_enabled = request.POST.get("notifications_enabled") == "on"
+        custom_subject = request.POST.get("custom_subject", "").strip()
+        introduction_text = request.POST.get("introduction_text", "").strip()
+        
+        ProductFamilyNotificationConfig.objects.update_or_create(
+            product_family=family_key,
+            defaults={
+                "notifications_enabled": notifications_enabled,
+                "custom_subject": custom_subject,
+                "introduction_text": introduction_text,
+            }
+        )
+        messages.success(request, f"{definition['label']} notification settings updated.")
+        return redirect("product_import_family", family_key=family_key)
     elif request.method == "POST" and action in source_actions:
         if source_form is None:
             raise Http404("Source configuration is not available for this importer")
@@ -768,9 +1163,22 @@ def product_import_family_view(request, family_key):
     schedule = ProductImportSchedule.objects.filter(
         product_family=family_key
     ).select_related("updated_by").first()
-    recent_runs = ProductImportRun.objects.filter(
+    recent_runs_qs = ProductImportRun.objects.filter(
         product_family=family_key
-    ).select_related("requested_by")[:20]
+    ).select_related("requested_by")
+    paginator = Paginator(recent_runs_qs, 5)
+    page_number = request.GET.get('page')
+    recent_runs = paginator.get_page(page_number)
+    recent_notification_events = ProductNotificationEvent.objects.filter(
+        product_family=family_key
+    ).select_related("source_import", "requested_by")[:10]
+    active_subscriber_count = ProductSubscriber.objects.filter(
+        status=ProductSubscriber.STATUS_ACTIVE,
+        preferences__product_family=family_key,
+    ).distinct().count()
+    
+    notification_config = ProductFamilyNotificationConfig.objects.filter(product_family=family_key).first()
+    
     return TemplateResponse(
         request,
         "products/import_family.html",
@@ -784,7 +1192,10 @@ def product_import_family_view(request, family_key):
             "source_form": source_form,
             "source_preview": source_preview,
             "recent_runs": recent_runs,
+            "recent_notification_events": recent_notification_events,
+            "active_subscriber_count": active_subscriber_count,
             "configured_importer": configured_importer,
+            "notification_config": notification_config,
             "audit_events": (
                 configured_importer.audit_events.select_related("actor")[:20]
                 if configured_importer
@@ -836,3 +1247,37 @@ def product_layers_integration_view(request, product_page_id):
     })
 
     return render(request, template_name, context=context)
+from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect
+from wagtail.admin.auth import user_passes_test
+from .models import ProductSubscriber
+from .product_notifications import send_welcome_email
+
+@user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
+def product_subscriber_resend_verification_view(request, subscriber_id):
+    subscriber = get_object_or_404(ProductSubscriber, pk=subscriber_id)
+    if subscriber.status == ProductSubscriber.STATUS_ACTIVE:
+        try:
+            send_welcome_email(subscriber)
+            messages.success(request, f"Welcome email sent to {subscriber.email}.")
+        except Exception as e:
+            messages.error(request, f"Failed to send email to {subscriber.email}: {e}")
+    else:
+        messages.warning(request, f"Subscriber {subscriber.email} is not pending verification.")
+    
+    return redirect("product_subscriber_dashboard")
+
+
+
+@user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
+def product_subscriber_unsubscribe_view(request, subscriber_id):
+    subscriber = get_object_or_404(ProductSubscriber, pk=subscriber_id)
+    if request.method == "POST":
+        email = subscriber.email
+        subscriber.status = ProductSubscriber.STATUS_UNSUBSCRIBED
+        subscriber.unsubscribed_at = timezone.now()
+        subscriber.save()
+        messages.success(request, f"Subscriber {email} unsubscribed successfully.")
+    else:
+        messages.error(request, "Invalid request method for unsubscribe. Use POST.")
+    return redirect("product_subscriber_dashboard")

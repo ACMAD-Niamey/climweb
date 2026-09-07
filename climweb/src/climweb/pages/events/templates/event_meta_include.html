@@ -1,150 +1,47 @@
 {% load i18n wagtailiconchooser_tags get_share_url %}
 
-
-<div class="event-detail-meta" style="margin-top: 20px">
+<div class="ev-sidebar-inner">
     {% if page.is_ended %}
-        <div class="event-meta-item">
-            <div class="event-meta-item-pre">
-                <span class="event-meta-item-icon">
-                    {% svg_icon name="box-archive" %}
-                </span>
-                <div class="event-meta-item-title" style="color: #de2828 ;font-weight: bold">
-                    {% translate "Ended" %}
-                </div>
+        <div class="ev-sidebar-card ev-card-status ev-card-status--ended">
+            <div class="ev-card-status-header">
+                <span class="icon ev-card-status-icon">{% svg_icon name="box-archive" %}</span>
+                <span class="ev-card-status-title">{% translate "Ended" %}</span>
+            </div>
+            <p class="ev-card-status-desc">{% translate "This event has already taken place." %}</p>
+        </div>
+    {% elif not page.registration_open or page.registration_page and page.registration_page.is_closed %}
+        <div class="ev-sidebar-card ev-card-status ev-card-status--closed">
+            <div class="ev-card-status-header">
+                <span class="icon ev-card-status-icon">{% svg_icon name="circle-xmark" %}</span>
+                <span class="ev-card-status-title">{% translate "Registration closed" %}</span>
+            </div>
+            <p class="ev-card-status-desc">{% translate "Registration for this event is no longer available." %}</p>
+        </div>
+    {% elif page.registration_open and page.registration_page and not page.registration_page.live and not page.registration_page.is_closed %}
+        <div class="ev-sidebar-card ev-card-status ev-card-status--soon">
+            <div class="ev-card-status-header">
+                <span class="icon ev-card-status-icon">{% svg_icon name="hourglass-half" %}</span>
+                <span class="ev-card-status-title">{% translate "Registration will be open soon" %}</span>
             </div>
         </div>
-    {% endif %}
-    <div class="event-meta-item">
-        <div class="event-meta-item-pre">
-            <span class="event-meta-item-icon">
-                {% if page.event_type.icon %}
-                    {% svg_icon page.event_type.icon %}
-                {% else %}
-                    {% svg_icon name="tag" %}
-                {% endif %}
-            </span>
-            <div class="event-meta-item-title">
-                <span class="">
-                    {% translate "Type" %}:
-                </span>
-                {{ page.event_type.event_type }}
-            </div>
-        </div>
-    </div>
-    <div class="event-meta-item">
-        <div class="event-meta-item-pre">
-            <span class="event-meta-item-icon">
-                {% svg_icon name="location" %}
-            </span>
-            <div class="event-meta-item-title">
-                <span>
-                    {% translate "Location" %}:
-                </span>
-                {{ page.location }}
-            </div>
-
-        </div>
-    </div>
-    <div class="event-meta-item">
-        <div class="event-meta-item-pre">
-            <span class="event-meta-item-icon">
-                {% svg_icon name="calendar-alt" %}
-            </span>
-            <div class="event-meta-item-title">
-                <span>
-                    {% translate "Start Date" %}:
-                </span>
-                {% blocktranslate with start_date=page.date_from|date:"d M, Y h:i A" trimmed %}
-                    {{ start_date }}
-                {% endblocktranslate %}
-            </div>
-
-        </div>
-    </div>
-    {% if page.date_to %}
-        <div class="event-meta-item">
-            <div class="event-meta-item-pre">
-                <span class="event-meta-item-icon">
-                    {% svg_icon name="calendar-alt" %}
-                </span>
-                <div class="event-meta-item-title">
-                    <span>
-                        {% translate "End Date" %}:
-                    </span>
-                    {% blocktranslate with end_date=page.date_to|date:"d M, Y h:i A" trimmed %}
-                        {{ end_date }}
-                    {% endblocktranslate %}
-                </div>
-            </div>
-        </div>
-    {% endif %}
-    <div class="event-meta-item">
-        <div class="event-meta-item-pre">
-            <span class="event-meta-item-icon">
-                {% svg_icon name="globe" %}
-            </span>
-            <div class="event-meta-item-title">
-                <span>
-                    {% translate "Timezone" %}:
-                </span>
-                {{ page.tz_gmt_offset }}
-            </div>
-        </div>
-    </div>
-    {% if page.cost %}
-        <div class="event-meta-item">
-            <div class="event-meta-item-pre">
-                <span class="event-meta-item-icon">
-                    {% svg_icon name="wallet" %}
-                </span>
-                <div class="event-meta-item-title">
-                    <span>
-                        {% translate "Cost" %}:
-                    </span>
-                    {{ page.cost }}
-                </div>
-            </div>
-        </div>
-    {% endif %}
-    {% if not page.is_ended and page.registration_page and not page.registration_open %}
-        <div class="event-meta-item">
-            <div class="event-meta-item-pre">
-                <span class="event-meta-item-icon">
-                    {% svg_icon name="circle-xmark" %}
-                </span>
-                <div class="event-meta-item-title">
-                    {% translate "Registration closed" %}
-                </div>
-            </div>
-        </div>
-    {% endif %}
-    {% if page.registration_open and not page.is_ended and page.registration_page and not page.registration_page.live %}
-        <div class="event-meta-item">
-            <div class="event-meta-item-pre">
-                <span class="event-meta-item-icon">
-                    {% svg_icon name="hourglass-half" %}
-                </span>
-                <div class="event-meta-item-title">
-                    {% translate "Registration will be open soon" %}
-                </div>
-            </div>
-        </div>
-    {% endif %}
-
-    {% if page.registration_open and not page.is_ended %}
-        {% if page.registration_page and page.registration_page.live %}
-            <div class="registration-button">
+    {% elif page.registration_open and not page.is_ended %}
+        {% if page.registration_page and page.registration_page.live and not page.registration_page.is_closed %}
+            <div class="ev-sidebar-card ev-card-cta">
+                <h4 class="ev-card-title">{% translate "Join This Event" %}</h4>
+                <p class="ev-card-text">{% translate "Reserve your place by completing the registration form." %}</p>
                 <a href="{{ page.registration_page.url }}"
                    data-ga-action="click"
                    data-ga-event-category="Event Registration"
                    data-ga-event-label="{{ page.title }}"
                    data-ga-value="{{ page.registration_page.url }}"
-                   class="button is-medium is-fullwidth">
+                   class="button is-fullwidth ev-btn-register">
                     {% translate "Register" %}
                 </a>
             </div>
         {% elif page.zoom_events_id and page.zoom_events_url %}
-            <div class="registration-button">
+            <div class="ev-sidebar-card ev-card-cta">
+                <h4 class="ev-card-title">{% translate "Join This Event" %}</h4>
+                <p class="ev-card-text">{% translate "Join the live session online via Zoom." %}</p>
                 <a href="{{ page.zoom_events_url }}"
                    target="_blank"
                    rel="noopener"
@@ -152,16 +49,98 @@
                    data-ga-event-category="Zoom Event Registration"
                    data-ga-event-label="{{ page.title }}"
                    data-ga-value="{{ page.zoom_events_url }}"
-                   class="button is-medium is-fullwidth">
+                   class="button is-fullwidth ev-btn-register">
                     {% translate "Register on Zoom" %}
                 </a>
             </div>
         {% endif %}
     {% endif %}
 
-    <div class="share-buttons" style="margin-top: 20px">
-        {% share_buttons url=page.get_full_url text=page.title %}
+    <!-- EVENT INFO SUMMARY CARD -->
+    <div class="ev-sidebar-card">
+        <h4 class="ev-card-title">{% translate "Event Information" %}</h4>
+        <div class="ev-info-rows">
+            <div class="ev-info-row">
+                <span class="icon ev-info-icon">
+                    {% if page.event_type.icon %}
+                        {% svg_icon page.event_type.icon %}
+                    {% else %}
+                        {% svg_icon name="tag" %}
+                    {% endif %}
+                </span>
+                <div class="ev-info-content">
+                    <span class="ev-info-label">{% translate "Type" %}</span>
+                    <span class="ev-info-value">{{ page.event_type.event_type }}</span>
+                </div>
+            </div>
+
+            <div class="ev-info-row">
+                <span class="icon ev-info-icon">{% svg_icon name="calendar-alt" %}</span>
+                <div class="ev-info-content">
+                    <span class="ev-info-label">{% translate "Start Date" %}</span>
+                    <span class="ev-info-value">
+                        {% blocktranslate with start_date=page.date_from|date:"d M, Y h:i A" trimmed %}
+                            {{ start_date }}
+                        {% endblocktranslate %}
+                    </span>
+                </div>
+            </div>
+
+            {% if page.date_to %}
+                <div class="ev-info-row">
+                    <span class="icon ev-info-icon">{% svg_icon name="calendar-alt" %}</span>
+                    <div class="ev-info-content">
+                        <span class="ev-info-label">{% translate "End Date" %}</span>
+                        <span class="ev-info-value">
+                            {% blocktranslate with end_date=page.date_to|date:"d M, Y h:i A" trimmed %}
+                                {{ end_date }}
+                            {% endblocktranslate %}
+                        </span>
+                    </div>
+                </div>
+            {% endif %}
+
+            <div class="ev-info-row">
+                <span class="icon ev-info-icon">{% svg_icon name="globe" %}</span>
+                <div class="ev-info-content">
+                    <span class="ev-info-label">{% translate "Timezone" %}</span>
+                    <span class="ev-info-value">{{ page.timezone }} ({{ page.tz_gmt_offset }})</span>
+                </div>
+            </div>
+
+            <div class="ev-info-row">
+                <span class="icon ev-info-icon">{% svg_icon name="location" %}</span>
+                <div class="ev-info-content">
+                    <span class="ev-info-label">{% translate "Location" %}</span>
+                    <span class="ev-info-value">{{ page.location }}</span>
+                </div>
+            </div>
+
+            {% if page.cost %}
+                <div class="ev-info-row">
+                    <span class="icon ev-info-icon">{% svg_icon name="wallet" %}</span>
+                    <div class="ev-info-content">
+                        <span class="ev-info-label">{% translate "Cost" %}</span>
+                        <span class="ev-info-value">{{ page.cost }}</span>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
     </div>
 
+    {% if page.agenda_document %}
+        <div class="ev-sidebar-card">
+            <h4 class="ev-card-title">{% translate "Event Agenda" %}</h4>
+            <p class="ev-card-text">{% translate "Download the official event schedule and agenda." %}</p>
+            <a href="{{ page.agenda_document.url }}" class="button is-fullwidth ev-btn-outline" target="_blank">
+                <span class="icon">{% svg_icon name="download" %}</span>
+                <span>{% translate "Download Agenda" %}</span>
+            </a>
+        </div>
+    {% endif %}
 
+    <div class="ev-sidebar-card ev-sidebar-share share-buttons">
+        <h4 class="ev-card-title">{% translate "Share Event" %}</h4>
+        {% share_buttons url=page.get_full_url text=page.title %}
+    </div>
 </div>

@@ -1,5 +1,7 @@
 import uuid
 
+from django.core.exceptions import ValidationError
+from django.forms.utils import ErrorList
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 from wagtail import blocks
@@ -150,6 +152,88 @@ class TableInfoBlock(blocks.StructBlock):
         template = "streams/table_block.html"
 
 
+class MetServicesDirectoryBlock(blocks.StructBlock):
+    heading = blocks.CharBlock(
+        max_length=120,
+        default=_("African National Meteorological Services"),
+        label=_("Section heading"),
+    )
+    introduction = blocks.RichTextBlock(
+        required=False,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        label=_("Introduction"),
+        default=_(
+            "Explore the official meteorological and hydrological services serving countries across Africa."
+        ),
+    )
+    show_search = blocks.BooleanBlock(default=True, required=False, label=_("Show directory search"))
+
+    def get_context(self, value, parent_context=None):
+        context = super().get_context(value, parent_context=parent_context)
+        from climweb.pages.services.models import MeteorologicalService
+
+        context["met_services"] = MeteorologicalService.objects.filter(is_active=True).select_related("logo")
+        return context
+
+    class Meta:
+        template = "streams/met_services_directory.html"
+        icon = "globe"
+        label = _("Meteorological Services Directory")
+
+
+class ParticipantMapBlock(blocks.StructBlock):
+    """Africa choropleth of capacity-building participants per country.
+
+    Reads from the ``CapacityBuildingParticipant`` register and renders an
+    aggregate-only map (counts, gender split, category split - never names).
+    Reusable on any page whose ``content`` StreamField includes it; the host
+    template must load ``maplibre-gl`` + ``base/js/participant_map.js``.
+    """
+
+    heading = blocks.CharBlock(
+        max_length=120,
+        default=_("Capacity building across Africa"),
+        label=_("Section heading"),
+    )
+    introduction = blocks.RichTextBlock(
+        required=False,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        label=_("Introduction"),
+    )
+    categories = blocks.MultipleChoiceBlock(
+        required=False,
+        choices=[
+            ("ojt", _("On-the-job training")),
+            ("secondment", _("Secondment")),
+        ],
+        label=_("Categories to include"),
+        help_text=_("Leave empty to include every category."),
+    )
+    date_from = blocks.DateBlock(required=False, label=_("From date"))
+    date_to = blocks.DateBlock(required=False, label=_("To date"))
+    show_legend = blocks.BooleanBlock(default=True, required=False, label=_("Show legend"))
+
+    def get_context(self, value, parent_context=None):
+        context = super().get_context(value, parent_context=parent_context)
+        from climweb.base.models.participants import build_participant_map_context
+
+        map_dom_id = f"participant-map-{uuid.uuid4().hex[:8]}"
+        context.update(build_participant_map_context(
+            map_dom_id=map_dom_id,
+            categories=value.get("categories") or None,
+            date_from=value.get("date_from"),
+            date_to=value.get("date_to"),
+            show_legend=bool(value.get("show_legend")),
+            request=(parent_context or {}).get("request"),
+        ))
+        return context
+
+    class Meta:
+        template = "streams/participant_map.html"
+        icon = "site"
+        label = _("Participant map")
+
+
 class SocialMediaBlock(blocks.StructBlock):
     name = blocks.CharBlock(max_length=60, )
     icon = IconChooserBlock(required=False, label=_("Icon"))
@@ -158,6 +242,47 @@ class SocialMediaBlock(blocks.StructBlock):
     class Meta:
         icon = 'placeholder'
         label = _("Social Media Account")
+
+
+class HeaderUtilityLinkBlock(blocks.StructBlock):
+    label = blocks.CharBlock(max_length=60, label=_("Label"))
+    page = blocks.PageChooserBlock(
+        required=False,
+        label=_("Internal page"),
+        help_text=_("Select a page, or provide an external URL below."),
+    )
+    external_url = blocks.URLBlock(
+        required=False,
+        label=_("External URL"),
+        help_text=_("Used instead of the internal page when provided."),
+    )
+    icon = IconChooserBlock(required=False, label=_("Icon"))
+    open_in_new_tab = blocks.BooleanBlock(
+        required=False,
+        default=False,
+        label=_("Open in a new tab"),
+    )
+    enabled = blocks.BooleanBlock(
+        required=False,
+        default=True,
+        label=_("Enabled"),
+    )
+
+    def clean(self, value):
+        cleaned_value = super().clean(value)
+        if not cleaned_value.get("page") and not cleaned_value.get("external_url"):
+            raise blocks.StructBlockValidationError(
+                block_errors={
+                    "page": ErrorList(
+                        [ValidationError(_("Select an internal page or provide an external URL."))]
+                    )
+                }
+            )
+        return cleaned_value
+
+    class Meta:
+        icon = "link"
+        label = _("Header Utility Link")
 
 
 class CollapsibleTextBlock(blocks.StructBlock):

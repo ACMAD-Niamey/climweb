@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy
 from django.utils.translation import gettext_lazy as _
 from wagtail import blocks
@@ -109,6 +110,50 @@ class FormPageReviewSettingsMixin(models.Model):
 
     def get_notification_emails(self):
         return [block.value for block in self.notification_emails if block.value]
+
+    @property
+    def is_closed(self):
+        """Whether get_submissions_closing_date() has passed - still open ON
+        that date itself, closed from the day after. False when no closing
+        date is configured. Pages that want the form to actually stop
+        accepting submissions past their deadline (rather than just emailing
+        a reminder) should check this in serve() and their template."""
+        closing_date = self.get_submissions_closing_date()
+        if not closing_date:
+            return False
+        return timezone.now().date() > closing_date
+
+
+class FormPageManualCloseMixin(models.Model):
+    """Manual on/off switch for forms that have no natural deadline (e.g.
+    Contact, Feedback, Data Request, Product Subscription - see
+    FormPageClosingDateMixin for the scheduled-date alternative used by
+    Events/Summer School). Editors can stop accepting submissions
+    immediately, independent of - and in addition to - any closing date
+    configured below: is_closed is true if EITHER this flag is off OR the
+    closing date (if any) has passed.
+
+    Must appear before FormPageReviewSettingsMixin in a page's base classes
+    so this is_closed override's super() call resolves to
+    FormPageReviewSettingsMixin.is_closed.
+    """
+    class Meta:
+        abstract = True
+
+    form_open = models.BooleanField(
+        default=True,
+        verbose_name=_("Form open"),
+        help_text=_("Turn off to immediately stop accepting submissions, "
+                    "regardless of any closing date configured below."),
+    )
+
+    form_open_panels = [
+        FieldPanel('form_open'),
+    ]
+
+    @property
+    def is_closed(self):
+        return not self.form_open or super().is_closed
 
 
 class FormPageClosingDateMixin(models.Model):

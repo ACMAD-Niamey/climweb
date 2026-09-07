@@ -20,7 +20,7 @@ from timezone_field import TimeZoneField
 from wagtail.admin.panels import (FieldPanel, InlinePanel, MultiFieldPanel, )
 from wagtail.admin.panels import TabbedInterface, ObjectList
 from wagtail.contrib.forms.forms import WagtailAdminFormPageForm
-from wagtail.contrib.forms.models import AbstractEmailForm, AbstractFormField
+from wagtail.contrib.forms.models import AbstractEmailForm, AbstractFormField, FORM_FIELD_CHOICES
 from wagtail.fields import StreamField, RichTextField
 from wagtail.models import Page
 from wagtail.snippets.models import register_snippet
@@ -31,15 +31,18 @@ from wagtailmailchimp.models import AbstractMailchimpIntegrationForm
 from wagtailzoom.models import AbstractZoomIntegrationForm
 
 from climweb.base import blocks
-from climweb.base.forms import CustomWagtailCaptchaFormBuilder, effective_clean_name
+from climweb.base.forms import (FormImageField, FormDocumentField, CustomSubmissionsListView,
+                                CustomWagtailCaptchaFormBuilder, effective_clean_name)
 from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin, FormPageClosingDateMixin,
                                  FormFieldMaxLengthMixin, FormCleanNameFallbackMixin)
+from climweb.base.models import FormFileSubmission
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import (
     get_pytz_gmt_offset_str,
     paginate,
     query_param_to_list,
-    get_first_non_empty_p_string
+    get_first_non_empty_p_string,
+    generate_title_from_filename
 )
 from .blocks import PanelistBlock, EventSponsorBlock, SessionBlock
 
@@ -386,7 +389,12 @@ class EventPage(MetadataPageMixin, Page):
     
     @cached_property
     def registration_page(self):
-        return self.get_first_child()
+        # .specific, not the base Page get_first_child() returns - templates
+        # read EventRegistrationPage-only attributes off this (e.g. is_closed),
+        # which silently resolve to falsy/empty on a bare Page instance instead
+        # of raising, so the closed-registration checks would look "off" forever.
+        child = self.get_first_child()
+        return child.specific if child else None
     
     @cached_property
     def sessions_data(self):
@@ -491,7 +499,8 @@ class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormP
                             WagtailCaptchaEmailForm, AbstractMailchimpIntegrationForm, AbstractZoomIntegrationForm):
     base_form_class = EventPageCustomForm
     form_builder = CustomWagtailCaptchaFormBuilder
-    
+    submissions_list_view_class = CustomSubmissionsListView
+
     template = 'event_registration_page.html'
     landing_page_template = 'form_thank_you_landing.html'
     parent_page_types = ['events.EventPage']
@@ -516,7 +525,7 @@ class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormP
                                         help_text=_("A field on the form to check if is already submitted so as to "
                                                     "prevent multiple submissions by one person. This is usually the "
                                                     "email address field in snake casing format"),
-                                        default="email_address")
+                                        default="email")
     
     send_confirmation_email = models.BooleanField(default=False,
                                                   help_text=_("Should we send a confirmation/follow up email ?"),
@@ -578,7 +587,14 @@ class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormP
     def serve(self, request, *args, **kwargs):
         # Set self.request so wagtailzoom and other mixins can access it
         self.request = request
-        if request.method == "POST":
+        if self.is_closed:
+            form = None
+            if request.method == "POST":
+                messages.add_message(
+                    request, messages.ERROR,
+                    "Registration for this event has closed."
+                )
+        elif request.method == "POST":
             form = self.get_form(
                 request.POST, request.FILES, page=self, user=request.user
             )
@@ -715,6 +731,29 @@ class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormP
                     if fields_by_name.get(fallback_field) == 'email':
                         form_validation_value = form_data.get(fallback_field)
                         if form_validation_value:
+                            # the duplicate-search query below keys off
+                            # validation_field, not the fallback name -
+                            # without this, a fallback match still searches
+                            # under the original (mismatched) validation_field
+                            # and never finds the existing submission.
+                            validation_field = fallback_field
+                            break
+
+            # last resort: validation_field is stale/misconfigured (e.g. it
+            # names a field that was later relabeled - clean_name only gets
+            # set once, at field creation, and editing the label afterwards
+            # doesn't regenerate it). Fall back to whichever field is
+            # actually typed as email so duplicate-prevention keeps working
+            # while the CMS setting gets fixed, instead of silently letting
+            # every submission through.
+            if not form_validation_value:
+                for field in self.get_form_fields():
+                    if field.field_type == 'email':
+                        candidate_name = effective_clean_name(field)
+                        candidate_value = form_data.get(candidate_name)
+                        if candidate_value:
+                            validation_field = candidate_name
+                            form_validation_value = candidate_value
                             break
 
             if form_validation_value:
@@ -749,7 +788,33 @@ class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormP
                 should_process = True
         
         return should_process
-    
+
+    def process_form_submission(self, form):
+        cleaned_data = form.cleaned_data
+
+        for name, field in form.fields.items():
+            file_type = None
+            if isinstance(field, FormImageField):
+                file_type = 'image'
+            elif isinstance(field, FormDocumentField):
+                file_type = 'document'
+
+            if file_type:
+                file = cleaned_data.get(name)
+                if file:
+                    file.title = generate_title_from_filename(file.name)
+
+                    file_submission = FormFileSubmission.objects.create(
+                        file=file,
+                        file_type=file_type,
+                    )
+
+                    cleaned_data[name] = file_submission.pk
+                else:
+                    del cleaned_data[name]
+
+        return super(EventRegistrationPage, self).process_form_submission(form)
+
     def save(self, *args, **kwargs):
         parent = self.get_parent().specific
         
@@ -763,6 +828,15 @@ class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormP
 
 
 class EventRegistrationFormField(FormFieldMaxLengthMixin, AbstractFormField):
+    FILE_SUBMISSION_FIELD_CHOICES = (
+        ("image", _("Upload Image")),
+        ("document", _("Upload PDF Document")),
+    )
+
+    field_type = models.CharField(
+        verbose_name=_("field type"), max_length=16, choices=FORM_FIELD_CHOICES + FILE_SUBMISSION_FIELD_CHOICES
+    )
+
     page = ParentalKey(EventRegistrationPage,
                        on_delete=models.CASCADE,
                        related_name="registration_form_fields")
@@ -771,7 +845,7 @@ class EventRegistrationFormField(FormFieldMaxLengthMixin, AbstractFormField):
 @register_snippet
 class EventRegistrationFormTemplate(ClusterableModel):
     template_name = models.CharField(max_length=200)
-    validation_field = models.CharField(max_length=200, default='email_address')
+    validation_field = models.CharField(max_length=200, default='email')
     
     panels = [
         FieldPanel('template_name'),
@@ -784,8 +858,13 @@ class EventRegistrationFormTemplate(ClusterableModel):
 
 
 class EventRegistrationFormTemplateField(FormFieldMaxLengthMixin, AbstractFormField):
+    field_type = models.CharField(
+        verbose_name=_("field type"), max_length=16,
+        choices=FORM_FIELD_CHOICES + EventRegistrationFormField.FILE_SUBMISSION_FIELD_CHOICES
+    )
+
     form_template = ParentalKey(EventRegistrationFormTemplate, on_delete=models.CASCADE, related_name="form_fields")
-    
+
     EXCLUDE = ['id', 'clean_name', 'form_template']
     
     def to_dict(self):

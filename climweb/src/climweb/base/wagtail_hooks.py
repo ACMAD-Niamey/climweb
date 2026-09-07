@@ -25,10 +25,11 @@ from wagtailcache.cache import clear_cache
 
 from climweb.utils.version import get_main_version, check_version_greater_than_current
 from .cap import create_cap_geomanager_dataset
-from .models import Theme, ServiceCategory, CAPGeomanagerSettings
+from .models import Theme, ServiceCategory, CAPGeomanagerSettings, CapacityBuildingParticipant
 from .utils import get_latest_cms_release
 from .views import (cms_version_view, plugin_manager_view, cms_upgrade_status_view, submission_review_view,
-                    submissions_ratings_view, compose_submission_email_view)
+                    submissions_ratings_view, compose_submission_email_view, request_submission_export_view,
+                    download_submission_export_view)
 
 
 class ModelAdminGroupWithHiddenItems(ModelAdminGroup):
@@ -59,6 +60,10 @@ def urlconf_base():
              submissions_ratings_view, name='submissions_ratings'),
         path('forms/submissions/<int:page_id>/email/',
              compose_submission_email_view, name='compose_submission_email'),
+        path('forms/submissions/<int:page_id>/export/',
+             request_submission_export_view, name='request_submission_export'),
+        path('forms/submissions/<int:page_id>/export/<str:token>/download/',
+             download_submission_export_view, name='download_submission_export'),
     ]
 
 
@@ -78,6 +83,20 @@ class ServiceViewSet(SnippetViewSet):
 
 
 register_snippet(ServiceViewSet)
+
+
+class CapacityBuildingParticipantViewSet(SnippetViewSet):
+    model = CapacityBuildingParticipant
+    icon = "group"
+    menu_label = _("Capacity Building Participants")
+    menu_order = 220
+    list_display = ("full_name", "country", "category", "gender", "start_date", "end_date", "is_active")
+    list_filter = ("category", "gender", "is_active", "country")
+    search_fields = ("full_name", "institution")
+    list_per_page = 50
+
+
+register_snippet(CapacityBuildingParticipantViewSet)
 
 
 class ThemeSettings(ModelAdmin):
@@ -102,7 +121,7 @@ def clear_wagtailcache(request, page):
 
 
 @hooks.register('after_create_snippet')
-@hooks.register('after_create_snippet')
+@hooks.register('after_edit_snippet')
 @hooks.register('after_delete_snippet')
 def clear_cache_after_snippet_edit(request, snippet):
     clear_cache()

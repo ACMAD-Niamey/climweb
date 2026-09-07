@@ -1,0 +1,83 @@
+/* Follow Wagtail's light, dark and system themes. Keep the standalone staff
+   portal's styling separate from the CMS dashboard and review screens. */
+.staff-admin .portal-panel {
+    background: var(--w-color-surface-page);
+    border-color: var(--w-color-border-furniture);
+    color: var(--w-color-text-context);
+}
+
+.staff-admin .portal-panel h1,
+.staff-admin .portal-panel h2,
+.staff-admin .portal-panel h3,
+.staff-admin .portal-panel label,
+.staff-admin .portal-panel th {
+    color: var(--w-color-text-label);
+}
+
+.staff-admin .portal-panel td {
+    color: var(--w-color-text-context);
+}
+
+.staff-admin .portal-panel input:not([type=hidden]):not([type=checkbox]),
+.staff-admin .portal-panel textarea,
+.staff-admin .portal-panel select,
+.staff-admin .portal-panel option {
+    background: var(--w-color-surface-field);
+    border-color: var(--w-color-border-field-default);
+    color: var(--w-color-text-context);
+}
+
+.staff-admin .portal-panel input:not([type=hidden]):not([type=checkbox]):hover,
+.staff-admin .portal-panel textarea:hover,
+.staff-admin .portal-panel select:hover {
+    border-color: var(--w-color-border-field-hover);
+}
+
+.staff-admin .portal-panel input:focus-visible,
+.staff-admin .portal-panel textarea:focus-visible,
+.staff-admin .portal-panel select:focus-visible {
+    outline: 3px solid var(--w-color-focus);
+    outline-offset: 2px;
+}
+
+.staff-admin .portal-panel input::placeholder,
+.staff-admin .portal-panel textarea::placeholder {
+    color: var(--w-color-text-placeholder);
+}
+
+.staff-admin .portal-panel .helptext,
+.staff-admin .portal-help {
+    color: var(--w-color-text-meta);
+}
+
+.staff-admin .portal-panel .errorlist {
+    color: var(--w-color-text-error);
+}
+
+.staff-admin .portal-panel [aria-invalid="true"] {
+    border-color: var(--w-color-text-error);
+}
+
+.staff-admin .portal-notice {
+    background: var(--w-color-surface-info-panel);
+    border-color: var(--w-color-border-interactive-more-contrast);
+    color: var(--w-color-text-context);
+}
+
+.staff-admin .portal-panel th,
+.staff-admin .portal-panel td,
+.staff-admin .portal-history {
+    border-color: var(--w-color-border-furniture);
+}
+
+.staff-admin .portal-table tbody tr:hover {
+    background: var(--w-color-surface-field);
+}
+
+.staff-admin a:not(.button) {
+    color: var(--w-color-text-link-default);
+}
+
+.staff-admin a:not(.button):hover {
+    color: var(--w-color-text-link-hover);
+}

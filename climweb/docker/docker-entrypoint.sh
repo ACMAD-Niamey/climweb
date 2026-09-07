@@ -75,6 +75,21 @@ run_setup_commands_if_configured() {
         /climweb/web/src/climweb/manage.py migrate --noinput
     fi
 
+    # Keep the editable African meteorological services directory available on
+    # restored and newly deployed sites. The command is idempotent: it seeds
+    # missing snippets, creates the Flex Page when possible, and adds the
+    # directory block to an existing empty page without overwriting edits.
+    echo "python /climweb/web/src/climweb/manage.py seed_met_services --create-page"
+    /climweb/web/src/climweb/manage.py seed_met_services --create-page
+
+    # Create the editable CUIP service page after products have been restored or
+    # imported. Existing dashboard content is never overwritten.
+    echo "python /climweb/web/src/climweb/manage.py seed_cuip_service --download-documents"
+    /climweb/web/src/climweb/manage.py seed_cuip_service --download-documents
+
+    echo "python /climweb/web/src/climweb/manage.py seed_on_the_job_training"
+    /climweb/web/src/climweb/manage.py seed_on_the_job_training
+
         # collect staticfiles
     if [ "$COLLECT_STATICFILES_ON_STARTUP" = "true" ]; then
         echo "python /climweb/web/src/climweb/manage.py collectstatic --clear --noinput"

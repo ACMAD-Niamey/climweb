@@ -23,6 +23,8 @@ class FlexPage(AbstractBannerPage):
             ("title_text_image", blocks.TitleTextImageBlock()),
             ("accordion", blocks.AccordionBlock()),
             ("table", blocks.TableInfoBlock()),
+            ("met_services_directory", blocks.MetServicesDirectoryBlock()),
+            ("participant_map", blocks.ParticipantMapBlock()),
 
         ],
         null=True,

@@ -27,8 +27,12 @@
                         {% endif %}
                         {% if page.application_deadline %}
                             <p class="ss-application-deadline">
-                                <span class="ss-pill">
-                                    {% translate "Applications close" %}: {{ page.application_deadline }}
+                                <span class="ss-pill{% if page.is_closed %} ss-pill--closed{% endif %}">
+                                    {% if page.is_closed %}
+                                        {% translate "Applications closed" %}: {{ page.application_deadline }}
+                                    {% else %}
+                                        {% translate "Applications close" %}: {{ page.application_deadline }}
+                                    {% endif %}
                                 </span>
                             </p>
                         {% endif %}
@@ -92,7 +96,11 @@
                             <h2 class="ss-application-form-title">{% translate "Tell us about yourself" %}</h2>
                         </div>
 
-                        {% if form.fields %}
+                        {% if page.is_closed %}
+                            <p class="ss-application-closed-notice">
+                                {% translate "Applications for this summer school are now closed." %}
+                            </p>
+                        {% elif form.fields %}
                             <form action="{% pageurl page %}" method="POST" class="ss-application-form" enctype="multipart/form-data">
                                 {% csrf_token %}
                                 {{ form|bulma }}

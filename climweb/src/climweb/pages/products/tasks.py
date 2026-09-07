@@ -28,6 +28,32 @@ def _configured_source_options(family_key):
     return get_product_import_source_command_options(family_key)
 
 
+def _run_automatic_product_import(family_key, command_name, *args, **options):
+    """Run an automatic importer and notify only about records it touched."""
+    from .product_notifications import queue_automatic_product_notifications
+
+    started_at = timezone.now()
+    call_command(command_name, *args, **options)
+    queue_automatic_product_notifications(family_key, started_at)
+
+
+@app.task
+def send_product_subscription_confirmation(subscriber_id):
+    from .models import ProductSubscriber
+    from .product_notifications import send_welcome_email
+
+    subscriber = ProductSubscriber.objects.get(pk=subscriber_id)
+    if subscriber.status == ProductSubscriber.STATUS_ACTIVE:
+        send_welcome_email(subscriber)
+
+
+@app.task
+def send_product_notification(event_id):
+    from .product_notifications import deliver_product_notification
+
+    deliver_product_notification(event_id)
+
+
 def _convention_to_regex(convention):
     """
     Convert a filename convention pattern to a named-group regex.
@@ -358,8 +384,8 @@ def run_acmad_multihazard_import(self):
     logger.info(
         f"[ACMAD MULTI-HAZARD] Checking the newest {limit} archive issue(s)."
     )
-    call_command(
-        "import_acmad_multihazard",
+    _run_automatic_product_import(
+        "multihazard", "import_acmad_multihazard",
         limit=limit,
         continue_on_error=True,
         **_configured_source_options("multihazard"),
@@ -378,8 +404,8 @@ def run_acmad_daily_rainfall_import(self):
 
     limit = settings.ACMAD_RAINFALL_IMPORT_LIMIT
     logger.info(f"[ACMAD RAINFALL] Checking the newest {limit} archive issue(s).")
-    call_command(
-        "import_acmad_daily_rainfall",
+    _run_automatic_product_import(
+        "rainfall", "import_acmad_daily_rainfall",
         limit=limit,
         continue_on_error=True,
         **_configured_source_options("rainfall"),
@@ -397,8 +423,8 @@ def run_acmad_dekadal_import(self):
         return
 
     logger.info("[ACMAD DEKADAL] Checking the current bulletin document set.")
-    call_command(
-        "import_acmad_dekadal_bulletin",
+    _run_automatic_product_import(
+        "dekadal", "import_acmad_dekadal_bulletin",
         continue_on_error=True,
         **_configured_source_options("dekadal"),
     )
@@ -418,8 +444,8 @@ def run_acmad_monthly_climate_import(self):
     logger.info(
         f"[ACMAD MONTHLY CLIMATE] Checking the newest {limit} issue date(s)."
     )
-    call_command(
-        "import_acmad_monthly_climate",
+    _run_automatic_product_import(
+        "monthly-climate", "import_acmad_monthly_climate",
         limit=limit,
         continue_on_error=True,
         **_configured_source_options("monthly-climate"),
@@ -438,8 +464,8 @@ def run_acmad_season_onset_import(self):
 
     limit = settings.ACMAD_SEASON_ONSET_IMPORT_LIMIT
     logger.info(f"[ACMAD SEASON ONSET] Checking the newest {limit} issue date(s).")
-    call_command(
-        "import_acmad_season_onset",
+    _run_automatic_product_import(
+        "season-onset", "import_acmad_season_onset",
         limit=limit,
         continue_on_error=True,
         **_configured_source_options("season-onset"),
@@ -458,8 +484,8 @@ def run_acmad_climate_change_import(self):
 
     limit = settings.ACMAD_CLIMATE_CHANGE_IMPORT_LIMIT
     logger.info(f"[ACMAD CLIMATE CHANGE] Checking up to {limit} report(s).")
-    call_command(
-        "import_acmad_climate_change",
+    _run_automatic_product_import(
+        "climate-change", "import_acmad_climate_change",
         limit=limit,
         continue_on_error=True,
         **_configured_source_options("climate-change"),
@@ -480,8 +506,8 @@ def run_acmad_annual_climate_import(self):
     logger.info(
         f"[ACMAD ANNUAL CLIMATE] Checking the newest {limit} report year(s)."
     )
-    call_command(
-        "import_acmad_annual_climate",
+    _run_automatic_product_import(
+        "annual-climate", "import_acmad_annual_climate",
         limit=limit,
         continue_on_error=True,
         **_configured_source_options("annual-climate"),
@@ -500,8 +526,8 @@ def run_acmad_climate_watch_import(self):
 
     limit = settings.ACMAD_CLIMATE_WATCH_IMPORT_LIMIT
     logger.info(f"[ACMAD CLIMATE WATCH] Checking the newest {limit} bulletin(s).")
-    call_command(
-        "import_acmad_climate_watch",
+    _run_automatic_product_import(
+        "climate-watch", "import_acmad_climate_watch",
         limit=limit,
         continue_on_error=True,
         **_configured_source_options("climate-watch"),
@@ -522,8 +548,8 @@ def run_acmad_rainfall_exceedance_import(self):
     logger.info(
         f"[ACMAD RAINFALL EXCEEDANCE] Checking the newest {limit} issue date(s)."
     )
-    call_command(
-        "import_acmad_rainfall_exceedance",
+    _run_automatic_product_import(
+        "rainfall-exceedance", "import_acmad_rainfall_exceedance",
         limit=limit,
         continue_on_error=True,
         **_configured_source_options("rainfall-exceedance"),
@@ -544,8 +570,8 @@ def run_acmad_five_day_rainfall_import(self):
     logger.info(
         f"[ACMAD FIVE-DAY RAINFALL] Checking the newest {limit} issue date(s)."
     )
-    call_command(
-        "import_acmad_five_day_rainfall",
+    _run_automatic_product_import(
+        "five-day-rainfall", "import_acmad_five_day_rainfall",
         limit=limit,
         continue_on_error=True,
         **_configured_source_options("five-day-rainfall"),
@@ -561,8 +587,8 @@ def run_acmad_seasonal_verification_import(self):
     ):
         logger.info("[ACMAD SEASONAL VERIFICATION] Automatic import is disabled.")
         return
-    call_command(
-        "import_acmad_seasonal_verification",
+    _run_automatic_product_import(
+        "seasonal-verification", "import_acmad_seasonal_verification",
         limit=settings.ACMAD_SEASONAL_VERIFICATION_IMPORT_LIMIT,
         continue_on_error=True,
         **_configured_source_options("seasonal-verification"),
@@ -578,8 +604,8 @@ def run_acmad_model_performance_import(self):
     ):
         logger.info("[ACMAD MODEL PERFORMANCE] Automatic import is disabled.")
         return
-    call_command(
-        "import_acmad_model_performance",
+    _run_automatic_product_import(
+        "model-performance", "import_acmad_model_performance",
         limit=settings.ACMAD_MODEL_PERFORMANCE_IMPORT_LIMIT,
         continue_on_error=True,
         **_configured_source_options("model-performance"),
@@ -593,8 +619,8 @@ def run_acmad_cryosphere_import(self):
     if not _product_import_is_enabled("cryosphere", settings.ACMAD_CRYOSPHERE_AUTO_IMPORT):
         logger.info("[ACMAD CRYOSPHERE] Automatic import is disabled.")
         return
-    call_command(
-        "import_acmad_cryosphere",
+    _run_automatic_product_import(
+        "cryosphere", "import_acmad_cryosphere",
         limit=settings.ACMAD_CRYOSPHERE_IMPORT_LIMIT,
         continue_on_error=True,
         **_configured_source_options("cryosphere"),
@@ -614,8 +640,8 @@ def run_acmad_policy_briefs_import(self):
     logger.info(
         f"[ACMAD POLICY BRIEFS] Checking the newest {limit} issue date(s)."
     )
-    call_command(
-        "import_acmad_policy_briefs",
+    _run_automatic_product_import(
+        "policy-briefs", "import_acmad_policy_briefs",
         limit=limit,
         continue_on_error=True,
         **_configured_source_options("policy-briefs"),
@@ -633,8 +659,8 @@ def run_acmad_atmospheric_analysis_import(self):
         return
 
     logger.info("[ACMAD ATMOSPHERIC ANALYSIS] Checking current PNG sources.")
-    call_command(
-        "import_acmad_atmospheric_analysis",
+    _run_automatic_product_import(
+        "atmospheric-analysis", "import_acmad_atmospheric_analysis",
         continue_on_error=True,
         **_configured_source_options("atmospheric-analysis"),
     )
@@ -652,8 +678,8 @@ def run_acmad_heat_stress_import(self):
 
     limit = settings.ACMAD_HEAT_STRESS_IMPORT_LIMIT
     logger.info(f"[ACMAD HEAT STRESS] Checking the newest {limit} issue(s).")
-    call_command(
-        "import_acmad_heat_stress",
+    _run_automatic_product_import(
+        "heat-stress", "import_acmad_heat_stress",
         limit=limit,
         continue_on_error=True,
         **_configured_source_options("heat-stress"),
@@ -672,8 +698,8 @@ def run_acmad_itd_itcz_import(self):
 
     limit = settings.ACMAD_ITD_ITCZ_IMPORT_LIMIT
     logger.info(f"[ACMAD ITD/ITCZ] Checking the newest {limit} issue(s).")
-    call_command(
-        "import_acmad_itd_itcz",
+    _run_automatic_product_import(
+        "itd-itcz", "import_acmad_itd_itcz",
         limit=limit,
         continue_on_error=True,
         **_configured_source_options("itd-itcz"),
@@ -692,8 +718,8 @@ def run_acmad_nowcasting_import(self):
 
     limit = settings.ACMAD_NOWCASTING_IMPORT_LIMIT
     logger.info(f"[ACMAD NOWCASTING] Checking the newest {limit} issue time(s).")
-    call_command(
-        "import_acmad_thunderstorm_nowcasting",
+    _run_automatic_product_import(
+        "thunderstorm-nowcasting", "import_acmad_thunderstorm_nowcasting",
         limit=limit,
         continue_on_error=True,
         **_configured_source_options("thunderstorm-nowcasting"),
@@ -712,8 +738,8 @@ def run_acmad_climate_health_import(self):
 
     limit = settings.ACMAD_CLIMATE_HEALTH_IMPORT_LIMIT
     logger.info(f"[ACMAD CLIMATE/HEALTH] Checking the newest {limit} issue(s).")
-    call_command(
-        "import_acmad_climate_health",
+    _run_automatic_product_import(
+        "climate-health", "import_acmad_climate_health",
         limit=limit,
         continue_on_error=True,
         **_configured_source_options("climate-health"),
@@ -734,8 +760,8 @@ def run_acmad_seasonal_forecast_import(self):
     logger.info(
         f"[ACMAD SEASONAL FORECAST] Checking the newest {limit} issue(s)."
     )
-    call_command(
-        "import_acmad_seasonal_forecasts",
+    _run_automatic_product_import(
+        "seasonal-forecasts", "import_acmad_seasonal_forecasts",
         limit=limit,
         continue_on_error=True,
         **_configured_source_options("seasonal-forecasts"),
@@ -869,7 +895,8 @@ def run_configured_product_import(family_key):
     if not get_product_import_enabled(family_key):
         logger.info(f"[CONFIGURED IMPORT] {family_key} is disabled.")
         return
-    call_command(
+    _run_automatic_product_import(
+        family_key,
         "import_configured_product",
         family_key,
         limit=100,

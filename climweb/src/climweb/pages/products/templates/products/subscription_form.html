@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'products/css/subscription.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="product-subscribe-page section">
+    <div class="container product-subscribe-container">
+        <header class="product-subscribe-header">
+            <h1 class="title is-3">
+                {% if managing_preferences %}
+                    {% translate "Manage Product Updates" %}
+                {% else %}
+                    {% translate "Get Product Updates" %}
+                {% endif %}
+            </h1>
+            <p>
+                {% if managing_preferences %}
+                    {% translate "Update the ACMAD products you want to follow. Your changes take effect immediately." %}
+                {% else %}
+                    {% translate "Be informed when new ACMAD forecasts, bulletins and climate products are published." %}
+                {% endif %}
+            </p>
+        </header>
+
+        <div class="product-subscribe-form-column">
+            <form method="post">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="product-subscribe-errors" role="alert">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+                <div class="field">
+                    <label class="label" for="{{ form.email.id_for_label }}">
+                        {% translate "Email Address" %}<span class="required-mark">*</span>
+                    </label>
+                    <div class="control">
+                        {{ form.email }}
+                    </div>
+                    <p class="help">{% translate "Your Email Address" %}</p>
+                    {{ form.email.errors }}
+                </div>
+
+                <div class="field">
+                    <label class="label" for="{{ form.name.id_for_label }}">
+                        {% translate "Full Name" %}
+                    </label>
+                    <div class="control">
+                        {{ form.name }}
+                    </div>
+                    <p class="help">{% translate "Your Full Name" %}</p>
+                    {{ form.name.errors }}
+                </div>
+
+                <div class="field">
+                    <label class="label" for="{{ form.sector.id_for_label }}">
+                        {{ form.sector.label }}
+                    </label>
+                    <div class="control">
+                        <span class="select">
+                            {{ form.sector }}
+                        </span>
+                    </div>
+                    {{ form.sector.errors }}
+                </div>
+
+                <div class="field">
+                    <label class="label" for="{{ form.organization_type.id_for_label }}">
+                        {{ form.organization_type.label }}
+                    </label>
+                    <div class="control">
+                        <span class="select product-subscribe-organisation-select">
+                            {{ form.organization_type }}
+                        </span>
+                    </div>
+                    {{ form.organization_type.errors }}
+                </div>
+
+                <div class="field">
+                    <label class="label" for="{{ form.organization_name.id_for_label }}">
+                        {{ form.organization_name.label }}
+                    </label>
+                    <div class="control">
+                        {{ form.organization_name }}
+                    </div>
+                    {{ form.organization_name.errors }}
+                </div>
+
+                <div class="field product-subscribe-products-field">
+                    <div class="product-subscribe-products-heading">
+                        <label class="label">{% translate "Our Products" %}</label>
+                        <div class="product-subscribe-selection-actions">
+                            <button type="button" data-select-products="all">{% translate "Select all" %}</button>
+                            <button type="button" data-select-products="none">{% translate "Clear" %}</button>
+                        </div>
+                    </div>
+                    <div class="control product-subscribe-options">
+                        {{ form.product_families }}
+                    </div>
+                    <p class="help">
+                        {% translate "Choose one or more product families. Scheduled imports will notify you when new issues are published." %}
+                    </p>
+                    {{ form.product_families.errors }}
+                </div>
+
+                {% if not managing_preferences %}
+                    <div class="field product-subscribe-consent">
+                        <label class="checkbox" for="{{ form.consent.id_for_label }}">
+                            {{ form.consent }}
+                            <span>{{ form.consent.label }}</span>
+                        </label>
+                        {{ form.consent.errors }}
+                    </div>
+                {% endif %}
+
+                <div class="field product-subscribe-submit-field">
+                    <button type="submit" class="button product-subscribe-submit has-no-border">
+                        {% if managing_preferences %}
+                            {% translate "Save Preferences" %}
+                        {% else %}
+                            {% translate "Subscribe" %}
+                        {% endif %}
+                    </button>
+                    {% if not managing_preferences %}
+                        <p class="help">{% translate "You will receive an email confirming your subscription." %}</p>
+                    {% endif %}
+                </div>
+
+                {% if managing_preferences %}
+                    <div class="product-subscribe-unsubscribe">
+                        <a href="{% url 'product_subscription_unsubscribe' token=subscriber.unsubscribe_token %}">
+                            {% translate "Unsubscribe from all product notifications" %}
+                        </a>
+                    </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const productCheckboxes = document.querySelectorAll(
+            '#id_product_families input[type="checkbox"]'
+        );
+
+        document.querySelectorAll("[data-select-products]").forEach(function (button) {
+            button.addEventListener("click", function () {
+                const shouldSelect = button.dataset.selectProducts === "all";
+                productCheckboxes.forEach(function (checkbox) {
+                    checkbox.checked = shouldSelect;
+                });
+            });
+        });
+    });
+</script>
+{% endblock %}

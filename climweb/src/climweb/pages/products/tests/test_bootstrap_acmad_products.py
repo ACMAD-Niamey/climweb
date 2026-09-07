@@ -158,6 +158,7 @@ class TestBootstrapAcmadProducts(SimpleTestCase):
                     continue_on_error=True,
                     limit=5,
                 ),
+                call("seed_cuip_service"),
             ],
         )
 

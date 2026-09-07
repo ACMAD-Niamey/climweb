@@ -73,4 +73,7 @@ class Command(BaseCommand):
                 "Initial import failed for: "
                 + ", ".join(label for label, _ in failures)
             )
+        # Product page IDs now exist, so first-time deployments can populate
+        # the editable CUIP sector product selectors with real pages.
+        call_command("seed_cuip_service")
         self.stdout.write(self.style.SUCCESS(summary))

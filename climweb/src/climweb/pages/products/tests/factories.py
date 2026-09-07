@@ -14,23 +14,31 @@ fake = Faker()
 class ProductIndexPageFactory(wagtail_factories.PageFactory):
     class Meta:
         model = models.ProductIndexPage
-    
+
     title = "Products Index Page"
     banner_title = "Explore our Products"
+
+
+class ProductSubscriptionPageFactory(wagtail_factories.PageFactory):
+    class Meta:
+        model = models.ProductSubscriptionPage
+
+    title = "Subscribe to Products"
+    introduction_text = "Subscribe to receive product notifications."
 
 
 class ProductItemTypeFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = ProductItemType
     
-    name = factory.Faker("word")
+    name = factory.Sequence(lambda n: f"Type {n}")
 
 
 class ProductCategoryFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = ProductCategory
     
-    name = factory.Faker("word")
+    name = factory.Sequence(lambda n: f"Category {n}")
     icon = factory.Faker("random_element", elements=["desktop", "comment", "date"])
     
     @factory.post_generation

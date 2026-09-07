@@ -237,10 +237,12 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "climweb.pages.organisation_pages.staff.middleware.StaffPortalRestrictionMiddleware",
     'django.contrib.sites.middleware.CurrentSiteMiddleware',
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "climweb.base.middleware.StripHomePageSlugMiddleware",
     "wagtail.contrib.redirects.middleware.RedirectMiddleware",
     
     'wagtail_2fa.middleware.VerifyUserPermissionsMiddleware',
@@ -469,6 +471,15 @@ STATIC_URL = env.str("FORCE_SCRIPT_NAME", "") + "/static/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 MEDIA_URL = env.str("FORCE_SCRIPT_NAME", "") + "/media/"
 
+# Deliberately NOT under MEDIA_ROOT and NOT served by nginx (unlike /media/,
+# which is served directly and publicly with no auth check - see deploy/nginx/
+# nginx.conf). Generated submission-export zips can contain applicant resumes
+# and support letters, so they're only ever streamed out via
+# download_submission_export_view in climweb.base.views, which checks the
+# same form-management permission as the submissions list itself.
+PRIVATE_EXPORTS_ROOT = os.path.join(BASE_DIR, "private_exports")
+SUBMISSION_EXPORT_RETENTION_HOURS = 48
+
 # Wagtail settings
 WAGTAIL_SITE_NAME = env.str("WAGTAIL_SITE_NAME", "ClimWeb")
 
@@ -512,7 +523,20 @@ if RECAPTCHA_VERIFY_REQUEST_TIMEOUT:
 
 # EMAIL SETTINGS
 # Default email address used to send messages from the website.
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="") or "climweb@localhost"
+
+EMAIL_HOST = env("EMAIL_HOST", default="") or "localhost"
+_email_port = env("EMAIL_PORT", default="")
+EMAIL_PORT = int(_email_port) if _email_port else 25
+
+_email_tls = env("EMAIL_USE_TLS", default="")
+EMAIL_USE_TLS = str(_email_tls).lower() in ("yes", "y", "true", "t", "1") if _email_tls else False
+
+_email_ssl = env("EMAIL_USE_SSL", default="")
+EMAIL_USE_SSL = str(_email_ssl).lower() in ("yes", "y", "true", "t", "1") if _email_ssl else False
+
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 
 # A list of people who get error notifications.
 ADMINS = getaddresses([env('DJANGO_ADMINS', default="")])

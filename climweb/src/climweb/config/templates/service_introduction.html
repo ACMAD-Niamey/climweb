@@ -1,4 +1,4 @@
-{% load wagtailcore_tags wagtailimages_tags lazyimages_tags nmhs_cms_tags wagtailiconchooser_tags %}
+{% load wagtailcore_tags wagtailimages_tags lazyimages_tags nmhs_cms_tags wagtailiconchooser_tags i18n %}
 
 <div class="intro-section">
   <div class="columns is-centered is-vcentered intro-section-wrapper">
@@ -14,6 +14,14 @@
       {% if page.introduction_text %}
         <div class="intro-body format-text">
           {{ page.introduction_text|richtext }}
+        </div>
+      {% endif %}
+
+      {% if show_subscribe_button %}
+        <div class="mb-5" style="margin-top: 1rem;">
+            <a class="button is-primary" href="{% url 'product_subscription' %}">
+                {% translate "Subscribe to product updates" %}
+            </a>
         </div>
       {% endif %}
 

@@ -72,12 +72,13 @@
             {% if page.service_categories and page.service_categories|length > 0 %}
 
             {% for category in page.service_categories %}
+            {% svg_icon category.icon as category_svg_icon %}
             <div class="spl-cat-block" id="cat-block-{{ category.pk }}" data-category-id="{{ category.pk }}">
 
               <div class="spl-cat-hdr">
-                {% if category.icon %}
-                <div class="spl-cat-icon">{% svg_icon category.icon %}</div>
-                {% endif %}
+                <div class="spl-cat-icon">
+                  {% if category_svg_icon %}{{ category_svg_icon }}{% else %}{% svg_icon name="globe" %}{% endif %}
+                </div>
                 <h2 class="spl-cat-name">{{ category.name }}</h2>
               </div>
 
@@ -98,11 +99,10 @@
                         alt="{{ sub_page.title }}" />
                       {% else %}
                       <div class="pub-thumb-placeholder">
-                        {% if category.icon %}
                         <span class="spl-card-ph-icon"
-                          style="opacity:0.25; display:flex; justify-content:center; align-items:center; height:100%; fill:#fff;">{%
-                          svg_icon category.icon %}</span>
-                        {% endif %}
+                          style="opacity:0.25; display:flex; justify-content:center; align-items:center; height:100%; fill:#fff;">
+                          {% if category_svg_icon %}{{ category_svg_icon }}{% else %}{% svg_icon name="globe" %}{% endif %}
+                        </span>
                       </div>
                       {% endif %}
                     </a>
@@ -110,9 +110,9 @@
                     {# Body #}
                     <div class="pub-body">
                       <div class="pub-tag-row">
-                        {% if category.icon %}
-                        <span class="pub-tag-icon">{% svg_icon category.icon %}</span>
-                        {% endif %}
+                        <span class="pub-tag-icon">
+                          {% if category_svg_icon %}{{ category_svg_icon }}{% else %}{% svg_icon name="globe" %}{% endif %}
+                        </span>
                         <span class="pub-tag">{{ category.name }}</span>
                       </div>
                       <a href="{{ sub_page.url }}" class="pub-title">{{ sub_page.title }}</a>

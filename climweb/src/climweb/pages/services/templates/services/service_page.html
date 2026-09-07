@@ -5,6 +5,9 @@
 {% block extra_css %}
     {{ block.super }}
     <link rel="stylesheet" type="text/css" href="{% static 'css/services_page.css' %}">
+    {% if page.service_sectors %}
+        <link rel="stylesheet" type="text/css" href="{% static 'css/sector_service.css' %}">
+    {% endif %}
     {% if page.youtube_playlist %}
         <link rel="stylesheet" type="text/css" href="{% static 'css/jquery.skeleton.css' %}">
         <link rel="stylesheet" type="text/css" href="{% static 'css/video_include.css' %}">
@@ -18,25 +21,61 @@
     <main class="is-index">
         {% include 'hero.html' with page=page %}
         {% if page.introduction_image %}
-            <section class="nmhs-work is-desktop">
+            <section class="service-introduction service-introduction--media nmhs-work is-desktop">
                 <div class="work container">
                     {% include 'service_introduction.html' with page=page what_we_do=False %}
                 </div>
             </section>
         {% else %}
-            <section>
+            <section class="service-introduction service-introduction--text">
                 <div class="work container">
-                    <h2 class="title is-3">
-                        {{ page.introduction_title }}
-                    </h2>
+                    {% if page.introduction_title %}
+                        <h2 class="title is-3">
+                            {{ page.introduction_title }}
+                        </h2>
+                    {% endif %}
 
-                    <div class="intro-description format-text">
-                        {{ page.introduction_text|richtext }}
-                    </div>
+                    {% if page.introduction_text %}
+                        <div class="intro-description format-text">
+                            {{ page.introduction_text|richtext }}
+                        </div>
+                    {% endif %}
                 </div>
             </section>
         {% endif %}
-        {% if page.products %}
+        {% if page.service_sectors %}
+            <section class="sector-service" aria-labelledby="sector-service-heading">
+                <div class="container">
+                    <div class="sector-service__heading">
+                        <p class="sector-service__eyebrow">{% translate "Sector services" %}</p>
+                        {% translate "Explore services by sector" as default_sector_heading %}
+                        <h2 id="sector-service-heading" class="title is-3">
+                            {{ page.sector_heading|default:default_sector_heading }}
+                        </h2>
+                        {% if page.sector_introduction %}
+                            <div class="sector-service__introduction format-text">
+                                {{ page.sector_introduction|richtext }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <nav class="sector-service__nav" aria-label="{% translate 'Sector navigation' %}">
+                        {% for block in page.service_sectors %}
+                            <a href="#{{ block.value.anchor }}">
+                                {% if block.value.icon %}<span class="sector-service__nav-icon">{% svg_icon name=block.value.icon %}</span>{% endif %}
+                                <span>{{ block.value.title }}</span>
+                            </a>
+                        {% endfor %}
+                    </nav>
+
+                    <div class="sector-service__sections">
+                        {% for block in page.service_sectors %}
+                            {% include_block block %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+        {% elif page.products %}
             <section id="offers" class="offers"
                      style="background-image: url('{% static 'img/bg_products.png' %}'); background-repeat:no-repeat; background-size:cover">
                 <div class="container">
@@ -244,5 +283,3 @@
     </script>
 
 {% endblock extra_js %}
-
-

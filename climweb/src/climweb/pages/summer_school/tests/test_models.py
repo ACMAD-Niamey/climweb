@@ -1,6 +1,9 @@
+from datetime import timedelta
+
 from django.test import RequestFactory
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sessions.backends.db import SessionStore
+from django.utils import timezone
 from wagtail.test.utils import WagtailPageTestCase
 
 from climweb.pages.home.tests.factories import get_or_create_homepage
@@ -69,7 +72,7 @@ class TestSummerSchoolPages(WagtailPageTestCase):
         self.assertEqual(len(self.edition1.cohorts), 0)
 
     def test_application_page_default_validation_field(self):
-        self.assertEqual(self.application_page.validation_field, "email_address")
+        self.assertEqual(self.application_page.validation_field, "email")
 
     def test_get_response_sets_no_cache_header(self):
         # serve() renders its own TemplateResponse instead of calling
@@ -192,6 +195,166 @@ class TestSummerSchoolShouldProcessForm(WagtailPageTestCase):
         )
 
         self.assertTrue(should_process)
+
+    def test_fallback_match_uses_correct_key_for_duplicate_query(self):
+        # Regression test: validation_field defaults to "email" but this
+        # page's email field is clean_name "email_address", so resolving
+        # the value goes through the ("email", "email_address") fallback
+        # rather than the primary exact match. The fallback used to set
+        # form_validation_value from the matched field without also
+        # updating validation_field, so the duplicate-search query below
+        # kept searching under the original (mismatched) key and could
+        # never find the existing submission - duplicates went through
+        # silently, with no admin alert either, since a value had in fact
+        # been resolved.
+        submission_class = self.application_page.get_submission_class()
+        submission_class.objects.create(
+            page=self.application_page, form_data={"email_address": "applicant@example.com"}
+        )
+
+        request = self._build_request()
+        should_process = self.application_page.should_process_form(
+            request, form_data={"email_address": "applicant@example.com"}
+        )
+
+        self.assertFalse(should_process)
+
+    def test_falls_back_to_any_email_typed_field_when_no_name_matches(self):
+        # Simulate the "Registration 2026" production incident: the email
+        # field was relabeled from something unrelated and kept its
+        # original clean_name, so neither validation_field nor the
+        # hardcoded "email"/"email_address" fallback names match it. The
+        # duplicate check must still find it by field type instead of
+        # silently letting every submission through.
+        SummerSchoolApplicationFormField.objects.filter(pk=self.email_field.pk).update(
+            clean_name="applicant_contact"
+        )
+
+        submission_class = self.application_page.get_submission_class()
+        submission_class.objects.create(
+            page=self.application_page, form_data={"applicant_contact": "applicant@example.com"}
+        )
+
+        request = self._build_request()
+        should_process = self.application_page.should_process_form(
+            request, form_data={"applicant_contact": "applicant@example.com"}
+        )
+
+        self.assertFalse(should_process)
+
+
+class TestSummerSchoolApplicationDeadline(WagtailPageTestCase):
+    """
+    application_deadline used to only drive the pre-deadline reminder email
+    (via get_submissions_closing_date()) - it never actually stopped
+    applications from being submitted after the date passed. is_closed
+    (FormPageReviewSettingsMixin) + the serve() guard below fix that.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        home_page = get_or_create_homepage()
+        index_page = SummerSchoolIndexPageFactory(parent=home_page)
+        edition = SummerSchoolPageFactory(parent=index_page)
+        cls.application_page = SummerSchoolApplicationPageFactory(parent=edition)
+
+        cls.email_field = cls.application_page.application_form_fields.create(
+            label="Email address", field_type="email", required=True, sort_order=0,
+        )
+        cls.application_page.save()
+
+    def test_is_closed_false_when_no_deadline_set(self):
+        self.application_page.application_deadline = None
+        self.assertFalse(self.application_page.is_closed)
+
+    def test_is_closed_false_on_deadline_day_itself(self):
+        self.application_page.application_deadline = timezone.now().date()
+        self.assertFalse(self.application_page.is_closed)
+
+    def test_is_closed_false_before_deadline(self):
+        self.application_page.application_deadline = timezone.now().date() + timedelta(days=1)
+        self.assertFalse(self.application_page.is_closed)
+
+    def test_is_closed_true_after_deadline(self):
+        self.application_page.application_deadline = timezone.now().date() - timedelta(days=1)
+        self.assertTrue(self.application_page.is_closed)
+
+    def test_get_rejects_form_after_deadline(self):
+        self.application_page.application_deadline = timezone.now().date() - timedelta(days=1)
+        self.application_page.save()
+
+        response = self.client.get(self.application_page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["form"])
+
+    def test_post_after_deadline_does_not_create_a_submission(self):
+        self.application_page.application_deadline = timezone.now().date() - timedelta(days=1)
+        self.application_page.save()
+
+        submission_class = self.application_page.get_submission_class()
+        starting_count = submission_class.objects.filter(page=self.application_page).count()
+
+        self.client.post(self.application_page.url, data={"email_address": "late@example.com"})
+
+        self.assertEqual(
+            submission_class.objects.filter(page=self.application_page).count(),
+            starting_count,
+        )
+
+
+class TestSummerSchoolApplyButtonClosedState(WagtailPageTestCase):
+    """
+    The Apply button/badge shown off SummerSchoolPage.application_page - on
+    the edition page's own key-info card (summer_school_hero_include.html)
+    and the index page's featured-edition card
+    (summer_school_featured_edition_include.html) - used to just silently
+    disappear once the deadline passed, with no "closed" message, because
+    application_page returned the base Page from get_first_child() instead
+    of .specific, so is_closed always resolved falsy.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        home_page = get_or_create_homepage()
+        cls.index_page = SummerSchoolIndexPageFactory(parent=home_page)
+        cls.edition = SummerSchoolPageFactory(parent=cls.index_page)
+        cls.application_page = SummerSchoolApplicationPageFactory(parent=cls.edition)
+
+    def test_application_page_property_returns_specific_instance(self):
+        self.assertIsInstance(self.edition.application_page, type(self.application_page))
+
+    def test_edition_page_shows_apply_button_when_open(self):
+        response = self.client.get(self.edition.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.application_page.url)
+        self.assertNotContains(response, "Applications closed")
+
+    def test_edition_page_shows_closed_state_after_deadline(self):
+        self.application_page.application_deadline = timezone.now().date() - timedelta(days=1)
+        self.application_page.save()
+
+        response = self.client.get(self.edition.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Applications closed")
+
+    def test_index_page_featured_card_shows_apply_button_when_open(self):
+        response = self.client.get(self.index_page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.application_page.url)
+        self.assertNotContains(response, "Applications closed")
+
+    def test_index_page_featured_card_shows_closed_state_after_deadline(self):
+        self.application_page.application_deadline = timezone.now().date() - timedelta(days=1)
+        self.application_page.save()
+
+        response = self.client.get(self.index_page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Applications closed")
 
 
 class TestFormCleanNameFallback(WagtailPageTestCase):

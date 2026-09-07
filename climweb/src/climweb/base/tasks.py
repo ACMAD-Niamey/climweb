@@ -1,3 +1,5 @@
+import os
+
 from celery.schedules import crontab
 from celery.signals import task_prerun, worker_process_init, worker_ready
 from celery_singleton import Singleton, clear_locks
@@ -208,6 +210,105 @@ def send_pre_deadline_submission_summary():
             logger.error(f"[SUBMISSION_DIGEST] Pre-deadline summary failed for '{page.title}': {exc}")
 
 
+def _export_download_url(job):
+    from django.conf import settings
+    from django.urls import reverse
+
+    path = reverse('download_submission_export', args=[job.page_id, job.token])
+    base_url = settings.WAGTAILADMIN_BASE_URL
+    if not base_url:
+        site = job.page.specific.get_site()
+        base_url = site.root_url if site else ''
+    return base_url.rstrip('/') + path if base_url else path
+
+
+@app.task(bind=True)
+def generate_submission_export(self, job_id):
+    """Builds the zip in the background and emails the requester a link into
+    download_submission_export_view once it's ready - triggered on-demand
+    from request_submission_export_view (climweb.base.views), unlike every
+    other task in this module, which only ever runs on a schedule. See
+    climweb.base.submission_export for the actual zip-building logic.
+    """
+    from django.conf import settings
+    from climweb.base.mail import send_mail
+    from climweb.base.models import SubmissionExportJob
+    from climweb.base.submission_export import build_submission_export_zip
+
+    job = SubmissionExportJob.objects.select_related('page', 'requested_by').get(pk=job_id)
+    page = job.page.specific
+
+    try:
+        job.mark_processing()
+
+        file_name = f"{page.slug}-submissions-{job.token}.zip"
+        destination_path = os.path.join(settings.PRIVATE_EXPORTS_ROOT, file_name)
+
+        submission_count = build_submission_export_zip(page, destination_path)
+        file_size = os.path.getsize(destination_path)
+
+        job.mark_ready(file_name, file_size, submission_count, settings.SUBMISSION_EXPORT_RETENTION_HOURS)
+
+        logger.info(f"[SUBMISSION_EXPORT] Export ready for '{page.title}' "
+                   f"({submission_count} submissions, job {job.token})")
+
+        send_mail(
+            f"Your export is ready: {page.title}",
+            (
+                f"Your requested export of '{page.title}' submissions ({submission_count} total) is ready.\n\n"
+                f"Log in and download it here (link expires in "
+                f"{settings.SUBMISSION_EXPORT_RETENTION_HOURS} hours):\n"
+                f"{_export_download_url(job)}\n"
+            ),
+            [job.requested_by.email],
+        )
+    except Exception as exc:
+        logger.error(f"[SUBMISSION_EXPORT] Export failed for job {job_id}: {exc}")
+        job.mark_failed(str(exc))
+
+        try:
+            send_mail(
+                f"Your export failed: {page.title}",
+                (
+                    f"Your requested export of '{page.title}' submissions could not be generated.\n"
+                    f"The site administrators have been notified.\n"
+                ),
+                [job.requested_by.email],
+            )
+        except Exception as mail_exc:
+            logger.error(f"[SUBMISSION_EXPORT] Failed to send failure notice for job {job_id}: {mail_exc}")
+
+        raise
+
+
+@app.task(base=Singleton)
+def cleanup_expired_submission_exports():
+    """Every hour: delete the zip file (and DB record) for any export past
+    its retention window - see SUBMISSION_EXPORT_RETENTION_HOURS. Exports
+    contain applicant resumes/support letters copied out of PRIVATE_EXPORTS_ROOT,
+    so they shouldn't accumulate indefinitely.
+    """
+    from django.conf import settings
+    from django.utils import timezone
+    from climweb.base.models import SubmissionExportJob
+
+    expired = SubmissionExportJob.objects.filter(
+        status=SubmissionExportJob.STATUS_READY, expires_at__lte=timezone.now(),
+    )
+    count = expired.count()
+    for job in expired:
+        file_path = os.path.join(settings.PRIVATE_EXPORTS_ROOT, job.file_name)
+        try:
+            if job.file_name and os.path.exists(file_path):
+                os.remove(file_path)
+        except OSError as exc:
+            logger.error(f"[SUBMISSION_EXPORT] Failed to remove expired export file {file_path}: {exc}")
+
+    expired.delete()
+    if count:
+        logger.info(f"[SUBMISSION_EXPORT] Cleaned up {count} expired export(s)")
+
+
 @app.on_after_finalize.connect
 def setup_periodic_tasks(sender, **kwargs):
     # run_backup every day at midnight
@@ -229,6 +330,13 @@ def setup_periodic_tasks(sender, **kwargs):
         crontab(hour=7, minute=0),
         send_pre_deadline_submission_summary.s(),
         name="send-pre-deadline-submission-summary-every-day",
+    )
+
+    # remove expired submission-export zips every hour
+    sender.add_periodic_task(
+        crontab(minute=0),
+        cleanup_expired_submission_exports.s(),
+        name="cleanup-expired-submission-exports-every-hour",
     )
 
     if "forecastmanager" in settings.INSTALLED_APPS:

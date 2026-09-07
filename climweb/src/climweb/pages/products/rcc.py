@@ -10,6 +10,6 @@ def get_rcc_service_category():
     """Resolve the editor-created RCC service, creating it when absent."""
     service, _ = ServiceCategory.objects.get_or_create(
         name=RCC_SERVICE_NAME,
-        defaults={"icon": "cloud-sun-rain"},
+        defaults={"icon": "globe"},
     )
     return service

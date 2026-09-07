@@ -6,6 +6,7 @@ from modelcluster.fields import ParentalKey
 from wagtail.admin.panels import (FieldPanel, MultiFieldPanel, PageChooserPanel, InlinePanel)
 from wagtail.fields import RichTextField, StreamField
 from wagtail.models import Page, Orderable
+from wagtail.snippets.models import register_snippet
 from wagtailmetadata.models import MetadataPageMixin
 
 from climweb.base import blocks
@@ -21,6 +22,55 @@ from climweb.pages.products.models import ProductPage, SubNationalProductPage
 from climweb.pages.publications.models import PublicationPage
 from climweb.pages.videos.models import YoutubePlaylist
 from . import blocks as local_blocks
+
+
+@register_snippet
+class MeteorologicalService(models.Model):
+    country = models.CharField(max_length=100, verbose_name=_("Country"))
+    name = models.CharField(max_length=255, verbose_name=_("Service name"))
+    acronym = models.CharField(max_length=30, blank=True, verbose_name=_("Acronym"))
+    website_url = models.URLField(
+        max_length=500,
+        verbose_name=_("Website URL"),
+        help_text=_("The official website opened when a visitor selects the card."),
+    )
+    logo = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Logo"),
+        help_text=_("Upload the official service logo. A sourced fallback is used when empty."),
+    )
+    logo_source_url = models.URLField(
+        max_length=500,
+        blank=True,
+        verbose_name=_("Fallback logo URL"),
+        help_text=_("Optional external fallback used until a logo is uploaded."),
+    )
+    wmo_member_id = models.PositiveIntegerField(null=True, blank=True, unique=True, editable=False)
+    order = models.PositiveIntegerField(default=0, verbose_name=_("Display order"))
+    is_active = models.BooleanField(default=True, verbose_name=_("Visible on the directory"))
+
+    panels = [
+        FieldPanel("country"),
+        FieldPanel("name"),
+        FieldPanel("acronym"),
+        FieldPanel("website_url"),
+        FieldPanel("logo"),
+        FieldPanel("logo_source_url"),
+        FieldPanel("order"),
+        FieldPanel("is_active"),
+    ]
+
+    class Meta:
+        ordering = ("order", "country", "name")
+        verbose_name = _("Meteorological Service")
+        verbose_name_plural = _("Meteorological Services")
+
+    def __str__(self):
+        return f"{self.country} — {self.name}"
 
 
 class ServiceIndexPage(MetadataPageMixin, Page):
@@ -74,10 +124,38 @@ class ServicePage(AbstractBannerWithIntroPage):
     rcc_template = 'services/rcc_service_page.html'
     rcc_service_name = 'Regional Climate Center'
     parent_page_types = ['services.ServiceIndexPage']
-    subpage_types = ['flex_page.FlexPage', ]
+    subpage_types = ['flex_page.FlexPage', 'services.OnTheJobTrainingPage']
     show_in_menus_default = True
+
+    introduction_title = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name=_("Introduction Title"),
+        help_text=_("Optional introduction section title"),
+    )
     
     service = models.OneToOneField(ServiceCategory, on_delete=models.PROTECT, verbose_name=_("Service"))
+
+    sector_heading = models.CharField(
+        max_length=180,
+        blank=True,
+        default="",
+        verbose_name=_("Sector section heading"),
+    )
+    sector_introduction = RichTextField(
+        blank=True,
+        default="",
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Sector section introduction"),
+    )
+    service_sectors = StreamField(
+        [("sector", local_blocks.SectorServiceBlock())],
+        blank=True,
+        null=True,
+        use_json_field=True,
+        verbose_name=_("Service sectors"),
+    )
     
     what_we_do_items = StreamField([
         ('what_we_do', base_blocks.WhatWeDoBlock()),
@@ -124,6 +202,11 @@ class ServicePage(AbstractBannerWithIntroPage):
     content_panels = Page.content_panels + [
         FieldPanel('service'),
         *AbstractBannerWithIntroPage.content_panels,
+        MultiFieldPanel([
+            FieldPanel("sector_heading"),
+            FieldPanel("sector_introduction"),
+            FieldPanel("service_sectors"),
+        ], heading=_("Sector-based service content")),
         MultiFieldPanel([
             FieldPanel('what_we_do_items'),
             FieldPanel('what_we_do_button_text'),
@@ -259,6 +342,184 @@ class ServicePage(AbstractBannerWithIntroPage):
         if self.youtube_playlist:
             context['youtube_playlist_url'] = self.youtube_playlist.get_playlist_items_api_url(request)
         
+        return context
+
+
+class OnTheJobTrainingPage(AbstractBannerWithIntroPage):
+    template = "services/on_the_job_training_page.html"
+    parent_page_types = ["home.HomePage", "services.ServicePage"]
+    subpage_types = []
+    show_in_menus_default = True
+
+    objectives = RichTextField(features=SUMMARY_RICHTEXT_FEATURES)
+    eligibility = RichTextField(features=SUMMARY_RICHTEXT_FEATURES)
+    duration = models.CharField(max_length=120, default="2-6 months")
+    location = models.CharField(max_length=160, default="ACMAD Headquarters, Niamey, Niger")
+    languages = models.CharField(max_length=120, default="English and French")
+    benefits = RichTextField(features=SUMMARY_RICHTEXT_FEATURES)
+    training_modules = StreamField(
+        [("module", local_blocks.TrainingModuleBlock())],
+        blank=True,
+        use_json_field=True,
+    )
+    application_introduction = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    application_steps = StreamField(
+        [("step", local_blocks.ApplicationStepBlock())],
+        blank=True,
+        use_json_field=True,
+    )
+    application_email = models.EmailField(default="secretariat@acmad.org")
+    reports_introduction = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    visitor_reports = StreamField(
+        [("report", local_blocks.VisitorReportBlock())],
+        blank=True,
+        use_json_field=True,
+    )
+    testimonials = StreamField(
+        [("testimony", local_blocks.TrainingTestimonialBlock())],
+        blank=True,
+        use_json_field=True,
+    )
+    gallery = StreamField(
+        [("item", local_blocks.TrainingGalleryItemBlock())],
+        blank=True,
+        use_json_field=True,
+    )
+    accommodation_introduction = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    accommodation_options = StreamField(
+        [("accommodation", local_blocks.TrainingAccommodationBlock())],
+        blank=True,
+        use_json_field=True,
+    )
+    brochure = models.ForeignKey(
+        "wagtaildocs.Document",
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    PARTICIPANT_MAP_SCOPE_BOTH = "both"
+    PARTICIPANT_MAP_SCOPE_OJT = "ojt"
+    PARTICIPANT_MAP_SCOPE_SECONDMENT = "secondment"
+    PARTICIPANT_MAP_SCOPE_CHOICES = (
+        (PARTICIPANT_MAP_SCOPE_BOTH, _("On-the-job training and secondment")),
+        (PARTICIPANT_MAP_SCOPE_OJT, _("On-the-job training only")),
+        (PARTICIPANT_MAP_SCOPE_SECONDMENT, _("Secondment only")),
+    )
+
+    show_participant_map = models.BooleanField(
+        default=False,
+        verbose_name=_("Show participant map"),
+        help_text=_("Display an Africa choropleth of participants per country, "
+                    "built from the Capacity Building Participants register."),
+    )
+    participant_map_heading = models.CharField(
+        max_length=120,
+        default="Where our participants come from",
+        verbose_name=_("Participant map heading"),
+    )
+    participant_map_introduction = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Participant map introduction"),
+    )
+    participant_map_scope = models.CharField(
+        max_length=20,
+        choices=PARTICIPANT_MAP_SCOPE_CHOICES,
+        default=PARTICIPANT_MAP_SCOPE_BOTH,
+        verbose_name=_("Participants to include"),
+    )
+    participant_map_date_from = models.DateField(
+        null=True, blank=True, verbose_name=_("From date"),
+        help_text=_("Optional. Only count engagements active on or after this date."),
+    )
+    participant_map_date_to = models.DateField(
+        null=True, blank=True, verbose_name=_("To date"),
+        help_text=_("Optional. Only count engagements that started on or before this date."),
+    )
+
+    content_panels = Page.content_panels + [
+        *AbstractBannerWithIntroPage.content_panels,
+        MultiFieldPanel(
+            [
+                FieldPanel("objectives"),
+                FieldPanel("eligibility"),
+                FieldPanel("duration"),
+                FieldPanel("location"),
+                FieldPanel("languages"),
+                FieldPanel("benefits"),
+            ],
+            heading=_("Programme overview"),
+        ),
+        FieldPanel("training_modules"),
+        MultiFieldPanel(
+            [
+                FieldPanel("application_introduction"),
+                FieldPanel("application_steps"),
+                FieldPanel("application_email"),
+            ],
+            heading=_("How to apply"),
+        ),
+        MultiFieldPanel(
+            [FieldPanel("reports_introduction"), FieldPanel("visitor_reports")],
+            heading=_("Visitor reports"),
+        ),
+        FieldPanel("testimonials"),
+        FieldPanel("gallery"),
+        MultiFieldPanel(
+            [
+                FieldPanel("accommodation_introduction"),
+                FieldPanel("accommodation_options"),
+            ],
+            heading=_("Accommodation"),
+        ),
+        FieldPanel("brochure"),
+        MultiFieldPanel(
+            [
+                FieldPanel("show_participant_map"),
+                FieldPanel("participant_map_heading"),
+                FieldPanel("participant_map_introduction"),
+                FieldPanel("participant_map_scope"),
+                FieldPanel("participant_map_date_from"),
+                FieldPanel("participant_map_date_to"),
+            ],
+            heading=_("Participant map"),
+        ),
+    ]
+
+    class Meta:
+        verbose_name = _("On-the-Job Training Page")
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+
+        if self.show_participant_map:
+            from climweb.base.models.participants import build_participant_map_context
+
+            if self.participant_map_scope == self.PARTICIPANT_MAP_SCOPE_BOTH:
+                categories = None
+            else:
+                categories = [self.participant_map_scope]
+
+            context.update(build_participant_map_context(
+                map_dom_id="ojt-participant-map",
+                categories=categories,
+                date_from=self.participant_map_date_from,
+                date_to=self.participant_map_date_to,
+                show_legend=True,
+                request=request,
+            ))
+
         return context
 
 

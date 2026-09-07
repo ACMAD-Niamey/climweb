@@ -17,7 +17,14 @@ from wagtail.urls import WAGTAIL_FRONTEND_LOGIN_TEMPLATE, serve_pattern
 from wagtailcache.cache import cache_page
 
 from climweb.base.registries import plugin_registry
-from climweb.base.views import humans, public_health_check, style_guide, style_guide_tokens
+from climweb.base.views import (
+    humans,
+    public_health_check,
+    style_guide,
+    style_guide_tokens,
+    request_submission_export_view,
+    download_submission_export_view,
+)
 from climweb.pages.search import views as search_views
 from .api import api_router
 
@@ -29,9 +36,12 @@ DJANGO_ADMIN_URL_PATH = getattr(settings, "DJANGO_ADMIN_URL_PATH", None)
 CLIMWEB_ADDITIONAL_APPS = getattr(settings, "CLIMWEB_ADDITIONAL_APPS", [])
 
 urlpatterns = [
+    path("staff/", include("climweb.pages.organisation_pages.staff.urls")),
     path("documents/", include(wagtaildocs_urls)),
     
+    path("", include("climweb.base.urls")),
     path("", include("climweb.pages.home.urls")),
+    path("", include("climweb.pages.products.urls")),
     *([path("", include("climweb.pages.wdqms.urls"))] if "climweb.pages.wdqms" in settings.INSTALLED_APPS else []),
     *([path("", include("capcomposer.cap.urls"))] if "capcomposer.cap" in settings.INSTALLED_APPS else []),
     path("", include("climweb.pages.stations.urls"), name="stations"),
@@ -58,6 +68,16 @@ urlpatterns = [
     *([path("api/cityclimate/", include("climweb.pages.cityclimate.urls"))] if "climweb.pages.cityclimate" in settings.INSTALLED_APPS else []),
     path("api/_health/", public_health_check),
     path("api/token/", obtain_auth_token),
+    path(
+        "forms/<int:page_id>/export/request/",
+        request_submission_export_view,
+        name="request_submission_export",
+    ),
+    path(
+        "forms/<int:page_id>/export/download/<str:token>/",
+        download_submission_export_view,
+        name="download_submission_export",
+    ),
 ]
 
 

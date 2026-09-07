@@ -32,7 +32,11 @@
                         </figure>
                     </div>
                     <div class="column is-half-desktop is-offset-1-desktop is-full-mobile feedback-form box">
-                        {% if form.fields %}
+                        {% if page.is_closed %}
+                            <h5 style="color: red;display: flex">
+                                {% translate "This form is no longer accepting submissions." %}
+                            </h5>
+                        {% elif form.fields %}
                             <form action="{% pageurl page %}" method="POST" enctype="multipart/form-data">
                                 {% csrf_token %}
                                 {{ form|bulma }}

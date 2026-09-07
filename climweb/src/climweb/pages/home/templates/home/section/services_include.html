@@ -1,42 +1,142 @@
 {% load static wagtailimages_tags lazyimages_tags wagtailcore_tags nmhs_cms_tags wagtailiconchooser_tags i18n %}
 
-{% if page.services %}
-<section class="section">
+{% if page.services_strip_items %}
+<section class="section services-section" id="services">
   <div class="container py-5">
 
-    <div class="mb-5">
-      <p class="is-uppercase has-text-weight-bold is-size-8 mb-1" style="color:var(--primary-color); letter-spacing:0.08em;">
-        {% translate "What We Offer" %}
+    <div class="section-heading split-heading mb-6">
+      <div>
+        <div class="eyebrow">
+          <span style="background-color: var(--primary-color);"></span>
+          {% blocktranslate trimmed %}What We Offer{% endblocktranslate %}
+        </div>
+        <h2 class="title is-2" style="margin-top: 8px;">{% translate "Science that supports better decisions" %}</h2>
+      </div>
+      <p style="max-width: 500px; color: var(--muted, #666);">
+        {% blocktranslate trimmed %}
+          We provide expert climate and meteorological services to support better decisions and mitigate risks.
+        {% endblocktranslate %}
       </p>
-      <h2 class="title is-3">{% translate "Our Service Areas" %}</h2>
     </div>
 
-    <div class="columns is-multiline is-mobile my-6">
-      {% for service in page.services %}
-        <div class="column is-half-mobile is-one-third-tablet is-one-quarter-desktop">
-          <a href="{{ service.url }}" class="service-card">
+    <div class="service-grid">
+      {% for item in page.services_strip_items|slice:":4" %}
+      <article class="service-card">
+        <span class="service-number">0{{ forloop.counter }}</span>
 
-            <div class="service-card-icon">
-              <div class="service-icon-wrap">
-                {% if service.service.icon %}
-                  {% svg_icon service.service.icon %}
-                {% endif %}
-              </div>
-            </div>
-
-            <p class="service-card-title">{{ service.banner_title }}</p>
-
-            <span class="service-card-arrow">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </span>
-
-          </a>
+        <div class="acmad-service-icon">
+          {% if item.icon %}
+          {% svg_icon item.icon %}
+          {% else %}
+          {% svg_icon "layer-group" %}
+          {% endif %}
         </div>
+
+        <h3>{{ item.title }}</h3>
+
+        <p class="service-desc">
+          {{ item.description|default:""|striptags }}
+        </p>
+
+        <a href="{{ item.url }}" class="service-link">
+          {% translate "Learn more" %}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+        </a>
+      </article>
       {% endfor %}
     </div>
 
   </div>
 </section>
 {% endif %}
+
+{% if page.show_dg_message %}
+<section class="section dg-message-section" aria-labelledby="dg-message-title">
+  <div class="container">
+    <div class="dg-message-layout">
+      <blockquote class="dg-message-copy">
+        <div class="eyebrow" id="dg-message-title">
+          <span aria-hidden="true"></span>
+          {{ page.dg_message_heading }}
+        </div>
+        <span class="dg-message-quote-mark" aria-hidden="true">“</span>
+        <div class="dg-message-body">{{ page.dg_message|richtext }}</div>
+        {% if page.dg_message_closing %}
+        <footer>
+          <span aria-hidden="true"></span>
+          {{ page.dg_message_closing }}
+        </footer>
+        {% endif %}
+      </blockquote>
+
+      <aside class="dg-message-profile" aria-label="{% translate 'Director General profile' %}">
+        <div class="dg-profile-photo">
+          {% if dg_staff_member.photo %}
+          {% image dg_staff_member.photo fill-420x440 as dg_profile_image %}
+          <img src="{{ dg_profile_image.url }}" alt="{{ dg_staff_member.name }}">
+          {% else %}
+          <span role="img" aria-label="{% translate 'Director General photograph placeholder' %}">
+            <svg viewBox="0 0 64 64" aria-hidden="true">
+              <circle cx="32" cy="23" r="11"></circle>
+              <path d="M12 55c1.8-12.4 9-18.5 20-18.5S50.2 42.6 52 55"></path>
+            </svg>
+          </span>
+          {% endif %}
+        </div>
+        <div class="dg-profile-details">
+          {% if dg_staff_member %}
+          <strong>{{ dg_staff_member.name }}</strong>
+          <span>{{ dg_staff_member.role }}</span>
+          {% else %}
+          <strong>{% translate "Director General / Chief Executive Officer" %}</strong>
+          {% endif %}
+          <small>{% translate "ACMAD" %}</small>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="section regional-section" id="about">
+  <div class="container regional-layout">
+    <div class="africa-panel">
+      {% include "home/section/regional_rcc_map.html" %}
+    </div>
+    <div class="regional-copy">
+      <div class="eyebrow light"><span></span> Continental reach</div>
+      <h2>A continent of shared climate knowledge.</h2>
+      <p>The RCCs works with national meteorological and hydrological services to strengthen forecasts,
+        share expertise and support coordinated early action.</p>
+      <ul>
+        <li><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg> Regional coordination and technical guidance</li>
+        <li><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg> Capacity development for climate professionals</li>
+        <li><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg> Decision support for climate-sensitive sectors</li>
+      </ul>
+      <a href="https://new-rcc.acmad.org" class="button button-light"
+        style="margin-top: 30px; display: inline-flex; align-items: center; gap: 8px; background: white; color: var(--navy-900, #0a192f); border: none; padding: 12px 24px; border-radius: 5px; font-weight: 700; font-size: 0.85rem;">
+        Discover RCC Africa
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12" />
+          <polyline points="12 5 19 12 12 19" />
+        </svg>
+      </a>
+    </div>
+  </div>
+</section>

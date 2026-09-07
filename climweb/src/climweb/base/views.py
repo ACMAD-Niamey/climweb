@@ -3,7 +3,7 @@ import os
 
 from django.conf import settings
 from django.core.cache import cache
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse
 from django.shortcuts import render, redirect
 from django.utils.translation import gettext as _
 from wagtail.admin import messages
@@ -24,7 +24,8 @@ from climweb.base.utils import get_latest_cms_release, send_upgrade_command, sen
     mix_with_white
 from climweb.utils.version import check_version_greater_than_current, get_main_version
 from .forms import CMSUpgradeForm, effective_clean_name
-from .models import Theme, OrganisationSetting, FormFileSubmission, SubmissionReview, SubmissionEmailLog
+from .models import (Theme, OrganisationSetting, FormFileSubmission, SubmissionReview, SubmissionEmailLog,
+                     SubmissionExportJob)
 
 
 def handler500(request):
@@ -174,15 +175,16 @@ _DEFAULT_TOKENS = {
 def _build_tokens():
     try:
         theme = Theme.objects.get(is_default=True)
-        primary = theme.primary_hover_color
+        theme_tokens = theme.as_tokens()
+        primary = theme_tokens["green_700"]
         return {
             "primary": primary,
             "primary-light": mix_with_white(primary, 0.75),
             "primary-medium": mix_with_white(primary, 0.50),
-            "background": mix_with_white(primary, 0.80),
-            "text": theme.primary_color,
-            "border-radius": f"{theme.border_radius * 0.06}em",
-            "box-shadow-elevation": str(theme.box_shadow),
+            "background": theme_tokens["green_100"],
+            "text": theme_tokens["ink"],
+            "border-radius": theme_tokens["border_radius"],
+            "box-shadow-elevation": theme_tokens["box_shadow_elevation"],
         }
     except ObjectDoesNotExist:
         return _DEFAULT_TOKENS
@@ -503,3 +505,116 @@ def compose_submission_email_view(request, page_id):
         "email_field": email_field,
         "name_field": name_field,
     })
+
+
+def request_submission_export_view(request, page_id):
+    """Kicks off generate_submission_export in the background (see
+    climweb.base.tasks) instead of building the zip inline - the old
+    in-request CSV/XLSX export (CustomSubmissionsListView, climweb.base.forms)
+    times out / errors on forms with many submissions and file uploads, since
+    it builds the whole export in memory with an N+1 file lookup per row.
+    """
+    if not get_forms_for_user(request.user).filter(pk=page_id).exists():
+        raise PermissionDenied
+
+    page = get_object_or_404(Page, id=page_id).specific
+    if not isinstance(page, FormMixin):
+        raise Http404
+
+    if request.method != "POST":
+        raise Http404
+
+    from climweb.base.tasks import generate_submission_export
+
+    job = SubmissionExportJob.objects.create(page=page, requested_by=request.user)
+    generate_submission_export.delay(job.id)
+
+    messages.success(
+        request,
+        _("Export requested — you'll get an email at %(email)s when it's ready to download.")
+        % {"email": request.user.email},
+    )
+    return redirect("wagtailforms:list_submissions", page_id=page.id)
+
+
+def download_submission_export_view(request, page_id, token):
+    """Streams a ready export zip - gated by the same page-management
+    permission as the submissions list itself, plus the export's own
+    unguessable token (see SubmissionExportJob.token), not just the page id.
+    """
+    if not get_forms_for_user(request.user).filter(pk=page_id).exists():
+        raise PermissionDenied
+
+    job = get_object_or_404(SubmissionExportJob, page_id=page_id, token=token)
+
+    if job.status != SubmissionExportJob.STATUS_READY:
+        messages.error(request, _("This export isn't ready yet (status: %(status)s).")
+                       % {"status": job.get_status_display()})
+        return redirect("wagtailforms:list_submissions", page_id=page_id)
+
+    file_path = os.path.join(settings.PRIVATE_EXPORTS_ROOT, job.file_name)
+    if not os.path.exists(file_path):
+        messages.error(request, _("This export has expired or was already removed."))
+        return redirect("wagtailforms:list_submissions", page_id=page_id)
+
+    response = FileResponse(open(file_path, 'rb'), content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename="{job.file_name}"'
+    return response
+
+
+# Bundled fallback boundaries, read straight from the source tree so it works
+# regardless of whether collectstatic has run.
+_BUNDLED_AFRICA_GEOJSON = os.path.join(
+    os.path.dirname(__file__), "static", "base", "data", "africa.json"
+)
+
+
+def participant_map_boundaries(request):
+    """Serve the country boundaries for the participant choropleth as GeoJSON.
+
+    Returns the site's uploaded boundary file (normalised to ``iso_a3`` / ``name``
+    properties) when one is configured in Participant map settings, otherwise the
+    bundled Africa boundaries. A bad upload degrades to the bundled file rather
+    than breaking the page.
+    """
+    import logging
+
+    from climweb.base.boundary_utils import load_boundary_upload
+    from climweb.base.models import ParticipantMapSettings
+
+    logger = logging.getLogger(__name__)
+    map_settings = ParticipantMapSettings.for_request(request)
+    boundary_file = map_settings.boundary_file
+
+    geojson = None
+    if boundary_file:
+        try:
+            cache_key = (
+                f"participant-map:boundaries:{map_settings.pk}:"
+                f"{boundary_file.name}:{boundary_file.size}:"
+                f"{map_settings.iso3_property}:{map_settings.name_property}"
+            )
+        except (OSError, ValueError):
+            cache_key = None
+
+        geojson = cache.get(cache_key) if cache_key else None
+        if geojson is None:
+            try:
+                geojson = load_boundary_upload(
+                    boundary_file,
+                    map_settings.iso3_property or "iso_a3",
+                    map_settings.name_property or "name",
+                )
+                if cache_key:
+                    cache.set(cache_key, geojson, 60 * 60 * 24)
+            except Exception:  # noqa: BLE001 - never let a bad upload break the page
+                logger.exception("Could not read the uploaded participant-map boundary file")
+                geojson = None
+
+    if geojson is None:
+        with open(_BUNDLED_AFRICA_GEOJSON, encoding="utf-8") as fh:
+            geojson = json.load(fh)
+
+    response = JsonResponse(geojson)
+    response["Cache-Control"] = "public, max-age=3600"
+    return response

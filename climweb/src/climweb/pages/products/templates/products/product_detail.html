@@ -85,6 +85,10 @@
                     <span class="icon">{% svg_icon name="download" %}</span>
                     <span>{% translate "Download" %}</span>
                   </a>
+                  <a class="pd-btn-view" href="{% url 'product_subscription' %}">
+                    <span class="icon">{% svg_icon name="mail" %}</span>
+                    <span>{% translate "Subscribe" %}</span>
+                  </a>
                   {% share_buttons url=page.get_full_url text=product_item.value.product_item_type.name %}
                 </div>
 
@@ -104,6 +108,10 @@
                     <span class="icon">{% svg_icon name="download" %}</span>
                     <span>{% translate "Download" %}</span>
                   </a>
+                  <a class="pd-btn-view" href="{% url 'product_subscription' %}">
+                    <span class="icon">{% svg_icon name="mail" %}</span>
+                    <span>{% translate "Subscribe" %}</span>
+                  </a>
                   {% share_buttons url=page.get_full_url text=product_item.value.product_item_type.name %}
                 </div>
 
@@ -122,23 +130,21 @@
                     </div>
                     {% endif %}
                   </div>
-                  <div class="pd-doc-dl">
-                    <a class="pd-doc-dl-link" href="{{ product_item.value.document.url }}"
-                      title="{{ product_item.value.product_item_type.name }}">
-                      <span class="icon">{% svg_icon name="download" %}</span>
-                      <span>
-                        {% blocktranslate with file_size=product_item.value.document.file.size|filesizeformat trimmed %}
-                        Download document — {{ file_size }}
-                        {% endblocktranslate %}
-                      </span>
-                    </a>
-                  </div>
+
                 </div>
                 <div class="pd-panel-foot share-buttons">
+                  <a class="pd-btn-view" href="{{ product_item.value.document.url }}" target="_blank" rel="noopener noreferrer">
+                    <span class="icon">{% svg_icon name="view" %}</span>
+                    <span>{% translate "View Document" %}</span>
+                  </a>
                   <a class="pd-btn-dl" href="{{ product_item.value.document.url }}"
                     download="{{ product_item.value.product_item_type.name }}">
                     <span class="icon">{% svg_icon name="download" %}</span>
                     <span>{% translate "Download document" %}</span>
+                  </a>
+                  <a class="pd-btn-view" href="{% url 'product_subscription' %}">
+                    <span class="icon">{% svg_icon name="mail" %}</span>
+                    <span>{% translate "Subscribe" %}</span>
                   </a>
                   {% share_buttons url=page.get_full_url text=product_item.value.product_item_type.name %}
                 </div>

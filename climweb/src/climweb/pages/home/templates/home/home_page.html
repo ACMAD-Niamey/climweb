@@ -6,13 +6,15 @@
 {% block body_class %}template-homepage{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/home.css' %}">
+    <link rel="stylesheet" href="{% static 'css/home.css' %}?v=4.4">
     <link href="{% static 'css/hero.css' %}" type="text/css" rel="stylesheet"/>
     <link rel="stylesheet" type="text/css" href="{% static 'css/partners.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'css/project_detail.css' %}">
     {% if IS_METEOROLOGICAL %}
         {# met homepage redesign — card row + services strip styles #}
         <link rel="stylesheet" href="{% static 'css/home_redesign.css' %}">
+        <link rel="stylesheet" href="{% static 'css/hero_product_widget.css' %}">
+        <link rel="stylesheet" href="{% static 'css/hero_updates_widget.css' %}?v=4">
     {% endif %}
     {% if page.show_weather_watch %}
         {# map-only styles — loaded only when the weather watch map section is enabled #}
@@ -83,8 +85,8 @@
         {% endif %}
         
  
-            {% if page.partners %}
-            <section class="section">
+        {% if page.partners %}
+            <section class="section" id="partners">
             <div class="container py-5">
 
                 <div class="mb-5">
@@ -98,7 +100,7 @@
                 </p>
                 </div>
 
-                <div class="columns is-multiline is-mobile partners-list">
+                <div class="columns is-multiline is-mobile is-centered partners-list">
                 {% for partner in page.partners %}
                     {% if partner.visible_on_homepage and partner.logo %}
                     <div class="column is-4-mobile is-3-tablet is-2-desktop">
@@ -122,11 +124,9 @@
 
                 {% if settings.base.ImportantPages.all_partners_page %}
                 <div class="has-text-centered mt-5">
-                    
-
-                    <a class="more-partners" href="{{ settings.base.ImportantPages.all_partners_page.url }}">
-                        {% translate "More Partners" %}
-                        </a>
+                    <a class="more-partners button is-primary" href="{{ settings.base.ImportantPages.all_partners_page.url }}">
+                        {% translate "View More Partners" %}
+                    </a>
                 </div>
                 {% endif %}
 
@@ -143,7 +143,7 @@
         {% if IS_METEOROLOGICAL %}
             {# met mode: vanilla maplibre multi-hazard map card #}
             <script defer src="{% static 'js/maplibre-gl.js' %}"></script>
-            <script defer src="{% static 'js/multi_hazard_map.js' %}"></script>
+            <script defer src="{% static 'js/multi_hazard_map.js' %}?v={% now 'U' %}"></script>
         {% else %}
             {# non-met mode: Vue home-map bundle and its helpers #}
             <script src="{% static 'js/maplibre-gl.js' %}"></script>
@@ -382,6 +382,55 @@
 
     /* ── boot ── */
     $(document).ready(function () {
+
+      const heroProductCarousel = document.getElementById('hero-updates-carousel');
+      if (heroProductCarousel && typeof Glide !== 'undefined') {
+        const slideCount = heroProductCarousel.querySelectorAll('.glide__slide').length;
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        window.heroProductGlide = new Glide('#hero-updates-carousel', {
+          type: 'slider',
+          perView: 1,
+          gap: 0,
+          rewind: true,
+          autoplay: !reduceMotion && slideCount > 1 ? 7500 : false,
+          hoverpause: false,
+          animationDuration: reduceMotion ? 0 : 550,
+          swipeThreshold: 60,
+          dragThreshold: 80,
+        });
+
+        const syncHeroProductAccessibility = () => {
+          heroProductCarousel.querySelectorAll('.glide__slide').forEach((slide, index) => {
+            const active = index === window.heroProductGlide.index;
+            slide.setAttribute('aria-hidden', active ? 'false' : 'true');
+            slide.querySelectorAll('a, button').forEach(control => {
+              control.tabIndex = active ? 0 : -1;
+            });
+          });
+          heroProductCarousel.querySelectorAll('.hero-product-dots button').forEach((dot, index) => {
+            dot.setAttribute('aria-current', index === window.heroProductGlide.index ? 'true' : 'false');
+          });
+        };
+
+        window.heroProductGlide.on(['mount.after', 'run.after'], syncHeroProductAccessibility);
+        window.heroProductGlide.mount();
+        syncHeroProductAccessibility();
+
+        const syncPlayback = () => {
+          if (reduceMotion || document.hidden || heroProductCarousel.matches(':hover') || heroProductCarousel.contains(document.activeElement)) {
+            window.heroProductGlide.pause();
+          } else if (slideCount > 1) {
+            window.heroProductGlide.play(7500);
+          }
+        };
+        heroProductCarousel.addEventListener('focusin', syncPlayback);
+        heroProductCarousel.addEventListener('focusout', () => setTimeout(syncPlayback, 0));
+        heroProductCarousel.addEventListener('mouseenter', syncPlayback);
+        heroProductCarousel.addEventListener('mouseleave', syncPlayback);
+        document.addEventListener('visibilitychange', syncPlayback);
+        syncPlayback();
+      }
 
       const isSsrRendered = weatherWidgetWrapper.length
         && weatherWidgetWrapper.children().length > 0
