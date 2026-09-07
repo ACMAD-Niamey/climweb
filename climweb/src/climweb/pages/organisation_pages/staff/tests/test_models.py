@@ -45,7 +45,7 @@ class TestStaffPage(WagtailPageTestCase):
     def test_trainer_style_cards_and_accessible_modals(self):
         response = self.client.get(self.page.get_url())
         self.assertContains(response, 'class="staff-card"', count=2)
-        self.assertContains(response, 'role="dialog"', count=2)
+        self.assertContains(response, 'class="modal staff-modal" role="dialog"', count=2)
         self.assertContains(response, f'data-staff-modal="staff-modal-{self.member.pk}"')
         self.assertContains(response, f'aria-labelledby="staff-modal-name-{self.member.pk}"')
         self.assertContains(response, 'aria-hidden="true" tabindex="-1"', count=2)
