@@ -16,50 +16,36 @@
 {% block content %}
 {% translate "Climate intelligence for better decisions" as default_intro_title %}
 <main>
-    <section class="rcc-hero{% if not page.banner_image %} rcc-hero--plain{% endif %}">
-        {% if page.banner_image %}
-            {% image page.banner_image original as hero_image %}
-            <div class="rcc-hero__image progressive__bg progressive--not-loaded"
-                 data-progressive="{{ hero_image.url }}"
-                 style="background-image:url('{% lazy_image_url hero_image %}')"></div>
-        {% endif %}
-        <div class="rcc-hero__overlay"></div>
-        <div class="container rcc-hero__content">
-            <p class="rcc-eyebrow rcc-eyebrow--light">{% translate "WMO Regional Climate Centre for Africa" %}</p>
-            <h1>{{ page.banner_title|default:page.title }}</h1>
-            {% if page.banner_subtitle %}
-                <p class="rcc-hero__lead">{{ page.banner_subtitle }}</p>
-            {% elif page.introduction_title %}
-                <p class="rcc-hero__lead">{{ page.introduction_title }}</p>
-            {% endif %}
-            <div class="rcc-hero__actions">
-                <a class="rcc-button rcc-button--primary" href="#rcc-products">
-                    {% translate "Explore RCC products" %}
-                    <span aria-hidden="true">&#8594;</span>
-                </a>
-                <a class="rcc-button rcc-button--ghost" href="#rcc-data-services">
-                    {% translate "Access data and tools" %}
-                </a>
+    {% if page.banner_image %}
+        {% include "hero.html" with page=page %}
+    {% else %}
+        <section class="page-hero rcc-simple-hero">
+            <div class="page-hero-overlay"></div>
+            <div class="page-hero-body">
+                <div class="container">
+                    <span class="page-hero-badge">{% translate "WMO Regional Climate Centre for Africa" %}</span>
+                    <h1 class="page-hero-title">{{ page.banner_title|default:page.title }}</h1>
+                    {% if page.banner_subtitle %}
+                        <p class="page-hero-subtitle">{{ page.banner_subtitle }}</p>
+                    {% elif page.introduction_title %}
+                        <p class="page-hero-subtitle">{{ page.introduction_title }}</p>
+                    {% endif %}
+                </div>
             </div>
-        </div>
-        <div class="rcc-hero__status">
-            <div class="container">
-                <span class="rcc-status-dot" aria-hidden="true"></span>
-                {% translate "Operational climate information and services for Africa" %}
-            </div>
-        </div>
-    </section>
+        </section>
+    {% endif %}
 
     <nav class="rcc-section-nav" aria-label="{% translate 'Regional Climate Center sections' %}">
         <div class="container rcc-section-nav__inner">
-            <a href="#rcc-products"><span>01</span>{% translate "Climate products" %}</a>
-            <a href="#rcc-data-services"><span>02</span>{% translate "Data services" %}</a>
-            <a href="#rcc-resources"><span>03</span>{% translate "Forums and resources" %}</a>
-            <a href="#rcc-updates"><span>04</span>{% translate "Latest updates" %}</a>
+            <a href="#rcc-overview">{% translate "Overview" %}</a>
+            <a href="#rcc-products">{% translate "Climate products" %}</a>
+            <a href="#rcc-data-services">{% translate "Data services" %}</a>
+            <a href="#rcc-resources">{% translate "Forums and resources" %}</a>
+            <a href="#rcc-updates">{% translate "Latest updates" %}</a>
         </div>
     </nav>
 
-    <section class="rcc-overview">
+    <section id="rcc-overview" class="rcc-overview">
         <div class="container rcc-overview__grid">
             <div>
                 <p class="rcc-eyebrow">{% translate "Regional expertise, continental reach" %}</p>
@@ -176,6 +162,12 @@
                 <p class="rcc-eyebrow rcc-eyebrow--light">{% translate "Data and infrastructure" %}</p>
                 <h2>{% translate "Climate data services for Africa" %}</h2>
                 <p>{% translate "The RCC supports access to observations and gridded datasets, regional quality control, standardized climate indices and interoperable data delivery." %}</p>
+                {% if page.data_services_page %}
+                    <a class="rcc-button rcc-button--ghost rcc-data__catalogue-link" href="{{ page.data_services_page.url }}">
+                        {% translate "Browse the data catalogue" %}
+                        <span aria-hidden="true">&#8594;</span>
+                    </a>
+                {% endif %}
             </div>
             <div class="rcc-data__capabilities">
                 <div><strong>{% translate "Observations" %}</strong><span>{% translate "Station monitoring and GTS-SYNOP data" %}</span></div>

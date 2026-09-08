@@ -160,3 +160,50 @@ class TrainingAccommodationBlock(blocks.StructBlock):
     class Meta:
         icon = "home"
         label = _("Accommodation option")
+
+
+class RCCDatasetBlock(blocks.StructBlock):
+    ACCESS_OPEN = "open"
+    ACCESS_EXTERNAL = "external"
+    ACCESS_REQUEST = "request"
+    ACCESS_ARCHIVE = "archive"
+
+    title = blocks.CharBlock(max_length=180)
+    description = blocks.TextBlock(required=False)
+    coverage = blocks.CharBlock(max_length=120, required=False)
+    formats = blocks.CharBlock(
+        max_length=100,
+        required=False,
+        help_text=_("For example NetCDF, CSV, PNG or catalogue."),
+    )
+    access_type = blocks.ChoiceBlock(
+        choices=(
+            (ACCESS_OPEN, _("Open access")),
+            (ACCESS_EXTERNAL, _("External login required")),
+            (ACCESS_REQUEST, _("Available by request")),
+            (ACCESS_ARCHIVE, _("Legacy or archive")),
+        ),
+        default=ACCESS_REQUEST,
+    )
+    access_url = blocks.URLBlock(max_length=500, required=False)
+    source = blocks.CharBlock(max_length=120, required=False)
+    last_verified = blocks.DateBlock(required=False)
+
+    class Meta:
+        icon = "database"
+        label = _("Dataset or data service")
+
+
+class RCCDataGroupBlock(blocks.StructBlock):
+    anchor = blocks.CharBlock(
+        max_length=60,
+        help_text=_("Short URL-safe name, for example observations or models."),
+    )
+    title = blocks.CharBlock(max_length=140)
+    summary = blocks.TextBlock()
+    icon = IconChooserBlock(required=False, default="database")
+    datasets = blocks.ListBlock(RCCDatasetBlock(), label=_("Datasets and services"))
+
+    class Meta:
+        icon = "folder-open-inverse"
+        label = _("Data service group")

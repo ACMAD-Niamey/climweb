@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% load static i18n wagtailcore_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_data_services.css' %}">
+{% endblock %}
+
+{% block body_class %}rcc-data-services-page{% endblock %}
+
+{% block content %}
+<main>
+    {% if page.banner_image %}
+        {% include "hero.html" with page=page %}
+    {% else %}
+        <section class="page-hero rcc-ds-simple-hero">
+            <div class="page-hero-overlay"></div>
+            <div class="page-hero-body">
+                <div class="container">
+                    <span class="page-hero-badge">{% translate "RCC operational catalogue" %}</span>
+                    <h1 class="page-hero-title">{{ page.banner_title|default:page.title }}</h1>
+                    {% if page.banner_subtitle %}<p class="page-hero-subtitle">{{ page.banner_subtitle }}</p>{% endif %}
+                </div>
+            </div>
+        </section>
+    {% endif %}
+
+    <nav class="rcc-ds-nav" aria-label="{% translate 'Page sections' %}">
+        <div class="container">
+            <a href="{{ page.get_parent.url }}">{% translate "Home" %}</a>
+            {% for block in page.data_groups %}<a href="#{{ block.value.anchor }}">{{ block.value.title }}</a>{% endfor %}
+            <a href="#request-data">{% translate "Request data" %}</a>
+        </div>
+    </nav>
+
+    {% for block in page.data_groups %}
+        <section id="{{ block.value.anchor }}" class="rcc-ds-group">
+            <div class="container">
+                <header class="rcc-ds-group__header">
+                    <div class="rcc-ds-group__index">{{ forloop.counter|stringformat:"02d" }}</div>
+                    <div>
+                        <p class="rcc-ds-eyebrow">{% translate "Data service category" %}</p>
+                        <h2>{{ block.value.title }}</h2>
+                        <p>{{ block.value.summary }}</p>
+                    </div>
+                </header>
+
+                <div class="rcc-ds-catalogue">
+                    {% for dataset in block.value.datasets %}
+                        <article class="rcc-ds-card">
+                            <div class="rcc-ds-card__topline">
+                                <span class="rcc-ds-badge rcc-ds-badge--{{ dataset.access_type }}">
+                                    {% if dataset.access_type == "open" %}{% translate "Open access" %}
+                                    {% elif dataset.access_type == "external" %}{% translate "External login" %}
+                                    {% elif dataset.access_type == "archive" %}{% translate "Archive" %}
+                                    {% else %}{% translate "By request" %}{% endif %}
+                                </span>
+                                {% if dataset.source %}<span class="rcc-ds-card__source">{{ dataset.source }}</span>{% endif %}
+                            </div>
+                            <h3>{{ dataset.title }}</h3>
+                            {% if dataset.description %}<p class="rcc-ds-card__description">{{ dataset.description }}</p>{% endif %}
+                            {% if dataset.coverage or dataset.formats %}
+                                <dl class="rcc-ds-card__facts">
+                                    {% if dataset.coverage %}<div><dt>{% translate "Coverage" %}</dt><dd>{{ dataset.coverage }}</dd></div>{% endif %}
+                                    {% if dataset.formats %}<div><dt>{% translate "Format" %}</dt><dd>{{ dataset.formats }}</dd></div>{% endif %}
+                                </dl>
+                            {% endif %}
+                            <footer class="rcc-ds-card__footer">
+                                {% if dataset.last_verified %}
+                                    <span>{% translate "Verified" %} {{ dataset.last_verified|date:"j M Y" }}</span>
+                                {% else %}
+                                    <span>{% translate "Verification pending" %}</span>
+                                {% endif %}
+                                {% if dataset.access_url %}
+                                    <a href="{{ dataset.access_url }}" target="_blank" rel="noopener noreferrer">
+                                        {% translate "Open service" %} <span aria-hidden="true">&#8599;</span>
+                                    </a>
+                                {% elif page.data_request_page %}
+                                    <a href="{{ page.data_request_page.url }}">{% translate "Request access" %} <span aria-hidden="true">&#8594;</span></a>
+                                {% else %}
+                                    <span class="rcc-ds-card__pending">{% translate "Access details pending" %}</span>
+                                {% endif %}
+                            </footer>
+                        </article>
+                    {% empty %}
+                        <div class="rcc-ds-empty">{% translate "Dataset entries for this category are being audited." %}</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+    {% empty %}
+        <section class="rcc-ds-group"><div class="container rcc-ds-empty">{% translate "The data catalogue is being prepared." %}</div></section>
+    {% endfor %}
+
+    <section id="request-data" class="rcc-ds-request">
+        <div class="container rcc-ds-request__inner">
+            <div>
+                <p class="rcc-ds-eyebrow">{% translate "Need another dataset?" %}</p>
+                <h2>{% translate "Request climate data from ACMAD" %}</h2>
+                <p>{% translate "Describe the variables, location, period and intended use. The data team will review availability and access conditions." %}</p>
+            </div>
+            {% if page.data_request_page %}
+                <a class="rcc-ds-button" href="{{ page.data_request_page.url }}">{% translate "Submit a data request" %} <span aria-hidden="true">&#8594;</span></a>
+            {% endif %}
+        </div>
+    </section>
+</main>
+{% endblock %}

@@ -4,7 +4,7 @@ from climweb.base.seo_utils import get_html_meta_tags
 from climweb.base.test_utils import test_page_meta_tags
 from climweb.pages.home.tests.factories import get_or_create_homepage
 from climweb.pages.organisation_pages.partners.tests.factories import PartnerFactory
-from .factories import ServiceIndexPageFactory, ServicePageFactory
+from .factories import RCCDataServicesPageFactory, ServiceIndexPageFactory, ServicePageFactory
 
 
 class TestServicesPages(WagtailPageTestCase):
@@ -65,6 +65,9 @@ class TestServicesPages(WagtailPageTestCase):
         self.assertTemplateUsed(response, "services/rcc_service_page.html")
         self.assertContains(response, "Regional Climate Center products")
         self.assertContains(response, "Climate data services for Africa")
+        self.assertContains(response, 'class="page-hero')
+        self.assertContains(response, 'class="rcc-section-nav"')
+        self.assertContains(response, 'href="#rcc-overview"')
 
     def test_other_services_keep_default_template(self):
         response = self.client.get(self.service1_page.get_url())
@@ -84,3 +87,39 @@ class TestServicesPages(WagtailPageTestCase):
 
         self.assertContains(response, "Our partners")
         self.assertContains(response, partner.name)
+
+    def test_rcc_data_services_page_renders_catalogue(self):
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center data parent",
+            service__name="Regional Climate Center",
+        )
+        data_page = RCCDataServicesPageFactory(parent=rcc_page)
+
+        response = self.client.get(data_page.get_url())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "services/rcc_data_services_page.html")
+        self.assertContains(response, "Observations and station data")
+        self.assertContains(response, "ARC2 estimated rainfall")
+        self.assertContains(response, "Open access")
+        self.assertContains(response, 'class="page-hero rcc-ds-simple-hero"')
+        self.assertContains(response, 'class="rcc-ds-nav"')
+        self.assertContains(response, f'href="{rcc_page.url}">Home</a>')
+        self.assertNotContains(response, '>Access guide</a>')
+        self.assertNotContains(response, "Know before you open a dataset")
+        self.assertNotContains(response, "One catalogue for regional climate data")
+        self.assertContains(response, 'href="#observations"')
+
+    def test_rcc_landing_page_links_to_data_services_catalogue(self):
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center data link",
+            service__name="Regional Climate Center",
+        )
+        data_page = RCCDataServicesPageFactory(parent=rcc_page)
+
+        response = self.client.get(rcc_page.get_url())
+
+        self.assertContains(response, data_page.url)
+        self.assertContains(response, "Browse the data catalogue")

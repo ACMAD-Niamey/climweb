@@ -4,7 +4,7 @@ from faker import Faker
 from wagtail.rich_text import RichText
 
 from climweb.base.models import ServiceCategory
-from ..models import ServiceIndexPage, ServicePage
+from ..models import RCCDataServicesPage, ServiceIndexPage, ServicePage
 
 fake = Faker()
 
@@ -40,3 +40,38 @@ class ServicePageFactory(wagtail_factories.PageFactory):
     def introduction_text(self):
         p = fake.paragraph()
         return RichText(f"<p>{p}</p>")
+
+
+class RCCDataServicesPageFactory(wagtail_factories.PageFactory):
+    class Meta:
+        model = RCCDataServicesPage
+
+    title = "Data Services"
+    banner_title = "Climate data for Africa"
+    banner_subtitle = "Observations, gridded datasets and model archives."
+    introduction_title = "One catalogue for regional climate data"
+    introduction_text = RichText("<p>Find climate datasets and understand their access conditions.</p>")
+    catalogue_notice = RichText("<p>Access and freshness vary by source.</p>")
+    data_groups = [
+        (
+            "group",
+            {
+                "anchor": "observations",
+                "title": "Observations and station data",
+                "summary": "Station observations for climate monitoring.",
+                "icon": "database",
+                "datasets": [
+                    {
+                        "title": "ARC2 estimated rainfall",
+                        "description": "Daily station rainfall estimates.",
+                        "coverage": "Africa",
+                        "formats": "THREDDS catalogue",
+                        "access_type": "open",
+                        "access_url": "https://example.com/arc2/",
+                        "source": "ACMAD SGBD",
+                        "last_verified": "2026-09-08",
+                    }
+                ],
+            },
+        )
+    ]

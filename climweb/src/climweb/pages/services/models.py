@@ -124,7 +124,11 @@ class ServicePage(AbstractBannerWithIntroPage):
     rcc_template = 'services/rcc_service_page.html'
     rcc_service_name = 'Regional Climate Center'
     parent_page_types = ['services.ServiceIndexPage']
-    subpage_types = ['flex_page.FlexPage', 'services.OnTheJobTrainingPage']
+    subpage_types = [
+        'flex_page.FlexPage',
+        'services.OnTheJobTrainingPage',
+        'services.RCCDataServicesPage',
+    ]
     show_in_menus_default = True
 
     introduction_title = models.CharField(
@@ -269,6 +273,11 @@ class ServicePage(AbstractBannerWithIntroPage):
         flex_pages = FlexPage.objects.live().descendant_of(self)
         
         return flex_pages
+
+    @cached_property
+    def data_services_page(self):
+        """Return the published RCC data catalogue below this service page."""
+        return RCCDataServicesPage.objects.live().child_of(self).first()
     
     @cached_property
     def listing_image(self):
@@ -343,6 +352,45 @@ class ServicePage(AbstractBannerWithIntroPage):
             context['youtube_playlist_url'] = self.youtube_playlist.get_playlist_items_api_url(request)
         
         return context
+
+
+class RCCDataServicesPage(AbstractBannerWithIntroPage):
+    template = "services/rcc_data_services_page.html"
+    parent_page_types = ["services.ServicePage"]
+    subpage_types = []
+    max_count_per_parent = 1
+    show_in_menus_default = True
+
+    catalogue_notice = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Catalogue access notice"),
+        help_text=_("Explain access restrictions, verification dates and archive status."),
+    )
+    data_groups = StreamField(
+        [("group", local_blocks.RCCDataGroupBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Data service groups"),
+    )
+    data_request_page = models.ForeignKey(
+        "wagtailcore.Page",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Data request page"),
+    )
+
+    content_panels = Page.content_panels + [
+        *AbstractBannerWithIntroPage.content_panels,
+        FieldPanel("catalogue_notice"),
+        FieldPanel("data_groups"),
+        PageChooserPanel("data_request_page"),
+    ]
+
+    class Meta:
+        verbose_name = _("RCC Data Services Page")
 
 
 class OnTheJobTrainingPage(AbstractBannerWithIntroPage):
