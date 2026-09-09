@@ -201,6 +201,9 @@ cms/
 # Real SSL cert-path config (contains your actual domain) — keep ssl.conf.sample tracked
 deploy/nginx/ssl/ssl.conf
 
+# HTTP basic-auth password file for the /dev preview — keep dev.htpasswd.sample tracked
+deploy/nginx/dev.htpasswd
+
 # Accidental root venv artifacts
 bin/
 share/

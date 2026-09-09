@@ -114,6 +114,19 @@ x-climweb-variables-prod: &climweb-variables-prod
   REDIS_URL: redis://:${REDIS_PASSWORD}@climweb_redis_prod:6379/0
   CLIMWEB_DEPLOYMENT_ENV: ${CLIMWEB_DEPLOYMENT_ENV:-production}
 
+# Opt-in path-mount for a develop-branch preview served at <host>/dev by the
+# prod nginx (see deploy/nginx/nginx.prod.*.ssl.conf). Empty by default so a
+# normal local `./dev.sh` still serves the site at / . On the preview server,
+# set in .env:  DEV_FORCE_SCRIPT_NAME=/dev
+#               DEV_SESSION_COOKIE_NAME=dev_sessionid
+#               DEV_CSRF_COOKIE_NAME=dev_csrftoken
+# The distinct cookie names stop the preview's admin login from clobbering the
+# main site's session when both share the host.
+x-climweb-dev-preview: &climweb-dev-preview
+  FORCE_SCRIPT_NAME: ${DEV_FORCE_SCRIPT_NAME:-}
+  SESSION_COOKIE_NAME: ${DEV_SESSION_COOKIE_NAME:-sessionid}
+  CSRF_COOKIE_NAME: ${DEV_CSRF_COOKIE_NAME:-csrftoken}
+
 services:
   # ── dev profile (`docker compose --profile dev ...`, i.e. `make up`/`./dev.sh`) ──
   climweb_db_dev:
@@ -153,7 +166,7 @@ services:
     ports:
       - :8000
     environment:
-      <<: *climweb-variables
+      <<: [*climweb-variables, *climweb-dev-preview]
       WAIT_HOSTS: climweb_db_dev:5432,climweb_redis_dev:6379
     volumes:
       - ./climweb:/climweb/web
@@ -170,7 +183,7 @@ services:
     restart: no
     profiles: ["dev"]
     environment:
-      <<: *climweb-variables
+      <<: [*climweb-variables, *climweb-dev-preview]
       WAIT_HOSTS: climweb_db_dev:5432,climweb_redis_dev:6379,climweb_dev:8000
     volumes:
       - ./climweb:/climweb/web
@@ -187,7 +200,7 @@ services:
     profiles: ["dev"]
     command: celery-beat
     environment:
-      <<: *climweb-variables
+      <<: [*climweb-variables, *climweb-dev-preview]
       WAIT_HOSTS: climweb_db_dev:5432,climweb_redis_dev:6379,climweb_dev:8000
     volumes:
       - ./climweb:/climweb/web
@@ -351,6 +364,16 @@ services:
       - ${CERTBOT_WEBROOT_DIR:-./deploy/certbot/www}:/var/www/certbot:ro
       - static_prod:/wagtail_static:ro
       - media_prod:/wagtail_media:ro
+      # develop-branch preview served at <host>/dev — nginx serves its assets
+      # from the dev profile's own static/media volumes. Harmless when the dev
+      # profile isn't running (the /dev/ proxy just 502s until it is).
+      - static:/wagtail_static_dev:ro
+      - media:/wagtail_media_dev:ro
+      # HTTP basic auth for /dev (the dev stack runs DEBUG=True). Create
+      # deploy/nginx/dev.htpasswd on the host before enabling the preview:
+      #   htpasswd -c deploy/nginx/dev.htpasswd <user>
+      # /dev fails closed (500) until this file exists.
+      - ${DEV_PREVIEW_HTPASSWD:-./deploy/nginx/dev.htpasswd}:/etc/nginx/dev/htpasswd:ro
     depends_on:
       climweb_prod:
         condition: service_healthy
