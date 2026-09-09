@@ -369,6 +369,11 @@ services:
       # profile isn't running (the /dev/ proxy just 502s until it is).
       - static:/wagtail_static_dev:ro
       - media:/wagtail_media_dev:ro
+      # HTTP basic auth for /dev (the dev stack runs DEBUG=True). Create
+      # deploy/nginx/dev.htpasswd on the host before enabling the preview:
+      #   htpasswd -c deploy/nginx/dev.htpasswd <user>
+      # /dev fails closed (500) until this file exists.
+      - ${DEV_PREVIEW_HTPASSWD:-./deploy/nginx/dev.htpasswd}:/etc/nginx/dev/htpasswd:ro
     depends_on:
       climweb_prod:
         condition: service_healthy
