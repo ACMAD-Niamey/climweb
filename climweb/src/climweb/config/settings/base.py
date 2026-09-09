@@ -610,16 +610,6 @@ NEXTJS_SETTINGS = {
 
 FORCE_SCRIPT_NAME = env.str("FORCE_SCRIPT_NAME", default="")
 
-# When a second instance is path-mounted on the SAME host as the main site
-# (e.g. the develop-branch preview served at acmad.org/dev alongside prod at
-# acmad.org/), both would otherwise set a "sessionid"/"csrftoken" cookie at
-# the same host and clobber each other's login. Give the preview instance
-# distinct cookie names (SESSION_COOKIE_NAME=dev_sessionid, etc.) so the two
-# sessions coexist. Defaults keep Django's standard names for every normal
-# single-instance deployment.
-SESSION_COOKIE_NAME = env.str("SESSION_COOKIE_NAME", default="sessionid")
-CSRF_COOKIE_NAME = env.str("CSRF_COOKIE_NAME", default="csrftoken")
-
 WAGTAILIMAGES_EXTENSIONS = ["gif", "jpg", "jpeg", "png", "webp", "svg"]
 
 DJANGO_TABLES2_TEMPLATE = "django-tables2/bulma.html"
