@@ -347,6 +347,18 @@ class ServicePage(AbstractBannerWithIntroPage):
     
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
+
+        if self.service.name == self.rcc_service_name:
+            from adminboundarymanager.models import AdminBoundarySettings
+            from climweb.pages.home.models import HomeMapSettings
+
+            map_settings = HomeMapSettings.for_request(request)
+            boundary_settings = AdminBoundarySettings.for_request(request)
+            context.update({
+                "multi_hazard_api_base_url": map_settings.multi_hazard_api_base_url or "https://multi-hazard.acmad.org",
+                "multi_hazard_project_slug": map_settings.multi_hazard_project_slug or "multi-hazard",
+                "country_bounds": boundary_settings.combined_countries_bounds,
+            })
         
         if self.youtube_playlist:
             context['youtube_playlist_url'] = self.youtube_playlist.get_playlist_items_api_url(request)

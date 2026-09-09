@@ -68,6 +68,10 @@ class TestServicesPages(WagtailPageTestCase):
         self.assertContains(response, 'class="page-hero')
         self.assertContains(response, 'class="rcc-section-nav"')
         self.assertContains(response, 'href="#rcc-overview"')
+        self.assertContains(response, 'id="multi-hazard-map"')
+        self.assertContains(response, "Multi-Hazard Map")
+        self.assertContains(response, "https://multi-hazard.acmad.org/geoportal")
+        self.assertContains(response, 'href="/on-the-job-training/"')
 
     def test_other_services_keep_default_template(self):
         response = self.client.get(self.service1_page.get_url())
@@ -87,6 +91,7 @@ class TestServicesPages(WagtailPageTestCase):
 
         self.assertContains(response, "Our partners")
         self.assertContains(response, partner.name)
+        self.assertContains(response, 'class="partner-card"')
 
     def test_rcc_data_services_page_renders_catalogue(self):
         rcc_page = ServicePageFactory(

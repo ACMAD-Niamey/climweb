@@ -5,6 +5,8 @@
 {% block extra_css %}
     {{ block.super }}
     <link rel="stylesheet" type="text/css" href="{% static 'css/services_rcc.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/maplibre-gl.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/multi_hazard_map.css' %}">
     {% if page.youtube_playlist %}
         <link rel="stylesheet" type="text/css" href="{% static 'css/jquery.skeleton.css' %}">
         <link rel="stylesheet" type="text/css" href="{% static 'css/video_include.css' %}">
@@ -15,6 +17,7 @@
 
 {% block content %}
 {% translate "Climate intelligence for better decisions" as default_intro_title %}
+{% get_current_language as LANGUAGE_CODE %}
 <main>
     {% if page.banner_image %}
         {% include "hero.html" with page=page %}
@@ -47,15 +50,44 @@
 
     <section id="rcc-overview" class="rcc-overview">
         <div class="container rcc-overview__grid">
-            <div>
+            <div class="rcc-overview__content">
                 <p class="rcc-eyebrow">{% translate "Regional expertise, continental reach" %}</p>
                 <h2>{{ page.introduction_title|default:default_intro_title }}</h2>
+                <div class="rcc-overview__copy format-text">
+                    {% if page.introduction_text %}
+                        {{ page.introduction_text|richtext }}
+                    {% else %}
+                        <p>{% translate "ACMAD provides authoritative monitoring, forecasting and climate data services that help institutions and communities across Africa anticipate climate risks." %}</p>
+                    {% endif %}
+                </div>
             </div>
-            <div class="rcc-overview__copy format-text">
-                {% if page.introduction_text %}
-                    {{ page.introduction_text|richtext }}
+            <div class="rcc-overview__map mhz-card">
+                <div class="mhz-card-header">
+                    <div class="mhz-card-title">
+                        <svg class="mhz-title-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+                            <path d="M3 12h18M12 3c2.5 2.5 3.75 5.5 3.75 9s-1.25 6.5-3.75 9c-2.5-2.5-3.75-5.5-3.75-9S9.5 5.5 12 3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                        </svg>
+                        <span>{% translate "Multi-Hazard Map" %}</span>
+                    </div>
+                    <a class="mhz-viewer-btn" href="https://multi-hazard.acmad.org/geoportal" target="_blank" rel="noopener noreferrer">
+                        {% translate "Open viewer" %} <span aria-hidden="true">&#8599;</span>
+                    </a>
+                </div>
+                {% if multi_hazard_api_base_url %}
+                    <div id="multi-hazard-tabs" class="mhz-tabs-row"></div>
+                    <div id="multi-hazard-map" class="mhz-map"
+                         data-api-base-url="{{ multi_hazard_api_base_url }}"
+                         data-project-slug="{{ multi_hazard_project_slug }}"
+                         data-country-bounds="{{ country_bounds }}"
+                         data-language-code="{{ LANGUAGE_CODE }}"
+                         data-msg-latest="{% translate 'Latest' %}"
+                         data-msg-no-data="{% translate 'No data available for this category' %}"
+                         data-msg-unavailable="{% translate 'Map data is temporarily unavailable' %}">
+                        <div class="mhz-placeholder">{% translate "Loading map…" %}</div>
+                    </div>
                 {% else %}
-                    <p>{% translate "ACMAD provides authoritative monitoring, forecasting and climate data services that help institutions and communities across Africa anticipate climate risks." %}</p>
+                    <div class="mhz-map mhz-map--static"><div class="mhz-unavailable">{% translate "Map data is temporarily unavailable" %}</div></div>
                 {% endif %}
             </div>
         </div>
@@ -236,14 +268,16 @@
                 </div>
             {% else %}
                 <div class="rcc-resource-callout">
-                    <div>
+                    <a href="#rcc-products">
                         <h3>{% translate "Regional Climate Outlook Forums" %}</h3>
                         <p>{% translate "A collaborative platform for producing and communicating consensus climate outlooks across Africa's regions." %}</p>
-                    </div>
-                    <div>
+                        <span>{% translate "Explore climate products" %} &#8594;</span>
+                    </a>
+                    <a href="/on-the-job-training/">
                         <h3>{% translate "Capacity development" %}</h3>
                         <p>{% translate "Training materials and technical guidance strengthen climate services and data capabilities across NMHSs." %}</p>
-                    </div>
+                        <span>{% translate "Explore training" %} &#8594;</span>
+                    </a>
                 </div>
             {% endif %}
         </div>
@@ -300,7 +334,7 @@
                 <div class="columns is-multiline is-8">
                     {% for update in page.latest_updates|slice:":3" %}
                         <div class="column is-4-desktop is-6-tablet is-12-mobile">
-                            {% include 'update_card_include.html' with card=update.card_props show_type=True %}
+                            {% include 'update_card_include.html' with card=update.card_props show_type=True show_card_text=False %}
                         </div>
                     {% endfor %}
                 </div>
@@ -340,21 +374,19 @@
                     </p>
                 </div>
 
-                <div class="rcc-partner-grid">
+                <div class="columns is-multiline is-mobile is-centered partners-list">
                     {% for partner in page.featured_partners %}
-                        {% if partner.link %}
-                            <a class="rcc-partner-card" href="{{ partner.link }}"
-                               target="_blank" rel="noopener noreferrer" title="{{ partner.name }}">
-                        {% else %}
-                            <div class="rcc-partner-card" title="{{ partner.name }}">
-                        {% endif %}
-                                {% image partner.logo max-320x160 as partner_logo %}
-                                <img class="progressive__img progressive--not-loaded"
-                                     data-progressive="{{ partner_logo.url }}"
-                                     src="{% lazy_image_url partner_logo %}"
-                                     alt="{{ partner.name }}">
-                                <span>{{ partner.name }}</span>
-                        {% if partner.link %}</a>{% else %}</div>{% endif %}
+                        <div class="column is-4-mobile is-3-tablet is-2-desktop">
+                            {% if partner.link %}<a class="partner-card" href="{{ partner.link }}" target="_blank" rel="noopener noreferrer" title="{{ partner.name }}">{% else %}<div class="partner-card" title="{{ partner.name }}">{% endif %}
+                                <figure class="image partner-logo-figure">
+                                    {% image partner.logo original as partner_logo %}
+                                    <img class="progressive__img progressive--not-loaded partner-logo-img"
+                                         data-progressive="{{ partner_logo.url }}"
+                                         src="{% lazy_image_url partner_logo %}"
+                                         alt="{{ partner.name }}">
+                                </figure>
+                            {% if partner.link %}</a>{% else %}</div>{% endif %}
+                        </div>
                     {% endfor %}
                 </div>
 
@@ -385,6 +417,8 @@
 
 {% block extra_js %}
     {{ block.super }}
+    <script defer src="{% static 'js/maplibre-gl.js' %}"></script>
+    <script defer src="{% static 'js/multi_hazard_map.js' %}"></script>
     {% if page.youtube_playlist %}
         <script src="{% static 'js/jquery.scheletrone.js' %}"></script>
         <script>
