@@ -1,13 +1,14 @@
-{# Overrides wagtailmetadata/parts/tags.html (wagtail-metadata 5.0.0).
+{% comment %}
+    Overrides wagtailmetadata/parts/tags.html (wagtail-metadata 5.0.0).
 
-   The only change from the packaged template is the <title>: the
-   organisation name (Settings › Organisation › Organisation Name, falling
-   back to the Wagtail site name) is appended so every page is branded in the
-   browser tab, e.g. "News — ACMAD". Everything else is copied verbatim —
-   keep this in sync when wagtail-metadata is upgraded. #}
-{% load wagtailsettings_tags %}
-{% get_settings use_default_site=True %}
-{% firstof settings.base.OrganisationSetting.name site_name as site_brand %}
+    The only change from the packaged template is the page title line: the
+    organisation name (Settings > Organisation > Organisation Name, falling
+    back to the Wagtail site name) is appended so every page is branded in
+    the browser tab, e.g. "News - ACMAD". Everything else is copied verbatim
+    from the package - keep this in sync when wagtail-metadata is upgraded.
+
+    `settings` is provided by the wagtail settings context processor.
+{% endcomment %}
 {% block tags %}
 {% block twitter %}
 <meta name="twitter:card" content="{{ twitter_card_type }}">
@@ -36,7 +37,9 @@
 <meta itemprop="description" content="{{ object.get_meta_description }}">
 {% if meta_image %}<meta itemprop="image" content="{{meta_image}}">{% endif %}
 
-<title>{{ object.get_object_title }}{% if site_brand %} — {{ site_brand }}{% endif %}</title>
+{% with brand=settings.base.OrganisationSetting.name|default:site_name %}
+<title>{{ object.get_object_title }}{% if brand %} — {{ brand }}{% endif %}</title>
+{% endwith %}
 <meta name="description" content="{{ object.get_meta_description }}">
 {% endblock meta %}
 {% endblock tags %}

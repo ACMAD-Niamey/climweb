@@ -1,8 +1,11 @@
 {% load wagtailimages_tags %}
 
-{# rel="icon" uses max-* (fit within the box, aspect preserved) so a non-square
-   image — e.g. an organisation logo used as a fallback favicon — is not
-   cropped. Apple touch icons stay fill-* because iOS renders them full-bleed. #}
+{% comment %}
+    rel="icon" uses max-* (fit within the box, aspect preserved) so a
+    non-square image — e.g. an organisation logo used as a fallback favicon —
+    is not cropped. Apple touch icons stay fill-* because iOS renders them
+    full-bleed.
+{% endcomment %}
 {% image favicon_image max-32x32 format-png as favicon_sm %}
 {% image favicon_image max-192x192 format-png as favicon_lg %}
 {% image favicon_image fill-120x120 format-png as favicon_iphone %}
