@@ -1,11 +1,17 @@
 {% load wagtailimages_tags %}
 
+{# rel="icon" uses max-* (fit within the box, aspect preserved) so a non-square
+   image — e.g. an organisation logo used as a fallback favicon — is not
+   cropped. Apple touch icons stay fill-* because iOS renders them full-bleed. #}
+{% image favicon_image max-32x32 format-png as favicon_sm %}
+{% image favicon_image max-192x192 format-png as favicon_lg %}
 {% image favicon_image fill-120x120 format-png as favicon_iphone %}
 {% image favicon_image fill-180x180 format-png as favicon_iphone_plus %}
 {% image favicon_image fill-152x152 format-png as favicon_ipad %}
 {% image favicon_image fill-167x167 format-png as favicon_ipad_pro %}
 
-<link rel="icon" type="image/png" href="{{ favicon_iphone_plus.url }}"/>
+<link rel="icon" type="image/png" sizes="32x32" href="{{ favicon_sm.url }}"/>
+<link rel="icon" type="image/png" sizes="192x192" href="{{ favicon_lg.url }}"/>
 <link rel="apple-touch-icon" href="{{ favicon_iphone_plus.url }}">
 <link rel="apple-touch-icon" sizes="120x120" href="{{ favicon_iphone.url }}">
 <link rel="apple-touch-icon" sizes="180x180" href="{{ favicon_iphone_plus.url }}">
