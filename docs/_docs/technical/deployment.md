@@ -70,7 +70,8 @@ certificates, or Wagtail Site records. Those are managed directly on the product
   `docker-compose.yml`, `climweb_nginx_prod` service). Changing it requires
   `docker compose up -d --force-recreate climweb_nginx_prod` to take effect.
 - **TLS certificates** - issued and renewed via `certbot` running on the host (not containerized). See
-  [subdomain-deployment.md](subdomain-deployment.md) for the webroot/renewal-hook setup this depends on.
+  [tls-certificates.md](tls-certificates.md) for issuing, expanding, renewal and troubleshooting, plus a command
+  cheat sheet.
 - **Wagtail Sites, page content, CMS settings** - managed through the Wagtail admin, as with any ClimWeb instance.
 
 [subdomain-deployment.md](subdomain-deployment.md) documents the additional, ACMAD-specific pieces of this: serving

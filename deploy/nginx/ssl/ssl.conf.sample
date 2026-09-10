@@ -1,2 +1,7 @@
-ssl_certificate /etc/letsencrypt/live/www.domain.tld/fullchain.pem;
-ssl_certificate_key /etc/letsencrypt/live/www.domain.tld/privkey.pem;
+# Copy to deploy/nginx/ssl/ssl.conf (git-ignored) and set your real cert paths.
+# Included by the SSL nginx configs via `include /etc/nginx/ssl/ssl.conf;` so the
+# path lives in one place across every server block.
+#
+# ACMAD uses one SAN cert for all hostnames (acmad.org + www + new + summerschool):
+ssl_certificate     /etc/letsencrypt/live/acmad.org/fullchain.pem;
+ssl_certificate_key /etc/letsencrypt/live/acmad.org/privkey.pem;
