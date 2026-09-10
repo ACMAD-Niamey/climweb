@@ -20,13 +20,25 @@
     {% block page_meta %}
         {% if page.get_meta_title %}
             {% meta_tags %}
+        {% else %}
+            {% comment %}
+                Page has no SEO/meta title (or this is not a page at all) —
+                still give the browser tab a meaningful name: the page title,
+                when there is one, followed by the organisation name from
+                Settings > Organisation, falling back to the Wagtail site name.
+            {% endcomment %}
+            {% firstof settings.base.OrganisationSetting.name current_site.site_name 'WAGTAIL_SITE_NAME'|django_settings as site_brand %}
+            <title>{% block title %}{% if page.title and site_brand %}{{ page.title }} — {{ site_brand }}{% elif page.title %}{{ page.title }}{% else %}{{ site_brand }}{% endif %}{% endblock %}</title>
         {% endif %}
     {% endblock %}
 
     {% block favicon %}
+        {# See https://developer.apple.com/design/human-interface-guidelines/ios/icons-and-images/app-icon/ #}
         {% if settings.base.OrganisationSetting.favicon %}
-            {# See https://developer.apple.com/design/human-interface-guidelines/ios/icons-and-images/app-icon/ #}
             {% include 'favicon_include.html' with favicon_image=settings.base.OrganisationSetting.favicon %}
+        {% elif settings.base.OrganisationSetting.logo %}
+            {# No dedicated favicon uploaded — fall back to the organisation logo. #}
+            {% include 'favicon_include.html' with favicon_image=settings.base.OrganisationSetting.logo %}
         {% endif %}
     {% endblock %}
 
