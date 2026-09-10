@@ -213,3 +213,9 @@ include/
 # never be committed or deployed to production.
 docker-compose.override.yml
 deploy/nginx/nginx.dev.livereload.conf
+
+# The generic `parts/` rule above (a buildout artefact from the base Python
+# .gitignore) otherwise hides our wagtail-metadata template override, whose
+# path is fixed by the package as wagtailmetadata/parts/tags.html.
+!climweb/src/climweb/config/templates/wagtailmetadata/parts/
+!climweb/src/climweb/config/templates/wagtailmetadata/parts/tags.html
