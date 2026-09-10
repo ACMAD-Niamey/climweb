@@ -1,7 +1,16 @@
 def test_page_meta_tags(test_case, page, meta_tags, request=None, check_image=True, check_description=True):
-    # check title
+    from climweb.base.models import OrganisationSetting
+
+    # check title — the browser-tab <title> is the page meta title with the
+    # organisation name (or, failing that, the Wagtail site name) appended;
+    # see templates/wagtailmetadata/parts/tags.html
     test_case.assertIsNotNone(meta_tags["title"])
-    test_case.assertEqual(meta_tags["title"], page.get_meta_title())
+    site = page.get_site()
+    brand = (OrganisationSetting.for_site(site).name or site.site_name) if site else None
+    expected_title = page.get_meta_title()
+    if brand:
+        expected_title = f"{expected_title} — {brand}"
+    test_case.assertEqual(meta_tags["title"], expected_title)
     
     if check_description:
         # check meta_description
