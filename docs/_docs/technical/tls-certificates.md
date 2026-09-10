@@ -119,15 +119,112 @@ Two things that silently break renewal:
   nginx keeps serving the old one. Fix:
   `sudo sed -i 's/<old_name>/climweb_nginx_prod/' /etc/letsencrypt/renewal/acmad.org.conf`.
 
-## Adding another hostname later (e.g. `dev.acmad.org`)
+## Adding a new hostname / subdomain
 
-1. Point its `A` record at the server; wait for `dig +short dev.acmad.org
-   @8.8.8.8` to return the IP.
-2. Re-run the `certonly … --expand` command above with the extra `-d
-   dev.acmad.org`.
-3. Add its `server` block to the active nginx config (it uses the same
-   `include /etc/nginx/ssl/ssl.conf;`).
-4. `nginx -t && nginx -s reload`.
+Full checklist of everything that has to change to serve a new hostname (e.g.
+`dev.acmad.org`, `data.acmad.org`). Steps 1-4 are always needed; 5-6 depend on
+what the hostname is for.
+
+### 1. DNS
+
+Add an `A` record for the hostname pointing at the server IP. If you use a
+wildcard already (`*.acmad.org`), an explicit record still overrides it and is
+clearer. Do **not** add an `AAAA` unless the box has working IPv6.
+
+```bash
+dig +short dev.acmad.org @8.8.8.8      # wait until this returns the server IP
+dig +short AAAA dev.acmad.org @8.8.8.8 # must be empty (or a real, served IPv6)
+```
+
+### 2. Certificate — add it as a SAN on the `acmad.org` cert
+
+Re-run the issuing command with the extra `-d`, keeping every existing name:
+
+```bash
+sudo certbot certonly --webroot -w /var/www/certbot \
+  --cert-name acmad.org --expand \
+  -d acmad.org -d www.acmad.org -d new.acmad.org -d summerschool.acmad.org \
+  -d dev.acmad.org \
+  --deploy-hook "docker exec climweb_nginx_prod nginx -s reload"
+```
+
+The live path (`/etc/letsencrypt/live/acmad.org/`) does not change, so
+`deploy/nginx/ssl/ssl.conf` needs no edit. The deploy-hook reloads nginx with
+the new cert automatically.
+
+### 3. nginx — add a `server` block
+
+Edit the **active** config (whichever `NGINX_CONFIG_PROD` points at, currently
+`deploy/nginx/nginx.prod.acmad.ssl.conf`):
+
+- add the hostname to the **port-80** `server_name` line (so its ACME challenge
+  and HTTP→HTTPS redirect work);
+- add an HTTPS `server` block for it. Copy an existing one and change only
+  `server_name`. It reuses `include /etc/nginx/ssl/ssl.conf;` — no cert paths
+  to type. A block either **serves** the app (`location / { proxy_pass … }`,
+  like `acmad.org`) or **redirects** (`return 301 https://acmad.org$request_uri;`,
+  like `www`).
+- only the **first** `listen 443` block in the file may carry `ipv6only=on` —
+  new blocks use plain `listen [::]:443 ssl;`.
+
+```bash
+docker exec climweb_nginx_prod nginx -t    # no "conflicting server name" / "duplicate listen"
+docker exec climweb_nginx_prod nginx -s reload
+```
+
+Commit the config change to the repo (`deploy/nginx/…`) so it isn't lost on the
+next `git pull` / redeploy.
+
+### 4. Django — allow the host
+
+In `.env` on the host, add the hostname to **both**:
+
+```
+ALLOWED_HOSTS=…,dev.acmad.org
+CSRF_TRUSTED_ORIGINS=…,https://dev.acmad.org
+```
+
+No spaces, no trailing `#` comments — django-environ splits on `,`. Then
+recreate the app container (a restart does **not** re-read `.env`):
+
+```bash
+docker compose --profile prod up -d --force-recreate climweb_prod
+```
+
+A 400 on the new hostname means this step didn't take — check
+`docker compose --profile prod exec climweb_prod python …/manage.py shell -c
+"from django.conf import settings; print(settings.ALLOWED_HOSTS)"`.
+
+### 5. If it serves a section of the site on its own subdomain
+
+(Like `summerschool.acmad.org`.) Add a Wagtail **Site** record — Settings →
+Sites — with the hostname, port `443`, and the section's index page as the root
+page. Full details and gotchas in
+[subdomain-deployment.md](subdomain-deployment.md).
+
+### 6. If it's a separate deployment (own container)
+
+(Like a future `dev.acmad.org` preview.) The nginx block proxies to a different
+upstream (`set $upstream climweb_dev:8000;`), and that container/stack has to
+be running. This is more involved — see the notes in the memory / PR history
+for why the `/dev` path-mount was shelved.
+
+### Retiring a hostname
+
+Reverse of the above: remove its `server` block and its entry on the port-80
+`server_name`, drop it from `ALLOWED_HOSTS` / `CSRF_TRUSTED_ORIGINS`, remove the
+DNS record. To drop it from the cert, re-run `certonly` **without `--expand`**
+and list only the names to keep — certbot detects the smaller set and prompts
+to remove the rest:
+
+```bash
+sudo certbot certonly --webroot -w /var/www/certbot --cert-name acmad.org \
+  -d acmad.org -d www.acmad.org -d summerschool.acmad.org \
+  --deploy-hook "docker exec climweb_nginx_prod nginx -s reload"
+```
+
+Reload nginx, recreate `climweb_prod`. (Leaving the stale name on the cert is
+harmless too — it just renews an unused SAN.)
 
 ## Removing an old standalone cert
 
