@@ -514,6 +514,13 @@ RECAPTCHA_PRIVATE_KEY = env.str('RECAPTCHA_PRIVATE_KEY', '')
 # RECAPTCHA_DOMAIN = env.str('RECAPTCHA_DOMAIN', 'www.google.com')
 RECAPTCHA_VERIFY_REQUEST_TIMEOUT = env.str('RECAPTCHA_VERIFY_REQUEST_TIMEOUT', "60")
 
+# Google Calendar / Meet integration. This must point to a service-account JSON
+# key mounted as a deployment secret; credentials are never stored in Wagtail.
+GOOGLE_MEET_SERVICE_ACCOUNT_FILE = env.str(
+    "GOOGLE_MEET_SERVICE_ACCOUNT_FILE",
+    default="",
+)
+
 # try to convert RECAPTCHA_VERIFY_REQUEST_TIMEOUT to an integer
 if RECAPTCHA_VERIFY_REQUEST_TIMEOUT:
     try:

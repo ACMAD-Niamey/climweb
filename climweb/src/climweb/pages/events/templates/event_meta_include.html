@@ -30,8 +30,13 @@
         <div class="ev-info-row">
             <span class="icon ev-info-icon">{% svg_icon name="location" %}</span>
             <div>
-                <span class="ev-info-label">{% translate "Venue" %}</span>
-                <strong>{% if page.location %}{{ page.location }}{% else %}{% translate "To be confirmed" %}{% endif %}</strong>
+                {% if page.attendance_mode == "online" %}
+                    <span class="ev-info-label">{% translate "Attendance" %}</span>
+                    <strong>{% translate "Online" %}</strong>
+                {% else %}
+                    <span class="ev-info-label">{% translate "Venue" %}</span>
+                    <strong>{% if page.location %}{{ page.location }}{% else %}{% translate "To be confirmed" %}{% endif %}</strong>
+                {% endif %}
             </div>
         </div>
         <div class="ev-info-row">
