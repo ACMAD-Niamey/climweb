@@ -49,7 +49,7 @@ class TestBoardPages(WagtailPageTestCase):
         response = self.client.get(self.president_page.get_url())
         self.assertContains(response, "css/on_the_job_training.css")
         self.assertContains(response, "ojt-page board-president-page")
-        self.assertContains(response, 'class="ojt-nav"')
+        self.assertNotContains(response, 'class="ojt-nav"')
         self.assertContains(response, 'class="ojt-intro president-profile"')
         self.assertContains(response, 'class="ojt-section ojt-muted president-vision-section"')
 

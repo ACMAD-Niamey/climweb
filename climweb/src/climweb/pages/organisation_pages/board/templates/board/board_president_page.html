@@ -26,15 +26,6 @@
             </section>
         {% endif %}
 
-        <nav class="ojt-nav" aria-label="{% translate 'Page sections' %}">
-            <div class="container">
-                <a href="{% pageurl page.get_parent %}"><span aria-hidden="true">←</span> {% translate "Board of Governors" %}</a>
-                <a href="#biography">{% translate "Biography" %}</a>
-                <a href="#vision">{% translate "Vision for ACMAD" %}</a>
-                {% if page.video_url %}<a href="#message">{% translate "Video message" %}</a>{% endif %}
-            </div>
-        </nav>
-
         <section id="biography" class="ojt-section president-profile-section">
             <div class="container">
                 <div class="ojt-intro president-profile">
