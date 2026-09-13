@@ -209,6 +209,15 @@
     display: contents;
 }
 
+.president-profile .president-biography,
+.president-profile .president-biography > .rich-text {
+    display: contents;
+}
+
+.president-profile .president-biography > .rich-text > :first-child {
+    margin-top: 0;
+}
+
 .president-profile-copy .board-country {
     color: var(--ojt-muted, #66717d);
 }
