@@ -45,6 +45,14 @@ class TestBoardPages(WagtailPageTestCase):
         self.assertContains(response, "A safer, climate-resilient Africa.")
         self.assertContains(response, self.board_page.get_url())
 
+    def test_president_page_inherits_on_the_job_training_design_system(self):
+        response = self.client.get(self.president_page.get_url())
+        self.assertContains(response, "css/on_the_job_training.css")
+        self.assertContains(response, "ojt-page board-president-page")
+        self.assertContains(response, 'class="ojt-nav"')
+        self.assertContains(response, 'class="ojt-intro president-profile"')
+        self.assertContains(response, 'class="ojt-section ojt-muted president-vision-section"')
+
     def test_page_type_relationships(self):
         self.assertAllowedParentPageTypes(BoardPage, {OrganisationIndexPage})
         self.assertAllowedSubpageTypes(BoardPage, {BoardPresidentPage})

@@ -1,7 +1,4 @@
-.board-section,
-.president-profile-section,
-.president-vision-section,
-.president-video-section {
+.board-section {
     padding: 4rem 1.5rem;
 }
 
@@ -191,57 +188,43 @@
     margin-bottom: 1.5rem;
 }
 
-.board-back-link {
-    display: inline-flex;
-    gap: .5rem;
-    margin-bottom: 2.5rem;
-    color: var(--primary-color, #307461);
-    font-weight: 700;
-}
-
-.president-profile {
-    align-items: center;
-}
-
-.president-profile .board-eyebrow {
-    text-align: left;
-}
-
 .president-profile-portrait {
-    overflow: hidden;
-    border-radius: 20px;
-    background: var(--primary-color-lightest, #f3f7f5);
-    box-shadow: 0 18px 44px rgba(15, 23, 42, .1);
-    aspect-ratio: 4 / 5;
+    min-height: 430px;
+    aspect-ratio: 19 / 20;
 }
 
 .president-profile-copy h2 {
-    margin: 0 0 .5rem;
-    font-size: clamp(2.2rem, 5vw, 4.3rem);
-    line-height: 1.05;
+    margin-bottom: .75rem;
 }
 
-.president-vision-section {
-    background: var(--primary-color-lightest, #f3f7f5);
+.president-profile-copy .board-country {
+    color: var(--ojt-muted, #66717d);
 }
 
-.president-reading-width {
-    max-width: 900px !important;
+.president-biography,
+.president-vision {
+    color: var(--ojt-heading, #0a192f);
 }
 
-.president-reading-width h2 {
-    margin: 0 0 1.5rem;
-    font-size: clamp(1.9rem, 4vw, 3rem);
-    text-align: center;
+.president-vision {
+    padding: .9rem 0 .9rem 1.3rem;
+    border-left: 3px solid var(--ojt-accent, #f4c84a);
+}
+
+.president-video-card {
+    max-width: 960px;
+    overflow: hidden;
+    border: 1px solid var(--ojt-border, #dce4ea);
+    border-radius: var(--theme-border-radius, 5px);
+    background: #fff;
+    box-shadow: 0 10px 28px rgba(10, 25, 47, .06);
 }
 
 .president-video-embed {
     position: relative;
     width: 100%;
     overflow: hidden;
-    border-radius: 18px;
     background: #111;
-    box-shadow: 0 16px 45px rgba(15, 23, 42, .14);
     aspect-ratio: 16 / 9;
 }
 
@@ -253,10 +236,10 @@
 }
 
 .president-video-caption {
-    margin-top: 1rem;
-    color: #666;
-    font-size: .9rem;
-    text-align: center;
+    margin: 0;
+    padding: 1rem 1.25rem;
+    color: var(--ojt-muted, #66717d);
+    font-size: .82rem;
 }
 
 @media (max-width: 1023px) {
@@ -271,10 +254,7 @@
 }
 
 @media (max-width: 768px) {
-    .board-section,
-    .president-profile-section,
-    .president-vision-section,
-    .president-video-section {
+    .board-section {
         padding: 3rem 1rem;
     }
 
@@ -287,8 +267,8 @@
         aspect-ratio: 4 / 3;
     }
 
-    .president-profile-copy {
-        padding-top: 2rem;
+    .president-profile-portrait {
+        min-height: 340px;
     }
 }
 

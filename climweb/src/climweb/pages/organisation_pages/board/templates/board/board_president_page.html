@@ -3,53 +3,76 @@
 
 {% block extra_css %}
     {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/on_the_job_training.css' %}?v=4">
     <link rel="stylesheet" href="{% static 'board/css/board.css' %}">
 {% endblock extra_css %}
 
+{% block body_class %}ojt-page board-president-page{% endblock %}
+
 {% block content %}
     <main class="president-page">
-        {% include "hero.html" with page=page %}
-
-        <section class="president-profile-section">
-            <div class="container">
-                <a class="board-back-link" href="{% pageurl page.get_parent %}"><span aria-hidden="true">←</span> {% translate "Back to the Board of Governors" %}</a>
-                <div class="columns is-variable is-8 president-profile">
-                    <div class="column is-5">
-                        <figure class="president-profile-portrait">
-                            {% if page.photo %}
-                                {% image page.photo width-900 as portrait %}
-                                <img src="{{ portrait.url }}" alt="{{ page.name }}" width="{{ portrait.width }}" height="{{ portrait.height }}">
-                            {% else %}
-                                <img src="{% static 'images/person.svg' %}" alt="" width="600" height="600">
-                            {% endif %}
-                        </figure>
+        {% if page.banner_image %}
+            {% include "hero.html" with page=page %}
+        {% else %}
+            <section class="page-hero ojt-simple-hero">
+                <div class="page-hero-overlay"></div>
+                <div class="page-hero-body">
+                    <div class="container">
+                        <span class="page-hero-badge">{% translate "Governance" %}</span>
+                        <h1 class="page-hero-title">{{ page.banner_title }}</h1>
+                        {% if page.banner_subtitle %}<p class="page-hero-subtitle">{{ page.banner_subtitle }}</p>{% endif %}
                     </div>
-                    <div class="column is-7 president-profile-copy">
-                        <p class="board-eyebrow">{{ page.role }}</p>
+                </div>
+            </section>
+        {% endif %}
+
+        <nav class="ojt-nav" aria-label="{% translate 'Page sections' %}">
+            <div class="container">
+                <a href="{% pageurl page.get_parent %}"><span aria-hidden="true">←</span> {% translate "Board of Governors" %}</a>
+                <a href="#biography">{% translate "Biography" %}</a>
+                <a href="#vision">{% translate "Vision for ACMAD" %}</a>
+                {% if page.video_url %}<a href="#message">{% translate "Video message" %}</a>{% endif %}
+            </div>
+        </nav>
+
+        <section id="biography" class="ojt-section president-profile-section">
+            <div class="container">
+                <div class="ojt-intro president-profile">
+                    <div class="president-profile-copy">
+                        <p class="ojt-eyebrow">{{ page.role }}</p>
                         <h2>{{ page.name }}</h2>
                         {% if page.country %}<p class="board-country">{{ page.country }}</p>{% endif %}
                         <div class="president-biography format-text">{{ page.biography|richtext }}</div>
                     </div>
+                    {% if page.photo %}
+                        {% image page.photo fill-760x820 as portrait %}
+                        <img class="ojt-intro-image president-profile-portrait" src="{{ portrait.url }}" alt="{{ page.name }}" width="{{ portrait.width }}" height="{{ portrait.height }}">
+                    {% else %}
+                        <img class="ojt-intro-image president-profile-portrait" src="{% static 'images/person.svg' %}" alt="" width="760" height="820">
+                    {% endif %}
                 </div>
             </div>
         </section>
 
-        <section class="president-vision-section">
-            <div class="container president-reading-width">
-                <p class="board-eyebrow">{% translate "Looking ahead" %}</p>
+        <section id="vision" class="ojt-section ojt-muted president-vision-section">
+            <div class="container">
+                <p class="ojt-eyebrow">{% translate "Looking ahead" %}</p>
                 <h2>{% translate "Vision for ACMAD" %}</h2>
-                <div class="president-vision format-text">{{ page.vision|richtext }}</div>
+                <div class="president-vision format-text ojt-lead">{{ page.vision|richtext }}</div>
             </div>
         </section>
 
         {% if page.video_url %}
-            <section class="president-video-section">
-                <div class="container president-reading-width">
+            <section id="message" class="ojt-section ojt-apply president-video-section">
+                <div class="container">
+                    <p class="ojt-eyebrow">{% translate "In his own words" %}</p>
                     {% if page.video_title %}<h2>{{ page.video_title }}</h2>{% endif %}
-                    <div class="president-video-embed">
-                        {% embed page.video_url max_width=1200 %}
-                    </div>
-                    {% if page.video_caption %}<p class="president-video-caption">{{ page.video_caption }}</p>{% endif %}
+                    <article class="president-video-card">
+                        <div class="president-video-embed">
+                            {% embed page.video_url max_width=1200 %}
+                        </div>
+                        {% if page.video_caption %}<p class="president-video-caption">{{ page.video_caption }}</p>{% endif %}
+                    </article>
                 </div>
             </section>
         {% endif %}
