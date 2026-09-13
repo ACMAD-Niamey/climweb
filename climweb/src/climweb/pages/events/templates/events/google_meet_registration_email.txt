@@ -1,0 +1,12 @@
+{% load i18n %}{% blocktranslate with event_title=event.title %}You are registered for {{ event_title }}.{% endblocktranslate %}
+
+{% if custom_text %}{{ custom_text }}
+
+{% endif %}{% translate "Join the event on Google Meet:" %}
+{{ meet_url }}
+
+{% translate "Start:" %} {{ start_at }} ({{ event.timezone }})
+{% translate "End:" %} {{ end_at }} ({{ event.timezone }})
+{% if event.attendance_mode == "hybrid" and event.location %}{% translate "Venue:" %} {{ event.location }}
+{% endif %}
+{% translate "Please keep this link private and do not forward it." %}

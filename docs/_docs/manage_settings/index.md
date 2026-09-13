@@ -9,6 +9,7 @@ Manage-2FA
 Manage-Settings
 Manage-Menus
 Manage-Google-Translate
+Manage-Google-Meet
 Manage-Navigation
 Manage-Important-Pages
 Manage-Satellite-Imagery

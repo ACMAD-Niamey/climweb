@@ -1,0 +1,19 @@
+{% load i18n %}
+<!doctype html>
+<html lang="en">
+<body style="font-family:Arial,sans-serif;color:#17212b;line-height:1.5">
+  <h1 style="font-size:22px">{% blocktranslate with event_title=event.title %}You are registered for {{ event_title }}{% endblocktranslate %}</h1>
+  {% if custom_html %}<div>{{ custom_html|safe }}</div>{% endif %}
+  <p>
+    <a href="{{ meet_url }}" style="display:inline-block;padding:12px 18px;background:#176c9c;color:#fff;text-decoration:none;border-radius:4px">
+      {% translate "Join on Google Meet" %}
+    </a>
+  </p>
+  <p>
+    <strong>{% translate "Start:" %}</strong> {{ start_at }} ({{ event.timezone }})<br>
+    <strong>{% translate "End:" %}</strong> {{ end_at }} ({{ event.timezone }})
+    {% if event.attendance_mode == "hybrid" and event.location %}<br><strong>{% translate "Venue:" %}</strong> {{ event.location }}{% endif %}
+  </p>
+  <p style="color:#52606d">{% translate "Please keep this link private and do not forward it." %}</p>
+</body>
+</html>
