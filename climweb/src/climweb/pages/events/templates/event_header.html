@@ -15,6 +15,13 @@
             </span>
         {% endif %}
 
+        {% if page.attendance_mode == "online" or page.attendance_mode == "hybrid" %}
+            <span class="ev-type-badge">
+                <span class="icon ev-badge-icon">{% svg_icon name="desktop" %}</span>
+                <span>{{ page.get_attendance_mode_display }}</span>
+            </span>
+        {% endif %}
+
         {% if page.is_ended %}
             <span class="ev-status-badge ev-status-badge--ended">
                 <span class="icon ev-badge-icon">
