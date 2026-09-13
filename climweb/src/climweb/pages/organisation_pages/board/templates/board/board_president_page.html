@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load static i18n wagtailcore_tags wagtailimages_tags wagtailembeds_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'board/css/board.css' %}">
+{% endblock extra_css %}
+
+{% block content %}
+    <main class="president-page">
+        {% include "hero.html" with page=page %}
+
+        <section class="president-profile-section">
+            <div class="container">
+                <a class="board-back-link" href="{% pageurl page.get_parent %}"><span aria-hidden="true">←</span> {% translate "Back to the Board of Governors" %}</a>
+                <div class="columns is-variable is-8 president-profile">
+                    <div class="column is-5">
+                        <figure class="president-profile-portrait">
+                            {% if page.photo %}
+                                {% image page.photo width-900 as portrait %}
+                                <img src="{{ portrait.url }}" alt="{{ page.name }}" width="{{ portrait.width }}" height="{{ portrait.height }}">
+                            {% else %}
+                                <img src="{% static 'images/person.svg' %}" alt="" width="600" height="600">
+                            {% endif %}
+                        </figure>
+                    </div>
+                    <div class="column is-7 president-profile-copy">
+                        <p class="board-eyebrow">{{ page.role }}</p>
+                        <h2>{{ page.name }}</h2>
+                        {% if page.country %}<p class="board-country">{{ page.country }}</p>{% endif %}
+                        <div class="president-biography format-text">{{ page.biography|richtext }}</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="president-vision-section">
+            <div class="container president-reading-width">
+                <p class="board-eyebrow">{% translate "Looking ahead" %}</p>
+                <h2>{% translate "Vision for ACMAD" %}</h2>
+                <div class="president-vision format-text">{{ page.vision|richtext }}</div>
+            </div>
+        </section>
+
+        {% if page.video_url %}
+            <section class="president-video-section">
+                <div class="container president-reading-width">
+                    {% if page.video_title %}<h2>{{ page.video_title }}</h2>{% endif %}
+                    <div class="president-video-embed">
+                        {% embed page.video_url max_width=1200 %}
+                    </div>
+                    {% if page.video_caption %}<p class="president-video-caption">{{ page.video_caption }}</p>{% endif %}
+                </div>
+            </section>
+        {% endif %}
+    </main>
+{% endblock content %}

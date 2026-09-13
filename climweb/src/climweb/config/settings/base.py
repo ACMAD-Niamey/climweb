@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "climweb.pages.organisation_pages.tenders",
     "climweb.pages.organisation_pages.vacancies",
     "climweb.pages.organisation_pages.staff",
+    "climweb.pages.organisation_pages.board",
     "climweb.pages.email_subscription",
     "climweb.pages.surveys",
     "climweb.pages.search",
