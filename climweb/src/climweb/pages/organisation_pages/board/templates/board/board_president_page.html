@@ -29,18 +29,18 @@
         <section id="biography" class="ojt-section president-profile-section">
             <div class="container">
                 <div class="ojt-intro president-profile">
-                    <div class="president-profile-copy">
-                        <p class="ojt-eyebrow">{{ page.role }}</p>
-                        <h2>{{ page.name }}</h2>
-                        {% if page.country %}<p class="board-country">{{ page.country }}</p>{% endif %}
-                        <div class="president-biography format-text">{{ page.biography|richtext }}</div>
-                    </div>
                     {% if page.photo %}
                         {% image page.photo fill-760x820 as portrait %}
                         <img class="ojt-intro-image president-profile-portrait" src="{{ portrait.url }}" alt="{{ page.name }}" width="{{ portrait.width }}" height="{{ portrait.height }}">
                     {% else %}
                         <img class="ojt-intro-image president-profile-portrait" src="{% static 'images/person.svg' %}" alt="" width="760" height="820">
                     {% endif %}
+                    <div class="president-profile-copy">
+                        <p class="ojt-eyebrow">{{ page.role }}</p>
+                        <h2>{{ page.name }}</h2>
+                        {% if page.country %}<p class="board-country">{{ page.country }}</p>{% endif %}
+                        <div class="president-biography format-text">{{ page.biography|richtext }}</div>
+                    </div>
                 </div>
             </div>
         </section>

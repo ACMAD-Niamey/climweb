@@ -188,8 +188,16 @@
     margin-bottom: 1.5rem;
 }
 
+.president-page .president-profile {
+    display: flow-root;
+}
+
 .president-profile-portrait {
-    min-height: 430px;
+    float: left;
+    width: min(42%, 440px);
+    height: auto;
+    max-height: none;
+    margin: 0 3rem 1.5rem 0;
     aspect-ratio: 19 / 20;
 }
 
@@ -268,7 +276,10 @@
     }
 
     .president-profile-portrait {
-        min-height: 340px;
+        float: none;
+        width: 100%;
+        max-width: 440px;
+        margin: 0 auto 2rem;
     }
 }
 

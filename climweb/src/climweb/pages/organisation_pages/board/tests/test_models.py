@@ -52,6 +52,11 @@ class TestBoardPages(WagtailPageTestCase):
         self.assertNotContains(response, 'class="ojt-nav"')
         self.assertContains(response, 'class="ojt-intro president-profile"')
         self.assertContains(response, 'class="ojt-section ojt-muted president-vision-section"')
+        html = response.content.decode()
+        self.assertLess(
+            html.index("president-profile-portrait"),
+            html.index("president-profile-copy"),
+        )
 
     def test_page_type_relationships(self):
         self.assertAllowedParentPageTypes(BoardPage, {OrganisationIndexPage})
