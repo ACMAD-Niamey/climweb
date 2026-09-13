@@ -205,6 +205,10 @@
     margin-bottom: .75rem;
 }
 
+.president-profile-copy {
+    display: contents;
+}
+
 .president-profile-copy .board-country {
     color: var(--ojt-muted, #66717d);
 }

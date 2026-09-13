@@ -57,6 +57,10 @@ class TestBoardPages(WagtailPageTestCase):
             html.index("president-profile-portrait"),
             html.index("president-profile-copy"),
         )
+        self.assertLess(
+            html.index("president-profile-copy"),
+            html.index("president-biography"),
+        )
 
     def test_page_type_relationships(self):
         self.assertAllowedParentPageTypes(BoardPage, {OrganisationIndexPage})
