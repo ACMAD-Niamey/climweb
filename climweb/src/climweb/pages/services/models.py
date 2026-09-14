@@ -127,6 +127,7 @@ class ServicePage(AbstractBannerWithIntroPage):
     subpage_types = [
         'flex_page.FlexPage',
         'services.OnTheJobTrainingPage',
+        'services.RCCClimateProductsPage',
         'services.RCCDataServicesPage',
     ]
     show_in_menus_default = True
@@ -138,7 +139,6 @@ class ServicePage(AbstractBannerWithIntroPage):
         verbose_name=_("Introduction Title"),
         help_text=_("Optional introduction section title"),
     )
-    
     service = models.OneToOneField(ServiceCategory, on_delete=models.PROTECT, verbose_name=_("Service"))
 
     sector_heading = models.CharField(
@@ -278,6 +278,11 @@ class ServicePage(AbstractBannerWithIntroPage):
     def data_services_page(self):
         """Return the published RCC data catalogue below this service page."""
         return RCCDataServicesPage.objects.live().child_of(self).first()
+
+    @cached_property
+    def climate_products_page(self):
+        """Return the published RCC climate-products catalogue below this page."""
+        return RCCClimateProductsPage.objects.live().child_of(self).first()
     
     @cached_property
     def listing_image(self):
@@ -359,7 +364,7 @@ class ServicePage(AbstractBannerWithIntroPage):
                 "multi_hazard_project_slug": map_settings.multi_hazard_project_slug or "multi-hazard",
                 "country_bounds": boundary_settings.combined_countries_bounds,
             })
-        
+
         if self.youtube_playlist:
             context['youtube_playlist_url'] = self.youtube_playlist.get_playlist_items_api_url(request)
         
@@ -403,6 +408,37 @@ class RCCDataServicesPage(AbstractBannerWithIntroPage):
 
     class Meta:
         verbose_name = _("RCC Data Services Page")
+
+
+class RCCClimateProductsPage(AbstractBannerWithIntroPage):
+    template = "services/rcc_climate_products_page.html"
+    parent_page_types = ["services.ServicePage"]
+    subpage_types = []
+    max_count_per_parent = 1
+    show_in_menus_default = True
+
+    introduction_title = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name=_("Introduction Title"),
+        help_text=_("Optional introduction section title"),
+    )
+    introduction_text = RichTextField(
+        blank=True,
+        default="",
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Introduction text"),
+        help_text=_("Optional introduction section description"),
+    )
+
+    @cached_property
+    def products(self):
+        parent = self.get_parent().specific
+        return parent.products if isinstance(parent, ServicePage) else []
+
+    class Meta:
+        verbose_name = _("RCC Climate Products Page")
 
 
 class OnTheJobTrainingPage(AbstractBannerWithIntroPage):

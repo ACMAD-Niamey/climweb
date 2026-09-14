@@ -165,7 +165,13 @@
                     {% endfor %}
                 </div>
                 <div class="rcc-products__footer">
-                    {% if settings.base.ImportantPages.all_products_page %}
+                    {% if page.climate_products_page %}
+                        <a class="rcc-button rcc-button--catalogue"
+                           href="{{ page.climate_products_page.url }}">
+                            {% translate "Explore more products" %}
+                            <span aria-hidden="true">&#8594;</span>
+                        </a>
+                    {% elif settings.base.ImportantPages.all_products_page %}
                         <a class="rcc-button rcc-button--catalogue"
                            href="{{ settings.base.ImportantPages.all_products_page.url }}">
                             {% translate "Explore more products" %}
@@ -183,6 +189,12 @@
                 <div class="rcc-empty-state">
                     <h3>{% translate "The RCC catalogue is being prepared" %}</h3>
                     <p>{% translate "Published products assigned to the Regional Climate Center will appear here automatically." %}</p>
+                    {% if page.climate_products_page %}
+                        <a class="rcc-button rcc-button--catalogue" href="{{ page.climate_products_page.url }}">
+                            {% translate "Explore more products" %}
+                            <span aria-hidden="true">&#8594;</span>
+                        </a>
+                    {% endif %}
                 </div>
             {% endif %}
         </div>
@@ -202,10 +214,10 @@
                 {% endif %}
             </div>
             <div class="rcc-data__capabilities">
-                <div><strong>{% translate "Observations" %}</strong><span>{% translate "Station monitoring and GTS-SYNOP data" %}</span></div>
-                <div><strong>{% translate "Quality control" %}</strong><span>{% translate "Regional datasets and metadata management" %}</span></div>
-                <div><strong>{% translate "Gridded data" %}</strong><span>{% translate "Precipitation and temperature estimates" %}</span></div>
-                <div><strong>{% translate "Delivery" %}</strong><span>{% translate "Standards-based catalogues and data tools" %}</span></div>
+                <div><strong>{% translate "Observations and station data" %}</strong><span>{% translate "Quality-controlled station observations and rainfall estimates" %}</span></div>
+                <div><strong>{% translate "Gridded climate data" %}</strong><span>{% translate "Continental precipitation and temperature fields" %}</span></div>
+                <div><strong>{% translate "Climate models and projections" %}</strong><span>{% translate "Regional simulation, downscaling and CORDEX archives" %}</span></div>
+                <div><strong>{% translate "Operational tools and guidance" %}</strong><span>{% translate "Monitoring interfaces, manuals and data-management guidance" %}</span></div>
             </div>
         </div>
 

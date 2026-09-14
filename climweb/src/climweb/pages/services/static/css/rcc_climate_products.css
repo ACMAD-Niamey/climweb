@@ -1,0 +1,28 @@
+.rcc-climate-products-page main {
+    background:
+        radial-gradient(circle at 92% 14%, color-mix(in srgb, var(--rcc-teal) 9%, transparent), transparent 24%),
+        var(--primary-color-lightest, #f4f6f9);
+}
+
+.rcc-climate-products-page .page-hero { margin-bottom: 0; }
+
+.rcc-cp-catalogue {
+    min-height: 560px;
+    padding: clamp(54px, 7vw, 84px) 0 clamp(68px, 8vw, 104px);
+    scroll-margin-top: 4rem;
+}
+
+.rcc-cp-intro { margin-bottom: 34px; }
+.rcc-cp-intro .rcc-section-heading { margin-bottom: 0; }
+.rcc-cp-intro__copy {
+    max-width: 760px;
+    margin-top: 20px;
+    color: var(--rcc-muted);
+    font-size: 1rem;
+    line-height: 1.75;
+}
+.rcc-cp-intro__copy p { margin: 0; }
+
+@media (max-width: 560px) {
+    .rcc-cp-catalogue { padding: 46px 0 66px; }
+}

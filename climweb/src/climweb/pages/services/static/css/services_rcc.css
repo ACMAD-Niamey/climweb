@@ -266,6 +266,7 @@
 .rcc-empty-state { padding: 58px; border: 1px dashed #b8c8c4; text-align: center; background: rgba(255, 255, 255, .62); }
 .rcc-empty-state h3 { margin: 0 0 10px; font-size: 1.35rem; }
 .rcc-empty-state p { margin: 0; color: var(--rcc-muted); }
+.rcc-empty-state .rcc-button { margin-top: 24px; }
 
 .rcc-data { color: #fff; background: var(--rcc-navy); }
 .rcc-data__layout { display: grid; grid-template-columns: minmax(0, .82fr) minmax(420px, 1fr); gap: clamp(50px, 9vw, 120px); }

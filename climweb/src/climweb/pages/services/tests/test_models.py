@@ -4,7 +4,12 @@ from climweb.base.seo_utils import get_html_meta_tags
 from climweb.base.test_utils import test_page_meta_tags
 from climweb.pages.home.tests.factories import get_or_create_homepage
 from climweb.pages.organisation_pages.partners.tests.factories import PartnerFactory
-from .factories import RCCDataServicesPageFactory, ServiceIndexPageFactory, ServicePageFactory
+from .factories import (
+    RCCClimateProductsPageFactory,
+    RCCDataServicesPageFactory,
+    ServiceIndexPageFactory,
+    ServicePageFactory,
+)
 
 
 class TestServicesPages(WagtailPageTestCase):
@@ -71,6 +76,10 @@ class TestServicesPages(WagtailPageTestCase):
         self.assertContains(response, 'id="multi-hazard-map"')
         self.assertContains(response, "Multi-Hazard Map")
         self.assertContains(response, "https://multi-hazard.acmad.org/geoportal")
+        self.assertContains(response, "Observations and station data")
+        self.assertContains(response, "Gridded climate data")
+        self.assertContains(response, "Climate models and projections")
+        self.assertContains(response, "Operational tools and guidance")
         self.assertContains(response, 'href="/on-the-job-training/"')
 
     def test_other_services_keep_default_template(self):
@@ -107,7 +116,11 @@ class TestServicesPages(WagtailPageTestCase):
         self.assertTemplateUsed(response, "services/rcc_data_services_page.html")
         self.assertContains(response, "Observations and station data")
         self.assertContains(response, "ARC2 estimated rainfall")
-        self.assertContains(response, "Open access")
+        self.assertNotContains(response, "Open access")
+        self.assertNotContains(response, "Verified")
+        self.assertNotContains(response, "Format")
+        self.assertContains(response, 'class="rcc-ds-card__icon"')
+        self.assertContains(response, 'id="icon-location"')
         self.assertContains(response, 'class="page-hero rcc-ds-simple-hero"')
         self.assertContains(response, 'class="rcc-ds-nav"')
         self.assertContains(response, f'href="{rcc_page.url}">Home</a>')
@@ -128,3 +141,28 @@ class TestServicesPages(WagtailPageTestCase):
 
         self.assertContains(response, data_page.url)
         self.assertContains(response, "Browse the data catalogue")
+
+    def test_rcc_climate_products_page_renders_and_is_linked(self):
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center products parent",
+            service__name="Regional Climate Center",
+        )
+        products_page = RCCClimateProductsPageFactory(parent=rcc_page)
+
+        response = self.client.get(products_page.get_url())
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "services/rcc_climate_products_page.html")
+        self.assertContains(response, "RCC climate product catalogue")
+        self.assertContains(response, f'href="{rcc_page.url}">Home</a>')
+
+        landing_response = self.client.get(rcc_page.get_url())
+        self.assertContains(landing_response, products_page.url)
+
+    def test_rcc_climate_products_introduction_title_is_optional(self):
+        page_model = RCCClimateProductsPageFactory._meta.model
+        title_field = page_model._meta.get_field("introduction_title")
+        text_field = page_model._meta.get_field("introduction_text")
+
+        self.assertTrue(title_field.blank)
+        self.assertTrue(text_field.blank)

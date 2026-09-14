@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static i18n wagtailcore_tags %}
+{% load static i18n wagtailcore_tags wagtailiconchooser_tags %}
 
 {% block extra_css %}
     {{ block.super }}
@@ -48,29 +48,23 @@
                 <div class="rcc-ds-catalogue">
                     {% for dataset in block.value.datasets %}
                         <article class="rcc-ds-card">
-                            <div class="rcc-ds-card__topline">
-                                <span class="rcc-ds-badge rcc-ds-badge--{{ dataset.access_type }}">
-                                    {% if dataset.access_type == "open" %}{% translate "Open access" %}
-                                    {% elif dataset.access_type == "external" %}{% translate "External login" %}
-                                    {% elif dataset.access_type == "archive" %}{% translate "Archive" %}
-                                    {% else %}{% translate "By request" %}{% endif %}
+                            <div class="rcc-ds-card__meta">
+                                <span class="rcc-ds-card__icon" aria-hidden="true">
+                                    {% if block.value.anchor == "observations" %}{% svg_icon name="location" %}
+                                    {% elif block.value.anchor == "gridded-data" %}{% svg_icon name="layer-group" %}
+                                    {% elif block.value.anchor == "models" %}{% svg_icon name="globe" %}
+                                    {% else %}{% svg_icon name="document" %}{% endif %}
                                 </span>
                                 {% if dataset.source %}<span class="rcc-ds-card__source">{{ dataset.source }}</span>{% endif %}
                             </div>
                             <h3>{{ dataset.title }}</h3>
                             {% if dataset.description %}<p class="rcc-ds-card__description">{{ dataset.description }}</p>{% endif %}
-                            {% if dataset.coverage or dataset.formats %}
+                            {% if dataset.coverage %}
                                 <dl class="rcc-ds-card__facts">
                                     {% if dataset.coverage %}<div><dt>{% translate "Coverage" %}</dt><dd>{{ dataset.coverage }}</dd></div>{% endif %}
-                                    {% if dataset.formats %}<div><dt>{% translate "Format" %}</dt><dd>{{ dataset.formats }}</dd></div>{% endif %}
                                 </dl>
                             {% endif %}
                             <footer class="rcc-ds-card__footer">
-                                {% if dataset.last_verified %}
-                                    <span>{% translate "Verified" %} {{ dataset.last_verified|date:"j M Y" }}</span>
-                                {% else %}
-                                    <span>{% translate "Verification pending" %}</span>
-                                {% endif %}
                                 {% if dataset.access_url %}
                                     <a href="{{ dataset.access_url }}" target="_blank" rel="noopener noreferrer">
                                         {% translate "Open service" %} <span aria-hidden="true">&#8599;</span>

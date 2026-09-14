@@ -4,7 +4,7 @@ from faker import Faker
 from wagtail.rich_text import RichText
 
 from climweb.base.models import ServiceCategory
-from ..models import RCCDataServicesPage, ServiceIndexPage, ServicePage
+from ..models import RCCClimateProductsPage, RCCDataServicesPage, ServiceIndexPage, ServicePage
 
 fake = Faker()
 
@@ -75,3 +75,14 @@ class RCCDataServicesPageFactory(wagtail_factories.PageFactory):
             },
         )
     ]
+
+
+class RCCClimateProductsPageFactory(wagtail_factories.PageFactory):
+    class Meta:
+        model = RCCClimateProductsPage
+
+    title = "Climate Products"
+    banner_title = "Climate products for Africa"
+    banner_subtitle = "Operational monitoring and forecast products from ACMAD."
+    introduction_title = "Regional climate intelligence"
+    introduction_text = RichText("<p>Browse RCC climate products for Africa.</p>")
