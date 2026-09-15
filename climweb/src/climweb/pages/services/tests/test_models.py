@@ -141,6 +141,10 @@ class TestServicesPages(WagtailPageTestCase):
 
         self.assertContains(response, data_page.url)
         self.assertContains(response, "Browse the data catalogue")
+        self.assertContains(response, f'href="{data_page.url}#observations"')
+        self.assertContains(response, f'href="{data_page.url}#gridded-data"')
+        self.assertContains(response, f'href="{data_page.url}#models"')
+        self.assertContains(response, f'href="{data_page.url}#tools-guidance"')
 
     def test_rcc_climate_products_page_renders_and_is_linked(self):
         rcc_page = ServicePageFactory(
