@@ -186,6 +186,11 @@ class RCCDatasetBlock(blocks.StructBlock):
         default=ACCESS_REQUEST,
     )
     access_url = blocks.URLBlock(max_length=500, required=False)
+    local_dataset_key = blocks.CharBlock(
+        max_length=80,
+        required=False,
+        help_text=_("Key for an RCC-hosted dataset page. When set, this replaces the external access URL."),
+    )
     source = blocks.CharBlock(max_length=120, required=False)
     last_verified = blocks.DateBlock(required=False)
 

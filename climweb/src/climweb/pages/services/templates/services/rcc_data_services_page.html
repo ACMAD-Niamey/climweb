@@ -57,7 +57,15 @@
                                 </span>
                                 {% if dataset.source %}<span class="rcc-ds-card__source">{{ dataset.source }}</span>{% endif %}
                             </div>
-                            <h3>{{ dataset.title }}</h3>
+                            <h3>
+                                {% if dataset.local_dataset_key %}
+                                    <a href="{% url 'rcc_dataset_detail' dataset.local_dataset_key %}">{{ dataset.title }}</a>
+                                {% elif dataset.access_url %}
+                                    <a href="{{ dataset.access_url }}" target="_blank" rel="noopener noreferrer">{{ dataset.title }}</a>
+                                {% elif page.data_request_page %}
+                                    <a href="{{ page.data_request_page.url }}">{{ dataset.title }}</a>
+                                {% else %}{{ dataset.title }}{% endif %}
+                            </h3>
                             {% if dataset.description %}<p class="rcc-ds-card__description">{{ dataset.description }}</p>{% endif %}
                             {% if dataset.coverage %}
                                 <dl class="rcc-ds-card__facts">
@@ -65,7 +73,11 @@
                                 </dl>
                             {% endif %}
                             <footer class="rcc-ds-card__footer">
-                                {% if dataset.access_url %}
+                                {% if dataset.local_dataset_key %}
+                                    <a href="{% url 'rcc_dataset_detail' dataset.local_dataset_key %}">
+                                        {% translate "View dataset" %} <span aria-hidden="true">&#8594;</span>
+                                    </a>
+                                {% elif dataset.access_url %}
                                     <a href="{{ dataset.access_url }}" target="_blank" rel="noopener noreferrer">
                                         {% translate "Open service" %} <span aria-hidden="true">&#8599;</span>
                                     </a>

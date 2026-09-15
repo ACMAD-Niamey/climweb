@@ -7,12 +7,23 @@ from climweb.pages.services.models import RCCDataServicesPage, ServicePage
 VERIFIED_ON = "2026-09-08"
 
 
-def dataset(title, description, access_type, *, url="", coverage="", formats="", source=""):
+def dataset(
+    title,
+    description,
+    access_type,
+    *,
+    url="",
+    local_dataset_key="",
+    coverage="",
+    formats="",
+    source="",
+):
     return {
         "title": title,
         "description": description,
         "access_type": access_type,
         "access_url": url,
+        "local_dataset_key": local_dataset_key,
         "coverage": coverage,
         "formats": formats,
         "source": source,
@@ -34,6 +45,7 @@ DATA_GROUPS = [
                     "Daily ARC2 precipitation estimates organized for African synoptic stations.",
                     "open",
                     url="http://sgbd.acmad.org:8080/thredds/catalog/ACMAD/CDD/climatedataservice/Synoptic_Daily_ARC2_Data/catalog.html",
+                    local_dataset_key="arc2",
                     coverage="African synoptic stations",
                     formats="THREDDS catalogue",
                     source="ACMAD SGBD",
@@ -196,7 +208,26 @@ class Command(BaseCommand):
 
         existing = RCCDataServicesPage.objects.filter(slug="data-services").first()
         if existing:
-            self.stdout.write("RCC Data Services page already exists; dashboard content was preserved.")
+            groups = []
+            changed = False
+            for block in existing.data_groups:
+                group = dict(block.value)
+                datasets = []
+                for item in block.value["datasets"]:
+                    entry = dict(item)
+                    if entry.get("title") == "ARC2 estimated daily station rainfall":
+                        if entry.get("local_dataset_key") != "arc2":
+                            entry["local_dataset_key"] = "arc2"
+                            changed = True
+                    datasets.append(entry)
+                group["datasets"] = datasets
+                groups.append(("group", group))
+            if changed:
+                existing.data_groups = groups
+                existing.save_revision().publish()
+                self.stdout.write(self.style.SUCCESS("Linked the ARC2 entry to the local country catalogue."))
+            else:
+                self.stdout.write("RCC Data Services page already exists; dashboard content was preserved.")
             return
 
         data_request_page = DataRequestPage.objects.live().first()
