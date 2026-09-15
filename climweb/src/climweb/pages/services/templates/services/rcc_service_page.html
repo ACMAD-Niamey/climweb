@@ -219,10 +219,10 @@
                 {% endif %}
             </div>
             <div class="rcc-data__capabilities">
-                <div><strong>{% translate "Observations and station data" %}</strong><span>{% translate "Quality-controlled station observations and rainfall estimates" %}</span></div>
-                <div><strong>{% translate "Gridded climate data" %}</strong><span>{% translate "Continental precipitation and temperature fields" %}</span></div>
-                <div><strong>{% translate "Climate models and projections" %}</strong><span>{% translate "Regional simulation, downscaling and CORDEX archives" %}</span></div>
-                <div><strong>{% translate "Operational tools and guidance" %}</strong><span>{% translate "Monitoring interfaces, manuals and data-management guidance" %}</span></div>
+                <div>{% if page.data_services_page %}<a href="{{ page.data_services_page.url }}#observations">{% translate "Observations and station data" %} <span aria-hidden="true">&#8594;</span></a>{% else %}<strong>{% translate "Observations and station data" %}</strong>{% endif %}<span>{% translate "Quality-controlled station observations and rainfall estimates" %}</span></div>
+                <div>{% if page.data_services_page %}<a href="{{ page.data_services_page.url }}#gridded-data">{% translate "Gridded climate data" %} <span aria-hidden="true">&#8594;</span></a>{% else %}<strong>{% translate "Gridded climate data" %}</strong>{% endif %}<span>{% translate "Continental precipitation and temperature fields" %}</span></div>
+                <div>{% if page.data_services_page %}<a href="{{ page.data_services_page.url }}#models">{% translate "Climate models and projections" %} <span aria-hidden="true">&#8594;</span></a>{% else %}<strong>{% translate "Climate models and projections" %}</strong>{% endif %}<span>{% translate "Regional simulation, downscaling and CORDEX archives" %}</span></div>
+                <div>{% if page.data_services_page %}<a href="{{ page.data_services_page.url }}#tools-guidance">{% translate "Operational tools and guidance" %} <span aria-hidden="true">&#8594;</span></a>{% else %}<strong>{% translate "Operational tools and guidance" %}</strong>{% endif %}<span>{% translate "Monitoring interfaces, manuals and data-management guidance" %}</span></div>
             </div>
         </div>
 

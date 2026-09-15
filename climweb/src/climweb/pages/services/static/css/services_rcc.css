@@ -276,6 +276,11 @@
 .rcc-data__capabilities { display: grid; border-top: 1px solid rgba(255, 255, 255, .15); border-left: 1px solid rgba(255, 255, 255, .15); grid-template-columns: repeat(2, 1fr); }
 .rcc-data__capabilities div { display: flex; min-height: 150px; padding: 25px; border-right: 1px solid rgba(255, 255, 255, .15); border-bottom: 1px solid rgba(255, 255, 255, .15); flex-direction: column; justify-content: flex-end; }
 .rcc-data__capabilities strong { color: #fff; font-size: 1rem; }
+.rcc-data__capabilities div > a { display: flex; align-items: center; justify-content: space-between; gap: 16px; color: #fff; font-size: 1rem; font-weight: 800; text-decoration: none; }
+.rcc-data__capabilities div > a > span { margin: 0; color: var(--rcc-teal); font-size: 1.15rem; transition: transform .2s ease; }
+.rcc-data__capabilities div > a:hover,
+.rcc-data__capabilities div > a:focus-visible { color: var(--rcc-teal); }
+.rcc-data__capabilities div > a:hover > span { transform: translateX(4px); }
 .rcc-data__capabilities span { margin-top: 8px; color: rgba(255, 255, 255, .58); font-size: .82rem; line-height: 1.5; }
 .rcc-applications { margin-top: 75px; }
 .rcc-applications .app-eyebrow { color: rgba(255, 255, 255, .78); }
