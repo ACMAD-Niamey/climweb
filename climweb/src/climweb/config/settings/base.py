@@ -447,6 +447,12 @@ STORAGES = {
     "staticfiles": {
         "BACKEND": "climweb.base.storage.ManifestStaticFilesStorageNotStrict",
     },
+    "rcc_data": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {
+            "location": env.str("RCC_DATA_ROOT", os.path.join(BASE_DIR, "rcc_data")),
+        },
+    },
 }
 
 # Static files (CSS, JavaScript, Images)

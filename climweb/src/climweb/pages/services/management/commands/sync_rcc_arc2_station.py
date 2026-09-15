@@ -1,0 +1,147 @@
+import csv
+import hashlib
+import os
+import re
+import tempfile
+from datetime import date
+from pathlib import Path
+from urllib.parse import urlparse
+
+import requests
+from django.core.files import File
+from django.core.files.storage import storages
+from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
+from django.utils import timezone
+from django.utils.text import slugify
+
+from climweb.pages.services.models import RCCDatasetAsset
+
+
+SOURCE_ROOT = (
+    "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/CDD/"
+    "climatedataservice/Synoptic_Daily_ARC2_Data/Niger"
+)
+EXPECTED_FIELDS = ["Station", "Country", "Lon", "Lat", "Date", "Precipitation"]
+STATION_PATTERN = re.compile(r"^[A-Z0-9_-]+$")
+DISPLAY_NAMES = {"NIAMEY-AERO": "Niamey-Aéro"}
+
+
+class Command(BaseCommand):
+    help = "Synchronize one Niger ARC2 daily station rainfall CSV into RCC storage."
+    default_station = None
+
+    def add_arguments(self, parser):
+        parser.add_argument("station", nargs="?", default=self.default_station)
+        parser.add_argument("--source-file", help="Import a local CSV instead of downloading it.")
+
+    def _station_details(self, station):
+        station = (station or "").strip().upper()
+        if not STATION_PATTERN.fullmatch(station):
+            raise CommandError("Supply a valid Niger ARC2 station filename without .csv.")
+        display_name = DISPLAY_NAMES.get(station, station.replace("_", "-").title())
+        station_slug = slugify(station)
+        return station, display_name, station_slug, f"{SOURCE_ROOT}/{station}.csv"
+
+    def _download(self, source_url, target):
+        parsed = urlparse(source_url)
+        if parsed.scheme not in {"http", "https"} or parsed.hostname != "sgbd.acmad.org":
+            raise CommandError("The configured ARC2 source is not allow-listed.")
+        with requests.get(source_url, stream=True, timeout=(15, 300)) as response:
+            response.raise_for_status()
+            for chunk in response.iter_content(chunk_size=64 * 1024):
+                if chunk:
+                    target.write(chunk)
+
+    def _validate(self, path, station):
+        digest = hashlib.sha256()
+        with open(path, "rb") as source:
+            for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                digest.update(chunk)
+
+        count = 0
+        start = end = longitude = latitude = None
+        with open(path, encoding="utf-8-sig", newline="") as source:
+            reader = csv.DictReader(source)
+            if reader.fieldnames != EXPECTED_FIELDS:
+                raise CommandError("The downloaded CSV has an unexpected header.")
+            for row in reader:
+                if row["Station"] != station or row["Country"] != "Niger":
+                    raise CommandError("The CSV contains data for an unexpected station.")
+                try:
+                    observed_on = date.fromisoformat(row["Date"])
+                    row_longitude = float(row["Lon"])
+                    row_latitude = float(row["Lat"])
+                    if row["Precipitation"]:
+                        float(row["Precipitation"])
+                except (TypeError, ValueError) as exc:
+                    raise CommandError("The CSV contains an invalid observation.") from exc
+                if longitude is None:
+                    longitude, latitude = row_longitude, row_latitude
+                elif (longitude, latitude) != (row_longitude, row_latitude):
+                    raise CommandError("The CSV contains inconsistent station coordinates.")
+                start = observed_on if start is None else min(start, observed_on)
+                end = observed_on if end is None else max(end, observed_on)
+                count += 1
+        if not count:
+            raise CommandError("The downloaded CSV contains no observations.")
+        return digest.hexdigest(), count, start, end, longitude, latitude
+
+    def handle(self, *args, **options):
+        station, display_name, station_slug, source_url = self._station_details(options.get("station"))
+        asset, _ = RCCDatasetAsset.objects.get_or_create(
+            key=f"arc2-{station_slug}",
+            defaults={
+                "title": f"ARC2 daily rainfall — {display_name}",
+                "summary": f"Daily ARC2 satellite rainfall estimates for the {display_name} synoptic station.",
+                "station": station,
+                "country": "Niger",
+                "source_url": source_url,
+            },
+        )
+        temporary_path = None
+        try:
+            source_file = options.get("source_file")
+            if source_file:
+                temporary_path = str(Path(source_file).expanduser().resolve())
+                if not Path(temporary_path).is_file():
+                    raise CommandError("The supplied source file does not exist.")
+            else:
+                with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as target:
+                    temporary_path = target.name
+                    self.stdout.write(f"Downloading the {display_name} ARC2 source file...")
+                    self._download(source_url, target)
+
+            checksum, count, start, end, longitude, latitude = self._validate(temporary_path, station)
+            object_name = f"arc2/niger/{station_slug}/{checksum[:16]}/{station}.csv"
+            storage = storages["rcc_data"]
+            if not storage.exists(object_name):
+                with open(temporary_path, "rb") as source:
+                    storage.save(object_name, File(source))
+
+            with transaction.atomic():
+                asset.title = f"ARC2 daily rainfall — {display_name}"
+                asset.summary = f"Daily ARC2 satellite rainfall estimates for the {display_name} synoptic station."
+                asset.station = station
+                asset.country = "Niger"
+                asset.longitude = str(longitude)
+                asset.latitude = str(latitude)
+                asset.source_url = source_url
+                asset.object_name = object_name
+                asset.original_filename = f"{station}.csv"
+                asset.checksum_sha256 = checksum
+                asset.size_bytes = os.path.getsize(temporary_path)
+                asset.record_count = count
+                asset.coverage_start = start
+                asset.coverage_end = end
+                asset.synced_at = timezone.now()
+                asset.last_error = ""
+                asset.save()
+            self.stdout.write(self.style.SUCCESS(f"Synchronized {count:,} {display_name} observations."))
+        except Exception as exc:
+            asset.last_error = str(exc)
+            asset.save(update_fields=["last_error"])
+            raise
+        finally:
+            if temporary_path and not options.get("source_file") and os.path.exists(temporary_path):
+                os.unlink(temporary_path)

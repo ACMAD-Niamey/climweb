@@ -73,6 +73,61 @@ class MeteorologicalService(models.Model):
         return f"{self.country} — {self.name}"
 
 
+@register_snippet
+class RCCDatasetAsset(models.Model):
+    """Metadata pointer to an RCC-managed dataset object.
+
+    Keeping the object name separate from the database makes the public URL stable
+    when the ``rcc_data`` storage backend is moved from disk to S3/MinIO.
+    """
+
+    key = models.SlugField(max_length=80, unique=True)
+    title = models.CharField(max_length=180)
+    summary = models.TextField(blank=True)
+    station = models.CharField(max_length=120, blank=True)
+    country = models.CharField(max_length=100, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=5, null=True, blank=True)
+    latitude = models.DecimalField(max_digits=8, decimal_places=5, null=True, blank=True)
+    source_url = models.URLField(max_length=700, blank=True)
+    object_name = models.CharField(max_length=500, blank=True)
+    original_filename = models.CharField(max_length=255, blank=True)
+    checksum_sha256 = models.CharField(max_length=64, blank=True)
+    size_bytes = models.PositiveBigIntegerField(default=0)
+    record_count = models.PositiveIntegerField(default=0)
+    coverage_start = models.DateField(null=True, blank=True)
+    coverage_end = models.DateField(null=True, blank=True)
+    synced_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.TextField(blank=True)
+
+    panels = [
+        FieldPanel("key"),
+        FieldPanel("title"),
+        FieldPanel("summary"),
+        MultiFieldPanel(
+            [
+                FieldPanel("station"),
+                FieldPanel("country"),
+                FieldPanel("longitude"),
+                FieldPanel("latitude"),
+            ],
+            heading=_("Location"),
+        ),
+        FieldPanel("source_url"),
+    ]
+
+    class Meta:
+        ordering = ("title",)
+        verbose_name = _("RCC dataset")
+        verbose_name_plural = _("RCC datasets")
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def is_available(self):
+        return bool(self.object_name and self.synced_at)
+
+
 class ServiceIndexPage(MetadataPageMixin, Page):
     parent_page_types = ['home.HomePage']
     subpage_types = ['services.ServicePage']

@@ -103,6 +103,7 @@ x-climweb-variables: &climweb-variables
   ACMAD_SEASONAL_FORECAST_IMPORT_INTERVAL_HOURS: ${ACMAD_SEASONAL_FORECAST_IMPORT_INTERVAL_HOURS:-24}
   ACMAD_SEASONAL_FORECAST_IMPORT_LIMIT: ${ACMAD_SEASONAL_FORECAST_IMPORT_LIMIT:-5}
   ACMAD_INITIAL_IMPORT_ON_STARTUP: ${ACMAD_INITIAL_IMPORT_ON_STARTUP:-False}
+  RCC_DATA_ROOT: /climweb/data/rcc
 
 # Same variables as above, but pointed at the prod-profile services (climweb_db_prod /
 # climweb_redis_prod) instead of the dev ones, and defaulting CLIMWEB_DEPLOYMENT_ENV to
@@ -160,6 +161,7 @@ services:
       - static:/climweb/web/src/climweb/static
       - media:/climweb/web/src/climweb/media
       - private_exports:/climweb/web/src/climweb/private_exports
+      - ${RCC_DATA_VOLUME:-./cms/rcc-data}:/climweb/data/rcc
       - ${BACKUP_VOLUME:-./cms/backup}:/climweb/web/src/climweb/backup
 
   climweb_celery_worker_dev:
@@ -177,6 +179,7 @@ services:
       - static:/climweb/web/src/climweb/static
       - media:/climweb/web/src/climweb/media
       - private_exports:/climweb/web/src/climweb/private_exports
+      - ${RCC_DATA_VOLUME:-./cms/rcc-data}:/climweb/data/rcc
       - ${BACKUP_VOLUME:-./cms/backup}:/climweb/web/src/climweb/backup
 
   climweb_celery_beat_dev:
@@ -194,6 +197,7 @@ services:
       - static:/climweb/web/src/climweb/static
       - media:/climweb/web/src/climweb/media
       - private_exports:/climweb/web/src/climweb/private_exports
+      - ${RCC_DATA_VOLUME:-./cms/rcc-data}:/climweb/data/rcc
       - ${BACKUP_VOLUME:-./cms/backup}:/climweb/web/src/climweb/backup
 
   climweb_nginx:
@@ -268,6 +272,7 @@ services:
       - static_prod:/climweb/web/src/climweb/static
       - media_prod:/climweb/web/src/climweb/media
       - private_exports_prod:/climweb/web/src/climweb/private_exports
+      - ${RCC_DATA_VOLUME_PROD:-./cms/rcc-data-prod}:/climweb/data/rcc
       - ${BACKUP_VOLUME_PROD:-./cms/backup-prod}:/climweb/web/src/climweb/backup
     depends_on:
       climweb_db_prod:
@@ -293,6 +298,7 @@ services:
       - static_prod:/climweb/web/src/climweb/static
       - media_prod:/climweb/web/src/climweb/media
       - private_exports_prod:/climweb/web/src/climweb/private_exports
+      - ${RCC_DATA_VOLUME_PROD:-./cms/rcc-data-prod}:/climweb/data/rcc
       - ${BACKUP_VOLUME_PROD:-./cms/backup-prod}:/climweb/web/src/climweb/backup
     depends_on:
       climweb_prod:
@@ -310,6 +316,7 @@ services:
       - static_prod:/climweb/web/src/climweb/static
       - media_prod:/climweb/web/src/climweb/media
       - private_exports_prod:/climweb/web/src/climweb/private_exports
+      - ${RCC_DATA_VOLUME_PROD:-./cms/rcc-data-prod}:/climweb/data/rcc
       - ${BACKUP_VOLUME_PROD:-./cms/backup-prod}:/climweb/web/src/climweb/backup
     depends_on:
       climweb_prod:
