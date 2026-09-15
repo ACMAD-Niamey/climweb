@@ -3,14 +3,14 @@
 {% get_settings use_default_site=True %}
 
 {% block extra_css %}
-    {{ block.super }}
-    <link rel="stylesheet" type="text/css" href="{% static 'css/services_rcc.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'css/maplibre-gl.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'css/multi_hazard_map.css' %}">
-    {% if page.youtube_playlist %}
-        <link rel="stylesheet" type="text/css" href="{% static 'css/jquery.skeleton.css' %}">
-        <link rel="stylesheet" type="text/css" href="{% static 'css/video_include.css' %}">
-    {% endif %}
+{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static 'css/services_rcc.css' %}">
+<link rel="stylesheet" type="text/css" href="{% static 'css/maplibre-gl.css' %}">
+<link rel="stylesheet" type="text/css" href="{% static 'css/multi_hazard_map.css' %}">
+{% if page.youtube_playlist %}
+<link rel="stylesheet" type="text/css" href="{% static 'css/jquery.skeleton.css' %}">
+<link rel="stylesheet" type="text/css" href="{% static 'css/video_include.css' %}">
+{% endif %}
 {% endblock %}
 
 {% block body_class %}service_page rcc-service-page{% endblock %}
@@ -20,22 +20,22 @@
 {% get_current_language as LANGUAGE_CODE %}
 <main>
     {% if page.banner_image %}
-        {% include "hero.html" with page=page %}
+    {% include "hero.html" with page=page %}
     {% else %}
-        <section class="page-hero rcc-simple-hero">
-            <div class="page-hero-overlay"></div>
-            <div class="page-hero-body">
-                <div class="container">
-                    <span class="page-hero-badge">{% translate "WMO Regional Climate Centre for Africa" %}</span>
-                    <h1 class="page-hero-title">{{ page.banner_title|default:page.title }}</h1>
-                    {% if page.banner_subtitle %}
-                        <p class="page-hero-subtitle">{{ page.banner_subtitle }}</p>
-                    {% elif page.introduction_title %}
-                        <p class="page-hero-subtitle">{{ page.introduction_title }}</p>
-                    {% endif %}
-                </div>
+    <section class="page-hero rcc-simple-hero">
+        <div class="page-hero-overlay"></div>
+        <div class="page-hero-body">
+            <div class="container">
+                <span class="page-hero-badge">{% translate "WMO Regional Climate Centre for Africa" %}</span>
+                <h1 class="page-hero-title">{{ page.banner_title|default:page.title }}</h1>
+                {% if page.banner_subtitle %}
+                <p class="page-hero-subtitle">{{ page.banner_subtitle }}</p>
+                {% elif page.introduction_title %}
+                <p class="page-hero-subtitle">{{ page.introduction_title }}</p>
+                {% endif %}
             </div>
-        </section>
+        </div>
+    </section>
     {% endif %}
 
     <nav class="rcc-section-nav" aria-label="{% translate 'Regional Climate Center sections' %}">
@@ -44,6 +44,7 @@
             <a href="#rcc-products">{% translate "Climate products" %}</a>
             <a href="#rcc-data-services">{% translate "Data services" %}</a>
             <a href="#rcc-resources">{% translate "Forums and resources" %}</a>
+            <a href="#rcc-events">{% translate "Events" %}</a>
             <a href="#rcc-updates">{% translate "Latest updates" %}</a>
         </div>
     </nav>
@@ -55,39 +56,42 @@
                 <h2>{{ page.introduction_title|default:default_intro_title }}</h2>
                 <div class="rcc-overview__copy format-text">
                     {% if page.introduction_text %}
-                        {{ page.introduction_text|richtext }}
+                    {{ page.introduction_text|richtext }}
                     {% else %}
-                        <p>{% translate "ACMAD provides authoritative monitoring, forecasting and climate data services that help institutions and communities across Africa anticipate climate risks." %}</p>
+                    <p>{% translate "ACMAD provides authoritative monitoring, forecasting and climate data services that help institutions and communities across Africa anticipate climate risks." %}</p>
                     {% endif %}
                 </div>
             </div>
             <div class="rcc-overview__map mhz-card">
                 <div class="mhz-card-header">
                     <div class="mhz-card-title">
-                        <svg class="mhz-title-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
-                            <path d="M3 12h18M12 3c2.5 2.5 3.75 5.5 3.75 9s-1.25 6.5-3.75 9c-2.5-2.5-3.75-5.5-3.75-9S9.5 5.5 12 3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                        <svg class="mhz-title-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            aria-hidden="true">
+                            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8" />
+                            <path
+                                d="M3 12h18M12 3c2.5 2.5 3.75 5.5 3.75 9s-1.25 6.5-3.75 9c-2.5-2.5-3.75-5.5-3.75-9S9.5 5.5 12 3Z"
+                                stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
                         </svg>
                         <span>{% translate "Multi-Hazard Map" %}</span>
                     </div>
-                    <a class="mhz-viewer-btn" href="https://multi-hazard.acmad.org/geoportal" target="_blank" rel="noopener noreferrer">
+                    <a class="mhz-viewer-btn" href="https://multi-hazard.acmad.org/geoportal" target="_blank"
+                        rel="noopener noreferrer">
                         {% translate "Open viewer" %} <span aria-hidden="true">&#8599;</span>
                     </a>
                 </div>
                 {% if multi_hazard_api_base_url %}
-                    <div id="multi-hazard-tabs" class="mhz-tabs-row"></div>
-                    <div id="multi-hazard-map" class="mhz-map"
-                         data-api-base-url="{{ multi_hazard_api_base_url }}"
-                         data-project-slug="{{ multi_hazard_project_slug }}"
-                         data-country-bounds="{{ country_bounds }}"
-                         data-language-code="{{ LANGUAGE_CODE }}"
-                         data-msg-latest="{% translate 'Latest' %}"
-                         data-msg-no-data="{% translate 'No data available for this category' %}"
-                         data-msg-unavailable="{% translate 'Map data is temporarily unavailable' %}">
-                        <div class="mhz-placeholder">{% translate "Loading map…" %}</div>
-                    </div>
+                <div id="multi-hazard-tabs" class="mhz-tabs-row"></div>
+                <div id="multi-hazard-map" class="mhz-map" data-api-base-url="{{ multi_hazard_api_base_url }}"
+                    data-project-slug="{{ multi_hazard_project_slug }}" data-country-bounds="{{ country_bounds }}"
+                    data-language-code="{{ LANGUAGE_CODE }}" data-msg-latest="{% translate 'Latest' %}"
+                    data-msg-no-data="{% translate 'No data available for this category' %}"
+                    data-msg-unavailable="{% translate 'Map data is temporarily unavailable' %}">
+                    <div class="mhz-placeholder">{% translate "Loading map…" %}</div>
+                </div>
                 {% else %}
-                    <div class="mhz-map mhz-map--static"><div class="mhz-unavailable">{% translate "Map data is temporarily unavailable" %}</div></div>
+                <div class="mhz-map mhz-map--static">
+                    <div class="mhz-unavailable">{% translate "Map data is temporarily unavailable" %}</div>
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -106,12 +110,14 @@
             <article class="rcc-function">
                 <span class="rcc-function__number">03</span>
                 <h3>{% translate "Data services" %}</h3>
-                <p>{% translate "Improve access to quality-controlled observations, estimates and climate datasets." %}</p>
+                <p>{% translate "Improve access to quality-controlled observations, estimates and climate datasets." %}
+                </p>
             </article>
             <article class="rcc-function">
                 <span class="rcc-function__number">04</span>
                 <h3>{% translate "Regional coordination" %}</h3>
-                <p>{% translate "Support climate outlook forums, training and cooperation with national services." %}</p>
+                <p>{% translate "Support climate outlook forums, training and cooperation with national services." %}
+                </p>
             </article>
         </div>
     </section>
@@ -124,78 +130,76 @@
                     <h2>{% translate "Regional Climate Center products" %}</h2>
                 </div>
                 {% if page.products %}
-                    <p class="rcc-section-heading__aside">
-                        {% blocktranslate count counter=page.products|length %}{{ counter }} product available{% plural %}{{ counter }} products available{% endblocktranslate %}
-                    </p>
+                <p class="rcc-section-heading__aside">
+                    {% blocktranslate count counter=page.products|length %}{{ counter }} product available{% plural %}{{ counter }} products available{% endblocktranslate %}
+                </p>
                 {% endif %}
             </div>
 
             {% if page.products %}
-                <div class="rcc-product-grid">
-                    {% for product in page.products|slice:":3" %}
-                        <article class="rcc-product-card">
-                            <a href="{{ product.url }}" aria-label="{{ product.title }}">
-                                <div class="rcc-product-card__media">
-                                    {% if product.listing_image %}
-                                        {% image product.listing_image fill-720x440 as product_image %}
-                                        <img class="progressive__img progressive--not-loaded"
-                                             src="{% lazy_image_url product_image %}"
-                                             data-progressive="{{ product_image.url }}"
-                                             alt="">
-                                    {% else %}
-                                        <div class="rcc-product-card__placeholder" aria-hidden="true"></div>
-                                    {% endif %}
-                                    <span class="rcc-product-card__type">{% translate "Climate product" %}</span>
-                                </div>
-                                <div class="rcc-product-card__body">
-                                    <h3>{{ product.title }}</h3>
-                                    {% with latest=product.all_products.first %}
-                                        {% if latest %}
-                                            <p>{% translate "Latest issue" %}: <time datetime="{{ latest.date|date:'Y-m-d' }}">{{ latest.date|date:"j M Y" }}</time></p>
-                                        {% else %}
-                                            <p>{% translate "Browse available issues" %}</p>
-                                        {% endif %}
-                                    {% endwith %}
-                                    <span class="rcc-product-card__link">
-                                        {% translate "View product" %} <span aria-hidden="true">&#8594;</span>
-                                    </span>
-                                </div>
-                            </a>
-                        </article>
-                    {% endfor %}
-                </div>
-                <div class="rcc-products__footer">
-                    {% if page.climate_products_page %}
-                        <a class="rcc-button rcc-button--catalogue"
-                           href="{{ page.climate_products_page.url }}">
-                            {% translate "Explore more products" %}
-                            <span aria-hidden="true">&#8594;</span>
-                        </a>
-                    {% elif settings.base.ImportantPages.all_products_page %}
-                        <a class="rcc-button rcc-button--catalogue"
-                           href="{{ settings.base.ImportantPages.all_products_page.url }}">
-                            {% translate "Explore more products" %}
-                            <span aria-hidden="true">&#8594;</span>
-                        </a>
-                    {% else %}
-                        <a class="rcc-button rcc-button--catalogue"
-                           href="{{ page.products.0.get_parent.url }}">
-                            {% translate "Explore more products" %}
-                            <span aria-hidden="true">&#8594;</span>
-                        </a>
-                    {% endif %}
-                </div>
+            <div class="rcc-product-grid">
+                {% for product in page.products|slice:":3" %}
+                <article class="rcc-product-card">
+                    <a href="{{ product.url }}" aria-label="{{ product.title }}">
+                        <div class="rcc-product-card__media">
+                            {% if product.listing_image %}
+                            {% image product.listing_image fill-720x440 as product_image %}
+                            <img class="progressive__img progressive--not-loaded"
+                                src="{% lazy_image_url product_image %}" data-progressive="{{ product_image.url }}"
+                                alt="">
+                            {% else %}
+                            <div class="rcc-product-card__placeholder" aria-hidden="true"></div>
+                            {% endif %}
+                            <span class="rcc-product-card__type">{% translate "Climate product" %}</span>
+                        </div>
+                        <div class="rcc-product-card__body">
+                            <h3>{{ product.title }}</h3>
+                            {% with latest=product.all_products.first %}
+                            {% if latest %}
+                            <p>{% translate "Latest issue" %}: <time
+                                    datetime="{{ latest.date|date:'Y-m-d' }}">{{latest.date|date:"j M Y" }}</time></p>
+                            {% else %}
+                            <p>{% translate "Browse available issues" %}</p>
+                            {% endif %}
+                            {% endwith %}
+                            <span class="rcc-product-card__link">
+                                {% translate "View product" %} <span aria-hidden="true">&#8594;</span>
+                            </span>
+                        </div>
+                    </a>
+                </article>
+                {% endfor %}
+            </div>
+            <div class="rcc-products__footer">
+                {% if page.climate_products_page %}
+                <a class="rcc-button rcc-button--catalogue" href="{{ page.climate_products_page.url }}">
+                    {% translate "Explore more products" %}
+                    <span aria-hidden="true">&#8594;</span>
+                </a>
+                {% elif settings.base.ImportantPages.all_products_page %}
+                <a class="rcc-button rcc-button--catalogue"
+                    href="{{ settings.base.ImportantPages.all_products_page.url }}">
+                    {% translate "Explore more products" %}
+                    <span aria-hidden="true">&#8594;</span>
+                </a>
+                {% else %}
+                <a class="rcc-button rcc-button--catalogue" href="{{ page.products.0.get_parent.url }}">
+                    {% translate "Explore more products" %}
+                    <span aria-hidden="true">&#8594;</span>
+                </a>
+                {% endif %}
+            </div>
             {% else %}
-                <div class="rcc-empty-state">
-                    <h3>{% translate "The RCC catalogue is being prepared" %}</h3>
-                    <p>{% translate "Published products assigned to the Regional Climate Center will appear here automatically." %}</p>
-                    {% if page.climate_products_page %}
-                        <a class="rcc-button rcc-button--catalogue" href="{{ page.climate_products_page.url }}">
-                            {% translate "Explore more products" %}
-                            <span aria-hidden="true">&#8594;</span>
-                        </a>
-                    {% endif %}
-                </div>
+            <div class="rcc-empty-state">
+                <h3>{% translate "The RCC catalogue is being prepared" %}</h3>
+                <p>{% translate "Published products assigned to the Regional Climate Center will appear here automatically." %}</p>
+                {% if page.climate_products_page %}
+                <a class="rcc-button rcc-button--catalogue" href="{{ page.climate_products_page.url }}">
+                    {% translate "Explore more products" %}
+                    <span aria-hidden="true">&#8594;</span>
+                </a>
+                {% endif %}
+            </div>
             {% endif %}
         </div>
     </section>
@@ -207,10 +211,11 @@
                 <h2>{% translate "Climate data services for Africa" %}</h2>
                 <p>{% translate "The RCC supports access to observations and gridded datasets, regional quality control, standardized climate indices and interoperable data delivery." %}</p>
                 {% if page.data_services_page %}
-                    <a class="rcc-button rcc-button--ghost rcc-data__catalogue-link" href="{{ page.data_services_page.url }}">
-                        {% translate "Browse the data catalogue" %}
-                        <span aria-hidden="true">&#8594;</span>
-                    </a>
+                <a class="rcc-button rcc-button--ghost rcc-data__catalogue-link"
+                    href="{{ page.data_services_page.url }}">
+                    {% translate "Browse the data catalogue" %}
+                    <span aria-hidden="true">&#8594;</span>
+                </a>
                 {% endif %}
             </div>
             <div class="rcc-data__capabilities">
@@ -222,41 +227,41 @@
         </div>
 
         {% if page.applications.all %}
-            <div class="container rcc-applications">
-                {% include 'applications_include.html' with applications=page.applications.all %}
-            </div>
+        <div class="container rcc-applications">
+            {% include 'applications_include.html' with applications=page.applications.all %}
+        </div>
         {% endif %}
     </section>
 
     {% if page.what_we_do_items %}
-        <section class="rcc-section rcc-editorial-section">
-            <div class="container">
-                <div class="rcc-section-heading">
-                    <div>
-                        <p class="rcc-eyebrow">{% translate "Our work" %}</p>
-                        <h2>{% translate "How the RCC supports the region" %}</h2>
-                    </div>
+    <section class="rcc-section rcc-editorial-section">
+        <div class="container">
+            <div class="rcc-section-heading">
+                <div>
+                    <p class="rcc-eyebrow">{% translate "Our work" %}</p>
+                    <h2>{% translate "How the RCC supports the region" %}</h2>
                 </div>
-                <div class="columns is-multiline is-mobile is-centered">
-                    {% for block in page.what_we_do_items %}
-                        {% include_block block %}
-                    {% endfor %}
-                </div>
-                {% if page.what_we_do_button_text and page.what_we_do_button_link %}
-                    <a class="rcc-text-link" href="{{ page.what_we_do_button_link.url }}">
-                        {{ page.what_we_do_button_text }} <span aria-hidden="true">&#8594;</span>
-                    </a>
-                {% endif %}
             </div>
-        </section>
+            <div class="columns is-multiline is-mobile is-centered">
+                {% for block in page.what_we_do_items %}
+                {% include_block block %}
+                {% endfor %}
+            </div>
+            {% if page.what_we_do_button_text and page.what_we_do_button_link %}
+            <a class="rcc-text-link" href="{{ page.what_we_do_button_link.url }}">
+                {{ page.what_we_do_button_text }} <span aria-hidden="true">&#8594;</span>
+            </a>
+            {% endif %}
+        </div>
+    </section>
     {% endif %}
 
     {% if page.feature_block_items %}
-        <section class="rcc-section rcc-feature-blocks">
-            <div class="container">
-                {% include 'feature_block_section.html' with feature_blocks=page.feature_block_items %}
-            </div>
-        </section>
+    <section class="rcc-section rcc-feature-blocks">
+        <div class="container">
+            {% include 'feature_block_section.html' with feature_blocks=page.feature_block_items %}
+        </div>
+    </section>
     {% endif %}
 
     <section id="rcc-resources" class="rcc-resources rcc-section">
@@ -269,189 +274,219 @@
             </div>
 
             {% if page.flex_pages %}
-                <div class="rcc-resource-list">
-                    {% for resource in page.flex_pages %}
-                        <a href="{{ resource.url }}">
-                            <span class="rcc-resource-list__index">{{ forloop.counter|stringformat:"02d" }}</span>
-                            <span class="rcc-resource-list__title">{{ resource.title }}</span>
-                            <span class="rcc-resource-list__arrow" aria-hidden="true">&#8594;</span>
-                        </a>
-                    {% endfor %}
-                </div>
+            <div class="rcc-resource-list">
+                {% for resource in page.flex_pages %}
+                <a href="{{ resource.url }}">
+                    <span class="rcc-resource-list__index">{{ forloop.counter|stringformat:"02d" }}</span>
+                    <span class="rcc-resource-list__title">{{ resource.title }}</span>
+                    <span class="rcc-resource-list__arrow" aria-hidden="true">&#8594;</span>
+                </a>
+                {% endfor %}
+            </div>
             {% else %}
-                <div class="rcc-resource-callout">
-                    <a href="#rcc-products">
-                        <h3>{% translate "Regional Climate Outlook Forums" %}</h3>
-                        <p>{% translate "A collaborative platform for producing and communicating consensus climate outlooks across Africa's regions." %}</p>
-                        <span>{% translate "Explore climate products" %} &#8594;</span>
-                    </a>
-                    <a href="/on-the-job-training/">
-                        <h3>{% translate "Capacity development" %}</h3>
-                        <p>{% translate "Training materials and technical guidance strengthen climate services and data capabilities across NMHSs." %}</p>
-                        <span>{% translate "Explore training" %} &#8594;</span>
-                    </a>
-                </div>
+            <div class="rcc-resource-callout">
+                <a href="#rcc-products">
+                    <h3>{% translate "Regional Climate Outlook Forums" %}</h3>
+                    <p>{% translate "A collaborative platform for producing and communicating consensus climate outlooks across Africa's regions." %}</p>
+                    <span>{% translate "Explore climate products" %} &#8594;</span>
+                </a>
+                <a href="/on-the-job-training/">
+                    <h3>{% translate "Capacity development" %}</h3>
+                    <p>{% translate "Training materials and technical guidance strengthen climate services and data capabilities across NMHSs." %}</p>
+                    <span>{% translate "Explore training" %} &#8594;</span>
+                </a>
+            </div>
             {% endif %}
         </div>
     </section>
 
     {% if page.extra_content %}
-        {% for block in page.extra_content %}
-            <section class="rcc-section rcc-extra-content{% if block.block_type == 'accordion' %} ac-section{% endif %}">
-                <div class="container">{% include_block block %}</div>
-            </section>
-        {% endfor %}
+    {% for block in page.extra_content %}
+    <section class="rcc-section rcc-extra-content{% if block.block_type == 'accordion' %} ac-section{% endif %}">
+        <div class="container">{% include_block block %}</div>
+    </section>
+    {% endfor %}
     {% endif %}
 
     {% if page.projects.all %}
-        <section class="rcc-section rcc-projects">
-            <div class="container">{% include 'projects_include.html' with page=page %}</div>
-        </section>
+    <section class="rcc-section rcc-projects">
+        <div class="container">{% include 'projects_include.html' with page=page %}</div>
+    </section>
     {% endif %}
 
     {% if page.events %}
-        <section class="rcc-section rcc-events">
-            <div class="container">
-                {% include 'events_include.html' with events=page.events hide_more_link=True %}
-                {% if settings.base.ImportantPages.all_events_page %}
-                    <div class="rcc-preview-footer">
-                        <a class="rcc-button rcc-button--catalogue"
-                           href="{{ settings.base.ImportantPages.all_events_page.url }}">
-                            {% translate "Explore more events" %}
-                            <span aria-hidden="true">&#8594;</span>
-                        </a>
-                    </div>
-                {% else %}
-                    <div class="rcc-preview-footer">
-                        <a class="rcc-button rcc-button--catalogue"
-                           href="{{ page.events.0.get_parent.url }}">
-                            {% translate "Explore more events" %}
-                            <span aria-hidden="true">&#8594;</span>
-                        </a>
-                    </div>
-                {% endif %}
+    <section id="rcc-events" class="rcc-section rcc-events">
+        <div class="container">
+            <div class="rcc-section-heading">
+                <div>
+                    <p class="rcc-eyebrow">{% translate "Our Activities" %}</p>
+                    <h2>{% translate "Events" %}</h24>
+                </div>
             </div>
-        </section>
+            <div class="rcc-product-grid">
+                {% for event in page.events.all|slice:":3" %}
+                <article class="rcc-product-card">
+                    <a href="{{ event.url }}" aria-label="{{ event.event_title }}">
+                        <div class="rcc-product-card__media">
+                            {% if event.image %}
+                            {% image event.image fill-720x440 as evt_img %}
+                            <img class="progressive__img progressive--not-loaded" src="{% lazy_image_url evt_img %}"
+                                data-progressive="{{ evt_img.url }}" alt="">
+                            {% else %}
+                            <div class="rcc-product-card__placeholder" aria-hidden="true"></div>
+                            {% endif %}
+                            <span class="rcc-product-card__type">{{ event.event_type }}</span>
+                        </div>
+                        <div class="rcc-product-card__body">
+                            <h3>{{ event.event_title }}</h3>
+                            <p><time datetime="{{ event.date_from|date:'Y-m-d' }}">{{ event.date_from|date:"d M Y" }}</time></p>
+                            {% if event.listing_summary %}
+                            <p>{{ event.listing_summary }}</p>
+                            {% endif %}
+                            <span class="rcc-product-card__link">
+                                {% translate "Read More" %} <span aria-hidden="true">&#8594;</span>
+                            </span>
+                        </div>
+                    </a>
+                </article>
+                {% endfor %}
+            </div>
+            {% if settings.base.ImportantPages.all_events_page %}
+            <div class="rcc-preview-footer">
+                <a class="rcc-button rcc-button--catalogue"
+                    href="{{ settings.base.ImportantPages.all_events_page.url }}">
+                    {% translate "Explore more events" %}
+                    <span aria-hidden="true">&#8594;</span>
+                </a>
+            </div>
+            {% else %}
+            <div class="rcc-preview-footer">
+                <a class="rcc-button rcc-button--catalogue" href="{{ page.events.0.get_parent.url }}">
+                    {% translate "Explore more events" %}
+                    <span aria-hidden="true">&#8594;</span>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </section>
     {% endif %}
 
     {% if page.latest_updates %}
-        <section id="rcc-updates" class="rcc-section rcc-updates">
-            <div class="container">
-                <div class="rcc-section-heading">
-                    <div>
-                        <p class="rcc-eyebrow">{% translate "Latest updates" %}</p>
-                        <h2>{% translate "News and publications" %}</h2>
-                    </div>
+    <section id="rcc-updates" class="rcc-section rcc-updates">
+        <div class="container">
+            <div class="rcc-section-heading">
+                <div>
+                    <p class="rcc-eyebrow">{% translate "Latest updates" %}</p>
+                    <h2>{% translate "News and publications" %}</h2>
                 </div>
-                <div class="columns is-multiline is-8">
-                    {% for update in page.latest_updates|slice:":3" %}
-                        <div class="column is-4-desktop is-6-tablet is-12-mobile">
-                            {% include 'update_card_include.html' with card=update.card_props show_type=True show_card_text=False %}
-                        </div>
-                    {% endfor %}
-                </div>
-                {% if settings.base.ImportantPages.all_news_page %}
-                    <div class="rcc-preview-footer">
-                        <a class="rcc-button rcc-button--catalogue"
-                           href="{{ settings.base.ImportantPages.all_news_page.url }}">
-                            {% translate "Explore more updates" %}
-                            <span aria-hidden="true">&#8594;</span>
-                        </a>
-                    </div>
-                {% else %}
-                    <div class="rcc-preview-footer">
-                        <a class="rcc-button rcc-button--catalogue"
-                           href="{{ page.latest_updates.0.get_parent.url }}">
-                            {% translate "Explore more updates" %}
-                            <span aria-hidden="true">&#8594;</span>
-                        </a>
-                    </div>
-                {% endif %}
             </div>
-        </section>
+            <div class="columns is-multiline is-8">
+                {% for update in page.latest_updates|slice:":3" %}
+                <div class="column is-4-desktop is-6-tablet is-12-mobile">
+                    {% include 'update_card_include.html' with card=update.card_props show_type=True show_card_text=False %}
+                </div>
+                {% endfor %}
+            </div>
+            {% if settings.base.ImportantPages.all_news_page %}
+            <div class="rcc-preview-footer">
+                <a class="rcc-button rcc-button--catalogue" href="{{ settings.base.ImportantPages.all_news_page.url }}">
+                    {% translate "Explore more updates" %}
+                    <span aria-hidden="true">&#8594;</span>
+                </a>
+            </div>
+            {% else %}
+            <div class="rcc-preview-footer">
+                <a class="rcc-button rcc-button--catalogue" href="{{ page.latest_updates.0.get_parent.url }}">
+                    {% translate "Explore more updates" %}
+                    <span aria-hidden="true">&#8594;</span>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </section>
     {% else %}
-        <div id="rcc-updates"></div>
+    <div id="rcc-updates"></div>
     {% endif %}
 
     {% if page.featured_partners %}
-        <section class="rcc-section rcc-partners">
-            <div class="container">
-                <div class="rcc-section-heading">
-                    <div>
-                        <p class="rcc-eyebrow">{% translate "Collaboration" %}</p>
-                        <h2>{% translate "Our partners" %}</h2>
-                    </div>
-                    <p class="rcc-section-heading__aside">
-                        {% translate "Working together to strengthen climate services across Africa." %}
-                    </p>
+    <section class="rcc-section rcc-partners">
+        <div class="container">
+            <div class="rcc-section-heading">
+                <div>
+                    <p class="rcc-eyebrow">{% translate "Collaboration" %}</p>
+                    <h2>{% translate "Our partners" %}</h2>
                 </div>
-
-                <div class="columns is-multiline is-mobile is-centered partners-list">
-                    {% for partner in page.featured_partners %}
-                        <div class="column is-4-mobile is-3-tablet is-2-desktop">
-                            {% if partner.link %}<a class="partner-card" href="{{ partner.link }}" target="_blank" rel="noopener noreferrer" title="{{ partner.name }}">{% else %}<div class="partner-card" title="{{ partner.name }}">{% endif %}
-                                <figure class="image partner-logo-figure">
-                                    {% image partner.logo original as partner_logo %}
-                                    <img class="progressive__img progressive--not-loaded partner-logo-img"
-                                         data-progressive="{{ partner_logo.url }}"
-                                         src="{% lazy_image_url partner_logo %}"
-                                         alt="{{ partner.name }}">
-                                </figure>
-                            {% if partner.link %}</a>{% else %}</div>{% endif %}
-                        </div>
-                    {% endfor %}
-                </div>
-
-                {% if settings.base.ImportantPages.all_partners_page %}
-                    <div class="rcc-preview-footer">
-                        <a class="rcc-button rcc-button--catalogue"
-                           href="{{ settings.base.ImportantPages.all_partners_page.url }}">
-                            {% translate "Explore more partners" %}
-                            <span aria-hidden="true">&#8594;</span>
-                        </a>
-                    </div>
-                {% endif %}
+                <p class="rcc-section-heading__aside">
+                    {% translate "Working together to strengthen climate services across Africa." %}
+                </p>
             </div>
-        </section>
+
+            <div class="columns is-multiline is-mobile is-centered partners-list">
+                {% for partner in page.featured_partners %}
+                <div class="column is-4-mobile is-3-tablet is-2-desktop">
+                    {% if partner.link %}<a class="partner-card" href="{{ partner.link }}" target="_blank"
+                        rel="noopener noreferrer" title="{{ partner.name }}">{% else %}<div class="partner-card"
+                            title="{{ partner.name }}">{% endif %}
+                            <figure class="image partner-logo-figure">
+                                {% image partner.logo original as partner_logo %}
+                                <img class="progressive__img progressive--not-loaded partner-logo-img"
+                                    data-progressive="{{ partner_logo.url }}" src="{% lazy_image_url partner_logo %}"
+                                    alt="{{ partner.name }}">
+                            </figure>
+                            {% if partner.link %}</a>{% else %}</div>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if settings.base.ImportantPages.all_partners_page %}
+        <div class="rcc-preview-footer">
+            <a class="rcc-button rcc-button--catalogue" href="{{ settings.base.ImportantPages.all_partners_page.url }}">
+                {% translate "Explore more partners" %}
+                <span aria-hidden="true">&#8594;</span>
+            </a>
+        </div>
+        {% endif %}
+        </div>
+    </section>
     {% endif %}
 
     {% if page.youtube_playlist %}
-        <section class="rcc-section rcc-videos" id="videoSection">
-            <div class="container">
-                <p class="rcc-eyebrow">{% translate "Latest media" %}</p>
-                <h2>{% translate "RCC highlights and videos" %}</h2>
-                {% include 'videos_skeleton.html' %}
-            </div>
-        </section>
+    <section class="rcc-section rcc-videos" id="videoSection">
+        <div class="container">
+            <p class="rcc-eyebrow">{% translate "Latest media" %}</p>
+            <h2>{% translate "RCC highlights and videos" %}</h2>
+            {% include 'videos_skeleton.html' %}
+        </div>
+    </section>
     {% endif %}
 </main>
 {% endblock content %}
 
 {% block extra_js %}
-    {{ block.super }}
-    <script defer src="{% static 'js/maplibre-gl.js' %}"></script>
-    <script defer src="{% static 'js/multi_hazard_map.js' %}"></script>
-    {% if page.youtube_playlist %}
-        <script src="{% static 'js/jquery.scheletrone.js' %}"></script>
-        <script>
-            $(document).ready(function () {
-                $('#videoWrapper').scheletrone({
-                    onComplete: function () {
-                        $.ajax({
-                            url: "{{ youtube_playlist_url }}",
-                            dataType: "html",
-                            success: function (data) {
-                                if (data) {
-                                    $('#videoWrapper').html('').append(data);
-                                } else {
-                                    $('#videoSection').remove();
-                                }
-                            },
-                            error: function () { $('#videoSection').remove(); }
-                        });
-                    }
+{{ block.super }}
+<script defer src="{% static 'js/maplibre-gl.js' %}"></script>
+<script defer src="{% static 'js/multi_hazard_map.js' %}"></script>
+{% if page.youtube_playlist %}
+<script src="{% static 'js/jquery.scheletrone.js' %}"></script>
+<script>
+    $(document).ready(function () {
+        $('#videoWrapper').scheletrone({
+            onComplete: function () {
+                $.ajax({
+                    url: "{{ youtube_playlist_url }}",
+                    dataType: "html",
+                    success: function (data) {
+                        if (data) {
+                            $('#videoWrapper').html('').append(data);
+                        } else {
+                            $('#videoSection').remove();
+                        }
+                    },
+                    error: function () { $('#videoSection').remove(); }
                 });
-            });
-        </script>
-    {% endif %}
+            }
+        });
+    });
+</script>
+{% endif %}
 {% endblock extra_js %}
