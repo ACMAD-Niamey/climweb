@@ -22,8 +22,7 @@
 
     <nav class="rcc-ds-nav" aria-label="{% translate 'Gallery navigation' %}">
         <div class="container">
-            {% if data_services_page %}<a href="{{ data_services_page.url }}">{% translate "Data Services" %}</a>{%
-            endif %}
+            {% if data_services_page %}<a href="{{ data_services_page.url }}">{% translate "Data Services" %}</a>{% endif %}
             <a href="#maps">{% translate "Map gallery" %}</a>
         </div>
     </nav>
@@ -35,27 +34,22 @@
                     <p class="rcc-ds-eyebrow">{% translate "Archived climatology" %}</p>
                     <h2>{% translate "Explore the maps" %}</h2>
                 </div>
-                <p>{% blocktranslate count count=total_maps %}{{ count }} map available{% plural %}{{ count }} maps
-                    available{% endblocktranslate %}</p>
+                <p>{% blocktranslate count count=total_maps %}{{ count }} map available{% plural %}{{ count }} maps available{% endblocktranslate %}</p>
             </div>
-            <p class="rcc-seasonal-gallery__intro">{% translate "These are finished map images, not the underlying
-                gridded data or a live forecast. The gallery grows as validated maps are imported." %}</p>
+            <p class="rcc-seasonal-gallery__intro">{% translate "These are finished map images, not the underlying gridded data or a live forecast. The gallery grows as validated maps are imported." %}</p>
 
             <form class="rcc-seasonal-gallery__filters" method="get" aria-label="{% translate 'Filter maps' %}">
                 <div><label for="season-filter">{% translate "Season" %}</label><select id="season-filter"
                         name="season">
                         <option value="">{% translate "All seasons" %}</option>
-                        {% for season in season_options %}<option value="{{ season }}" {% if selected_season==season
-                            %}selected{% endif %}>{{ season }}</option>{% endfor %}
+                        {% for season in season_options %}<option value="{{ season }}" {% if selected_season == season %}selected{% endif %}>{{ season }}</option>{% endfor %}
                     </select></div>
                 <div><label for="type-filter">{% translate "Map type" %}</label><select id="type-filter" name="type">
                         <option value="">{% translate "All map types" %}</option>
-                        {% for value, label in variant_options %}<option value="{{ value }}" {% if
-                            selected_variant==value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                        {% for value, label in variant_options %}<option value="{{ value }}" {% if selected_variant == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
                     </select></div>
                 <button type="submit">{% translate "Apply filters" %}</button>
-                {% if selected_season or selected_variant %}<a href="{% url 'rcc_seasonal_map_gallery' %}">{% translate
-                    "Clear" %}</a>{% endif %}
+                {% if selected_season or selected_variant %}<a href="{% url 'rcc_seasonal_map_gallery' %}">{% translate "Clear" %}</a>{% endif %}
             </form>
 
             {% if cards %}
@@ -70,15 +64,12 @@
                             loading="lazy" width="{{ card.asset.width }}" height="{{ card.asset.height }}">
                     </a>
                     <div class="rcc-seasonal-card__body">
-                        <div class="rcc-seasonal-card__tags"><span>{{ card.asset.season }}</span><span>{{
-                                card.variant_label }}</span></div>
+                        <div class="rcc-seasonal-card__tags"><span>{{ card.asset.season }}</span><span>{{ card.variant_label }}</span></div>
                         <h3>{{ card.asset.season }} — {{ card.variant_label }}</h3>
                         <p>{% translate "Africa-wide archived climatology" %}</p>
                         <div class="rcc-seasonal-card__footer">
-                            <a href="{% url 'rcc_seasonal_map_file' card.asset.pk %}" target="_blank" rel="noopener">{%
-                                translate "View full map" %} <span aria-hidden="true">&#8599;</span></a>
-                            <a href="{% url 'rcc_seasonal_map_file' card.asset.pk %}?download=1">{% translate "Download
-                                PNG" %} <span aria-hidden="true">&#8595;</span></a>
+                            <a href="{% url 'rcc_seasonal_map_file' card.asset.pk %}" target="_blank" rel="noopener">{% translate "View full map" %} <span aria-hidden="true">&#8599;</span></a>
+                            <a href="{% url 'rcc_seasonal_map_file' card.asset.pk %}?download=1">{% translate "Download PNG" %} <span aria-hidden="true">&#8595;</span></a>
                         </div>
                     </div>
                 </article>
@@ -86,12 +77,9 @@
             </div>
             {% else %}
             <div class="rcc-seasonal-gallery__empty">
-                <h3>{% if total_maps %}{% translate "No maps match these filters" %}{% else %}{% translate "Maps are
-                    being prepared" %}{% endif %}</h3>
-                <p>{% if total_maps %}{% translate "Try another season or map type." %}{% else %}{% translate "Validated
-                    seasonal maps will appear here after import." %}{% endif %}</p>
-                {% if total_maps %}<a href="{% url 'rcc_seasonal_map_gallery' %}">{% translate "Show all maps" %}</a>{%
-                endif %}
+                <h3>{% if total_maps %}{% translate "No maps match these filters" %}{% else %}{% translate "Maps are being prepared" %}{% endif %}</h3>
+                <p>{% if total_maps %}{% translate "Try another season or map type." %}{% else %}{% translate "Validated seasonal maps will appear here after import." %}{% endif %}</p>
+                {% if total_maps %}<a href="{% url 'rcc_seasonal_map_gallery' %}">{% translate "Show all maps" %}</a>{% endif %}
             </div>
             {% endif %}
         </div>
