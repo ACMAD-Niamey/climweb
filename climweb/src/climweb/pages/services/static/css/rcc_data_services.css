@@ -85,7 +85,15 @@
 .rcc-browser-section { min-height: 430px; background: #f7f9f8; }
 .rcc-browser-heading { display: flex; margin-bottom: 2rem; align-items: end; justify-content: space-between; gap: 3rem; }
 .rcc-browser-heading h2 { margin: .2rem 0 0; color: #173f35; font-size: clamp(1.9rem, 3vw, 2.65rem); letter-spacing: -.035em; }
-.rcc-browser-heading > p { max-width: 32rem; margin: 0 0 .25rem; color: var(--rcc-ds-muted); line-height: 1.65; }
+.rcc-browser-heading__actions { display: flex; flex-direction: column; align-items: flex-end; gap: 1rem; max-width: 32rem; }
+.rcc-browser-heading__actions > p { margin: 0 0 .25rem; color: var(--rcc-ds-muted); line-height: 1.65; text-align: right; }
+
+.rcc-view-toggle { display: inline-flex; background: #fff; border: 1px solid var(--rcc-ds-line); border-radius: 8px; padding: 2px; }
+.rcc-view-toggle__btn { display: grid; place-items: center; width: 36px; height: 36px; border: none; background: transparent; color: var(--rcc-ds-muted); border-radius: 6px; cursor: pointer; transition: all .2s ease; }
+.rcc-view-toggle__btn:hover { color: var(--rcc-ds-primary); }
+.rcc-view-toggle__btn.is-active { background: var(--rcc-ds-primary-soft); color: var(--rcc-ds-primary); box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+.rcc-view-toggle__btn svg { width: 18px; height: 18px; }
+
 .rcc-country-grid,
 .rcc-station-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
 .rcc-country-card,
@@ -109,6 +117,24 @@
 .rcc-station-card dl { display: grid; margin: auto 0 0; padding-top: 1rem; border-top: 1px solid var(--rcc-ds-line); grid-template-columns: repeat(2, 1fr); gap: 1rem; }
 .rcc-station-card dl div { display: flex; gap: .2rem; flex-direction: column; }
 
+/* List View overrides */
+.rcc-country-grid.is-list-view,
+.rcc-station-grid.is-list-view { grid-template-columns: 1fr; }
+
+.rcc-country-grid.is-list-view .rcc-country-card,
+.rcc-station-grid.is-list-view .rcc-station-card { flex-direction: row; align-items: center; min-height: auto; padding: 1rem 1.5rem; gap: 1.5rem; }
+
+.rcc-country-grid.is-list-view .rcc-country-card__flag { margin-bottom: 0; width: 40px; height: 40px; flex-shrink: 0; }
+.rcc-country-grid.is-list-view .rcc-country-card h3,
+.rcc-station-grid.is-list-view .rcc-station-card h3 { font-size: 1.15rem; }
+.rcc-country-grid.is-list-view .rcc-country-card > div,
+.rcc-station-grid.is-list-view .rcc-station-card > h3 { flex: 1 1 auto; }
+.rcc-station-grid.is-list-view .rcc-station-card__top { margin-bottom: 0; margin-right: 1.5rem; }
+.rcc-country-grid.is-list-view .rcc-country-card dl,
+.rcc-station-grid.is-list-view .rcc-station-card dl { margin: 0; padding: 0; border: none; display: flex; gap: 1.5rem; flex-shrink: 0; }
+.rcc-country-grid.is-list-view .rcc-country-card dl div,
+.rcc-station-grid.is-list-view .rcc-station-card dl div { padding-top: 0; border: none; flex-direction: column; align-items: flex-end; justify-content: center; }
+.rcc-country-grid.is-list-view .rcc-country-card > b { position: static; margin-left: 1rem; flex-shrink: 0; }
 @media (max-width: 1023px) { .rcc-dataset-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 760px) {
     .rcc-dataset-lead { grid-template-columns: 1fr; }
@@ -117,6 +143,19 @@
     .rcc-dataset-station-list { grid-template-columns: 1fr; }
     .rcc-browser-heading,
     .rcc-dataset-toolbar { align-items: flex-start; flex-direction: column; }
+    .rcc-browser-heading__actions { align-items: flex-start; }
+    .rcc-browser-heading__actions > p { text-align: left; }
+    .rcc-country-grid,
+    .rcc-station-grid { grid-template-columns: 1fr; }
+    .rcc-dataset-toolbar__file { width: 100%; justify-content: space-between; }
+    
+    .rcc-country-grid.is-list-view .rcc-country-card,
+    .rcc-station-grid.is-list-view .rcc-station-card { flex-direction: column; align-items: flex-start; gap: 1rem; }
+    .rcc-country-grid.is-list-view .rcc-country-card dl,
+    .rcc-station-grid.is-list-view .rcc-station-card dl { flex-direction: row; width: 100%; justify-content: space-between; align-items: center; border-top: 1px solid var(--rcc-ds-line); padding-top: 1rem; margin-top: .5rem; }
+    .rcc-country-grid.is-list-view .rcc-country-card dl div,
+    .rcc-station-grid.is-list-view .rcc-station-card dl div { align-items: flex-start; }
+    .rcc-country-grid.is-list-view .rcc-country-card > b { position: absolute; top: 1.6rem; right: 1.6rem; margin: 0; }
     .rcc-country-grid,
     .rcc-station-grid { grid-template-columns: 1fr; }
     .rcc-dataset-toolbar__file { width: 100%; justify-content: space-between; }
