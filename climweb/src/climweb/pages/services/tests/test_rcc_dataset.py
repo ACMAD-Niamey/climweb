@@ -197,3 +197,15 @@ class RCCDatasetTests(TestCase):
         self.assertEqual(asset.station, "ZINDER")
         self.assertEqual(str(asset.longitude), "8.98333")
         self.assertTrue(asset.is_available)
+
+    def test_importer_adds_another_country_without_changing_niger_keys(self):
+        ghana_csv = CSV_DATA.replace(b"NIAMEY-AERO,Niger", b"YENDI,Ghana")
+        source = Path(self.temp_dir.name) / "ghana.csv"
+        source.write_bytes(ghana_csv)
+
+        call_command("sync_rcc_arc2_station", "YENDI", country="Ghana", source_file=str(source))
+
+        asset = RCCDatasetAsset.objects.get(key="arc2-ghana-yendi")
+        self.assertEqual(asset.country, "Ghana")
+        self.assertTrue(asset.object_name.startswith("arc2/ghana/yendi/"))
+        self.assertTrue(asset.is_available)

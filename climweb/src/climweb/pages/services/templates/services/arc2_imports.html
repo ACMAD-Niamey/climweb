@@ -1,0 +1,85 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n %}
+
+{% block titletag %}RCC Data Imports{% endblock %}
+
+{% block extra_css %}
+<style>
+  .rcc-import-wrap { max-width: 1100px; padding: 2rem; }
+  .rcc-import-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 1.25rem; }
+  .rcc-import-card { border: 1px solid var(--w-color-border-furniture); border-radius: .5rem; padding: 1.25rem; margin-bottom: 1.25rem; }
+  .rcc-import-card h2 { margin-top: 0; }
+  .rcc-import-muted { color: var(--w-color-text-meta); }
+  .rcc-import-field { margin: 1rem 0; }
+  .rcc-import-field label { display: block; font-weight: 700; margin-bottom: .4rem; }
+  .rcc-import-stations ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: .5rem; padding: 0; list-style: none; }
+  .rcc-import-stations label { font-weight: 400; }
+  .rcc-import-actions { display: flex; flex-wrap: wrap; gap: .75rem; }
+  .rcc-import-table { width: 100%; border-collapse: collapse; }
+  .rcc-import-table th, .rcc-import-table td { text-align: left; padding: .75rem; border-bottom: 1px solid var(--w-color-border-furniture); vertical-align: top; }
+  .rcc-import-error { color: #b91c1c; }
+  .rcc-import-results { margin: .3rem 0 0; padding-left: 1.2rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rcc-import-wrap">
+  <h1>RCC Data Imports</h1>
+  <p class="rcc-import-muted">ARC2 daily station rainfall. Imported files stay in RCC storage; public dataset links do not change.</p>
+  <section class="rcc-import-card">
+    <h2>Countries</h2>
+    <div class="rcc-import-actions">
+      <form method="get">
+        <label for="rcc-country">Choose a country</label>
+        <select id="rcc-country" name="country">
+          {% for item in configs %}<option value="{{ item.country }}" {% if item.pk == config.pk %}selected{% endif %}>{{ item.country }}</option>{% endfor %}
+        </select>
+        <button class="button" type="submit">Open</button>
+      </form>
+      <form method="post">{% csrf_token %}<input type="hidden" name="country" value="{{ config.country }}"><button class="button" name="action" value="discover_countries">Refresh countries from THREDDS</button></form>
+    </div>
+    <p class="rcc-import-muted">Each country has its own source URL, station choices, and schedule. New countries start disabled.</p>
+  </section>
+  <h2>{{ config.country }}</h2>
+  <div class="rcc-import-grid">
+    <section class="rcc-import-card">
+      <h2>1. Discover stations</h2>
+      <p>Source catalogue: <a href="{{ config.catalogue_url }}" rel="noopener noreferrer" target="_blank">View {{ config.country }} catalogue</a></p>
+      {% if config.discovered_at %}<p class="rcc-import-muted">Last checked {{ config.discovered_at }}</p>{% endif %}
+      {% if config.discovery_error %}<p class="rcc-import-error">{{ config.discovery_error }}</p>{% endif %}
+      <form method="post">{% csrf_token %}<input type="hidden" name="country" value="{{ config.country }}"><button class="button" name="action" value="discover">Refresh stations</button></form>
+    </section>
+    <section class="rcc-import-card">
+      <h2>2. Run an import</h2>
+      <p>Imports the saved station selection in the background. One run at a time.</p>
+      <form method="post">{% csrf_token %}<input type="hidden" name="country" value="{{ config.country }}"><button class="button button-primary" name="action" value="run" {% if not config.selected_stations %}disabled{% endif %}>Run now</button></form>
+    </section>
+  </div>
+  <section class="rcc-import-card">
+    <h2>Source URL, stations, and schedule</h2>
+    {% if not config.discovered_stations %}<p>Refresh the catalogue to choose stations.</p>{% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="country" value="{{ config.country }}">
+      {% if form.non_field_errors %}<p class="rcc-import-error">{{ form.non_field_errors }}</p>{% endif %}
+      <div class="rcc-import-field"><label for="{{ form.catalogue_url.id_for_label }}">THREDDS catalogue URL</label>{{ form.catalogue_url }}{{ form.catalogue_url.errors }}<p class="rcc-import-muted">Only approved THREDDS hosts and this country's ARC2 catalogue are accepted. Changing the URL clears station selections and disables the schedule until you refresh stations.</p></div>
+      <div class="rcc-import-field"><label>Stations</label>{{ form.stations.errors }}<div class="rcc-import-stations">{{ form.stations }}</div></div>
+      <div class="rcc-import-field"><label for="{{ form.interval_hours.id_for_label }}">Run every (hours)</label>{{ form.interval_hours }}{{ form.interval_hours.errors }}</div>
+      <div class="rcc-import-field"><label for="{{ form.enabled.id_for_label }}">{{ form.enabled }} Enable automatic imports</label>{{ form.enabled.errors }}</div>
+      <button class="button button-primary" name="action" value="save">Save settings</button>
+    </form>
+  </section>
+  <section class="rcc-import-card">
+    <h2>Recent runs</h2>
+    {% if runs %}
+    <div style="overflow-x:auto"><table class="rcc-import-table"><thead><tr><th>Started</th><th>Trigger</th><th>Status</th><th>Stations</th><th>Results</th></tr></thead><tbody>
+      {% for run in runs %}<tr>
+        <td>{{ run.created_at }}</td><td>{{ run.get_trigger_display }}</td><td>{{ run.get_status_display }}</td>
+        <td>{{ run.stations|join:", " }}</td>
+        <td>{% if run.results %}<ul class="rcc-import-results">{% for result in run.results %}<li>{{ result.station }}: {{ result.status }}{% if result.error %} — <span class="rcc-import-error">{{ result.error }}</span>{% endif %}</li>{% endfor %}</ul>{% else %}—{% endif %}</td>
+      </tr>{% endfor %}
+    </tbody></table></div>
+    {% else %}<p class="rcc-import-muted">No imports yet.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

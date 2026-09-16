@@ -5,7 +5,6 @@ import re
 import tempfile
 from datetime import date
 from pathlib import Path
-from urllib.parse import urlparse
 
 import requests
 from django.core.files import File
@@ -16,44 +15,51 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from climweb.pages.services.models import RCCDatasetAsset
-
-
-SOURCE_ROOT = (
-    "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/CDD/"
-    "climatedataservice/Synoptic_Daily_ARC2_Data/Niger"
+from climweb.pages.services.arc2_importer import (
+    COUNTRY_PATTERN,
+    catalogue_url_for,
+    station_source_url,
+    validate_station_source_url,
 )
+
+
 EXPECTED_FIELDS = ["Station", "Country", "Lon", "Lat", "Date", "Precipitation"]
 STATION_PATTERN = re.compile(r"^[A-Z0-9_-]+$")
 DISPLAY_NAMES = {"NIAMEY-AERO": "Niamey-Aéro"}
 
 
 class Command(BaseCommand):
-    help = "Synchronize one Niger ARC2 daily station rainfall CSV into RCC storage."
+    help = "Synchronize one ARC2 daily station rainfall CSV into RCC storage."
     default_station = None
 
     def add_arguments(self, parser):
         parser.add_argument("station", nargs="?", default=self.default_station)
+        parser.add_argument("--country", default="Niger", help="ARC2 country directory.")
+        parser.add_argument("--source-url", help="Validated THREDDS fileServer URL for this station.")
         parser.add_argument("--source-file", help="Import a local CSV instead of downloading it.")
 
-    def _station_details(self, station):
+    def _station_details(self, station, country, source_url=None):
         station = (station or "").strip().upper()
         if not STATION_PATTERN.fullmatch(station):
-            raise CommandError("Supply a valid Niger ARC2 station filename without .csv.")
+            raise CommandError("Supply a valid ARC2 station filename without .csv.")
+        if not COUNTRY_PATTERN.fullmatch(country):
+            raise CommandError("Supply a valid ARC2 country directory.")
         display_name = DISPLAY_NAMES.get(station, station.replace("_", "-").title())
         station_slug = slugify(station)
-        return station, display_name, station_slug, f"{SOURCE_ROOT}/{station}.csv"
+        if source_url is None:
+            source_url = station_source_url(catalogue_url_for(country), country, station)
+        validate_station_source_url(source_url, country, station)
+        return station, display_name, station_slug, source_url
 
-    def _download(self, source_url, target):
-        parsed = urlparse(source_url)
-        if parsed.scheme not in {"http", "https"} or parsed.hostname != "sgbd.acmad.org":
-            raise CommandError("The configured ARC2 source is not allow-listed.")
+    def _download(self, source_url, target, country, station):
+        validate_station_source_url(source_url, country, station)
         with requests.get(source_url, stream=True, timeout=(15, 300)) as response:
             response.raise_for_status()
             for chunk in response.iter_content(chunk_size=64 * 1024):
                 if chunk:
                     target.write(chunk)
 
-    def _validate(self, path, station):
+    def _validate(self, path, station, country):
         digest = hashlib.sha256()
         with open(path, "rb") as source:
             for chunk in iter(lambda: source.read(1024 * 1024), b""):
@@ -66,7 +72,7 @@ class Command(BaseCommand):
             if reader.fieldnames != EXPECTED_FIELDS:
                 raise CommandError("The downloaded CSV has an unexpected header.")
             for row in reader:
-                if row["Station"] != station or row["Country"] != "Niger":
+                if row["Station"] != station or row["Country"] != country:
                     raise CommandError("The CSV contains data for an unexpected station.")
                 try:
                     observed_on = date.fromisoformat(row["Date"])
@@ -88,14 +94,19 @@ class Command(BaseCommand):
         return digest.hexdigest(), count, start, end, longitude, latitude
 
     def handle(self, *args, **options):
-        station, display_name, station_slug, source_url = self._station_details(options.get("station"))
+        country = options.get("country") or "Niger"
+        station, display_name, station_slug, source_url = self._station_details(
+            options.get("station"), country, options.get("source_url")
+        )
+        country_slug = slugify(country)
+        asset_key = f"arc2-{station_slug}" if country == "Niger" else f"arc2-{country_slug}-{station_slug}"
         asset, _ = RCCDatasetAsset.objects.get_or_create(
-            key=f"arc2-{station_slug}",
+            key=asset_key,
             defaults={
                 "title": f"ARC2 daily rainfall — {display_name}",
-                "summary": f"Daily ARC2 satellite rainfall estimates for the {display_name} synoptic station.",
+                "summary": f"Daily ARC2 satellite rainfall estimates for the {display_name} synoptic station in {country}.",
                 "station": station,
-                "country": "Niger",
+                "country": country,
                 "source_url": source_url,
             },
         )
@@ -110,10 +121,10 @@ class Command(BaseCommand):
                 with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as target:
                     temporary_path = target.name
                     self.stdout.write(f"Downloading the {display_name} ARC2 source file...")
-                    self._download(source_url, target)
+                    self._download(source_url, target, country, station)
 
-            checksum, count, start, end, longitude, latitude = self._validate(temporary_path, station)
-            object_name = f"arc2/niger/{station_slug}/{checksum[:16]}/{station}.csv"
+            checksum, count, start, end, longitude, latitude = self._validate(temporary_path, station, country)
+            object_name = f"arc2/{country_slug}/{station_slug}/{checksum[:16]}/{station}.csv"
             storage = storages["rcc_data"]
             if not storage.exists(object_name):
                 with open(temporary_path, "rb") as source:
@@ -121,9 +132,9 @@ class Command(BaseCommand):
 
             with transaction.atomic():
                 asset.title = f"ARC2 daily rainfall — {display_name}"
-                asset.summary = f"Daily ARC2 satellite rainfall estimates for the {display_name} synoptic station."
+                asset.summary = f"Daily ARC2 satellite rainfall estimates for the {display_name} synoptic station in {country}."
                 asset.station = station
-                asset.country = "Niger"
+                asset.country = country
                 asset.longitude = str(longitude)
                 asset.latitude = str(latitude)
                 asset.source_url = source_url

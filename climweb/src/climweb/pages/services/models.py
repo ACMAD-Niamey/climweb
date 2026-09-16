@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.db.models import Q
 from django.utils.functional import cached_property
@@ -126,6 +127,56 @@ class RCCDatasetAsset(models.Model):
     @property
     def is_available(self):
         return bool(self.object_name and self.synced_at)
+
+
+class RCCARC2ImportConfig(models.Model):
+    """Operator choices for one country in the ARC2 catalogue."""
+
+    country = models.CharField(max_length=80, unique=True, default="Niger")
+    catalogue_url = models.URLField(
+        max_length=700,
+        default=(
+            "http://sgbd.acmad.org:8080/thredds/catalog/ACMAD/CDD/"
+            "climatedataservice/Synoptic_Daily_ARC2_Data/Niger/catalog.xml"
+        ),
+    )
+    enabled = models.BooleanField(default=False)
+    interval_hours = models.PositiveSmallIntegerField(default=24)
+    selected_stations = models.JSONField(default=list, blank=True)
+    discovered_stations = models.JSONField(default=list, blank=True)
+    discovered_at = models.DateTimeField(null=True, blank=True)
+    discovery_error = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.country} ARC2 station importer"
+
+
+class RCCARC2ImportRun(models.Model):
+    STATUS_CHOICES = [
+        ("queued", "Queued"),
+        ("running", "Running"),
+        ("succeeded", "Succeeded"),
+        ("partial", "Partially succeeded"),
+        ("failed", "Failed"),
+    ]
+    TRIGGER_CHOICES = [("manual", "Manual"), ("scheduled", "Scheduled")]
+
+    config = models.ForeignKey(RCCARC2ImportConfig, on_delete=models.CASCADE, related_name="runs")
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="queued")
+    trigger = models.CharField(max_length=12, choices=TRIGGER_CHOICES)
+    stations = models.JSONField(default=list)
+    country = models.CharField(max_length=80, default="Niger")
+    catalogue_url = models.URLField(max_length=700, blank=True)
+    results = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    class Meta:
+        ordering = ("-created_at",)
 
 
 class ServiceIndexPage(MetadataPageMixin, Page):

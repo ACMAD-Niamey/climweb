@@ -455,6 +455,11 @@ STORAGES = {
     },
 }
 
+# Hosts that RCC administrators may use for editable ARC2 THREDDS catalogue URLs.
+RCC_ARC2_ALLOWED_SOURCE_HOSTS = env.list(
+    "RCC_ARC2_ALLOWED_SOURCE_HOSTS", default=["sgbd.acmad.org"]
+)
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
