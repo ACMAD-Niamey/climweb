@@ -26,21 +26,21 @@
 {% block content %}
 <div class="rcc-import-wrap">
   <h1>RCC Data Imports</h1>
-  <p class="rcc-import-muted">One configuration per dataset importer. ARC2 files remain in RCC storage and public dataset links do not change.</p>
+  <p><a href="{% url 'rcc_imports' %}">← All RCC importers</a></p>
 
   <section class="rcc-import-card">
-    <h2>ARC2 daily station rainfall</h2>
+    <h2>{{ importer.title }}</h2>
     <p class="rcc-import-muted">{{ config.discovered_countries|length }} countries discovered · {{ config.discovered_stations|length }} stations discovered · {{ config.selected_stations|length }} selected</p>
     <form method="post">
       {% csrf_token %}
       {% if settings_form.non_field_errors %}<p class="rcc-import-error">{{ settings_form.non_field_errors }}</p>{% endif %}
-      <div class="rcc-import-field"><label for="{{ settings_form.catalogue_url.id_for_label }}">ARC2 root catalogue URL</label>{{ settings_form.catalogue_url }}{{ settings_form.catalogue_url.errors }}<p class="rcc-import-muted">Use the catalog.xml above the country directories. Changing it clears discoveries and disables the schedule until you refresh them.</p></div>
+      <div class="rcc-import-field"><label for="{{ settings_form.catalogue_url.id_for_label }}">{{ importer.label }} root catalogue URL</label>{{ settings_form.catalogue_url }}{{ settings_form.catalogue_url.errors }}<p class="rcc-import-muted">Use the catalog.xml above the country directories. Changing it clears discoveries and disables the schedule until you refresh them.</p></div>
       <div class="rcc-import-grid">
         <div class="rcc-import-field"><label for="{{ settings_form.interval_hours.id_for_label }}">Run every (hours)</label>{{ settings_form.interval_hours }}{{ settings_form.interval_hours.errors }}</div>
         <div class="rcc-import-field"><label for="{{ settings_form.enabled.id_for_label }}">{{ settings_form.enabled }} Enable automatic imports</label>{{ settings_form.enabled.errors }}</div>
       </div>
       <div class="rcc-import-field"><label for="{{ settings_form.import_all_stations.id_for_label }}">{{ settings_form.import_all_stations }} Import all stations in every country</label><p class="rcc-import-muted">When off, only the stations selected below are imported. All-station imports can be large; they discover the current catalogue on each run.</p></div>
-      <button class="button button-primary" name="action" value="save_settings">Save ARC2 settings</button>
+      <button class="button button-primary" name="action" value="save_settings">Save {{ importer.label }} settings</button>
     </form>
   </section>
 
@@ -53,7 +53,7 @@
     </section>
     <section class="rcc-import-card">
       <h2>Run now</h2>
-      <p>Start one background ARC2 run using the saved scope. Only one ARC2 run can be active at a time.</p>
+      <p>Start one background {{ importer.label }} run using the saved scope. Only one run of this product can be active at a time.</p>
       <form method="post">{% csrf_token %}<button class="button button-primary" name="action" value="run" {% if not config.import_all_stations and not config.selected_stations %}disabled{% endif %}>Run now</button></form>
     </section>
   </div>

@@ -1,0 +1,62 @@
+{% extends "wagtailadmin/base.html" %}
+{% load i18n %}
+
+{% block titletag %}{% translate "RCC Data Imports" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .rcc-import-index { max-width: 1300px; }
+  .rcc-import-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin: 1.5rem 0 2rem; }
+  .rcc-import-summary__card { border: 1px solid var(--w-color-border-furniture); border-radius: .4rem; padding: 1rem; }
+  .rcc-import-summary__value { display: block; font-size: 1.8rem; font-weight: 700; }
+  .rcc-import-muted { color: var(--w-color-text-meta); font-size: .85rem; }
+  .rcc-import-table-wrap { overflow-x: auto; }
+  .rcc-import-table { width: 100%; border-collapse: collapse; }
+  .rcc-import-table th, .rcc-import-table td { padding: .75rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--w-color-border-furniture); }
+  .rcc-import-table th { border-bottom-width: 2px; white-space: nowrap; }
+  .rcc-import-table td:first-child { min-width: 240px; }
+  .rcc-import-status { display: inline-block; border-radius: 999px; padding: .25rem .65rem; font-size: .75rem; font-weight: 700; white-space: nowrap; }
+  .rcc-import-status--enabled { background: #d1fae5; color: #065f46; }
+  .rcc-import-status--manual { background: #e5e7eb; color: #374151; }
+  .rcc-import-status--setup { background: #fef3c7; color: #92400e; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% translate "RCC Data Imports" as header_title %}
+{% include "wagtailadmin/shared/header.html" with title=header_title icon="download" %}
+<div class="nice-padding rcc-import-index">
+  <p class="help-block help-info">Select an importer to configure its source and scope, or review recent runs. Seasonal maps remain here while their public placement is evaluated.</p>
+
+  <div class="rcc-import-summary">
+    <div class="rcc-import-summary__card"><span class="rcc-import-summary__value">{{ rows|length }}</span><span class="rcc-import-muted">Dataset importers</span></div>
+    <div class="rcc-import-summary__card"><span class="rcc-import-summary__value">{{ enabled_count }}</span><span class="rcc-import-muted">Automatic imports enabled</span></div>
+    <div class="rcc-import-summary__card"><span class="rcc-import-summary__value">{{ total_imported }}</span><span class="rcc-import-muted">Locally hosted assets</span></div>
+  </div>
+
+  <div class="rcc-import-table-wrap"><table class="rcc-import-table">
+    <thead><tr><th>Dataset importer</th><th>Status</th><th>Schedule</th><th>Scope</th><th>Imported</th><th>Latest activity</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td><strong><a href="{{ row.url }}">{{ row.label }}</a></strong><div class="rcc-import-muted">{{ row.description }}</div></td>
+        <td>
+          {% if not row.configured %}<span class="rcc-import-status rcc-import-status--setup">Needs setup</span>
+          {% elif row.enabled %}<span class="rcc-import-status rcc-import-status--enabled">Automatic</span>
+          {% else %}<span class="rcc-import-status rcc-import-status--manual">Manual only</span>{% endif %}
+        </td>
+        <td>{% if row.enabled %}Every {{ row.interval_hours }} hour{{ row.interval_hours|pluralize }}{% else %}Not scheduled{% endif %}</td>
+        <td>{% if row.is_map %}{% if row.import_all_maps %}All maps{% elif row.selected_count %}{{ row.selected_count }} selected map{{ row.selected_count|pluralize }}{% else %}No maps selected{% endif %}{% elif row.import_all_stations %}All stations{% elif row.selected_count %}{{ row.selected_count }} selected station{{ row.selected_count|pluralize }}{% else %}No stations selected{% endif %}</td>
+        <td>{{ row.imported_count }}</td>
+        <td>
+          {% if row.last_run %}{{ row.last_run.created_at|date:"Y-m-d H:i" }}<div class="rcc-import-muted">{{ row.last_run.get_status_display }} run</div>
+          {% elif row.last_imported %}{{ row.last_imported|date:"Y-m-d H:i" }}<div class="rcc-import-muted">Latest dataset sync</div>
+          {% else %}—{% endif %}
+        </td>
+        <td><a class="button button-small" href="{{ row.url }}">Manage imports</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

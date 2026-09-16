@@ -55,6 +55,7 @@ DATA_GROUPS = [
                     "Daily CPC-Unified precipitation estimates prepared for station-level assessment.",
                     "open",
                     url="http://sgbd.acmad.org:8080/thredds/catalog/ACMAD/CDD/climatedataservice/Synoptic_Daily_CPC_Unified_Data/catalog.html",
+                    local_dataset_key="cpc-unified",
                     coverage="African synoptic stations",
                     formats="THREDDS catalogue",
                     source="ACMAD SGBD",
@@ -101,6 +102,7 @@ DATA_GROUPS = [
                     "Archived seasonal mean precipitation and rainy-day frequency maps for standard three-month periods.",
                     "archive",
                     url="http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/CDD/statisticalanalysis/Precipitation/Gridded_Observation/01_JFM_Afr.png/",
+                    local_dataset_key="seasonal-maps",
                     coverage="Africa",
                     formats="PNG map archive",
                     source="ACMAD SGBD",
@@ -215,17 +217,22 @@ class Command(BaseCommand):
                 datasets = []
                 for item in block.value["datasets"]:
                     entry = dict(item)
-                    if entry.get("title") == "ARC2 estimated daily station rainfall":
-                        if entry.get("local_dataset_key") != "arc2":
-                            entry["local_dataset_key"] = "arc2"
-                            changed = True
+                    local_keys = {
+                        "ARC2 estimated daily station rainfall": "arc2",
+                        "CPC-Unified estimated daily rainfall": "cpc-unified",
+                        "Seasonal rainfall climatology maps": "seasonal-maps",
+                    }
+                    local_key = local_keys.get(entry.get("title"))
+                    if local_key and entry.get("local_dataset_key") != local_key:
+                        entry["local_dataset_key"] = local_key
+                        changed = True
                     datasets.append(entry)
                 group["datasets"] = datasets
                 groups.append(("group", group))
             if changed:
                 existing.data_groups = groups
                 existing.save_revision().publish()
-                self.stdout.write(self.style.SUCCESS("Linked the ARC2 entry to the local country catalogue."))
+                self.stdout.write(self.style.SUCCESS("Linked RCC catalogue entries to local collections."))
             else:
                 self.stdout.write("RCC Data Services page already exists; dashboard content was preserved.")
             return

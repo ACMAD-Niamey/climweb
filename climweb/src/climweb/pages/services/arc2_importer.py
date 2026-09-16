@@ -20,6 +20,7 @@ COUNTRY_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]*$")
 STATION_PATTERN = re.compile(r"^[A-Z0-9_-]+$")
 XLINK_HREF = "{http://www.w3.org/1999/xlink}href"
 SCHEDULE_NAME = "rcc-arc2-import"
+ARC2_DIRECTORY = "Synoptic_Daily_ARC2_Data"
 
 
 def _validated_url(url, service):
@@ -48,37 +49,37 @@ def _validated_url(url, service):
     return parsed, parsed.path[len(prefix):]
 
 
-def validate_catalogue_root(url):
+def validate_catalogue_root(url, directory=ARC2_DIRECTORY):
     parsed, path = _validated_url(url, "catalog")
-    if not path.endswith("/Synoptic_Daily_ARC2_Data/catalog.xml"):
-        raise ValidationError("Use the ARC2 root catalog.xml URL, above the country directories.")
+    if not path.endswith(f"/{directory}/catalog.xml"):
+        raise ValidationError("Use the dataset root catalog.xml URL, above the country directories.")
     return parsed, path[: -len("catalog.xml")]
 
 
-def validate_catalogue_url(url, country):
+def validate_catalogue_url(url, country, directory=ARC2_DIRECTORY):
     if not COUNTRY_PATTERN.fullmatch(country):
         raise ValidationError("Invalid ARC2 country name.")
     parsed, path = _validated_url(url, "catalog")
-    if not path.endswith(f"/Synoptic_Daily_ARC2_Data/{country}/catalog.xml"):
-        raise ValidationError("The catalogue URL must point to this country's ARC2 catalog.xml.")
+    if not path.endswith(f"/{directory}/{country}/catalog.xml"):
+        raise ValidationError("The catalogue URL must point to this country's dataset catalog.xml.")
     return parsed, path[: -len("catalog.xml")]
 
 
-def catalogue_url_for(country, root_url=CATALOGUE_URL):
+def catalogue_url_for(country, root_url=CATALOGUE_URL, directory=ARC2_DIRECTORY):
     if not COUNTRY_PATTERN.fullmatch(country):
         raise ValidationError("Invalid ARC2 country name.")
-    validate_catalogue_root(root_url)
+    validate_catalogue_root(root_url, directory)
     return f"{root_url[:-len('catalog.xml')]}{country}/catalog.xml"
 
 
-def station_source_url(root_url, country, station):
+def station_source_url(root_url, country, station, directory=ARC2_DIRECTORY):
     if not STATION_PATTERN.fullmatch(station):
         raise ValidationError("Invalid ARC2 station name.")
     try:
-        parsed, source_prefix = validate_catalogue_root(root_url)
+        parsed, source_prefix = validate_catalogue_root(root_url, directory)
     except ValidationError:
         # Keep the station management command's historical country URL usable.
-        parsed, source_prefix = validate_catalogue_url(root_url, country)
+        parsed, source_prefix = validate_catalogue_url(root_url, country, directory)
     else:
         if not COUNTRY_PATTERN.fullmatch(country):
             raise ValidationError("Invalid ARC2 country name.")
@@ -86,12 +87,12 @@ def station_source_url(root_url, country, station):
     return f"{parsed.scheme}://{parsed.netloc}/thredds/fileServer/{source_prefix}{station}.csv"
 
 
-def validate_station_source_url(url, country, station):
+def validate_station_source_url(url, country, station, directory=ARC2_DIRECTORY):
     if not COUNTRY_PATTERN.fullmatch(country) or not STATION_PATTERN.fullmatch(station):
         raise ValidationError("Invalid ARC2 country or station name.")
     _, path = _validated_url(url, "fileServer")
-    if not path.endswith(f"/Synoptic_Daily_ARC2_Data/{country}/{station}.csv"):
-        raise ValidationError("The source URL does not match this ARC2 country and station.")
+    if not path.endswith(f"/{directory}/{country}/{station}.csv"):
+        raise ValidationError("The source URL does not match this dataset country and station.")
 
 
 def station_id(country, station):
@@ -109,8 +110,8 @@ def split_station_id(value):
     return country, station
 
 
-def discover_countries(root_url=CATALOGUE_URL):
-    validate_catalogue_root(root_url)
+def discover_countries(root_url=CATALOGUE_URL, directory=ARC2_DIRECTORY):
+    validate_catalogue_root(root_url, directory)
     response = requests.get(root_url, timeout=(15, 45))
     response.raise_for_status()
     root = ElementTree.fromstring(response.content)
@@ -128,9 +129,9 @@ def discover_countries(root_url=CATALOGUE_URL):
     return sorted(countries)
 
 
-def discover_stations(country="Niger", root_url=CATALOGUE_URL):
-    country_url = catalogue_url_for(country, root_url)
-    _, source_prefix = validate_catalogue_url(country_url, country)
+def discover_stations(country="Niger", root_url=CATALOGUE_URL, directory=ARC2_DIRECTORY):
+    country_url = catalogue_url_for(country, root_url, directory)
+    _, source_prefix = validate_catalogue_url(country_url, country, directory)
     response = requests.get(country_url, timeout=(15, 45))
     response.raise_for_status()
     root = ElementTree.fromstring(response.content)

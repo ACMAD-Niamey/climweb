@@ -29,7 +29,7 @@
     <section id="overview" class="rcc-dataset-section"><div class="container">
         <div class="rcc-dataset-toolbar">
             <div class="rcc-dataset-tags" aria-label="{% translate 'Dataset characteristics' %}">
-                <span>ARC2</span><span>{% translate "Daily" %}</span><span>CSV</span>
+                <span>{{ product_label }}</span><span>{% translate "Daily" %}</span><span>CSV</span>
             </div>
             <div class="rcc-dataset-toolbar__file">
                 <span><strong>{{ asset.original_filename }}</strong>{{ asset.size_bytes|filesizeformat }} · {{ asset.record_count }} {% translate "rows" %}</span>

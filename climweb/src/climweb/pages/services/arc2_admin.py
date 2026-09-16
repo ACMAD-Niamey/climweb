@@ -16,8 +16,44 @@ from .arc2_importer import (
     sync_schedule,
     validate_catalogue_root,
 )
-from .models import RCCARC2ImportConfig
-from .tasks import create_rcc_arc2_run, execute_rcc_arc2_import
+from . import cpc_importer
+from .models import (
+    RCCARC2ImportConfig, RCCCPCImportConfig, RCCDatasetAsset,
+    RCCSeasonalMapAsset, RCCSeasonalMapImportConfig,
+)
+from .tasks import (
+    create_rcc_arc2_run, create_rcc_cpc_run, execute_rcc_arc2_import, execute_rcc_cpc_import,
+)
+
+
+IMPORTERS = {
+    "arc2": {
+        "label": "ARC2",
+        "title": "ARC2 daily station rainfall",
+        "model": RCCARC2ImportConfig,
+        "catalogue_url": CATALOGUE_URL,
+        "discover_countries": discover_countries,
+        "discover_stations": discover_stations,
+        "validate": validate_catalogue_root,
+        "sync_schedule": sync_schedule,
+        "create_run": create_rcc_arc2_run,
+        "execute": execute_rcc_arc2_import,
+        "route": "rcc_arc2_imports",
+    },
+    "cpc-unified": {
+        "label": "CPC-Unified",
+        "title": "CPC-Unified estimated daily rainfall",
+        "model": RCCCPCImportConfig,
+        "catalogue_url": cpc_importer.CATALOGUE_URL,
+        "discover_countries": cpc_importer.discover_countries,
+        "discover_stations": cpc_importer.discover_stations,
+        "validate": cpc_importer.validate_catalogue_root,
+        "sync_schedule": cpc_importer.sync_schedule,
+        "create_run": create_rcc_cpc_run,
+        "execute": execute_rcc_cpc_import,
+        "route": "rcc_cpc_imports",
+    },
+}
 
 
 class ImportSettingsForm(forms.Form):
@@ -26,13 +62,14 @@ class ImportSettingsForm(forms.Form):
     interval_hours = forms.IntegerField(min_value=1, max_value=720)
     import_all_stations = forms.BooleanField(required=False)
 
-    def __init__(self, *args, config, **kwargs):
+    def __init__(self, *args, config, validate=validate_catalogue_root, **kwargs):
         super().__init__(*args, **kwargs)
         self.config = config
+        self.validate = validate
 
     def clean_catalogue_url(self):
         url = self.cleaned_data["catalogue_url"].strip()
-        validate_catalogue_root(url)
+        self.validate(url)
         return url
 
     def clean(self):
@@ -56,25 +93,93 @@ class StationSelectionForm(forms.Form):
         ]
 
 
-def _redirect(country=None):
-    url = reverse("rcc_arc2_imports")
+def _redirect(country=None, route="rcc_arc2_imports"):
+    url = reverse(route)
     return redirect(f"{url}?country={quote(country)}" if country else url)
 
 
 @user_passes_test(lambda user: user.is_superuser or user.has_perm("wagtailadmin.access_admin"))
+def rcc_imports_view(request):
+    rows = []
+    for key, importer in IMPORTERS.items():
+        config = importer["model"].objects.filter(singleton_key=key).first()
+        assets = RCCDatasetAsset.objects.filter(
+            key__startswith=f"{key}-", synced_at__isnull=False
+        ).exclude(object_name="")
+        rows.append({
+            "label": importer["title"],
+            "source": importer["label"],
+            "description": f"{importer['label']} station rainfall",
+            "url": reverse(importer["route"]),
+            "configured": config is not None,
+            "enabled": bool(config and config.enabled),
+            "interval_hours": config.interval_hours if config else None,
+            "import_all_stations": bool(config and config.import_all_stations),
+            "selected_count": len(config.selected_stations) if config else 0,
+            "imported_count": assets.count(),
+            "last_imported": assets.order_by("-synced_at").values_list("synced_at", flat=True).first(),
+            "last_run": config.runs.first() if config else None,
+        })
+    map_config = RCCSeasonalMapImportConfig.objects.filter(singleton_key="seasonal-maps").first()
+    map_assets = RCCSeasonalMapAsset.objects.all()
+    rows.append({
+        "label": "Seasonal rainfall climatology maps",
+        "description": "Archived PNG maps · provisional RCC placement",
+        "url": reverse("rcc_seasonal_map_imports"),
+        "configured": map_config is not None,
+        "enabled": bool(map_config and map_config.enabled),
+        "interval_hours": map_config.interval_hours if map_config else None,
+        "import_all_maps": bool(map_config and map_config.import_all_maps),
+        "selected_count": len(map_config.selected_maps) if map_config else 0,
+        "imported_count": map_assets.count(),
+        "last_imported": map_assets.order_by("-synced_at").values_list("synced_at", flat=True).first(),
+        "last_run": map_config.runs.first() if map_config else None,
+        "is_map": True,
+    })
+    return TemplateResponse(
+        request,
+        "services/rcc_imports.html",
+        {
+            "rows": rows,
+            "total_imported": sum(row["imported_count"] for row in rows),
+            "enabled_count": sum(row["enabled"] for row in rows),
+        },
+    )
+
+
+@user_passes_test(lambda user: user.is_superuser or user.has_perm("wagtailadmin.access_admin"))
 def rcc_arc2_imports_view(request):
-    config, _ = RCCARC2ImportConfig.objects.get_or_create(
-        singleton_key="arc2", defaults={"catalogue_url": CATALOGUE_URL}
+    return _importer_view(request, "arc2")
+
+
+@user_passes_test(lambda user: user.is_superuser or user.has_perm("wagtailadmin.access_admin"))
+def rcc_cpc_imports_view(request):
+    return _importer_view(request, "cpc-unified")
+
+
+def _importer_view(request, product):
+    importer = dict(IMPORTERS[product])
+    if product == "arc2":
+        # Resolve module functions at request time so existing integrations can patch them.
+        importer.update(
+            discover_countries=discover_countries,
+            discover_stations=discover_stations,
+            validate=validate_catalogue_root,
+            sync_schedule=sync_schedule,
+        )
+    route = importer["route"]
+    config, _ = importer["model"].objects.get_or_create(
+        singleton_key=product, defaults={"catalogue_url": importer["catalogue_url"]}
     )
     requested_country = request.POST.get("country") or request.GET.get("country")
     countries = config.discovered_countries
     if request.POST.get("country") and requested_country not in countries:
         messages.error(request, "Choose a discovered country first.")
-        return _redirect()
+        return _redirect(route=route)
     default_country = "Niger" if "Niger" in countries else (countries[0] if countries else None)
     country = requested_country if requested_country in countries else default_country
     settings_form = ImportSettingsForm(
-        config=config,
+        config=config, validate=importer["validate"],
         initial={
             "catalogue_url": config.catalogue_url,
             "enabled": config.enabled,
@@ -91,7 +196,7 @@ def rcc_arc2_imports_view(request):
         action = request.POST.get("action")
         if action == "discover_countries":
             try:
-                discovered = discover_countries(config.catalogue_url)
+                discovered = importer["discover_countries"](config.catalogue_url)
             except Exception as exc:
                 config.discovery_error = str(exc)[:500]
                 config.save(update_fields=["discovery_error"])
@@ -101,14 +206,14 @@ def rcc_arc2_imports_view(request):
                 config.discovered_at = timezone.now()
                 config.discovery_error = ""
                 config.save(update_fields=["discovered_countries", "discovered_at", "discovery_error"])
-                messages.success(request, f"Discovered {len(discovered)} ARC2 countries.")
-            return _redirect(country)
+                messages.success(request, f"Discovered {len(discovered)} {importer['label']} countries.")
+            return _redirect(country, route)
         if action == "discover_stations":
             if not country:
                 messages.error(request, "Refresh countries first.")
             else:
                 try:
-                    stations = discover_stations(country, config.catalogue_url)
+                    stations = importer["discover_stations"](country, config.catalogue_url)
                 except Exception as exc:
                     config.discovery_error = str(exc)[:500]
                     config.save(update_fields=["discovery_error"])
@@ -123,11 +228,11 @@ def rcc_arc2_imports_view(request):
                     ]
                     config.discovery_error = ""
                     config.save(update_fields=["discovered_stations", "selected_stations", "discovery_error"])
-                    sync_schedule(config)
+                    importer["sync_schedule"](config)
                     messages.success(request, f"Discovered {len(stations)} {country} stations.")
-            return _redirect(country)
+            return _redirect(country, route)
         if action == "save_settings":
-            settings_form = ImportSettingsForm(request.POST, config=config)
+            settings_form = ImportSettingsForm(request.POST, config=config, validate=importer["validate"])
             if settings_form.is_valid():
                 url_changed = settings_form.cleaned_data["catalogue_url"] != config.catalogue_url
                 config.catalogue_url = settings_form.cleaned_data["catalogue_url"]
@@ -144,13 +249,13 @@ def rcc_arc2_imports_view(request):
                     config.enabled = settings_form.cleaned_data["enabled"]
                     config.import_all_stations = settings_form.cleaned_data["import_all_stations"]
                 config.save()
-                sync_schedule(config)
+                importer["sync_schedule"](config)
                 messages.success(
                     request,
                     "Source URL saved. Refresh countries before importing."
-                    if url_changed else "ARC2 importer settings saved.",
+                    if url_changed else f"{importer['label']} importer settings saved.",
                 )
-                return _redirect()
+                return _redirect(route=route)
         if action == "save_stations" and country:
             station_form = StationSelectionForm(request.POST, config=config, country=country)
             if station_form.is_valid():
@@ -161,16 +266,16 @@ def rcc_arc2_imports_view(request):
                 else:
                     config.selected_stations = sorted(set(selected))
                     config.save(update_fields=["selected_stations"])
-                    sync_schedule(config)
+                    importer["sync_schedule"](config)
                     messages.success(request, f"{country} station selection saved.")
-                    return _redirect(country)
+                    return _redirect(country, route)
         if action == "run":
-            run = create_rcc_arc2_run(config.pk, "manual", request.user)
+            run = importer["create_run"](config.pk, "manual", request.user)
             if not run:
                 messages.error(request, "Enable all stations or select stations, and wait for any active run to finish.")
             else:
                 try:
-                    execute_rcc_arc2_import.delay(run.pk)
+                    importer["execute"].delay(run.pk)
                 except Exception as exc:
                     run.status = "failed"
                     run.results = [{"status": "failed", "error": f"Could not queue import: {exc}"[:500]}]
@@ -178,8 +283,8 @@ def rcc_arc2_imports_view(request):
                     run.save(update_fields=["status", "results", "finished_at"])
                     messages.error(request, "The import could not be queued.")
                 else:
-                    messages.success(request, "ARC2 import queued.")
-            return _redirect()
+                    messages.success(request, f"{importer['label']} import queued.")
+            return _redirect(route=route)
     run_rows = []
     for run in config.runs.select_related("requested_by")[:20]:
         failed = [item for item in run.results if item.get("status") == "failed"]
@@ -189,6 +294,8 @@ def rcc_arc2_imports_view(request):
         "services/arc2_imports.html",
         {
             "config": config,
+            "importer": importer,
+            "product": product,
             "country": country,
             "settings_form": settings_form,
             "station_form": station_form,

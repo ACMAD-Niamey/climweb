@@ -13,7 +13,7 @@
         <div class="page-hero-overlay"></div>
         <div class="page-hero-body"><div class="container">
             <span class="page-hero-badge">{% translate "RCC data collection" %}</span>
-            <h1 class="page-hero-title">{% translate "ARC2 daily station rainfall" %}</h1>
+            <h1 class="page-hero-title">{{ product_title }}</h1>
             <p class="page-hero-subtitle">{% translate "Browse satellite rainfall estimates by country and synoptic station." %}</p>
         </div></div>
     </section>
@@ -25,11 +25,21 @@
     <section id="countries" class="rcc-dataset-section rcc-browser-section"><div class="container">
         <div class="rcc-browser-heading">
             <div><p class="rcc-ds-eyebrow">{% translate "Step 1" %}</p><h2>{% translate "Choose a country" %}</h2></div>
-            <p>{% translate "Select a country to see its available ARC2 station series." %}</p>
+            <div class="rcc-browser-heading__actions">
+                <p>Select a country to see its available {{ product_label }} station series.</p>
+                <div class="rcc-view-toggle">
+                    <button class="rcc-view-toggle__btn is-active" data-view="grid" aria-label="{% translate 'Grid view' %}">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    </button>
+                    <button class="rcc-view-toggle__btn" data-view="list" aria-label="{% translate 'List view' %}">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                    </button>
+                </div>
+            </div>
         </div>
         <div class="rcc-country-grid">
             {% for country in countries %}
-                <a class="rcc-country-card" href="{% url 'rcc_dataset_country' country.slug %}">
+                <a class="rcc-country-card" href="{% url country_url_name country.slug %}">
                     <span class="rcc-country-card__flag" aria-hidden="true">{{ country.country|slice:":1" }}</span>
                     <div><h3>{{ country.country }}</h3><p>{{ country.station_count }} {% blocktranslate count count=country.station_count %}station{% plural %}stations{% endblocktranslate %}</p></div>
                     <dl><div><dt>{% translate "Coverage" %}</dt><dd>{{ country.coverage_start|date:"Y" }}–{{ country.coverage_end|date:"Y" }}</dd></div></dl>
@@ -39,4 +49,9 @@
         </div>
     </div></section>
 </main>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <script src="{% static 'js/rcc_view_toggle.js' %}"></script>
 {% endblock %}
