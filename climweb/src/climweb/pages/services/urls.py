@@ -4,6 +4,8 @@ from . import views
 
 
 urlpatterns = [
+    path("rcc/seasonal-rainfall-maps/", views.rcc_seasonal_map_gallery, name="rcc_seasonal_map_gallery"),
+    path("rcc/seasonal-rainfall-maps/<int:asset_id>/image/", views.rcc_seasonal_map_file, name="rcc_seasonal_map_file"),
     path("rcc/data/cpc-unified/", views.rcc_dataset_category, {"product": "cpc-unified"}, name="rcc_cpc_dataset_category"),
     path(
         "rcc/data/cpc-unified/<slug:country>/",

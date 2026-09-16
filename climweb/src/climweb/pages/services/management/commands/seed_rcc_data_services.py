@@ -102,6 +102,7 @@ DATA_GROUPS = [
                     "Archived seasonal mean precipitation and rainy-day frequency maps for standard three-month periods.",
                     "archive",
                     url="http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/CDD/statisticalanalysis/Precipitation/Gridded_Observation/01_JFM_Afr.png/",
+                    local_dataset_key="seasonal-maps",
                     coverage="Africa",
                     formats="PNG map archive",
                     source="ACMAD SGBD",
@@ -219,6 +220,7 @@ class Command(BaseCommand):
                     local_keys = {
                         "ARC2 estimated daily station rainfall": "arc2",
                         "CPC-Unified estimated daily rainfall": "cpc-unified",
+                        "Seasonal rainfall climatology maps": "seasonal-maps",
                     }
                     local_key = local_keys.get(entry.get("title"))
                     if local_key and entry.get("local_dataset_key") != local_key:
@@ -230,7 +232,7 @@ class Command(BaseCommand):
             if changed:
                 existing.data_groups = groups
                 existing.save_revision().publish()
-                self.stdout.write(self.style.SUCCESS("Linked station rainfall entries to local country catalogues."))
+                self.stdout.write(self.style.SUCCESS("Linked RCC catalogue entries to local collections."))
             else:
                 self.stdout.write("RCC Data Services page already exists; dashboard content was preserved.")
             return

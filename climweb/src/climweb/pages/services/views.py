@@ -9,7 +9,16 @@ from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils.text import slugify
 
-from .models import RCCDataServicesPage, RCCDatasetAsset
+from .models import RCCDataServicesPage, RCCDatasetAsset, RCCSeasonalMapAsset
+from .seasonal_map_importer import SEASONS
+
+
+MAP_VARIANTS = (
+    ("rainfall", "Mean rainfall"),
+    ("1mm", "Days above 1 mm"),
+    ("20mm", "Days above 20 mm"),
+    ("50mm", "Days above 50 mm"),
+)
 
 
 def _station_assets(product="arc2"):
@@ -103,4 +112,48 @@ def rcc_dataset_download(request, key):
     )
     response["Content-Length"] = asset.size_bytes
     response["X-Checksum-SHA256"] = asset.checksum_sha256
+    return response
+
+
+def rcc_seasonal_map_gallery(request):
+    season = request.GET.get("season", "")
+    variant = request.GET.get("type", "")
+    if season not in SEASONS:
+        season = ""
+    if variant not in dict(MAP_VARIANTS):
+        variant = ""
+    maps = RCCSeasonalMapAsset.objects.all()
+    total_maps = maps.count()
+    if season:
+        maps = maps.filter(season=season)
+    if variant:
+        maps = maps.filter(variant=variant)
+    labels = dict(MAP_VARIANTS)
+    cards = [{"asset": asset, "variant_label": labels.get(asset.variant, asset.variant)} for asset in maps]
+    return render(request, "services/rcc_seasonal_map_gallery.html", {
+        "cards": cards,
+        "total_maps": total_maps,
+        "season_options": SEASONS,
+        "variant_options": MAP_VARIANTS,
+        "selected_season": season,
+        "selected_variant": variant,
+        "data_services_page": RCCDataServicesPage.objects.live().first(),
+    })
+
+
+def rcc_seasonal_map_file(request, asset_id):
+    asset = get_object_or_404(RCCSeasonalMapAsset, pk=asset_id)
+    storage = storages["rcc_data"]
+    if not storage.exists(asset.object_name):
+        raise Http404("This seasonal map is not available.")
+    download = request.GET.get("download") == "1"
+    response = FileResponse(
+        storage.open(asset.object_name, "rb"),
+        as_attachment=download,
+        filename=asset.filename if download else None,
+        content_type="image/png",
+    )
+    response["Content-Length"] = asset.size_bytes
+    response["X-Checksum-SHA256"] = asset.checksum_sha256
+    response["X-Content-Type-Options"] = "nosniff"
     return response

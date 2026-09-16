@@ -17,7 +17,10 @@ from .arc2_importer import (
     validate_catalogue_root,
 )
 from . import cpc_importer
-from .models import RCCARC2ImportConfig, RCCCPCImportConfig, RCCDatasetAsset
+from .models import (
+    RCCARC2ImportConfig, RCCCPCImportConfig, RCCDatasetAsset,
+    RCCSeasonalMapAsset, RCCSeasonalMapImportConfig,
+)
 from .tasks import (
     create_rcc_arc2_run, create_rcc_cpc_run, execute_rcc_arc2_import, execute_rcc_cpc_import,
 )
@@ -106,6 +109,7 @@ def rcc_imports_view(request):
         rows.append({
             "label": importer["title"],
             "source": importer["label"],
+            "description": f"{importer['label']} station rainfall",
             "url": reverse(importer["route"]),
             "configured": config is not None,
             "enabled": bool(config and config.enabled),
@@ -116,6 +120,22 @@ def rcc_imports_view(request):
             "last_imported": assets.order_by("-synced_at").values_list("synced_at", flat=True).first(),
             "last_run": config.runs.first() if config else None,
         })
+    map_config = RCCSeasonalMapImportConfig.objects.filter(singleton_key="seasonal-maps").first()
+    map_assets = RCCSeasonalMapAsset.objects.all()
+    rows.append({
+        "label": "Seasonal rainfall climatology maps",
+        "description": "Archived PNG maps · provisional RCC placement",
+        "url": reverse("rcc_seasonal_map_imports"),
+        "configured": map_config is not None,
+        "enabled": bool(map_config and map_config.enabled),
+        "interval_hours": map_config.interval_hours if map_config else None,
+        "import_all_maps": bool(map_config and map_config.import_all_maps),
+        "selected_count": len(map_config.selected_maps) if map_config else 0,
+        "imported_count": map_assets.count(),
+        "last_imported": map_assets.order_by("-synced_at").values_list("synced_at", flat=True).first(),
+        "last_run": map_config.runs.first() if map_config else None,
+        "is_map": True,
+    })
     return TemplateResponse(
         request,
         "services/rcc_imports.html",

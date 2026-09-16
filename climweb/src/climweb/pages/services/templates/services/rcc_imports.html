@@ -26,12 +26,12 @@
 {% translate "RCC Data Imports" as header_title %}
 {% include "wagtailadmin/shared/header.html" with title=header_title icon="download" %}
 <div class="nice-padding rcc-import-index">
-  <p class="help-block help-info">Select an importer to configure its source, schedule and stations, or review recent runs.</p>
+  <p class="help-block help-info">Select an importer to configure its source and scope, or review recent runs. Seasonal maps remain here while their public placement is evaluated.</p>
 
   <div class="rcc-import-summary">
     <div class="rcc-import-summary__card"><span class="rcc-import-summary__value">{{ rows|length }}</span><span class="rcc-import-muted">Dataset importers</span></div>
     <div class="rcc-import-summary__card"><span class="rcc-import-summary__value">{{ enabled_count }}</span><span class="rcc-import-muted">Automatic imports enabled</span></div>
-    <div class="rcc-import-summary__card"><span class="rcc-import-summary__value">{{ total_imported }}</span><span class="rcc-import-muted">Locally hosted station datasets</span></div>
+    <div class="rcc-import-summary__card"><span class="rcc-import-summary__value">{{ total_imported }}</span><span class="rcc-import-muted">Locally hosted assets</span></div>
   </div>
 
   <div class="rcc-import-table-wrap"><table class="rcc-import-table">
@@ -39,14 +39,14 @@
     <tbody>
       {% for row in rows %}
       <tr>
-        <td><strong><a href="{{ row.url }}">{{ row.label }}</a></strong><div class="rcc-import-muted">{{ row.source }} station rainfall</div></td>
+        <td><strong><a href="{{ row.url }}">{{ row.label }}</a></strong><div class="rcc-import-muted">{{ row.description }}</div></td>
         <td>
           {% if not row.configured %}<span class="rcc-import-status rcc-import-status--setup">Needs setup</span>
           {% elif row.enabled %}<span class="rcc-import-status rcc-import-status--enabled">Automatic</span>
           {% else %}<span class="rcc-import-status rcc-import-status--manual">Manual only</span>{% endif %}
         </td>
         <td>{% if row.enabled %}Every {{ row.interval_hours }} hour{{ row.interval_hours|pluralize }}{% else %}Not scheduled{% endif %}</td>
-        <td>{% if row.import_all_stations %}All stations{% elif row.selected_count %}{{ row.selected_count }} selected station{{ row.selected_count|pluralize }}{% else %}No stations selected{% endif %}</td>
+        <td>{% if row.is_map %}{% if row.import_all_maps %}All maps{% elif row.selected_count %}{{ row.selected_count }} selected map{{ row.selected_count|pluralize }}{% else %}No maps selected{% endif %}{% elif row.import_all_stations %}All stations{% elif row.selected_count %}{{ row.selected_count }} selected station{{ row.selected_count|pluralize }}{% else %}No stations selected{% endif %}</td>
         <td>{{ row.imported_count }}</td>
         <td>
           {% if row.last_run %}{{ row.last_run.created_at|date:"Y-m-d H:i" }}<div class="rcc-import-muted">{{ row.last_run.get_status_display }} run</div>
