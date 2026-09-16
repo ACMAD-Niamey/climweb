@@ -130,25 +130,27 @@ class RCCDatasetAsset(models.Model):
 
 
 class RCCARC2ImportConfig(models.Model):
-    """Operator choices for one country in the ARC2 catalogue."""
+    """Shared ARC2 importer settings across every catalogue country."""
 
-    country = models.CharField(max_length=80, unique=True, default="Niger")
+    singleton_key = models.CharField(max_length=20, unique=True, default="arc2", editable=False)
     catalogue_url = models.URLField(
         max_length=700,
         default=(
             "http://sgbd.acmad.org:8080/thredds/catalog/ACMAD/CDD/"
-            "climatedataservice/Synoptic_Daily_ARC2_Data/Niger/catalog.xml"
+            "climatedataservice/Synoptic_Daily_ARC2_Data/catalog.xml"
         ),
     )
     enabled = models.BooleanField(default=False)
     interval_hours = models.PositiveSmallIntegerField(default=24)
+    import_all_stations = models.BooleanField(default=False)
+    discovered_countries = models.JSONField(default=list, blank=True)
     selected_stations = models.JSONField(default=list, blank=True)
     discovered_stations = models.JSONField(default=list, blank=True)
     discovered_at = models.DateTimeField(null=True, blank=True)
     discovery_error = models.TextField(blank=True)
 
     def __str__(self):
-        return f"{self.country} ARC2 station importer"
+        return "ARC2 station importer"
 
 
 class RCCARC2ImportRun(models.Model):
@@ -167,6 +169,7 @@ class RCCARC2ImportRun(models.Model):
     stations = models.JSONField(default=list)
     country = models.CharField(max_length=80, default="Niger")
     catalogue_url = models.URLField(max_length=700, blank=True)
+    import_all_stations = models.BooleanField(default=False)
     results = models.JSONField(default=list)
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)

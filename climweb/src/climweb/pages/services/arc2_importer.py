@@ -1,6 +1,5 @@
-"""Country discovery, validated THREDDS URLs, and ARC2 schedules."""
+"""ARC2 catalogue discovery, URL safety, and the shared import schedule."""
 
-import json
 import re
 from urllib.parse import urlsplit
 from xml.etree import ElementTree
@@ -8,30 +7,22 @@ from xml.etree import ElementTree
 import requests
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.utils.text import slugify
 from django_celery_beat.models import IntervalSchedule, PeriodicTask
 
 from .models import RCCARC2ImportConfig
 
 
-CATALOGUE_ROOT = (
+CATALOGUE_URL = (
     "http://sgbd.acmad.org:8080/thredds/catalog/ACMAD/CDD/"
-    "climatedataservice/Synoptic_Daily_ARC2_Data"
+    "climatedataservice/Synoptic_Daily_ARC2_Data/catalog.xml"
 )
 COUNTRY_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]*$")
 STATION_PATTERN = re.compile(r"^[A-Z0-9_-]+$")
 XLINK_HREF = "{http://www.w3.org/1999/xlink}href"
+SCHEDULE_NAME = "rcc-arc2-import"
 
 
-def catalogue_url_for(country):
-    if not COUNTRY_PATTERN.fullmatch(country):
-        raise ValueError("Invalid ARC2 country name.")
-    return f"{CATALOGUE_ROOT}/{country}/catalog.xml"
-
-
-def _validated_url(url, service, country):
-    if not COUNTRY_PATTERN.fullmatch(country):
-        raise ValidationError("Invalid ARC2 country name.")
+def _validated_url(url, service):
     try:
         parsed = urlsplit(url)
         port = parsed.port
@@ -53,32 +44,74 @@ def _validated_url(url, service, country):
         raise ValidationError("Use an allow-listed THREDDS host without credentials or query parameters.")
     prefix = f"/thredds/{service}/"
     if not parsed.path.startswith(prefix):
-        raise ValidationError("The URL must use the THREDDS catalogue or fileServer path.")
+        raise ValidationError("The URL must use a THREDDS catalogue or fileServer path.")
     return parsed, parsed.path[len(prefix):]
 
 
+def validate_catalogue_root(url):
+    parsed, path = _validated_url(url, "catalog")
+    if not path.endswith("/Synoptic_Daily_ARC2_Data/catalog.xml"):
+        raise ValidationError("Use the ARC2 root catalog.xml URL, above the country directories.")
+    return parsed, path[: -len("catalog.xml")]
+
+
 def validate_catalogue_url(url, country):
-    parsed, path = _validated_url(url, "catalog", country)
+    if not COUNTRY_PATTERN.fullmatch(country):
+        raise ValidationError("Invalid ARC2 country name.")
+    parsed, path = _validated_url(url, "catalog")
     if not path.endswith(f"/Synoptic_Daily_ARC2_Data/{country}/catalog.xml"):
         raise ValidationError("The catalogue URL must point to this country's ARC2 catalog.xml.")
     return parsed, path[: -len("catalog.xml")]
 
 
-def station_source_url(catalogue_url, country, station):
+def catalogue_url_for(country, root_url=CATALOGUE_URL):
+    if not COUNTRY_PATTERN.fullmatch(country):
+        raise ValidationError("Invalid ARC2 country name.")
+    validate_catalogue_root(root_url)
+    return f"{root_url[:-len('catalog.xml')]}{country}/catalog.xml"
+
+
+def station_source_url(root_url, country, station):
     if not STATION_PATTERN.fullmatch(station):
         raise ValidationError("Invalid ARC2 station name.")
-    parsed, source_prefix = validate_catalogue_url(catalogue_url, country)
+    try:
+        parsed, source_prefix = validate_catalogue_root(root_url)
+    except ValidationError:
+        # Keep the station management command's historical country URL usable.
+        parsed, source_prefix = validate_catalogue_url(root_url, country)
+    else:
+        if not COUNTRY_PATTERN.fullmatch(country):
+            raise ValidationError("Invalid ARC2 country name.")
+        source_prefix += f"{country}/"
     return f"{parsed.scheme}://{parsed.netloc}/thredds/fileServer/{source_prefix}{station}.csv"
 
 
 def validate_station_source_url(url, country, station):
-    _, path = _validated_url(url, "fileServer", country)
+    if not COUNTRY_PATTERN.fullmatch(country) or not STATION_PATTERN.fullmatch(station):
+        raise ValidationError("Invalid ARC2 country or station name.")
+    _, path = _validated_url(url, "fileServer")
     if not path.endswith(f"/Synoptic_Daily_ARC2_Data/{country}/{station}.csv"):
         raise ValidationError("The source URL does not match this ARC2 country and station.")
 
 
-def discover_countries():
-    response = requests.get(f"{CATALOGUE_ROOT}/catalog.xml", timeout=(15, 45))
+def station_id(country, station):
+    if not COUNTRY_PATTERN.fullmatch(country) or not STATION_PATTERN.fullmatch(station):
+        raise ValidationError("Invalid ARC2 country or station name.")
+    return f"{country}/{station}"
+
+
+def split_station_id(value):
+    try:
+        country, station = value.split("/", 1)
+    except (AttributeError, ValueError) as exc:
+        raise ValidationError("Invalid ARC2 station selection.") from exc
+    station_id(country, station)
+    return country, station
+
+
+def discover_countries(root_url=CATALOGUE_URL):
+    validate_catalogue_root(root_url)
+    response = requests.get(root_url, timeout=(15, 45))
     response.raise_for_status()
     root = ElementTree.fromstring(response.content)
     countries = set()
@@ -95,10 +128,10 @@ def discover_countries():
     return sorted(countries)
 
 
-def discover_stations(country="Niger", catalogue_url=None):
-    catalogue_url = catalogue_url or catalogue_url_for(country)
-    _, source_prefix = validate_catalogue_url(catalogue_url, country)
-    response = requests.get(catalogue_url, timeout=(15, 45))
+def discover_stations(country="Niger", root_url=CATALOGUE_URL):
+    country_url = catalogue_url_for(country, root_url)
+    _, source_prefix = validate_catalogue_url(country_url, country)
+    response = requests.get(country_url, timeout=(15, 45))
     response.raise_for_status()
     root = ElementTree.fromstring(response.content)
     stations = set()
@@ -119,16 +152,21 @@ def sync_schedule(config: RCCARC2ImportConfig):
     interval, _ = IntervalSchedule.objects.get_or_create(
         every=config.interval_hours, period=IntervalSchedule.HOURS
     )
+    for old_task in PeriodicTask.objects.filter(
+        name__startswith="rcc-arc2-", name__endswith="-import", enabled=True
+    ).exclude(name=SCHEDULE_NAME):
+        old_task.enabled = False
+        old_task.save(update_fields=["enabled"])
     task, _ = PeriodicTask.objects.update_or_create(
-        name=f"rcc-arc2-{slugify(config.country)}-import",
+        name=SCHEDULE_NAME,
         defaults={
             "task": "climweb.pages.services.tasks.run_scheduled_rcc_arc2_import",
             "interval": interval,
             "crontab": None,
             "solar": None,
             "clocked": None,
-            "args": json.dumps([config.pk]),
-            "enabled": config.enabled and bool(config.selected_stations),
+            "args": "[]",
+            "enabled": config.enabled and bool(config.import_all_stations or config.selected_stations),
             "one_off": False,
         },
     )
