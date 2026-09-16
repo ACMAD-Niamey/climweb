@@ -31,28 +31,46 @@ DISPLAY_NAMES = {"NIAMEY-AERO": "Niamey-Aéro"}
 class Command(BaseCommand):
     help = "Synchronize one ARC2 daily station rainfall CSV into RCC storage."
     default_station = None
+    dataset_key = "arc2"
+    dataset_label = "ARC2"
+    directory = "Synoptic_Daily_ARC2_Data"
+    root_catalogue_url = None
+
+    def prepare_source(self, path):
+        """Return the file to validate/store, a warning, and any extra temporary path."""
+        return path, "", None
+
+    def summary_text(self, display_name, country, quality_note=""):
+        kind = "ARC2 satellite" if self.dataset_key == "arc2" else self.dataset_label
+        summary = f"Daily {kind} rainfall estimates for the {display_name} synoptic station in {country}."
+        return f"{summary} {quality_note}" if quality_note else summary
 
     def add_arguments(self, parser):
         parser.add_argument("station", nargs="?", default=self.default_station)
-        parser.add_argument("--country", default="Niger", help="ARC2 country directory.")
+        parser.add_argument("--country", default="Niger", help="Dataset country directory.")
         parser.add_argument("--source-url", help="Validated THREDDS fileServer URL for this station.")
         parser.add_argument("--source-file", help="Import a local CSV instead of downloading it.")
 
     def _station_details(self, station, country, source_url=None):
         station = (station or "").strip().upper()
         if not STATION_PATTERN.fullmatch(station):
-            raise CommandError("Supply a valid ARC2 station filename without .csv.")
+            raise CommandError("Supply a valid station filename without .csv.")
         if not COUNTRY_PATTERN.fullmatch(country):
-            raise CommandError("Supply a valid ARC2 country directory.")
+            raise CommandError("Supply a valid country directory.")
         display_name = DISPLAY_NAMES.get(station, station.replace("_", "-").title())
         station_slug = slugify(station)
         if source_url is None:
-            source_url = station_source_url(catalogue_url_for(country), country, station)
-        validate_station_source_url(source_url, country, station)
+            root_url = self.root_catalogue_url
+            country_url = (
+                catalogue_url_for(country, root_url, self.directory)
+                if root_url else catalogue_url_for(country)
+            )
+            source_url = station_source_url(country_url, country, station, self.directory)
+        validate_station_source_url(source_url, country, station, self.directory)
         return station, display_name, station_slug, source_url
 
     def _download(self, source_url, target, country, station):
-        validate_station_source_url(source_url, country, station)
+        validate_station_source_url(source_url, country, station, self.directory)
         with requests.get(source_url, stream=True, timeout=(15, 300)) as response:
             response.raise_for_status()
             for chunk in response.iter_content(chunk_size=64 * 1024):
@@ -99,18 +117,21 @@ class Command(BaseCommand):
             options.get("station"), country, options.get("source_url")
         )
         country_slug = slugify(country)
-        asset_key = f"arc2-{station_slug}" if country == "Niger" else f"arc2-{country_slug}-{station_slug}"
+        asset_key = (
+            f"arc2-{station_slug}" if country == "Niger" else f"arc2-{country_slug}-{station_slug}"
+        ) if self.dataset_key == "arc2" else f"{self.dataset_key}-{country_slug}-{station_slug}"
         asset, _ = RCCDatasetAsset.objects.get_or_create(
             key=asset_key,
             defaults={
-                "title": f"ARC2 daily rainfall — {display_name}",
-                "summary": f"Daily ARC2 satellite rainfall estimates for the {display_name} synoptic station in {country}.",
+                "title": f"{self.dataset_label} daily rainfall — {display_name}",
+                "summary": self.summary_text(display_name, country),
                 "station": station,
                 "country": country,
                 "source_url": source_url,
             },
         )
         temporary_path = None
+        prepared_path = None
         try:
             source_file = options.get("source_file")
             if source_file:
@@ -120,19 +141,20 @@ class Command(BaseCommand):
             else:
                 with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as target:
                     temporary_path = target.name
-                    self.stdout.write(f"Downloading the {display_name} ARC2 source file...")
+                    self.stdout.write(f"Downloading the {display_name} {self.dataset_label} source file...")
                     self._download(source_url, target, country, station)
 
-            checksum, count, start, end, longitude, latitude = self._validate(temporary_path, station, country)
-            object_name = f"arc2/{country_slug}/{station_slug}/{checksum[:16]}/{station}.csv"
+            data_path, quality_note, prepared_path = self.prepare_source(temporary_path)
+            checksum, count, start, end, longitude, latitude = self._validate(data_path, station, country)
+            object_name = f"{self.dataset_key}/{country_slug}/{station_slug}/{checksum[:16]}/{station}.csv"
             storage = storages["rcc_data"]
             if not storage.exists(object_name):
-                with open(temporary_path, "rb") as source:
+                with open(data_path, "rb") as source:
                     storage.save(object_name, File(source))
 
             with transaction.atomic():
-                asset.title = f"ARC2 daily rainfall — {display_name}"
-                asset.summary = f"Daily ARC2 satellite rainfall estimates for the {display_name} synoptic station in {country}."
+                asset.title = f"{self.dataset_label} daily rainfall — {display_name}"
+                asset.summary = self.summary_text(display_name, country, quality_note)
                 asset.station = station
                 asset.country = country
                 asset.longitude = str(longitude)
@@ -141,7 +163,7 @@ class Command(BaseCommand):
                 asset.object_name = object_name
                 asset.original_filename = f"{station}.csv"
                 asset.checksum_sha256 = checksum
-                asset.size_bytes = os.path.getsize(temporary_path)
+                asset.size_bytes = os.path.getsize(data_path)
                 asset.record_count = count
                 asset.coverage_start = start
                 asset.coverage_end = end
@@ -154,5 +176,7 @@ class Command(BaseCommand):
             asset.save(update_fields=["last_error"])
             raise
         finally:
+            if prepared_path and os.path.exists(prepared_path):
+                os.unlink(prepared_path)
             if temporary_path and not options.get("source_file") and os.path.exists(temporary_path):
                 os.unlink(temporary_path)

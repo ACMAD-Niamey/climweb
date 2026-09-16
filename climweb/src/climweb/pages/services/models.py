@@ -182,6 +182,51 @@ class RCCARC2ImportRun(models.Model):
         ordering = ("-created_at",)
 
 
+class RCCCPCImportConfig(models.Model):
+    singleton_key = models.CharField(max_length=20, unique=True, default="cpc-unified", editable=False)
+    catalogue_url = models.URLField(
+        max_length=700,
+        default=(
+            "http://sgbd.acmad.org:8080/thredds/catalog/ACMAD/CDD/"
+            "climatedataservice/Synoptic_Daily_CPC_Unified_Data/catalog.xml"
+        ),
+    )
+    enabled = models.BooleanField(default=False)
+    interval_hours = models.PositiveSmallIntegerField(default=24)
+    import_all_stations = models.BooleanField(default=False)
+    discovered_countries = models.JSONField(default=list, blank=True)
+    selected_stations = models.JSONField(default=list, blank=True)
+    discovered_stations = models.JSONField(default=list, blank=True)
+    discovered_at = models.DateTimeField(null=True, blank=True)
+    discovery_error = models.TextField(blank=True)
+
+    def __str__(self):
+        return "CPC-Unified station importer"
+
+
+class RCCCPCImportRun(models.Model):
+    STATUS_CHOICES = RCCARC2ImportRun.STATUS_CHOICES
+    TRIGGER_CHOICES = RCCARC2ImportRun.TRIGGER_CHOICES
+
+    config = models.ForeignKey(RCCCPCImportConfig, on_delete=models.CASCADE, related_name="runs")
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="queued")
+    trigger = models.CharField(max_length=12, choices=TRIGGER_CHOICES)
+    stations = models.JSONField(default=list)
+    country = models.CharField(max_length=80, default="")
+    catalogue_url = models.URLField(max_length=700, blank=True)
+    import_all_stations = models.BooleanField(default=False)
+    results = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    class Meta:
+        ordering = ("-created_at",)
+
+
 class ServiceIndexPage(MetadataPageMixin, Page):
     parent_page_types = ['home.HomePage']
     subpage_types = ['services.ServicePage']

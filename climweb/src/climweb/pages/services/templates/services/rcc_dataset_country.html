@@ -12,13 +12,13 @@
     <section class="page-hero rcc-ds-simple-hero rcc-dataset-hero">
         <div class="page-hero-overlay"></div>
         <div class="page-hero-body"><div class="container">
-            <span class="page-hero-badge">{% translate "ARC2 station data" %}</span>
+            <span class="page-hero-badge">{{ product_label }} station data</span>
             <h1 class="page-hero-title">{{ country }}</h1>
             <p class="page-hero-subtitle">{% translate "Choose a station to view coverage, recent observations and download the daily CSV." %}</p>
         </div></div>
     </section>
     <nav class="rcc-ds-nav" aria-label="{% translate 'Country navigation' %}"><div class="container">
-        <a href="{% url 'rcc_dataset_category' %}">{% translate "Countries" %}</a>
+        <a href="{% url category_url_name %}">{% translate "Countries" %}</a>
         <a href="#stations">{{ country }} {% translate "stations" %}</a>
     </div></nav>
 
@@ -26,7 +26,7 @@
         <div class="rcc-browser-heading">
             <div><p class="rcc-ds-eyebrow">{% translate "Step 2" %}</p><h2>{% translate "Choose a station" %}</h2></div>
             <div class="rcc-browser-heading__actions">
-                <p>{% blocktranslate with country=country %}Available ARC2 daily rainfall series for {{ country }}.{% endblocktranslate %}</p>
+                <p>Available {{ product_label }} daily rainfall series for {{ country }}.</p>
                 <div class="rcc-view-toggle">
                     <button class="rcc-view-toggle__btn is-active" data-view="grid" aria-label="{% translate 'Grid view' %}">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>

@@ -58,7 +58,11 @@
                                 {% if dataset.source %}<span class="rcc-ds-card__source">{{ dataset.source }}</span>{% endif %}
                             </div>
                             <h3>
-                                {% if dataset.local_dataset_key %}
+                                {% if dataset.local_dataset_key == 'arc2' %}
+                                    <a href="{% url 'rcc_dataset_category' %}">{{ dataset.title }}</a>
+                                {% elif dataset.local_dataset_key == 'cpc-unified' %}
+                                    <a href="{% url 'rcc_cpc_dataset_category' %}">{{ dataset.title }}</a>
+                                {% elif dataset.local_dataset_key %}
                                     <a href="{% url 'rcc_dataset_detail' dataset.local_dataset_key %}">{{ dataset.title }}</a>
                                 {% elif dataset.access_url %}
                                     <a href="{{ dataset.access_url }}" target="_blank" rel="noopener noreferrer">{{ dataset.title }}</a>
@@ -73,7 +77,15 @@
                                 </dl>
                             {% endif %}
                             <footer class="rcc-ds-card__footer">
-                                {% if dataset.local_dataset_key %}
+                                {% if dataset.local_dataset_key == 'arc2' %}
+                                    <a href="{% url 'rcc_dataset_category' %}">
+                                        {% translate "View dataset" %} <span aria-hidden="true">&#8594;</span>
+                                    </a>
+                                {% elif dataset.local_dataset_key == 'cpc-unified' %}
+                                    <a href="{% url 'rcc_cpc_dataset_category' %}">
+                                        {% translate "View dataset" %} <span aria-hidden="true">&#8594;</span>
+                                    </a>
+                                {% elif dataset.local_dataset_key %}
                                     <a href="{% url 'rcc_dataset_detail' dataset.local_dataset_key %}">
                                         {% translate "View dataset" %} <span aria-hidden="true">&#8594;</span>
                                     </a>
