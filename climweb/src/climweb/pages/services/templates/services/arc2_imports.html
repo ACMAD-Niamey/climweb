@@ -1,0 +1,97 @@
+{% extends "wagtailadmin/base.html" %}
+
+{% block titletag %}RCC Data Imports{% endblock %}
+
+{% block extra_css %}
+<style>
+  .rcc-import-wrap { max-width: 1100px; padding: 2rem; }
+  .rcc-import-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem; }
+  .rcc-import-card { border: 1px solid var(--w-color-border-furniture); border-radius: .5rem; padding: 1.25rem; margin-bottom: 1.25rem; }
+  .rcc-import-card h2 { margin-top: 0; }
+  .rcc-import-muted { color: var(--w-color-text-meta); }
+  .rcc-import-field { margin: 1rem 0; }
+  .rcc-import-field label { display: block; font-weight: 700; margin-bottom: .4rem; }
+  .rcc-import-field input[type=url] { width: min(100%, 720px); }
+  .rcc-import-stations ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: .5rem; padding: 0; list-style: none; }
+  .rcc-import-stations label { font-weight: 400; }
+  .rcc-import-actions { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; }
+  .rcc-import-table { width: 100%; border-collapse: collapse; }
+  .rcc-import-table th, .rcc-import-table td { text-align: left; padding: .75rem; border-bottom: 1px solid var(--w-color-border-furniture); vertical-align: top; }
+  .rcc-import-error { color: #b91c1c; }
+  .rcc-import-details summary { cursor: pointer; font-size: 1.15rem; font-weight: 700; }
+  .rcc-import-details[open] summary { margin-bottom: 1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rcc-import-wrap">
+  <h1>RCC Data Imports</h1>
+  <p class="rcc-import-muted">One configuration per dataset importer. ARC2 files remain in RCC storage and public dataset links do not change.</p>
+
+  <section class="rcc-import-card">
+    <h2>ARC2 daily station rainfall</h2>
+    <p class="rcc-import-muted">{{ config.discovered_countries|length }} countries discovered · {{ config.discovered_stations|length }} stations discovered · {{ config.selected_stations|length }} selected</p>
+    <form method="post">
+      {% csrf_token %}
+      {% if settings_form.non_field_errors %}<p class="rcc-import-error">{{ settings_form.non_field_errors }}</p>{% endif %}
+      <div class="rcc-import-field"><label for="{{ settings_form.catalogue_url.id_for_label }}">ARC2 root catalogue URL</label>{{ settings_form.catalogue_url }}{{ settings_form.catalogue_url.errors }}<p class="rcc-import-muted">Use the catalog.xml above the country directories. Changing it clears discoveries and disables the schedule until you refresh them.</p></div>
+      <div class="rcc-import-grid">
+        <div class="rcc-import-field"><label for="{{ settings_form.interval_hours.id_for_label }}">Run every (hours)</label>{{ settings_form.interval_hours }}{{ settings_form.interval_hours.errors }}</div>
+        <div class="rcc-import-field"><label for="{{ settings_form.enabled.id_for_label }}">{{ settings_form.enabled }} Enable automatic imports</label>{{ settings_form.enabled.errors }}</div>
+      </div>
+      <div class="rcc-import-field"><label for="{{ settings_form.import_all_stations.id_for_label }}">{{ settings_form.import_all_stations }} Import all stations in every country</label><p class="rcc-import-muted">When off, only the stations selected below are imported. All-station imports can be large; they discover the current catalogue on each run.</p></div>
+      <button class="button button-primary" name="action" value="save_settings">Save ARC2 settings</button>
+    </form>
+  </section>
+
+  <div class="rcc-import-grid">
+    <section class="rcc-import-card">
+      <h2>Catalogue discovery</h2>
+      {% if config.discovered_at %}<p class="rcc-import-muted">Countries last checked {{ config.discovered_at }}</p>{% endif %}
+      {% if config.discovery_error %}<p class="rcc-import-error">{{ config.discovery_error }}</p>{% endif %}
+      <form method="post">{% csrf_token %}<button class="button" name="action" value="discover_countries">Refresh countries</button></form>
+    </section>
+    <section class="rcc-import-card">
+      <h2>Run now</h2>
+      <p>Start one background ARC2 run using the saved scope. Only one ARC2 run can be active at a time.</p>
+      <form method="post">{% csrf_token %}<button class="button button-primary" name="action" value="run" {% if not config.import_all_stations and not config.selected_stations %}disabled{% endif %}>Run now</button></form>
+    </section>
+  </div>
+
+  <details class="rcc-import-card rcc-import-details" {% if request.GET.country %}open{% endif %}>
+    <summary>Country and station selection</summary>
+    <p class="rcc-import-muted">Optional when “Import all stations” is enabled. Each country uses the shared root URL.</p>
+    {% if config.discovered_countries %}
+      <form method="get" class="rcc-import-actions">
+        <div><label for="rcc-country">Country</label><select id="rcc-country" name="country">{% for item in config.discovered_countries %}<option value="{{ item }}" {% if item == country %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></div>
+        <button class="button" type="submit">Open</button>
+      </form>
+      <h3>{{ country }}</h3>
+      <p class="rcc-import-muted">{{ country_station_count }} stations discovered · {{ country_selected_count }} selected</p>
+      <form method="post">{% csrf_token %}<input type="hidden" name="country" value="{{ country }}"><button class="button" name="action" value="discover_stations">Refresh {{ country }} stations</button></form>
+      {% if country_station_count %}
+        <form method="post" class="rcc-import-field">
+          {% csrf_token %}<input type="hidden" name="country" value="{{ country }}">
+          {{ station_form.stations.errors }}<div class="rcc-import-stations">{{ station_form.stations }}</div>
+          <button class="button" name="action" value="save_stations">Save station selection</button>
+        </form>
+      {% else %}<p class="rcc-import-muted">Refresh this country's stations to choose them.</p>{% endif %}
+    {% else %}<p>Refresh countries to begin.</p>{% endif %}
+  </details>
+
+  <section class="rcc-import-card">
+    <h2>Recent runs</h2>
+    {% if run_rows %}
+      <div style="overflow-x:auto"><table class="rcc-import-table"><thead><tr><th>Started</th><th>Scope</th><th>Status</th><th>Progress</th><th>Errors</th></tr></thead><tbody>
+        {% for row in run_rows %}<tr>
+          <td>{{ row.run.created_at }}</td>
+          <td>{% if row.run.import_all_stations %}All stations{% elif row.run.country %}{{ row.run.country }}{% else %}Selected stations{% endif %}</td>
+          <td>{{ row.run.get_status_display }}</td>
+          <td>{{ row.completed }} processed{% if row.run.stations %} / {{ row.run.stations|length }} discovered{% endif %}</td>
+          <td>{% if row.failed %}<details><summary>{{ row.failed }} failed</summary><ul>{% for error in row.errors %}<li>{{ error.station }}: <span class="rcc-import-error">{{ error.error }}</span></li>{% endfor %}</ul>{% if row.failed > 10 %}<small>Showing first 10 failures.</small>{% endif %}</details>{% else %}—{% endif %}</td>
+        </tr>{% endfor %}
+      </tbody></table></div>
+    {% else %}<p class="rcc-import-muted">No imports yet.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

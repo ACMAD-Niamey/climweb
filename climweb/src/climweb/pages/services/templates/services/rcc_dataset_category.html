@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load static i18n %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_data_services.css' %}?v=20260915-3">
+{% endblock %}
+{% block body_class %}rcc-data-services-page{% endblock %}
+
+{% block content %}
+<main>
+    <section class="page-hero rcc-ds-simple-hero rcc-dataset-hero">
+        <div class="page-hero-overlay"></div>
+        <div class="page-hero-body"><div class="container">
+            <span class="page-hero-badge">{% translate "RCC data collection" %}</span>
+            <h1 class="page-hero-title">{% translate "ARC2 daily station rainfall" %}</h1>
+            <p class="page-hero-subtitle">{% translate "Browse satellite rainfall estimates by country and synoptic station." %}</p>
+        </div></div>
+    </section>
+    <nav class="rcc-ds-nav" aria-label="{% translate 'Collection navigation' %}"><div class="container">
+        {% if data_services_page %}<a href="{{ data_services_page.url }}">{% translate "Data Services" %}</a>{% endif %}
+        <a href="#countries">{% translate "Countries" %}</a>
+    </div></nav>
+
+    <section id="countries" class="rcc-dataset-section rcc-browser-section"><div class="container">
+        <div class="rcc-browser-heading">
+            <div><p class="rcc-ds-eyebrow">{% translate "Step 1" %}</p><h2>{% translate "Choose a country" %}</h2></div>
+            <p>{% translate "Select a country to see its available ARC2 station series." %}</p>
+        </div>
+        <div class="rcc-country-grid">
+            {% for country in countries %}
+                <a class="rcc-country-card" href="{% url 'rcc_dataset_country' country.slug %}">
+                    <span class="rcc-country-card__flag" aria-hidden="true">{{ country.country|slice:":1" }}</span>
+                    <div><h3>{{ country.country }}</h3><p>{{ country.station_count }} {% blocktranslate count count=country.station_count %}station{% plural %}stations{% endblocktranslate %}</p></div>
+                    <dl><div><dt>{% translate "Coverage" %}</dt><dd>{{ country.coverage_start|date:"Y" }}–{{ country.coverage_end|date:"Y" }}</dd></div></dl>
+                    <b aria-hidden="true">&#8594;</b>
+                </a>
+            {% empty %}<p>{% translate "No countries are available yet." %}</p>{% endfor %}
+        </div>
+    </div></section>
+</main>
+{% endblock %}

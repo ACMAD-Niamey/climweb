@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load static i18n %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_data_services.css' %}?v=20260915-3">
+{% endblock %}
+{% block body_class %}rcc-data-services-page{% endblock %}
+
+{% block content %}
+<main>
+    <section class="page-hero rcc-ds-simple-hero rcc-dataset-hero">
+        <div class="page-hero-overlay"></div>
+        <div class="page-hero-body"><div class="container">
+            <span class="page-hero-badge">{% translate "ARC2 station data" %}</span>
+            <h1 class="page-hero-title">{{ country }}</h1>
+            <p class="page-hero-subtitle">{% translate "Choose a station to view coverage, recent observations and download the daily CSV." %}</p>
+        </div></div>
+    </section>
+    <nav class="rcc-ds-nav" aria-label="{% translate 'Country navigation' %}"><div class="container">
+        <a href="{% url 'rcc_dataset_category' %}">{% translate "Countries" %}</a>
+        <a href="#stations">{{ country }} {% translate "stations" %}</a>
+    </div></nav>
+
+    <section id="stations" class="rcc-dataset-section rcc-browser-section"><div class="container">
+        <div class="rcc-browser-heading">
+            <div><p class="rcc-ds-eyebrow">{% translate "Step 2" %}</p><h2>{% translate "Choose a station" %}</h2></div>
+            <p>{% blocktranslate with country=country %}Available ARC2 daily rainfall series for {{ country }}.{% endblocktranslate %}</p>
+        </div>
+        <div class="rcc-station-grid">
+            {% for station in stations %}
+                <a class="rcc-station-card" href="{% url 'rcc_dataset_detail' station.key %}">
+                    <div class="rcc-station-card__top"><span>{% translate "Synoptic station" %}</span><b aria-hidden="true">&#8594;</b></div>
+                    <h3>{{ station.station }}</h3>
+                    <p>{{ station.latitude }}, {{ station.longitude }}</p>
+                    <dl>
+                        <div><dt>{% translate "Coverage" %}</dt><dd>{{ station.coverage_start|date:"Y" }}–{{ station.coverage_end|date:"Y" }}</dd></div>
+                        <div><dt>{% translate "Records" %}</dt><dd>{{ station.record_count }}</dd></div>
+                    </dl>
+                </a>
+            {% empty %}<p>{% translate "No stations are available for this country yet." %}</p>{% endfor %}
+        </div>
+    </div></section>
+</main>
+{% endblock %}
