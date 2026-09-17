@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load static i18n wagtailcore_tags wagtailimages_tags lazyimages_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/services_rcc.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_climate_products.css' %}">
+{% endblock %}
+
+{% block body_class %}rcc-service-page rcc-climate-products-page{% endblock %}
+
+{% block content %}
+<main>
+    {% if page.banner_image %}
+        {% include "hero.html" with page=page %}
+    {% else %}
+        <section class="page-hero rcc-simple-hero">
+            <div class="page-hero-overlay"></div>
+            <div class="page-hero-body">
+                <div class="container">
+                    <span class="page-hero-badge">{% translate "RCC operational catalogue" %}</span>
+                    <h1 class="page-hero-title">{{ page.banner_title|default:page.title }}</h1>
+                    {% if page.banner_subtitle %}<p class="page-hero-subtitle">{{ page.banner_subtitle }}</p>{% endif %}
+                </div>
+            </div>
+        </section>
+    {% endif %}
+
+    <nav class="rcc-section-nav" aria-label="{% translate 'Page sections' %}">
+        <div class="container rcc-section-nav__inner">
+            <a href="{{ page.get_parent.url }}">{% translate "Home" %}</a>
+            <a href="#climate-products">{% translate "Climate products" %}</a>
+        </div>
+    </nav>
+
+    <section id="climate-products" class="rcc-products rcc-cp-catalogue">
+        <div class="container">
+            <div class="rcc-cp-intro">
+                <p class="rcc-eyebrow">{% translate "Operational catalogue" %}</p>
+                <div class="rcc-section-heading">
+                    <div>
+                        <h2>{% translate "RCC climate product catalogue" %}</h2>
+                        {% if page.introduction_text %}
+                            <div class="rcc-cp-intro__copy format-text">{{ page.introduction_text|richtext }}</div>
+                        {% endif %}
+                    </div>
+                    {% if page.products %}
+                        <p class="rcc-section-heading__aside">
+                            {% blocktranslate count counter=page.products|length %}{{ counter }} product available{% plural %}{{ counter }} products available{% endblocktranslate %}
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if page.products %}
+                <div class="rcc-product-grid">
+                    {% for product in page.products %}
+                        <article class="rcc-product-card">
+                            <a href="{{ product.url }}" aria-label="{{ product.title }}">
+                                <div class="rcc-product-card__media">
+                                    {% if product.listing_image %}
+                                        {% image product.listing_image fill-720x440 as product_image %}
+                                        <img class="progressive__img progressive--not-loaded"
+                                             src="{% lazy_image_url product_image %}"
+                                             data-progressive="{{ product_image.url }}"
+                                             alt="">
+                                    {% else %}
+                                        <div class="rcc-product-card__placeholder" aria-hidden="true"></div>
+                                    {% endif %}
+                                    <span class="rcc-product-card__type">{% translate "Climate product" %}</span>
+                                </div>
+                                <div class="rcc-product-card__body">
+                                    <h3>{{ product.title }}</h3>
+                                    {% with latest=product.all_products.first %}
+                                        {% if latest %}
+                                            <p>{% translate "Latest issue" %}: <time datetime="{{ latest.date|date:'Y-m-d' }}">{{ latest.date|date:"j M Y" }}</time></p>
+                                        {% else %}
+                                            <p>{% translate "Browse available issues" %}</p>
+                                        {% endif %}
+                                    {% endwith %}
+                                    <span class="rcc-product-card__link">
+                                        {% translate "View product" %} <span aria-hidden="true">&#8594;</span>
+                                    </span>
+                                </div>
+                            </a>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="rcc-empty-state">
+                    <h3>{% translate "The RCC catalogue is being prepared" %}</h3>
+                    <p>{% translate "Published products assigned to the Regional Climate Center will appear here automatically." %}</p>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+</main>
+{% endblock %}

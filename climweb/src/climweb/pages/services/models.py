@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.db.models import Q
 from django.utils.functional import cached_property
@@ -16,6 +17,7 @@ from climweb.config.settings.base import SUMMARY_RICHTEXT_FEATURES
 from climweb.pages.events.models import EventPage
 from climweb.pages.flex_page.models import FlexPage
 from climweb.pages.news.models import NewsPage
+from climweb.pages.organisation_pages.partners.models import Partner
 from climweb.pages.organisation_pages.projects.models import ServiceProject
 from climweb.pages.products.models import ProductPage, SubNationalProductPage
 from climweb.pages.publications.models import PublicationPage
@@ -72,6 +74,269 @@ class MeteorologicalService(models.Model):
         return f"{self.country} — {self.name}"
 
 
+@register_snippet
+class RCCDatasetAsset(models.Model):
+    """Metadata pointer to an RCC-managed dataset object.
+
+    Keeping the object name separate from the database makes the public URL stable
+    when the ``rcc_data`` storage backend is moved from disk to S3/MinIO.
+    """
+
+    key = models.SlugField(max_length=80, unique=True)
+    title = models.CharField(max_length=180)
+    summary = models.TextField(blank=True)
+    station = models.CharField(max_length=120, blank=True)
+    country = models.CharField(max_length=100, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=5, null=True, blank=True)
+    latitude = models.DecimalField(max_digits=8, decimal_places=5, null=True, blank=True)
+    source_url = models.URLField(max_length=700, blank=True)
+    object_name = models.CharField(max_length=500, blank=True)
+    original_filename = models.CharField(max_length=255, blank=True)
+    checksum_sha256 = models.CharField(max_length=64, blank=True)
+    size_bytes = models.PositiveBigIntegerField(default=0)
+    record_count = models.PositiveIntegerField(default=0)
+    coverage_start = models.DateField(null=True, blank=True)
+    coverage_end = models.DateField(null=True, blank=True)
+    synced_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.TextField(blank=True)
+
+    panels = [
+        FieldPanel("key"),
+        FieldPanel("title"),
+        FieldPanel("summary"),
+        MultiFieldPanel(
+            [
+                FieldPanel("station"),
+                FieldPanel("country"),
+                FieldPanel("longitude"),
+                FieldPanel("latitude"),
+            ],
+            heading=_("Location"),
+        ),
+        FieldPanel("source_url"),
+    ]
+
+    class Meta:
+        ordering = ("title",)
+        verbose_name = _("RCC dataset")
+        verbose_name_plural = _("RCC datasets")
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def is_available(self):
+        return bool(self.object_name and self.synced_at)
+
+
+class RCCARC2ImportConfig(models.Model):
+    """Shared ARC2 importer settings across every catalogue country."""
+
+    singleton_key = models.CharField(max_length=20, unique=True, default="arc2", editable=False)
+    catalogue_url = models.URLField(
+        max_length=700,
+        default=(
+            "http://sgbd.acmad.org:8080/thredds/catalog/ACMAD/CDD/"
+            "climatedataservice/Synoptic_Daily_ARC2_Data/catalog.xml"
+        ),
+    )
+    enabled = models.BooleanField(default=False)
+    interval_hours = models.PositiveSmallIntegerField(default=24)
+    import_all_stations = models.BooleanField(default=False)
+    discovered_countries = models.JSONField(default=list, blank=True)
+    selected_stations = models.JSONField(default=list, blank=True)
+    discovered_stations = models.JSONField(default=list, blank=True)
+    discovered_at = models.DateTimeField(null=True, blank=True)
+    discovery_error = models.TextField(blank=True)
+
+    def __str__(self):
+        return "ARC2 station importer"
+
+
+class RCCARC2ImportRun(models.Model):
+    STATUS_CHOICES = [
+        ("queued", "Queued"),
+        ("running", "Running"),
+        ("succeeded", "Succeeded"),
+        ("partial", "Partially succeeded"),
+        ("failed", "Failed"),
+    ]
+    TRIGGER_CHOICES = [("manual", "Manual"), ("scheduled", "Scheduled")]
+
+    config = models.ForeignKey(RCCARC2ImportConfig, on_delete=models.CASCADE, related_name="runs")
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="queued")
+    trigger = models.CharField(max_length=12, choices=TRIGGER_CHOICES)
+    stations = models.JSONField(default=list)
+    country = models.CharField(max_length=80, default="Niger")
+    catalogue_url = models.URLField(max_length=700, blank=True)
+    import_all_stations = models.BooleanField(default=False)
+    results = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    class Meta:
+        ordering = ("-created_at",)
+
+
+class RCCCPCImportConfig(models.Model):
+    singleton_key = models.CharField(max_length=20, unique=True, default="cpc-unified", editable=False)
+    catalogue_url = models.URLField(
+        max_length=700,
+        default=(
+            "http://sgbd.acmad.org:8080/thredds/catalog/ACMAD/CDD/"
+            "climatedataservice/Synoptic_Daily_CPC_Unified_Data/catalog.xml"
+        ),
+    )
+    enabled = models.BooleanField(default=False)
+    interval_hours = models.PositiveSmallIntegerField(default=24)
+    import_all_stations = models.BooleanField(default=False)
+    discovered_countries = models.JSONField(default=list, blank=True)
+    selected_stations = models.JSONField(default=list, blank=True)
+    discovered_stations = models.JSONField(default=list, blank=True)
+    discovered_at = models.DateTimeField(null=True, blank=True)
+    discovery_error = models.TextField(blank=True)
+
+    def __str__(self):
+        return "CPC-Unified station importer"
+
+
+class RCCCPCImportRun(models.Model):
+    STATUS_CHOICES = RCCARC2ImportRun.STATUS_CHOICES
+    TRIGGER_CHOICES = RCCARC2ImportRun.TRIGGER_CHOICES
+
+    config = models.ForeignKey(RCCCPCImportConfig, on_delete=models.CASCADE, related_name="runs")
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="queued")
+    trigger = models.CharField(max_length=12, choices=TRIGGER_CHOICES)
+    stations = models.JSONField(default=list)
+    country = models.CharField(max_length=80, default="")
+    catalogue_url = models.URLField(max_length=700, blank=True)
+    import_all_stations = models.BooleanField(default=False)
+    results = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    class Meta:
+        ordering = ("-created_at",)
+
+
+class RCCSeasonalMapImportConfig(models.Model):
+    singleton_key = models.CharField(max_length=30, unique=True, default="seasonal-maps", editable=False)
+    catalogue_url = models.URLField(
+        max_length=700,
+        default=(
+            "http://sgbd.acmad.org:8080/thredds/catalog/ACMAD/CDD/"
+            "statisticalanalysis/Precipitation/Gridded_Observation/catalog.xml"
+        ),
+    )
+    enabled = models.BooleanField(default=False)
+    interval_hours = models.PositiveSmallIntegerField(default=168)
+    import_all_maps = models.BooleanField(default=False)
+    discovered_maps = models.JSONField(default=list, blank=True)
+    selected_maps = models.JSONField(default=list, blank=True)
+    discovered_at = models.DateTimeField(null=True, blank=True)
+    discovery_error = models.TextField(blank=True)
+
+    def __str__(self):
+        return "Seasonal rainfall climatology map importer"
+
+
+class RCCSeasonalMapImportRun(models.Model):
+    STATUS_CHOICES = RCCARC2ImportRun.STATUS_CHOICES
+    TRIGGER_CHOICES = RCCARC2ImportRun.TRIGGER_CHOICES
+
+    config = models.ForeignKey(RCCSeasonalMapImportConfig, on_delete=models.CASCADE, related_name="runs")
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="queued")
+    trigger = models.CharField(max_length=12, choices=TRIGGER_CHOICES)
+    maps = models.JSONField(default=list)
+    catalogue_url = models.URLField(max_length=700)
+    import_all_maps = models.BooleanField(default=False)
+    results = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    class Meta:
+        ordering = ("-created_at",)
+
+
+class RCCSeasonalMapAsset(models.Model):
+    filename = models.CharField(max_length=80, unique=True)
+    season = models.CharField(max_length=3)
+    variant = models.CharField(max_length=10)
+    source_url = models.URLField(max_length=700)
+    object_name = models.CharField(max_length=500)
+    checksum_sha256 = models.CharField(max_length=64)
+    size_bytes = models.PositiveIntegerField()
+    width = models.PositiveIntegerField()
+    height = models.PositiveIntegerField()
+    synced_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ("filename",)
+
+
+class RCCEIN15ImportConfig(models.Model):
+    singleton_key = models.CharField(max_length=20, unique=True, default="ein15", editable=False)
+    catalogue_url = models.URLField(
+        max_length=700,
+        default="http://sgbd.acmad.org:8080/thredds/catalog/ein15output/catalog.xml",
+    )
+    enabled = models.BooleanField(default=False)
+    interval_hours = models.PositiveSmallIntegerField(default=168)
+    discovered_files = models.JSONField(default=list, blank=True)
+    selected_files = models.JSONField(default=list, blank=True)
+    discovered_at = models.DateTimeField(null=True, blank=True)
+    discovery_error = models.TextField(blank=True)
+
+    def __str__(self):
+        return "EIN15 regional model output importer"
+
+
+class RCCEIN15ImportRun(models.Model):
+    STATUS_CHOICES = RCCARC2ImportRun.STATUS_CHOICES
+    TRIGGER_CHOICES = RCCARC2ImportRun.TRIGGER_CHOICES
+
+    config = models.ForeignKey(RCCEIN15ImportConfig, on_delete=models.CASCADE, related_name="runs")
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="queued")
+    trigger = models.CharField(max_length=12, choices=TRIGGER_CHOICES)
+    files = models.JSONField(default=list)
+    catalogue_url = models.URLField(max_length=700)
+    results = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    class Meta:
+        ordering = ("-created_at",)
+
+
+class RCCEIN15Asset(models.Model):
+    filename = models.CharField(max_length=100, unique=True)
+    source_url = models.URLField(max_length=700)
+    object_name = models.CharField(max_length=500)
+    checksum_sha256 = models.CharField(max_length=64)
+    size_bytes = models.PositiveBigIntegerField()
+    source_last_modified = models.CharField(max_length=100, blank=True)
+    synced_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ("filename",)
+
+
 class ServiceIndexPage(MetadataPageMixin, Page):
     parent_page_types = ['home.HomePage']
     subpage_types = ['services.ServicePage']
@@ -120,8 +385,15 @@ class ServiceIndexPage(MetadataPageMixin, Page):
 
 class ServicePage(AbstractBannerWithIntroPage):
     template = 'services/service_page.html'
+    rcc_template = 'services/rcc_service_page.html'
+    rcc_service_name = 'Regional Climate Center'
     parent_page_types = ['services.ServiceIndexPage']
-    subpage_types = ['flex_page.FlexPage', 'services.OnTheJobTrainingPage']
+    subpage_types = [
+        'flex_page.FlexPage',
+        'services.OnTheJobTrainingPage',
+        'services.RCCClimateProductsPage',
+        'services.RCCDataServicesPage',
+    ]
     show_in_menus_default = True
 
     introduction_title = models.CharField(
@@ -131,7 +403,6 @@ class ServicePage(AbstractBannerWithIntroPage):
         verbose_name=_("Introduction Title"),
         help_text=_("Optional introduction section title"),
     )
-    
     service = models.OneToOneField(ServiceCategory, on_delete=models.PROTECT, verbose_name=_("Service"))
 
     sector_heading = models.CharField(
@@ -226,6 +497,12 @@ class ServicePage(AbstractBannerWithIntroPage):
         verbose_name = _('Service Page')
         verbose_name_plural = _('Service Pages')
         ordering = ['service__order']
+
+    def get_template(self, request, *args, **kwargs):
+        """Use the dedicated landing page for the Regional Climate Center."""
+        if self.service.name == self.rcc_service_name:
+            return self.rcc_template
+        return super().get_template(request, *args, **kwargs)
     
     @cached_property
     def products(self):
@@ -260,6 +537,16 @@ class ServicePage(AbstractBannerWithIntroPage):
         flex_pages = FlexPage.objects.live().descendant_of(self)
         
         return flex_pages
+
+    @cached_property
+    def data_services_page(self):
+        """Return the published RCC data catalogue below this service page."""
+        return RCCDataServicesPage.objects.live().child_of(self).first()
+
+    @cached_property
+    def climate_products_page(self):
+        """Return the published RCC climate-products catalogue below this page."""
+        return RCCClimateProductsPage.objects.live().child_of(self).first()
     
     @cached_property
     def listing_image(self):
@@ -317,6 +604,11 @@ class ServicePage(AbstractBannerWithIntroPage):
         updates.extend(publications)
         
         return updates
+
+    @cached_property
+    def featured_partners(self):
+        """Partners selected for prominent display across the main website."""
+        return Partner.objects.filter(visible_on_homepage=True, logo__isnull=False)[:6]
     
     @cached_property
     def nav_menu_icon(self):
@@ -324,11 +616,93 @@ class ServicePage(AbstractBannerWithIntroPage):
     
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
-        
+
+        if self.service.name == self.rcc_service_name:
+            from adminboundarymanager.models import AdminBoundarySettings
+            from climweb.pages.home.models import HomeMapSettings
+
+            map_settings = HomeMapSettings.for_request(request)
+            boundary_settings = AdminBoundarySettings.for_request(request)
+            context.update({
+                "multi_hazard_api_base_url": map_settings.multi_hazard_api_base_url or "https://multi-hazard.acmad.org",
+                "multi_hazard_project_slug": map_settings.multi_hazard_project_slug or "multi-hazard",
+                "country_bounds": boundary_settings.combined_countries_bounds,
+            })
+
         if self.youtube_playlist:
             context['youtube_playlist_url'] = self.youtube_playlist.get_playlist_items_api_url(request)
         
         return context
+
+
+class RCCDataServicesPage(AbstractBannerWithIntroPage):
+    template = "services/rcc_data_services_page.html"
+    parent_page_types = ["services.ServicePage"]
+    subpage_types = []
+    max_count_per_parent = 1
+    show_in_menus_default = True
+
+    catalogue_notice = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Catalogue access notice"),
+        help_text=_("Explain access restrictions, verification dates and archive status."),
+    )
+    data_groups = StreamField(
+        [("group", local_blocks.RCCDataGroupBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Data service groups"),
+    )
+    data_request_page = models.ForeignKey(
+        "wagtailcore.Page",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Data request page"),
+    )
+
+    content_panels = Page.content_panels + [
+        *AbstractBannerWithIntroPage.content_panels,
+        FieldPanel("catalogue_notice"),
+        FieldPanel("data_groups"),
+        PageChooserPanel("data_request_page"),
+    ]
+
+    class Meta:
+        verbose_name = _("RCC Data Services Page")
+
+
+class RCCClimateProductsPage(AbstractBannerWithIntroPage):
+    template = "services/rcc_climate_products_page.html"
+    parent_page_types = ["services.ServicePage"]
+    subpage_types = []
+    max_count_per_parent = 1
+    show_in_menus_default = True
+
+    introduction_title = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name=_("Introduction Title"),
+        help_text=_("Optional introduction section title"),
+    )
+    introduction_text = RichTextField(
+        blank=True,
+        default="",
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Introduction text"),
+        help_text=_("Optional introduction section description"),
+    )
+
+    @cached_property
+    def products(self):
+        parent = self.get_parent().specific
+        return parent.products if isinstance(parent, ServicePage) else []
+
+    class Meta:
+        verbose_name = _("RCC Climate Products Page")
 
 
 class OnTheJobTrainingPage(AbstractBannerWithIntroPage):

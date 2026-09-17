@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load static i18n %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_data_services.css' %}?v=20260915-3">
+{% endblock %}
+
+{% block body_class %}rcc-data-services-page{% endblock %}
+
+{% block content %}
+<main>
+    <section class="page-hero rcc-ds-simple-hero rcc-dataset-hero">
+        <div class="page-hero-overlay"></div>
+        <div class="page-hero-body"><div class="container">
+            <span class="page-hero-badge">{% translate "RCC hosted dataset" %}</span>
+            <h1 class="page-hero-title">{{ asset.title }}</h1>
+            <p class="page-hero-subtitle">{{ asset.summary }}</p>
+        </div></div>
+    </section>
+
+    <nav class="rcc-ds-nav" aria-label="{% translate 'Dataset navigation' %}"><div class="container">
+        {% if data_services_page %}<a href="{{ data_services_page.url }}">{% translate "Data Services" %}</a>{% endif %}
+        <a href="{{ country_url }}">{{ asset.country }} {% translate "stations" %}</a>
+        <a href="#overview">{% translate "Overview" %}</a>
+        <a href="#preview">{% translate "Latest observations" %}</a>
+    </div></nav>
+
+    <section id="overview" class="rcc-dataset-section"><div class="container">
+        <div class="rcc-dataset-toolbar">
+            <div class="rcc-dataset-tags" aria-label="{% translate 'Dataset characteristics' %}">
+                <span>{{ product_label }}</span><span>{% translate "Daily" %}</span><span>CSV</span>
+            </div>
+            <div class="rcc-dataset-toolbar__file">
+                <span><strong>{{ asset.original_filename }}</strong>{{ asset.size_bytes|filesizeformat }} · {{ asset.record_count }} {% translate "rows" %}</span>
+                <a href="{% url 'rcc_dataset_download' asset.key %}">{% translate "Download data" %} <b aria-hidden="true">&#8595;</b></a>
+            </div>
+        </div>
+
+        <dl class="rcc-dataset-facts">
+            <div><dt>{% translate "Station" %}</dt><dd>{{ asset.station }}</dd><span>{{ asset.country }}</span></div>
+            <div><dt>{% translate "Time coverage" %}</dt><dd>{{ asset.coverage_start|date:"Y" }}–{{ asset.coverage_end|date:"Y" }}</dd><span>{{ asset.coverage_start|date:"Y-m-d" }} – {{ asset.coverage_end|date:"Y-m-d" }}</span></div>
+            <div><dt>{% translate "Observations" %}</dt><dd>{{ asset.record_count }}</dd><span>{% translate "Daily records" %}</span></div>
+            <div><dt>{% translate "Coordinates" %}</dt><dd>{{ asset.latitude }}, {{ asset.longitude }}</dd><span>{% translate "Latitude, longitude" %}</span></div>
+            <div><dt>{% translate "Last synchronized" %}</dt><dd>{{ asset.synced_at|date:"Y-m-d" }}</dd><span>{{ asset.synced_at|date:"H:i T" }}</span></div>
+        </dl>
+    </div></section>
+
+    <section id="preview" class="rcc-dataset-section rcc-dataset-preview"><div class="container">
+        <div class="rcc-dataset-preview__heading">
+            <div><p class="rcc-ds-eyebrow">{% translate "Data preview" %}</p><h2>{% translate "Latest observations" %}</h2></div>
+            <p>{% translate "Most recent 8 daily records" %}</p>
+        </div>
+        <div class="rcc-dataset-table-wrap"><table class="rcc-dataset-table">
+            <thead><tr><th>{% translate "Date" %}</th><th>{% translate "Precipitation (mm)" %}</th></tr></thead>
+            <tbody>{% for row in preview reversed %}<tr><td>{{ row.Date }}</td><td>{{ row.Precipitation|default:"—" }}</td></tr>{% endfor %}</tbody>
+        </table></div>
+    </div></section>
+</main>
+{% endblock %}

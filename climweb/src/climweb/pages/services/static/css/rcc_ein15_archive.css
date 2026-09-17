@@ -1,0 +1,31 @@
+.rcc-ein15-archive { background: #f7f9f8; }
+.rcc-ein15-archive__heading { display: flex; align-items: end; justify-content: space-between; gap: 1.5rem; }
+.rcc-ein15-archive__heading h2 { margin: .2rem 0 0; color: #173f35; font-size: clamp(1.8rem, 3vw, 2.5rem); letter-spacing: -.035em; }
+.rcc-ein15-archive__heading > p { margin: 0; color: var(--rcc-ds-muted); font-size: .85rem; }
+.rcc-ein15-archive__intro { max-width: 50rem; margin: .75rem 0 1.6rem; color: var(--rcc-ds-muted); line-height: 1.65; }
+.rcc-ein15-archive__filters { display: flex; align-items: end; flex-wrap: wrap; gap: .8rem; margin-bottom: 1.5rem; padding: 1rem; border: 1px solid var(--rcc-ds-line); border-radius: 12px; background: #fff; }
+.rcc-ein15-archive__filters > div { display: flex; min-width: 220px; flex: 1; flex-direction: column; gap: .35rem; }
+.rcc-ein15-archive__filters label { color: #173f35; font-size: .75rem; font-weight: 800; }
+.rcc-ein15-archive__filters select { min-height: 43px; padding: .45rem .75rem; border: 1px solid var(--rcc-ds-line); border-radius: 7px; color: var(--rcc-ds-ink); background: #fff; }
+.rcc-ein15-archive__filters button { min-height: 43px; padding: .5rem 1rem; border: 0; border-radius: 7px; color: #fff; background: var(--rcc-ds-primary-dark); font-weight: 800; cursor: pointer; }
+.rcc-ein15-archive__filters button:hover { background: var(--rcc-ds-primary); }
+.rcc-ein15-archive__filters > a { padding: .65rem .4rem; color: var(--rcc-ds-primary-dark); font-weight: 700; }
+.rcc-ein15-archive__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.rcc-ein15-file { display: flex; min-height: 315px; padding: 1.3rem; border: 1px solid var(--rcc-ds-line); border-radius: 14px; background: #fff; box-shadow: 0 10px 28px rgba(17, 56, 48, .045); flex-direction: column; transition: transform .2s ease, box-shadow .2s ease; }
+.rcc-ein15-file:hover { transform: translateY(-4px); box-shadow: 0 18px 40px rgba(17, 56, 48, .1); }
+.rcc-ein15-file__top { display: flex; align-items: flex-start; justify-content: space-between; }
+.rcc-ein15-file__icon { display: grid; width: 50px; height: 58px; border: 1px solid var(--rcc-ds-line); border-radius: 9px; place-items: center; color: var(--rcc-ds-primary-dark); background: var(--rcc-ds-primary-soft); font-size: .85rem; font-weight: 900; }
+.rcc-ein15-file__group { padding: .35rem .65rem; border-radius: 999px; color: var(--rcc-ds-primary-dark); background: var(--rcc-ds-primary-soft); font-size: .7rem; font-weight: 800; }
+.rcc-ein15-file h3 { margin: 1.2rem 0; color: #173f35; font-size: 1rem; overflow-wrap: anywhere; }
+.rcc-ein15-file dl { display: grid; margin: 0; gap: .6rem; }
+.rcc-ein15-file dl div { display: flex; justify-content: space-between; gap: .75rem; border-bottom: 1px solid #e8eeeb; padding-bottom: .55rem; }
+.rcc-ein15-file dt { color: var(--rcc-ds-muted); font-size: .72rem; }
+.rcc-ein15-file dd { margin: 0; color: #173f35; font-size: .72rem; font-weight: 800; text-align: right; }
+.rcc-ein15-file__download { display: flex; min-height: 44px; margin-top: auto; padding: 0 .85rem; border-radius: 7px; align-items: center; justify-content: space-between; color: #fff; background: var(--rcc-ds-primary-dark); font-size: .8rem; font-weight: 800; text-decoration: none; }
+.rcc-ein15-file__download:hover { color: #fff; background: var(--rcc-ds-primary); }
+.rcc-ein15-archive__empty { padding: 3rem 1.5rem; border: 1px dashed var(--rcc-ds-line); border-radius: 14px; text-align: center; background: #fff; }
+.rcc-ein15-archive__empty h3 { margin: 0 0 .4rem; color: #173f35; }
+.rcc-ein15-archive__empty p { margin: 0 0 .9rem; color: var(--rcc-ds-muted); }
+.rcc-ein15-archive__empty a { color: var(--rcc-ds-primary-dark); font-weight: 800; }
+@media (max-width: 950px) { .rcc-ein15-archive__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 650px) { .rcc-ein15-archive__heading { align-items: flex-start; flex-direction: column; gap: .3rem; } .rcc-ein15-archive__grid { grid-template-columns: 1fr; } .rcc-ein15-archive__filters > div { min-width: 100%; } }

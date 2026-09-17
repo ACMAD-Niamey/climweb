@@ -8,7 +8,7 @@
       <p class="ev-eyebrow">{% translate "Upcoming" %}</p>
       <h2 class="ev-title">{% translate "Events" %}</h2>
     </div>
-    {% if settings.base.ImportantPages.all_events_page %}
+    {% if settings.base.ImportantPages.all_events_page and not hide_more_link %}
       <a href="{{ settings.base.ImportantPages.all_events_page.url }}" class="ev-more-link">
         {% translate "All events" %}
         <span class="icon btn-icon">{% svg_icon name="arrow-right-full" %}</span>
@@ -17,7 +17,7 @@
   </div>
 
   <div class="ev-list">
-    {% for event in events.all %}
+    {% for event in events.all|slice:":3" %}
       <a href="{{ event.url }}" class="ev-item">
 
         <!-- DATE BADGE -->
