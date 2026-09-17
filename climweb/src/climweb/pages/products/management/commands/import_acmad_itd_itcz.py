@@ -5,7 +5,7 @@ import re
 import tempfile
 import xml.etree.ElementTree as ElementTree
 from argparse import ArgumentTypeError
-from datetime import date, timedelta
+from datetime import date
 from urllib.parse import quote, urlencode, urljoin, urlparse, urlunparse
 
 import requests
@@ -151,7 +151,7 @@ def parse_thredds_catalog(xml_content):
                 "name": name,
                 "kind": kind,
                 "date": issue_date,
-                "valid_until": issue_date + timedelta(days=6),
+                "valid_until": issue_date,
                 "filename": filename,
                 "source_url": source_url,
                 "provenance_url": provenance_url,
@@ -312,7 +312,7 @@ class Command(BaseCommand):
                         "name": name,
                         "kind": "image",
                         "date": issue_date,
-                        "valid_until": issue_date + timedelta(days=6),
+                        "valid_until": issue_date,
                         "filename": filename,
                         "source_url": source_url,
                         "provenance_url": source_url,
@@ -388,9 +388,12 @@ class Command(BaseCommand):
                         f"ITD_{asset['key'].replace('-', '_')}_"
                         "{yyyy}{mm}{dd}"
                     ),
-                    "valid_for_days": 7,
+                    "valid_for_days": 1,
                 },
             )
+            if item_type.valid_for_days != 1:
+                item_type.valid_for_days = 1
+                item_type.save(update_fields=["valid_for_days"])
             item_types[asset["key"]] = item_type
 
         product_page = ProductPage.objects.filter(
@@ -556,6 +559,7 @@ class Command(BaseCommand):
                 and value.get("date") == asset["date"].isoformat()
             ):
                 value["document"] = document.pk
+                value["valid_until"] = asset["valid_until"].isoformat()
                 _save_products_raw(page, raw)
                 return
         _append_document_block(
@@ -577,6 +581,7 @@ class Command(BaseCommand):
                 and value.get("date") == asset["date"].isoformat()
             ):
                 value["image"] = image.pk
+                value["valid_until"] = asset["valid_until"].isoformat()
                 _save_products_raw(page, raw)
                 return
         _append_image_block(
