@@ -129,6 +129,22 @@ class RCCDatasetTests(TestCase):
         self.assertContains(response, "2 stations")
         self.assertNotContains(response, 'class="rcc-station-card"')
 
+    def test_country_search_filters_names_and_handles_no_matches(self):
+        self.make_asset()
+        RCCDatasetAsset.objects.create(
+            key="arc2-ghana-yendi", title="ARC2 Yendi", country="Ghana", station="YENDI",
+            object_name="arc2/ghana/yendi/test/YENDI.csv", synced_at=timezone.now(),
+        )
+        url = reverse("rcc_dataset_category")
+        response = self.client.get(url, {"q": "  nIG  "})
+        self.assertContains(response, 'name="q" value="nIG"')
+        self.assertContains(response, "Niger")
+        self.assertNotContains(response, "Ghana")
+        self.assertContains(response, "Search countries")
+        response = self.client.get(url, {"q": "Kenya"})
+        self.assertContains(response, "No countries match your search.")
+        self.assertNotContains(response, 'class="rcc-country-card"')
+
     def test_country_page_lists_station_grid(self):
         self.make_asset()
         self.make_zinder_asset()
@@ -141,6 +157,19 @@ class RCCDatasetTests(TestCase):
         self.assertContains(response, "NIAMEY-AERO")
         self.assertContains(response, "ZINDER")
         self.assertContains(response, reverse("rcc_dataset_detail", args=["arc2-zinder"]))
+
+    def test_station_search_filters_within_country(self):
+        self.make_asset()
+        self.make_zinder_asset()
+        url = reverse("rcc_dataset_country", args=["niger"])
+        response = self.client.get(url, {"q": "zind"})
+        self.assertContains(response, "Search stations")
+        self.assertContains(response, 'name="q" value="zind"')
+        self.assertContains(response, "ZINDER")
+        self.assertNotContains(response, "NIAMEY-AERO")
+        response = self.client.get(url, {"q": "YENDI"})
+        self.assertContains(response, "No stations match your search.")
+        self.assertNotContains(response, 'class="rcc-station-card"')
 
     def test_download_is_served_from_rcc_storage(self):
         asset = self.make_asset()
