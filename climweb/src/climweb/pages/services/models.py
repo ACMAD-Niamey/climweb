@@ -286,6 +286,57 @@ class RCCSeasonalMapAsset(models.Model):
         ordering = ("filename",)
 
 
+class RCCEIN15ImportConfig(models.Model):
+    singleton_key = models.CharField(max_length=20, unique=True, default="ein15", editable=False)
+    catalogue_url = models.URLField(
+        max_length=700,
+        default="http://sgbd.acmad.org:8080/thredds/catalog/ein15output/catalog.xml",
+    )
+    enabled = models.BooleanField(default=False)
+    interval_hours = models.PositiveSmallIntegerField(default=168)
+    discovered_files = models.JSONField(default=list, blank=True)
+    selected_files = models.JSONField(default=list, blank=True)
+    discovered_at = models.DateTimeField(null=True, blank=True)
+    discovery_error = models.TextField(blank=True)
+
+    def __str__(self):
+        return "EIN15 regional model output importer"
+
+
+class RCCEIN15ImportRun(models.Model):
+    STATUS_CHOICES = RCCARC2ImportRun.STATUS_CHOICES
+    TRIGGER_CHOICES = RCCARC2ImportRun.TRIGGER_CHOICES
+
+    config = models.ForeignKey(RCCEIN15ImportConfig, on_delete=models.CASCADE, related_name="runs")
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="queued")
+    trigger = models.CharField(max_length=12, choices=TRIGGER_CHOICES)
+    files = models.JSONField(default=list)
+    catalogue_url = models.URLField(max_length=700)
+    results = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    class Meta:
+        ordering = ("-created_at",)
+
+
+class RCCEIN15Asset(models.Model):
+    filename = models.CharField(max_length=100, unique=True)
+    source_url = models.URLField(max_length=700)
+    object_name = models.CharField(max_length=500)
+    checksum_sha256 = models.CharField(max_length=64)
+    size_bytes = models.PositiveBigIntegerField()
+    source_last_modified = models.CharField(max_length=100, blank=True)
+    synced_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ("filename",)
+
+
 class ServiceIndexPage(MetadataPageMixin, Page):
     parent_page_types = ['home.HomePage']
     subpage_types = ['services.ServicePage']

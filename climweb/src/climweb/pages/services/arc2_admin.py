@@ -20,6 +20,7 @@ from . import cpc_importer
 from .models import (
     RCCARC2ImportConfig, RCCCPCImportConfig, RCCDatasetAsset,
     RCCSeasonalMapAsset, RCCSeasonalMapImportConfig,
+    RCCEIN15Asset, RCCEIN15ImportConfig,
 )
 from .tasks import (
     create_rcc_arc2_run, create_rcc_cpc_run, execute_rcc_arc2_import, execute_rcc_cpc_import,
@@ -135,6 +136,21 @@ def rcc_imports_view(request):
         "last_imported": map_assets.order_by("-synced_at").values_list("synced_at", flat=True).first(),
         "last_run": map_config.runs.first() if map_config else None,
         "is_map": True,
+    })
+    ein15_config = RCCEIN15ImportConfig.objects.filter(singleton_key="ein15").first()
+    ein15_assets = RCCEIN15Asset.objects.all()
+    rows.append({
+        "label": "EIN15 regional model output",
+        "description": "Archived NetCDF simulation files · selected import only",
+        "url": reverse("rcc_ein15_imports"),
+        "configured": ein15_config is not None,
+        "enabled": bool(ein15_config and ein15_config.enabled),
+        "interval_hours": ein15_config.interval_hours if ein15_config else None,
+        "selected_count": len(ein15_config.selected_files) if ein15_config else 0,
+        "imported_count": ein15_assets.count(),
+        "last_imported": ein15_assets.order_by("-synced_at").values_list("synced_at", flat=True).first(),
+        "last_run": ein15_config.runs.first() if ein15_config else None,
+        "is_file": True,
     })
     return TemplateResponse(
         request,
