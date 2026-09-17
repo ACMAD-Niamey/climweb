@@ -2,7 +2,9 @@ from urllib.parse import quote
 
 from django import forms
 from django.contrib import messages
-from django.shortcuts import redirect
+from django.core.paginator import Paginator
+from django.db import transaction
+from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils import timezone
@@ -18,7 +20,7 @@ from .arc2_importer import (
 )
 from . import cpc_importer
 from .models import (
-    RCCARC2ImportConfig, RCCCPCImportConfig, RCCDatasetAsset,
+    RCCARC2ImportConfig, RCCARC2ImportRun, RCCCPCImportConfig, RCCCPCImportRun, RCCDatasetAsset,
     RCCSeasonalMapAsset, RCCSeasonalMapImportConfig,
     RCCEIN15Asset, RCCEIN15ImportConfig,
 )
@@ -32,6 +34,7 @@ IMPORTERS = {
         "label": "ARC2",
         "title": "ARC2 daily station rainfall",
         "model": RCCARC2ImportConfig,
+        "run_model": RCCARC2ImportRun,
         "catalogue_url": CATALOGUE_URL,
         "discover_countries": discover_countries,
         "discover_stations": discover_stations,
@@ -40,11 +43,13 @@ IMPORTERS = {
         "create_run": create_rcc_arc2_run,
         "execute": execute_rcc_arc2_import,
         "route": "rcc_arc2_imports",
+        "log_route": "rcc_arc2_import_log",
     },
     "cpc-unified": {
         "label": "CPC-Unified",
         "title": "CPC-Unified estimated daily rainfall",
         "model": RCCCPCImportConfig,
+        "run_model": RCCCPCImportRun,
         "catalogue_url": cpc_importer.CATALOGUE_URL,
         "discover_countries": cpc_importer.discover_countries,
         "discover_stations": cpc_importer.discover_stations,
@@ -53,6 +58,7 @@ IMPORTERS = {
         "create_run": create_rcc_cpc_run,
         "execute": execute_rcc_cpc_import,
         "route": "rcc_cpc_imports",
+        "log_route": "rcc_cpc_import_log",
     },
 }
 
@@ -173,6 +179,54 @@ def rcc_cpc_imports_view(request):
     return _importer_view(request, "cpc-unified")
 
 
+@user_passes_test(lambda user: user.is_superuser or user.has_perm("wagtailadmin.access_admin"))
+def rcc_arc2_import_log_view(request, run_id):
+    return _import_log_view(request, "arc2", run_id)
+
+
+@user_passes_test(lambda user: user.is_superuser or user.has_perm("wagtailadmin.access_admin"))
+def rcc_cpc_import_log_view(request, run_id):
+    return _import_log_view(request, "cpc-unified", run_id)
+
+
+def _import_log_view(request, product, run_id):
+    importer = IMPORTERS[product]
+    run = get_object_or_404(importer["run_model"], pk=run_id)
+    level = request.GET.get("level", "")
+    if level not in {"info", "success", "warning", "error"}:
+        level = ""
+    has_logs = run.logs.exists()
+    source = request.GET.get("source", "")
+    if source not in {"events", "results"} or (source == "events" and not has_logs):
+        source = "events" if has_logs else "results"
+    if source == "events":
+        entries = run.logs.order_by("-id")
+        if level:
+            entries = entries.filter(level=level)
+    else:
+        entries = [
+            {
+                "created_at": None,
+                "level": "error" if item.get("status") == "failed" else "success",
+                "event": "station_failed" if item.get("status") == "failed" else "station_succeeded",
+                "station": item.get("station", ""),
+                "message": item.get("error", "") if item.get("status") == "failed" else "Imported before detailed logging was available.",
+            }
+            for item in reversed(run.results)
+            if not level or ("error" if item.get("status") == "failed" else "success") == level
+        ]
+    return TemplateResponse(request, "services/station_import_log.html", {
+        "importer": importer,
+        "run": run,
+        "page_obj": Paginator(entries, 100).get_page(request.GET.get("page")),
+        "level": level,
+        "source": source,
+        "has_logs": has_logs,
+        "succeeded": sum(item.get("status") == "succeeded" for item in run.results),
+        "failed": sum(item.get("status") == "failed" for item in run.results),
+    })
+
+
 def _importer_view(request, product):
     importer = dict(IMPORTERS[product])
     if product == "arc2":
@@ -210,6 +264,30 @@ def _importer_view(request, product):
     )
     if request.method == "POST":
         action = request.POST.get("action")
+        if action == "stop":
+            run_id = request.POST.get("run_id", "")
+            if not run_id.isdecimal():
+                messages.error(request, "Choose an active import run to stop.")
+                return _redirect(route=route)
+            with transaction.atomic():
+                run = importer["run_model"].objects.select_for_update().filter(
+                    pk=int(run_id), config=config,
+                ).first()
+                if not run or run.status not in ("queued", "running") or run.cancel_requested:
+                    messages.error(request, "This import is no longer active.")
+                elif run.status == "queued":
+                    run.cancel_requested = True
+                    run.status = "cancelled"
+                    run.finished_at = timezone.now()
+                    run.save(update_fields=["cancel_requested", "status", "finished_at"])
+                    run.logs.create(level="warning", event="stopped", message="Queued import stopped by an administrator.")
+                    messages.success(request, "Queued import stopped before it started.")
+                else:
+                    run.cancel_requested = True
+                    run.save(update_fields=["cancel_requested"])
+                    run.logs.create(level="warning", event="stop_requested", message="Administrator requested a stop after the current station.")
+                    messages.success(request, "Stop requested. The current station will finish before the import stops.")
+            return _redirect(route=route)
         if action == "discover_countries":
             try:
                 discovered = importer["discover_countries"](config.catalogue_url)
@@ -297,6 +375,7 @@ def _importer_view(request, product):
                     run.results = [{"status": "failed", "error": f"Could not queue import: {exc}"[:500]}]
                     run.finished_at = timezone.now()
                     run.save(update_fields=["status", "results", "finished_at"])
+                    run.logs.create(level="error", event="queue_failed", message=str(exc)[:1000])
                     messages.error(request, "The import could not be queued.")
                 else:
                     messages.success(request, f"{importer['label']} import queued.")
@@ -304,7 +383,11 @@ def _importer_view(request, product):
     run_rows = []
     for run in config.runs.select_related("requested_by")[:20]:
         failed = [item for item in run.results if item.get("status") == "failed"]
-        run_rows.append({"run": run, "completed": len(run.results), "failed": len(failed), "errors": failed[:10]})
+        run_rows.append({
+            "run": run, "completed": len(run.results), "failed": len(failed),
+            "errors": failed[:10],
+            "log_url": reverse(importer["log_route"], args=[run.pk]),
+        })
     return TemplateResponse(
         request,
         "services/arc2_imports.html",

@@ -81,14 +81,16 @@
 
   <section class="rcc-import-card">
     <h2>Recent runs</h2>
+    <p class="rcc-import-muted">Stopping a running import waits for the current station to finish. To prevent future scheduled runs, also turn off automatic imports above.</p>
     {% if run_rows %}
-      <div style="overflow-x:auto"><table class="rcc-import-table"><thead><tr><th>Started</th><th>Scope</th><th>Status</th><th>Progress</th><th>Errors</th></tr></thead><tbody>
+      <div style="overflow-x:auto"><table class="rcc-import-table"><thead><tr><th>Started</th><th>Scope</th><th>Status</th><th>Progress</th><th>Errors</th><th>Action</th></tr></thead><tbody>
         {% for row in run_rows %}<tr>
           <td>{{ row.run.created_at }}</td>
           <td>{% if row.run.import_all_stations %}All stations{% elif row.run.country %}{{ row.run.country }}{% else %}Selected stations{% endif %}</td>
-          <td>{{ row.run.get_status_display }}</td>
+          <td>{% if row.run.status == 'running' and row.run.cancel_requested %}Stopping after current station{% else %}{{ row.run.get_status_display }}{% endif %}</td>
           <td>{{ row.completed }} processed{% if row.run.stations %} / {{ row.run.stations|length }} discovered{% endif %}</td>
           <td>{% if row.failed %}<details><summary>{{ row.failed }} failed</summary><ul>{% for error in row.errors %}<li>{{ error.station }}: <span class="rcc-import-error">{{ error.error }}</span></li>{% endfor %}</ul>{% if row.failed > 10 %}<small>Showing first 10 failures.</small>{% endif %}</details>{% else %}—{% endif %}</td>
+          <td><a class="button" href="{{ row.log_url }}">View log</a> {% if row.run.status == 'queued' or row.run.status == 'running' and not row.run.cancel_requested %}<form method="post">{% csrf_token %}<input type="hidden" name="run_id" value="{{ row.run.pk }}"><button class="button" name="action" value="stop" aria-label="Stop {{ importer.label }} import run {{ row.run.pk }}">Stop import</button></form>{% endif %}</td>
         </tr>{% endfor %}
       </tbody></table></div>
     {% else %}<p class="rcc-import-muted">No imports yet.</p>{% endif %}

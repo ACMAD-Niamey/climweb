@@ -153,14 +153,17 @@ class RCCARC2ImportConfig(models.Model):
         return "ARC2 station importer"
 
 
+BASE_IMPORT_STATUS_CHOICES = [
+    ("queued", "Queued"),
+    ("running", "Running"),
+    ("succeeded", "Succeeded"),
+    ("partial", "Partially succeeded"),
+    ("failed", "Failed"),
+]
+
+
 class RCCARC2ImportRun(models.Model):
-    STATUS_CHOICES = [
-        ("queued", "Queued"),
-        ("running", "Running"),
-        ("succeeded", "Succeeded"),
-        ("partial", "Partially succeeded"),
-        ("failed", "Failed"),
-    ]
+    STATUS_CHOICES = BASE_IMPORT_STATUS_CHOICES + [("cancelled", "Stopped")]
     TRIGGER_CHOICES = [("manual", "Manual"), ("scheduled", "Scheduled")]
 
     config = models.ForeignKey(RCCARC2ImportConfig, on_delete=models.CASCADE, related_name="runs")
@@ -170,6 +173,7 @@ class RCCARC2ImportRun(models.Model):
     country = models.CharField(max_length=80, default="Niger")
     catalogue_url = models.URLField(max_length=700, blank=True)
     import_all_stations = models.BooleanField(default=False)
+    cancel_requested = models.BooleanField(default=False)
     results = models.JSONField(default=list)
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
@@ -215,6 +219,7 @@ class RCCCPCImportRun(models.Model):
     country = models.CharField(max_length=80, default="")
     catalogue_url = models.URLField(max_length=700, blank=True)
     import_all_stations = models.BooleanField(default=False)
+    cancel_requested = models.BooleanField(default=False)
     results = models.JSONField(default=list)
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
@@ -225,6 +230,33 @@ class RCCCPCImportRun(models.Model):
 
     class Meta:
         ordering = ("-created_at",)
+
+
+class RCCStationImportLogBase(models.Model):
+    LEVEL_CHOICES = [
+        ("info", "Info"),
+        ("success", "Success"),
+        ("warning", "Warning"),
+        ("error", "Error"),
+    ]
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    level = models.CharField(max_length=10, choices=LEVEL_CHOICES)
+    event = models.CharField(max_length=40)
+    station = models.CharField(max_length=150, blank=True)
+    message = models.TextField(blank=True)
+
+    class Meta:
+        abstract = True
+        ordering = ("id",)
+
+
+class RCCARC2ImportLog(RCCStationImportLogBase):
+    run = models.ForeignKey(RCCARC2ImportRun, on_delete=models.CASCADE, related_name="logs")
+
+
+class RCCCPCImportLog(RCCStationImportLogBase):
+    run = models.ForeignKey(RCCCPCImportRun, on_delete=models.CASCADE, related_name="logs")
 
 
 class RCCSeasonalMapImportConfig(models.Model):
@@ -249,7 +281,7 @@ class RCCSeasonalMapImportConfig(models.Model):
 
 
 class RCCSeasonalMapImportRun(models.Model):
-    STATUS_CHOICES = RCCARC2ImportRun.STATUS_CHOICES
+    STATUS_CHOICES = BASE_IMPORT_STATUS_CHOICES
     TRIGGER_CHOICES = RCCARC2ImportRun.TRIGGER_CHOICES
 
     config = models.ForeignKey(RCCSeasonalMapImportConfig, on_delete=models.CASCADE, related_name="runs")
@@ -304,7 +336,7 @@ class RCCEIN15ImportConfig(models.Model):
 
 
 class RCCEIN15ImportRun(models.Model):
-    STATUS_CHOICES = RCCARC2ImportRun.STATUS_CHOICES
+    STATUS_CHOICES = BASE_IMPORT_STATUS_CHOICES
     TRIGGER_CHOICES = RCCARC2ImportRun.TRIGGER_CHOICES
 
     config = models.ForeignKey(RCCEIN15ImportConfig, on_delete=models.CASCADE, related_name="runs")
