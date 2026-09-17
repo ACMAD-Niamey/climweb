@@ -25,8 +25,8 @@
     <p style="margin: 0 0 10px 0;">
         <strong>Validity:</strong>
         {% if valid_from %}{{ valid_from }}{% endif %}
-        {% if valid_from and valid_until %} to {% endif %}
-        {% if valid_until %}{{ valid_until }}{% endif %}
+        {% if valid_from and valid_until and valid_from != valid_until %} to {% endif %}
+        {% if valid_until and valid_from != valid_until %}{{ valid_until }}{% endif %}
     </p>
     {% endif %}
 </div>
