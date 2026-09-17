@@ -64,6 +64,8 @@
                                     <a href="{% url 'rcc_cpc_dataset_category' %}">{{ dataset.title }}</a>
                                 {% elif dataset.local_dataset_key == 'seasonal-maps' %}
                                     <a href="{% url 'rcc_seasonal_map_gallery' %}">{{ dataset.title }}</a>
+                                {% elif dataset.local_dataset_key == 'ein15' %}
+                                    <a href="{% url 'rcc_ein15_archive' %}">{{ dataset.title }}</a>
                                 {% elif dataset.local_dataset_key %}
                                     <a href="{% url 'rcc_dataset_detail' dataset.local_dataset_key %}">{{ dataset.title }}</a>
                                 {% elif dataset.access_url %}
@@ -90,6 +92,10 @@
                                 {% elif dataset.local_dataset_key == 'seasonal-maps' %}
                                     <a href="{% url 'rcc_seasonal_map_gallery' %}">
                                         {% translate "View maps" %} <span aria-hidden="true">&#8594;</span>
+                                    </a>
+                                {% elif dataset.local_dataset_key == 'ein15' %}
+                                    <a href="{% url 'rcc_ein15_archive' %}">
+                                        {% translate "View files" %} <span aria-hidden="true">&#8594;</span>
                                     </a>
                                 {% elif dataset.local_dataset_key %}
                                     <a href="{% url 'rcc_dataset_detail' dataset.local_dataset_key %}">

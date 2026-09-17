@@ -4,6 +4,7 @@ from wagtail.admin.menu import MenuItem
 
 from .arc2_admin import rcc_arc2_imports_view, rcc_cpc_imports_view, rcc_imports_view
 from .seasonal_map_admin import rcc_seasonal_map_imports_view, rcc_seasonal_map_preview
+from .ein15_admin import rcc_ein15_imports_view, rcc_ein15_download
 
 
 @hooks.register("register_admin_urls")
@@ -14,6 +15,8 @@ def rcc_import_urls():
         path("rcc-data-imports/cpc-unified/", rcc_cpc_imports_view, name="rcc_cpc_imports"),
         path("rcc-data-imports/seasonal-maps/", rcc_seasonal_map_imports_view, name="rcc_seasonal_map_imports"),
         path("rcc-data-imports/seasonal-maps/preview/<int:asset_id>/", rcc_seasonal_map_preview, name="rcc_seasonal_map_preview"),
+        path("rcc-data-imports/ein15/", rcc_ein15_imports_view, name="rcc_ein15_imports"),
+        path("rcc-data-imports/ein15/download/<int:asset_id>/", rcc_ein15_download, name="rcc_ein15_download"),
     ]
 
 

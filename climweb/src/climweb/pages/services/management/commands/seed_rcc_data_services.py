@@ -120,11 +120,12 @@ DATA_GROUPS = [
             "datasets": [
                 dataset(
                     "EIN15 regional model output",
-                    "Archived regional climate simulation output distributed through the ACMAD THREDDS server.",
+                    "Archived regional climate simulation files available from the local RCC collection.",
                     "archive",
                     url="http://sgbd.acmad.org:8080/thredds/catalog/ein15output/catalog.html",
+                    local_dataset_key="ein15",
                     coverage="Africa",
-                    formats="THREDDS catalogue",
+                    formats="NetCDF",
                     source="ACMAD SGBD",
                 ),
                 dataset(
@@ -221,11 +222,19 @@ class Command(BaseCommand):
                         "ARC2 estimated daily station rainfall": "arc2",
                         "CPC-Unified estimated daily rainfall": "cpc-unified",
                         "Seasonal rainfall climatology maps": "seasonal-maps",
+                        "EIN15 regional model output": "ein15",
                     }
                     local_key = local_keys.get(entry.get("title"))
                     if local_key and entry.get("local_dataset_key") != local_key:
                         entry["local_dataset_key"] = local_key
                         changed = True
+                    if entry.get("title") == "EIN15 regional model output":
+                        if entry.get("description") == "Archived regional climate simulation output distributed through the ACMAD THREDDS server.":
+                            entry["description"] = "Archived regional climate simulation files available from the local RCC collection."
+                            changed = True
+                        if entry.get("formats") == "THREDDS catalogue":
+                            entry["formats"] = "NetCDF"
+                            changed = True
                     datasets.append(entry)
                 group["datasets"] = datasets
                 groups.append(("group", group))

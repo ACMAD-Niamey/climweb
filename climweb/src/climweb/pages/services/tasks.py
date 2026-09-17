@@ -7,8 +7,10 @@ from django.utils import timezone
 from .models import (
     RCCARC2ImportConfig, RCCARC2ImportRun, RCCCPCImportConfig, RCCCPCImportRun,
     RCCSeasonalMapImportConfig, RCCSeasonalMapImportRun,
+    RCCEIN15ImportConfig, RCCEIN15ImportRun,
 )
 from .seasonal_map_importer import discover_maps, sync_map
+from .ein15_importer import sync_file as sync_ein15_file
 from .arc2_importer import (
     discover_countries,
     discover_stations,
@@ -208,3 +210,52 @@ def run_scheduled_rcc_seasonal_map_import():
     run = create_rcc_seasonal_map_run(config.pk, "scheduled")
     if run:
         execute_rcc_seasonal_map_import(run.pk)
+
+
+def create_rcc_ein15_run(config_id, trigger, requested_by=None):
+    with transaction.atomic():
+        config = RCCEIN15ImportConfig.objects.select_for_update().filter(pk=config_id).first()
+        if not config:
+            return None
+        discovered = {item["filename"] for item in config.discovered_files}
+        files = sorted(set(config.selected_files) & discovered)
+        if not files or config.runs.filter(status__in=["queued", "running"]).exists():
+            return None
+        return RCCEIN15ImportRun.objects.create(
+            config=config, trigger=trigger, requested_by=requested_by,
+            files=files, catalogue_url=config.catalogue_url,
+        )
+
+
+@shared_task
+def execute_rcc_ein15_import(run_id):
+    with transaction.atomic():
+        run = RCCEIN15ImportRun.objects.select_for_update().get(pk=run_id)
+        if run.status != "queued":
+            return
+        run.status = "running"
+        run.started_at = timezone.now()
+        run.save(update_fields=["status", "started_at"])
+    results = []
+    for filename in run.files:
+        try:
+            sync_ein15_file(run.catalogue_url, filename)
+            results.append({"file": filename, "status": "succeeded"})
+        except Exception as exc:
+            results.append({"file": str(filename)[:100], "status": "failed", "error": str(exc)[:500]})
+        run.results = results
+        run.save(update_fields=["results"])
+    succeeded = sum(item["status"] == "succeeded" for item in results)
+    run.status = "succeeded" if succeeded == len(results) and succeeded else "partial" if succeeded else "failed"
+    run.finished_at = timezone.now()
+    run.save(update_fields=["status", "results", "finished_at"])
+
+
+@shared_task
+def run_scheduled_rcc_ein15_import():
+    config = RCCEIN15ImportConfig.objects.filter(singleton_key="ein15").first()
+    if not config or not config.enabled:
+        return
+    run = create_rcc_ein15_run(config.pk, "scheduled")
+    if run:
+        execute_rcc_ein15_import(run.pk)

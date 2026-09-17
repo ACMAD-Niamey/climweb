@@ -1,0 +1,87 @@
+{% extends "wagtailadmin/base.html" %}
+
+{% block titletag %}EIN15 — RCC Data Imports{% endblock %}
+
+{% block extra_css %}
+<style>
+  .rcc-ein15 { max-width: 1150px; padding: 2rem; }
+  .rcc-ein15__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+  .rcc-ein15__card { padding: 1.25rem; margin: 1rem 0; border: 1px solid var(--w-color-border-furniture); border-radius: .5rem; }
+  .rcc-ein15__card h2 { margin-top: 0; }
+  .rcc-ein15__muted { color: var(--w-color-text-meta); }
+  .rcc-ein15__field { margin: 1rem 0; }
+  .rcc-ein15__field label { display: block; font-weight: 700; margin-bottom: .4rem; }
+  .rcc-ein15__field input[type=url] { width: min(100%, 720px); }
+  .rcc-ein15__table-wrap { overflow-x: auto; }
+  .rcc-ein15__table { width: 100%; border-collapse: collapse; }
+  .rcc-ein15__table th, .rcc-ein15__table td { text-align: left; padding: .7rem; border-bottom: 1px solid var(--w-color-border-furniture); }
+  .rcc-ein15__select { max-height: 420px; overflow: auto; }
+  .rcc-ein15__select ul { list-style: none; padding: 0; }
+  .rcc-ein15__select li { padding: .25rem 0; }
+  .rcc-ein15__error { color: #b91c1c; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rcc-ein15">
+  <h1>EIN15 regional model output</h1>
+  <p><a href="{% url 'rcc_imports' %}">← All RCC importers</a></p>
+  <p class="rcc-ein15__muted">Mirror selected NetCDF files from the ACMAD THREDDS archive into RCC storage. The filenames indicate 1998 simulation dates; catalogue modification dates are not coverage dates. Some files exceed 2 GB. Automatic imports are off by default and there is no bulk-import switch.</p>
+
+  <section class="rcc-ein15__card">
+    <h2>Source and schedule</h2>
+    <form method="post">
+      {% csrf_token %}
+      <div class="rcc-ein15__field"><label for="{{ settings_form.catalogue_url.id_for_label }}">THREDDS root catalogue URL</label>{{ settings_form.catalogue_url }}{{ settings_form.catalogue_url.errors }}<p class="rcc-ein15__muted">The host and catalogue path are restricted. Changing the source clears discoveries and selections.</p></div>
+      <div class="rcc-ein15__grid">
+        <div class="rcc-ein15__field"><label for="{{ settings_form.interval_hours.id_for_label }}">Run every (hours)</label>{{ settings_form.interval_hours }}{{ settings_form.interval_hours.errors }}</div>
+        <div class="rcc-ein15__field"><label for="{{ settings_form.enabled.id_for_label }}">{{ settings_form.enabled }} Enable automatic imports</label>{{ settings_form.enabled.errors }}</div>
+      </div>
+      <button class="button button-primary" name="action" value="save_settings">Save settings</button>
+    </form>
+  </section>
+
+  <div class="rcc-ein15__grid">
+    <section class="rcc-ein15__card">
+      <h2>Catalogue discovery</h2>
+      <p>{{ config.discovered_files|length }} files found · {{ config.selected_files|length }} selected</p>
+      {% if config.discovered_at %}<p class="rcc-ein15__muted">Last checked {{ config.discovered_at }}</p>{% endif %}
+      {% if config.discovery_error %}<p class="rcc-ein15__error">{{ config.discovery_error }}</p>{% endif %}
+      <form method="post">{% csrf_token %}<button class="button" name="action" value="discover">Refresh files</button></form>
+    </section>
+    <section class="rcc-ein15__card">
+      <h2>Run now</h2>
+      <p>Queue only the saved selection. Files are streamed and individually capped at 3 GiB; only one run can be active at a time.</p>
+      <form method="post">{% csrf_token %}<button class="button button-primary" name="action" value="run" {% if not config.selected_files %}disabled{% endif %}>Run now</button></form>
+    </section>
+  </div>
+
+  <details class="rcc-ein15__card" {% if selection_form.errors %}open{% endif %}>
+    <summary><strong>Select NetCDF files</strong></summary>
+    {% if config.discovered_files %}
+      <form method="post" class="rcc-ein15__field">
+        {% csrf_token %}{{ selection_form.files.errors }}
+        <div class="rcc-ein15__select">{{ selection_form.files }}</div>
+        <button class="button" name="action" value="save_files">Save file selection</button>
+      </form>
+      <div class="rcc-ein15__table-wrap"><table class="rcc-ein15__table"><thead><tr><th>File</th><th>Catalogue size</th><th>Last modified</th></tr></thead><tbody>
+        {% for file in config.discovered_files %}<tr><td>{{ file.filename }}</td><td>{{ file.size|default:"—" }}</td><td>{{ file.modified|default:"—" }}</td></tr>{% endfor %}
+      </tbody></table></div>
+    {% else %}<p class="rcc-ein15__muted">Refresh the catalogue first to select files.</p>{% endif %}
+  </details>
+
+  <section class="rcc-ein15__card">
+    <h2>Hosted files</h2>
+    {% if assets %}<div class="rcc-ein15__table-wrap"><table class="rcc-ein15__table"><thead><tr><th>File</th><th>Size</th><th>Last synchronized</th><th>Download</th></tr></thead><tbody>
+      {% for asset in assets %}<tr><td>{{ asset.filename }}</td><td>{{ asset.size_bytes|filesizeformat }}</td><td>{{ asset.synced_at|date:"Y-m-d H:i" }}</td><td><a href="{% url 'rcc_ein15_download' asset.pk %}">Download NetCDF</a></td></tr>{% endfor %}
+    </tbody></table></div>{% else %}<p class="rcc-ein15__muted">No EIN15 files imported yet.</p>{% endif %}
+  </section>
+
+  <section class="rcc-ein15__card">
+    <h2>Recent runs</h2>
+    {% if run_rows %}<div class="rcc-ein15__table-wrap"><table class="rcc-ein15__table"><thead><tr><th>Started</th><th>Status</th><th>Progress</th><th>Errors</th></tr></thead><tbody>
+      {% for row in run_rows %}<tr><td>{{ row.run.created_at }}</td><td>{{ row.run.get_status_display }}</td><td>{{ row.completed }} / {{ row.run.files|length }} files</td><td>{% if row.failed_count %}<details><summary>{{ row.failed_count }} failed</summary><ul>{% for error in row.failed %}<li>{{ error.file }}: <span class="rcc-ein15__error">{{ error.error }}</span></li>{% endfor %}</ul></details>{% else %}—{% endif %}</td></tr>{% endfor %}
+    </tbody></table></div>{% else %}<p class="rcc-ein15__muted">No imports yet.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,6 +1,7 @@
 import csv
 import io
 from collections import deque
+from datetime import datetime
 
 from django.core.files.storage import storages
 from django.db.models import Count, Max, Min
@@ -9,7 +10,7 @@ from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils.text import slugify
 
-from .models import RCCDataServicesPage, RCCDatasetAsset, RCCSeasonalMapAsset
+from .models import RCCDataServicesPage, RCCDatasetAsset, RCCSeasonalMapAsset, RCCEIN15Asset
 from .seasonal_map_importer import SEASONS
 
 
@@ -19,6 +20,7 @@ MAP_VARIANTS = (
     ("20mm", "Days above 20 mm"),
     ("50mm", "Days above 50 mm"),
 )
+EIN15_FAMILIES = ("ATM", "RAD", "SAV", "SRF", "STS")
 
 
 def _station_assets(product="arc2"):
@@ -152,6 +154,53 @@ def rcc_seasonal_map_file(request, asset_id):
         as_attachment=download,
         filename=asset.filename if download else None,
         content_type="image/png",
+    )
+    response["Content-Length"] = asset.size_bytes
+    response["X-Checksum-SHA256"] = asset.checksum_sha256
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+def rcc_ein15_archive(request):
+    family = request.GET.get("type", "")
+    if family not in EIN15_FAMILIES:
+        family = ""
+    assets = RCCEIN15Asset.objects.all()
+    total_files = assets.count()
+    if family:
+        assets = assets.filter(filename__startswith=f"WAfr50_{family}.")
+    cards = []
+    for asset in assets:
+        parts = asset.filename.split(".")
+        stamp = parts[1] if len(parts) > 1 else ""
+        try:
+            timestamp = datetime.strptime(stamp, "%Y%m%d%H").strftime("%d %b %Y · %H:00")
+        except ValueError:
+            timestamp = stamp
+        cards.append({
+            "asset": asset,
+            "family": asset.filename.split("_", 1)[-1].split(".", 1)[0],
+            "timestamp": timestamp,
+        })
+    return render(request, "services/rcc_ein15_archive.html", {
+        "cards": cards,
+        "total_files": total_files,
+        "families": EIN15_FAMILIES,
+        "selected_family": family,
+        "data_services_page": RCCDataServicesPage.objects.live().first(),
+    })
+
+
+def rcc_ein15_file(request, asset_id):
+    asset = get_object_or_404(RCCEIN15Asset, pk=asset_id)
+    storage = storages["rcc_data"]
+    if not storage.exists(asset.object_name):
+        raise Http404("This EIN15 file is not available.")
+    response = FileResponse(
+        storage.open(asset.object_name, "rb"),
+        as_attachment=True,
+        filename=asset.filename,
+        content_type="application/x-netcdf",
     )
     response["Content-Length"] = asset.size_bytes
     response["X-Checksum-SHA256"] = asset.checksum_sha256
