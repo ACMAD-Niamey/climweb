@@ -1,9 +1,11 @@
 from datetime import date
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.test import SimpleTestCase, TestCase, override_settings
 
 from climweb.pages.products.management.commands.import_acmad_itd_itcz import (
+    Command,
     MAX_FILE_SIZE,
     operational_url,
     parse_csag_dates,
@@ -47,6 +49,7 @@ class TestItdItczSources(SimpleTestCase):
             ],
         )
         self.assertTrue(assets[0]["is_current"])
+        self.assertTrue(all(asset["valid_until"] == asset["date"] for asset in assets))
         self.assertIn("acmad_version=", assets[0]["provenance_url"])
         self.assertFalse(assets[1]["is_current"])
         self.assertEqual(MAX_FILE_SIZE, 20 * 1024 * 1024)
@@ -62,6 +65,20 @@ class TestItdItczSources(SimpleTestCase):
         self.assertEqual(
             parse_csag_dates(html),
             {date(2022, 3, 28), date(2022, 4, 4)},
+        )
+
+    def test_csag_assets_are_valid_on_the_issue_date_only(self):
+        command = Command()
+        with patch.object(
+            command,
+            "_get",
+            return_value=SimpleNamespace(text='<a href="20220328/">20220328</a>'),
+        ):
+            assets = command._discover_csag_assets("https://example.com/archive/")
+
+        self.assertEqual(len(assets), 2)
+        self.assertTrue(
+            all(asset["valid_until"] == date(2022, 3, 28) for asset in assets)
         )
 
     def test_acmad_https_urls_use_operational_thredds_port(self):

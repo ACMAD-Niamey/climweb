@@ -31,8 +31,12 @@ def _station_assets(product="arc2"):
 
 
 def rcc_dataset_category(request, product="arc2"):
+    search_query = (request.GET.get("q") or "").strip()[:100]
+    assets = _station_assets(product)
+    if search_query:
+        assets = assets.filter(country__icontains=search_query)
     countries = list(
-        _station_assets(product).values("country").annotate(
+        assets.values("country").annotate(
             station_count=Count("id"),
             coverage_start=Min("coverage_start"),
             coverage_end=Max("coverage_end"),
@@ -45,6 +49,7 @@ def rcc_dataset_category(request, product="arc2"):
         "services/rcc_dataset_category.html",
         {
             "countries": countries,
+            "search_query": search_query,
             "product_title": "ARC2 daily station rainfall" if product == "arc2" else "CPC-Unified estimated daily rainfall",
             "product_label": "ARC2" if product == "arc2" else "CPC-Unified",
             "country_url_name": "rcc_dataset_country" if product == "arc2" else "rcc_cpc_dataset_country",
@@ -54,18 +59,23 @@ def rcc_dataset_category(request, product="arc2"):
 
 
 def rcc_dataset_country(request, country, product="arc2"):
+    search_query = (request.GET.get("q") or "").strip()[:100]
     country_name = next(
         (name for name in _station_assets(product).values_list("country", flat=True).distinct() if slugify(name) == country),
         None,
     )
     if not country_name:
         raise Http404("This dataset country is not available.")
+    stations = _station_assets(product).filter(country=country_name)
+    if search_query:
+        stations = stations.filter(station__icontains=search_query)
     return render(
         request,
         "services/rcc_dataset_country.html",
         {
             "country": country_name,
-            "stations": _station_assets(product).filter(country=country_name).order_by("station"),
+            "stations": stations.order_by("station"),
+            "search_query": search_query,
             "product_label": "ARC2" if product == "arc2" else "CPC-Unified",
             "category_url_name": "rcc_dataset_category" if product == "arc2" else "rcc_cpc_dataset_category",
             "data_services_page": RCCDataServicesPage.objects.live().first(),

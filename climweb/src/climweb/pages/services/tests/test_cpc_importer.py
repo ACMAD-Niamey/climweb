@@ -89,8 +89,18 @@ class CPCImporterTests(TestCase):
                     self.assertTrue(asset.object_name.startswith("cpc-unified/niger/"))
                     category = self.client.get(reverse("rcc_cpc_dataset_category"))
                     self.assertContains(category, "Niger")
+                    self.assertContains(category, "Search countries")
+                    self.assertContains(
+                        self.client.get(reverse("rcc_cpc_dataset_category"), {"q": "ghana"}),
+                        "No countries match your search.",
+                    )
                     country = self.client.get(reverse("rcc_cpc_dataset_country", args=["niger"]))
                     self.assertContains(country, "NIAMEY-AERO")
+                    self.assertContains(country, "Search stations")
+                    self.assertContains(
+                        self.client.get(reverse("rcc_cpc_dataset_country", args=["niger"]), {"q": "zinder"}),
+                        "No stations match your search.",
+                    )
                     detail = self.client.get(reverse("rcc_dataset_detail", args=[asset.key]))
                     self.assertContains(detail, "CPC-Unified")
                 finally:

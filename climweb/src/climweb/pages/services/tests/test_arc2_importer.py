@@ -1,4 +1,4 @@
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -15,7 +15,10 @@ from climweb.pages.services.arc2_importer import (
     station_source_url,
     validate_catalogue_root,
 )
-from climweb.pages.services.models import RCCARC2ImportConfig, RCCARC2ImportRun
+from climweb.pages.services.models import (
+    RCCARC2ImportConfig, RCCARC2ImportLog, RCCARC2ImportRun,
+    RCCCPCImportConfig, RCCCPCImportRun,
+)
 from climweb.pages.services.tasks import execute_rcc_arc2_import, run_scheduled_rcc_arc2_import
 
 
@@ -137,6 +140,80 @@ class ImportDashboardTests(TestCase):
             "Ghana/TEMA", "Ghana/YENDI", "Niger/NIAMEY-AERO", "Niger/ZINDER",
         ])
 
+    def test_stop_queued_run_prevents_execution(self):
+        run = RCCARC2ImportRun.objects.create(
+            config=self.config, trigger="manual", catalogue_url=CATALOGUE_URL,
+            stations=["Niger/NIAMEY-AERO"],
+        )
+        self.assertContains(self.client.get(reverse("rcc_arc2_imports")), "Stop import")
+        response = self.client.post(reverse("rcc_arc2_imports"), {
+            "action": "stop", "run_id": str(run.pk),
+        })
+        self.assertEqual(response.status_code, 302)
+        run.refresh_from_db()
+        self.assertEqual(run.status, "cancelled")
+        self.assertTrue(run.cancel_requested)
+        self.assertIsNotNone(run.finished_at)
+        self.assertEqual(run.logs.get().event, "stopped")
+        with patch("climweb.pages.services.tasks.call_command") as call_command:
+            execute_rcc_arc2_import(run.pk)
+        call_command.assert_not_called()
+
+    def test_stop_running_run_is_scoped_to_importer(self):
+        run = RCCARC2ImportRun.objects.create(
+            config=self.config, trigger="manual", status="running",
+            catalogue_url=CATALOGUE_URL, stations=["Niger/NIAMEY-AERO"],
+        )
+        other_config = RCCCPCImportConfig.objects.create(singleton_key="cpc-unified")
+        other = RCCCPCImportRun.objects.create(
+            config=other_config, trigger="manual", status="running",
+        )
+        self.client.post(reverse("rcc_arc2_imports"), {"action": "stop", "run_id": str(run.pk)})
+        run.refresh_from_db()
+        other.refresh_from_db()
+        self.assertTrue(run.cancel_requested)
+        self.assertEqual(run.status, "running")
+        self.assertFalse(other.cancel_requested)
+        self.assertEqual(run.logs.get().event, "stop_requested")
+        self.assertContains(self.client.get(reverse("rcc_arc2_imports")), "Stopping after current station")
+
+    def test_run_log_shows_legacy_results_and_error_filter(self):
+        run = RCCARC2ImportRun.objects.create(
+            config=self.config, trigger="manual", status="partial",
+            catalogue_url=CATALOGUE_URL,
+            results=[
+                {"station": "Niger/NIAMEY-AERO", "status": "succeeded"},
+                {"station": "Ghana/YENDI", "status": "failed", "error": "Permission denied"},
+            ],
+        )
+        url = reverse("rcc_arc2_import_log", args=[run.pk])
+        response = self.client.get(url + "?level=error")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Permission denied")
+        self.assertNotContains(response, "Niger/NIAMEY-AERO")
+        self.assertContains(response, "predates detailed logging")
+        RCCARC2ImportLog.objects.create(run=run, level="warning", event="stop_requested", message="Stopping")
+        response = self.client.get(url + "?source=results&level=error")
+        self.assertContains(response, "Permission denied")
+        self.assertContains(response, "Saved station results")
+
+    def test_run_log_filters_and_paginates_structured_events(self):
+        run = RCCARC2ImportRun.objects.create(
+            config=self.config, trigger="manual", status="running",
+            catalogue_url=CATALOGUE_URL,
+        )
+        RCCARC2ImportLog.objects.bulk_create([
+            RCCARC2ImportLog(run=run, level="error", event="station_failed", station=f"Niger/STATION-{number}", message=f"Error {number}")
+            for number in range(101)
+        ])
+        url = reverse("rcc_arc2_import_log", args=[run.pk])
+        response = self.client.get(url + "?level=error")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Error 100")
+        self.assertContains(response, "Page 1 of 2")
+        response = self.client.get(url + "?level=error&page=2")
+        self.assertContains(response, "Error 0<")
+
 
 class ImportTaskTests(TestCase):
     def setUp(self):
@@ -159,6 +236,9 @@ class ImportTaskTests(TestCase):
         self.assertEqual(run.status, "partial")
         self.assertEqual([item["status"] for item in run.results], ["succeeded", "failed"])
         self.assertIsNotNone(run.finished_at)
+        self.assertEqual(list(run.logs.values_list("event", flat=True)), [
+            "started", "station_started", "station_succeeded", "station_started", "station_failed", "finished",
+        ])
 
     @patch("climweb.pages.services.tasks.call_command")
     def test_scheduled_run_uses_single_shared_source(self, call_command):
@@ -167,10 +247,12 @@ class ImportTaskTests(TestCase):
         call_command.assert_any_call(
             "sync_rcc_arc2_station", "NIAMEY-AERO", country="Niger",
             source_url=station_source_url(CATALOGUE_URL, "Niger", "NIAMEY-AERO"),
+            stdout=ANY, stderr=ANY,
         )
         call_command.assert_any_call(
             "sync_rcc_arc2_station", "YENDI", country="Ghana",
             source_url=station_source_url(CATALOGUE_URL, "Ghana", "YENDI"),
+            stdout=ANY, stderr=ANY,
         )
 
     @patch("climweb.pages.services.tasks.call_command")
@@ -190,3 +272,35 @@ class ImportTaskTests(TestCase):
     def test_legacy_country_schedule_does_not_start_a_global_run(self):
         run_scheduled_rcc_arc2_import(self.config.pk)
         self.assertFalse(RCCARC2ImportRun.objects.exists())
+
+    @patch("climweb.pages.services.tasks.call_command")
+    def test_stop_during_station_preserves_result_and_skips_remaining(self, call_command):
+        run = RCCARC2ImportRun.objects.create(
+            config=self.config, trigger="manual", catalogue_url=CATALOGUE_URL,
+            stations=["Niger/NIAMEY-AERO", "Ghana/YENDI"],
+        )
+        call_command.side_effect = lambda *args, **kwargs: RCCARC2ImportRun.objects.filter(
+            pk=run.pk,
+        ).update(cancel_requested=True)
+        execute_rcc_arc2_import(run.pk)
+        run.refresh_from_db()
+        self.assertEqual(run.status, "cancelled")
+        self.assertEqual(run.results, [{"station": "Niger/NIAMEY-AERO", "status": "succeeded"}])
+        self.assertEqual(call_command.call_count, 1)
+
+    @patch("climweb.pages.services.tasks.call_command")
+    @patch("climweb.pages.services.tasks.discover_stations", return_value=["YENDI", "TEMA"])
+    @patch("climweb.pages.services.tasks.discover_countries", return_value=["Ghana", "Niger"])
+    def test_stop_all_station_run_skips_later_stations_and_countries(self, countries, stations, call_command):
+        run = RCCARC2ImportRun.objects.create(
+            config=self.config, trigger="manual", catalogue_url=CATALOGUE_URL,
+            import_all_stations=True,
+        )
+        call_command.side_effect = lambda *args, **kwargs: RCCARC2ImportRun.objects.filter(
+            pk=run.pk,
+        ).update(cancel_requested=True)
+        execute_rcc_arc2_import(run.pk)
+        run.refresh_from_db()
+        self.assertEqual(run.status, "cancelled")
+        self.assertEqual(call_command.call_count, 1)
+        stations.assert_called_once_with("Ghana", CATALOGUE_URL)

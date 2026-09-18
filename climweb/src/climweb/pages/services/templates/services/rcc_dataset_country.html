@@ -3,7 +3,7 @@
 
 {% block extra_css %}
     {{ block.super }}
-    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_data_services.css' %}?v=20260915-3">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_data_services.css' %}?v=20260917-1">
 {% endblock %}
 {% block body_class %}rcc-data-services-page{% endblock %}
 
@@ -37,6 +37,15 @@
                 </div>
             </div>
         </div>
+        <form class="rcc-browser-search" method="get" role="search" aria-label="{% translate 'Search stations' %}">
+            <label for="rcc-station-search">{% translate "Search stations" %}</label>
+            <div class="rcc-browser-search__field">
+                <input id="rcc-station-search" type="search" name="q" value="{{ search_query }}" maxlength="100" placeholder="{% translate 'Enter a station name' %}">
+                <button type="submit">{% translate "Search" %}</button>
+                {% if search_query %}<a href="{{ request.path }}">{% translate "Clear" %}</a>{% endif %}
+            </div>
+        </form>
+        {% if search_query %}<p class="rcc-browser-results" role="status">{% blocktranslate count count=stations|length %}{{ count }} station matches “{{ search_query }}”.{% plural %}{{ count }} stations match “{{ search_query }}”.{% endblocktranslate %}</p>{% endif %}
         <div class="rcc-station-grid">
             {% for station in stations %}
                 <a class="rcc-station-card" href="{% url 'rcc_dataset_detail' station.key %}">
@@ -48,7 +57,7 @@
                         <div><dt>{% translate "Records" %}</dt><dd>{{ station.record_count }}</dd></div>
                     </dl>
                 </a>
-            {% empty %}<p>{% translate "No stations are available for this country yet." %}</p>{% endfor %}
+            {% empty %}<p>{% if search_query %}{% translate "No stations match your search." %}{% else %}{% translate "No stations are available for this country yet." %}{% endif %}</p>{% endfor %}
         </div>
     </div></section>
 </main>
