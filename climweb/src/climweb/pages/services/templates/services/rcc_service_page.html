@@ -85,7 +85,8 @@
                     data-project-slug="{{ multi_hazard_project_slug }}" data-country-bounds="{{ country_bounds }}"
                     data-language-code="{{ LANGUAGE_CODE }}" data-msg-latest="{% translate 'Latest' %}"
                     data-msg-no-data="{% translate 'No data available for this category' %}"
-                    data-msg-unavailable="{% translate 'Map data is temporarily unavailable' %}">
+                    data-msg-unavailable="{% translate 'Map data is temporarily unavailable' %}"
+                    data-default-tab="climate">
                     <div class="mhz-placeholder">{% translate "Loading map…" %}</div>
                 </div>
                 {% else %}

@@ -483,6 +483,7 @@
             msgLatest: mount.dataset.msgLatest || 'Latest',
             msgNoData: mount.dataset.msgNoData || 'No data available for this category',
             msgUnavailable: mount.dataset.msgUnavailable || 'Map data is temporarily unavailable',
+            defaultTab: mount.dataset.defaultTab || null,
         };
 
         if (!config.apiBaseUrl || !window.maplibregl) {
@@ -505,7 +506,11 @@
                 mount.innerHTML = '';
                 createMap(mount);
                 renderTabs(mount, tabs);
-                activateCategory(mount, tabs[0].key);
+                let defaultTabKey = tabs[0].key;
+                if (config.defaultTab && tabs.some((t) => t.key === config.defaultTab)) {
+                    defaultTabKey = config.defaultTab;
+                }
+                activateCategory(mount, defaultTabKey);
             })
             .catch((error) => {
                 console.warn('Multi-Hazard map unavailable', error);
