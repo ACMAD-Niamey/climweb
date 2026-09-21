@@ -41,14 +41,8 @@ jobs:
           GID=1000
           EOF
 
-      # Start only the web service and its declared database/Redis
-      # dependencies. The test suite does not need live Celery workers, and
-      # starting the entire profile would make Compose wait for Celery's
-      # `climweb_dev: service_healthy` dependency here. That moves web startup
-      # failures into this opaque build step before the diagnostic readiness
-      # step below can print the application logs.
-      - name: Build and start the Django test services
-        run: docker compose --profile dev up -d --build climweb_dev
+      - name: Build and start the dev stack
+        run: docker compose --profile dev up -d --build
 
       # Migrations run automatically on container startup (see
       # climweb/docker/docker-entrypoint.sh), so we just need to wait for
