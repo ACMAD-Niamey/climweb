@@ -773,6 +773,26 @@ class RCCDataServicesPage(AbstractBannerWithIntroPage):
         PageChooserPanel("data_request_page"),
     ]
 
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+
+        # Imported here to avoid coupling the services and products model modules
+        # while still resolving the current Wagtail URL for each local archive.
+        from climweb.pages.products.models import ProductPage
+
+        product_urls = {}
+        for key, slug in (
+            ("rdt_product_url", "thunderstorm-and-nowcasting"),
+            ("itd_product_url", "itd-and-itcz-monitoring"),
+        ):
+            product_page = ProductPage.objects.live().filter(slug=slug).first()
+            product_urls[key] = (
+                product_page.get_url(request=request) if product_page else ""
+            )
+
+        context.update(product_urls)
+        return context
+
     class Meta:
         verbose_name = _("RCC Data Services Page")
 

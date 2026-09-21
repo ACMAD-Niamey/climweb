@@ -7,6 +7,10 @@ from climweb.base.seo_utils import get_html_meta_tags
 from climweb.base.test_utils import test_page_meta_tags
 from climweb.pages.home.tests.factories import get_or_create_homepage
 from climweb.pages.organisation_pages.partners.tests.factories import PartnerFactory
+from climweb.pages.products.tests.factories import (
+    ProductIndexPageFactory,
+    ProductPageFactory,
+)
 from .factories import (
     RCCClimateProductsPageFactory,
     RCCDataServicesPageFactory,
@@ -192,6 +196,61 @@ class TestServicesPages(WagtailPageTestCase):
         self.assertNotContains(response, "Know before you open a dataset")
         self.assertNotContains(response, "One catalogue for regional climate data")
         self.assertNotContains(response, 'href="#observations"')
+
+    def test_rcc_data_services_links_rdt_and_itd_to_local_product_pages(self):
+        home_page = get_or_create_homepage()
+        product_index = ProductIndexPageFactory(parent=home_page)
+        rdt_page = ProductPageFactory(
+            parent=product_index,
+            title="Thunderstorm and Nowcasting",
+            slug="thunderstorm-and-nowcasting",
+        )
+        itd_page = ProductPageFactory(
+            parent=product_index,
+            title="ITD and ITCZ Monitoring",
+            slug="itd-and-itcz-monitoring",
+        )
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center local archives",
+            service__name="Regional Climate Center",
+        )
+        data_page = RCCDataServicesPageFactory(
+            parent=rcc_page,
+            data_groups=[
+                (
+                    "group",
+                    {
+                        "anchor": "tools-guidance",
+                        "title": "Operational tools and guidance",
+                        "summary": "Operational archives.",
+                        "icon": "cogs",
+                        "datasets": [
+                            {
+                                "title": "Rapidly Developing Thunderstorm data",
+                                "description": "RDT products.",
+                                "access_type": "archive",
+                                "local_dataset_key": "thunderstorm-nowcasting",
+                            },
+                            {
+                                "title": "Intertropical Discontinuity monitoring",
+                                "description": "ITD products.",
+                                "access_type": "archive",
+                                "local_dataset_key": "itd-itcz",
+                            },
+                        ],
+                    },
+                )
+            ],
+        )
+
+        response = self.client.get(data_page.get_url())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'href="{rdt_page.url}"')
+        self.assertContains(response, f'href="{itd_page.url}"')
+        self.assertNotContains(response, "sgbd.acmad.org")
+        self.assertNotContains(response, "thredds")
 
     def test_rcc_landing_page_links_to_data_services_catalogue(self):
         rcc_page = ServicePageFactory(

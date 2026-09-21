@@ -51,6 +51,26 @@ CLIMSOFT_RESOURCES_DATASET = dataset(
     source="ACMAD RCC",
 )
 
+RDT_DATASET = dataset(
+    "Rapidly Developing Thunderstorm data",
+    "Locally preserved RDT imagery and operational products for convective-storm monitoring.",
+    "archive",
+    local_dataset_key="thunderstorm-nowcasting",
+    coverage="Africa",
+    formats="Satellite imagery and product archive",
+    source="ACMAD RCC",
+)
+
+ITD_DATASET = dataset(
+    "Intertropical Discontinuity monitoring",
+    "Locally preserved ITD and ITCZ monitoring maps and operational products.",
+    "archive",
+    local_dataset_key="itd-itcz",
+    coverage="Africa",
+    formats="PDF and image archive",
+    source="ACMAD RCC",
+)
+
 
 DATA_GROUPS = [
     (
@@ -178,24 +198,8 @@ DATA_GROUPS = [
             "summary": "Monitoring interfaces, climate-data management guidance and technical manuals supporting operational use.",
             "icon": "cogs",
             "datasets": [
-                dataset(
-                    "Rapidly Developing Thunderstorm data",
-                    "Operational RDT files and imagery used for convective-storm monitoring.",
-                    "open",
-                    url="http://sgbd.acmad.org:8080/thredds/fileServer/RDT/index.html",
-                    coverage="Africa",
-                    formats="Operational file archive",
-                    source="ACMAD SGBD",
-                ),
-                dataset(
-                    "Intertropical Discontinuity monitoring",
-                    "Legacy ITD monitoring interface and supporting products.",
-                    "archive",
-                    url="http://sgbd.acmad.org:8080/thredds/fileServer/FIT/pmfit.htm",
-                    coverage="Africa",
-                    formats="HTML product archive",
-                    source="ACMAD SGBD",
-                ),
+                RDT_DATASET,
+                ITD_DATASET,
                 CLIMSOFT_RESOURCES_DATASET,
             ],
         },
@@ -236,6 +240,8 @@ class Command(BaseCommand):
                         "Climate indices and historical graphs": "climate-indices",
                         "EIN15 regional model output": "ein15",
                         "Climsoft resources and documentation": "climsoft-resources",
+                        "Rapidly Developing Thunderstorm data": "thunderstorm-nowcasting",
+                        "Intertropical Discontinuity monitoring": "itd-itcz",
                     }
                     local_key = local_keys.get(entry.get("title"))
                     if local_key and entry.get("local_dataset_key") != local_key:
@@ -248,6 +254,24 @@ class Command(BaseCommand):
                         if entry.get("formats") == "THREDDS catalogue":
                             entry["formats"] = "NetCDF"
                             changed = True
+                    local_product_datasets = {
+                        RDT_DATASET["title"]: RDT_DATASET,
+                        ITD_DATASET["title"]: ITD_DATASET,
+                    }
+                    replacement = local_product_datasets.get(entry.get("title"))
+                    if replacement:
+                        for field in (
+                            "description",
+                            "access_type",
+                            "access_url",
+                            "coverage",
+                            "formats",
+                            "source",
+                            "last_verified",
+                        ):
+                            if entry.get(field) != replacement[field]:
+                                entry[field] = replacement[field]
+                                changed = True
                     datasets.append(entry)
                 if group.get("anchor") == "gridded-data" and not any(
                     item.get("title") == CLIMATE_INDICES_DATASET["title"] for item in datasets

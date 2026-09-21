@@ -62,6 +62,10 @@
                                     <a href="{% url 'rcc_climsoft_resources' %}">{{ dataset.title }}</a>
                                 {% elif dataset.local_dataset_key == 'ein15' %}
                                     <a href="{% url 'rcc_ein15_archive' %}">{{ dataset.title }}</a>
+                                {% elif dataset.local_dataset_key == 'thunderstorm-nowcasting' %}
+                                    {% if rdt_product_url %}<a href="{{ rdt_product_url }}">{{ dataset.title }}</a>{% else %}{{ dataset.title }}{% endif %}
+                                {% elif dataset.local_dataset_key == 'itd-itcz' %}
+                                    {% if itd_product_url %}<a href="{{ itd_product_url }}">{{ dataset.title }}</a>{% else %}{{ dataset.title }}{% endif %}
                                 {% elif dataset.local_dataset_key %}
                                     <a href="{% url 'rcc_dataset_detail' dataset.local_dataset_key %}">{{ dataset.title }}</a>
                                 {% elif dataset.access_url %}
@@ -101,6 +105,18 @@
                                     <a href="{% url 'rcc_ein15_archive' %}">
                                         {% translate "View files" %} <span aria-hidden="true">&#8594;</span>
                                     </a>
+                                {% elif dataset.local_dataset_key == 'thunderstorm-nowcasting' %}
+                                    {% if rdt_product_url %}
+                                        <a href="{{ rdt_product_url }}">{% translate "View products" %} <span aria-hidden="true">&#8594;</span></a>
+                                    {% else %}
+                                        <span class="rcc-ds-card__pending">{% translate "Product archive pending" %}</span>
+                                    {% endif %}
+                                {% elif dataset.local_dataset_key == 'itd-itcz' %}
+                                    {% if itd_product_url %}
+                                        <a href="{{ itd_product_url }}">{% translate "View products" %} <span aria-hidden="true">&#8594;</span></a>
+                                    {% else %}
+                                        <span class="rcc-ds-card__pending">{% translate "Product archive pending" %}</span>
+                                    {% endif %}
                                 {% elif dataset.local_dataset_key %}
                                     <a href="{% url 'rcc_dataset_detail' dataset.local_dataset_key %}">
                                         {% translate "View dataset" %} <span aria-hidden="true">&#8594;</span>
