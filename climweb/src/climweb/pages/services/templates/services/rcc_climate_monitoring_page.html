@@ -157,6 +157,14 @@
                         <span class="rcc-monitoring-watch-card__status">{{ item.cadence }}</span>
                         <h3>{% if item.page %}<a href="{{ item.page|public_page_url }}">{{ item.title }}</a>{% else %}{{ item.title }}{% endif %}</h3>
                         <p>{{ item.summary }}</p>
+                        {% if item.key == "climate-watch" %}
+                            <ul class="rcc-monitoring-watch-card__topics" aria-label="{% translate 'Climate Watch coverage' %}">
+                                <li>{% translate "Significant rainfall anomalies" %}</li>
+                                <li>{% translate "Vegetation conditions" %}</li>
+                                <li>{% translate "Marine production conditions" %}</li>
+                                <li>{% translate "Climate extremes and impacts" %}</li>
+                            </ul>
+                        {% endif %}
                         <div class="rcc-monitoring-watch-card__footer">
                             {% if item.latest %}<span>{{ item.latest.date|date:"j M Y" }}</span>{% else %}<span>{% translate "Archive being prepared" %}</span>{% endif %}
                             {% if item.page %}<a href="{{ item.page|public_page_url }}">{% translate "View monitoring" %} <span aria-hidden="true">&#8594;</span></a>{% endif %}
@@ -202,12 +210,19 @@
             </header>
 
             <div class="rcc-monitoring-reference__grid">
-                <a class="rcc-monitoring-reference-card rcc-monitoring-reference-card--maps" href="{% url 'rcc_seasonal_map_gallery' %}">
+                <a class="rcc-monitoring-reference-card rcc-monitoring-reference-card--maps" href="{% url 'rcc_reference_climatology_countries' %}">
                     <span class="rcc-monitoring-reference-card__icon" aria-hidden="true">&#9678;</span>
+                    <span class="rcc-monitoring-reference-card__type">{% translate "Country and station archive" %}</span>
+                    <h3>{% translate "Precipitation and temperature reference climatologies" %}</h3>
+                    <p>{% translate "Compare monthly station normals across the available historical reference periods." %}</p>
+                    <strong>{% translate "Browse station climatologies" %} &#8594;</strong>
+                </a>
+                <a class="rcc-monitoring-reference-card" href="{% url 'rcc_seasonal_map_gallery' %}">
+                    <span class="rcc-monitoring-reference-card__icon" aria-hidden="true">&#9635;</span>
                     <span class="rcc-monitoring-reference-card__type">{% translate "Map gallery" %}</span>
                     <h3>{% translate "Seasonal rainfall climatology maps" %}</h3>
-                    <p>{% translate "Browse local rainfall climatology maps by season and map variant." %}</p>
-                    <strong>{% translate "Open climatologies" %} &#8594;</strong>
+                    <p>{% translate "Browse local Africa-wide rainfall climatology maps by season and map variant." %}</p>
+                    <strong>{% translate "Open map gallery" %} &#8594;</strong>
                 </a>
                 <a class="rcc-monitoring-reference-card" href="{% url 'rcc_dataset_category' %}">
                     <span class="rcc-monitoring-reference-card__icon" aria-hidden="true">&#9729;</span>
@@ -219,8 +234,8 @@
                 <a class="rcc-monitoring-reference-card" href="{% url 'rcc_cpc_dataset_category' %}">
                     <span class="rcc-monitoring-reference-card__icon" aria-hidden="true">&#9728;</span>
                     <span class="rcc-monitoring-reference-card__type">{% translate "Station archive" %}</span>
-                    <h3>{% translate "CPC temperature observations" %}</h3>
-                    <p>{% translate "Explore historical temperature records by country and station." %}</p>
+                    <h3>{% translate "CPC-Unified rainfall observations" %}</h3>
+                    <p>{% translate "Explore estimated daily rainfall records by country and station." %}</p>
                     <strong>{% translate "Browse CPC data" %} &#8594;</strong>
                 </a>
             </div>
@@ -260,9 +275,10 @@
             </header>
             <nav class="rcc-monitoring-tools__links" aria-label="{% translate 'Climate monitoring data tools' %}">
                 <a href="{% url 'rcc_dataset_category' %}"><span>ARC2</span><strong>{% translate "Rainfall station data" %}</strong><i aria-hidden="true">&#8599;</i></a>
-                <a href="{% url 'rcc_cpc_dataset_category' %}"><span>CPC</span><strong>{% translate "Temperature station data" %}</strong><i aria-hidden="true">&#8599;</i></a>
+                <a href="{% url 'rcc_cpc_dataset_category' %}"><span>CPC</span><strong>{% translate "Estimated rainfall station data" %}</strong><i aria-hidden="true">&#8599;</i></a>
                 <a href="{% url 'rcc_climate_index_gallery' %}"><span>{% translate "Indices" %}</span><strong>{% translate "Historical climate graphs" %}</strong><i aria-hidden="true">&#8599;</i></a>
-                <a href="{% url 'rcc_seasonal_map_gallery' %}"><span>{% translate "Maps" %}</span><strong>{% translate "Reference climatologies" %}</strong><i aria-hidden="true">&#8599;</i></a>
+                <a href="{% url 'rcc_reference_climatology_countries' %}"><span>{% translate "Normals" %}</span><strong>{% translate "Station reference climatologies" %}</strong><i aria-hidden="true">&#8599;</i></a>
+                <a href="{% url 'rcc_seasonal_map_gallery' %}"><span>{% translate "Maps" %}</span><strong>{% translate "Seasonal climatology maps" %}</strong><i aria-hidden="true">&#8599;</i></a>
             </nav>
         </div>
     </section>

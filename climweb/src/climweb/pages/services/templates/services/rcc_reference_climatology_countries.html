@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load static i18n nmhs_cms_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/services_rcc.css' %}">
+    <link rel="stylesheet" href="{% static 'css/rcc_reference_climatologies.css' %}?v=1">
+{% endblock %}
+{% block body_class %}rcc-service-page rcc-reference-page{% endblock %}
+
+{% block content %}
+<main>
+    <section class="page-hero rcc-simple-hero rcc-reference-hero">
+        <div class="page-hero-overlay"></div>
+        <div class="page-hero-body"><div class="container">
+            <span class="page-hero-badge">{% translate "RCC climate baseline" %}</span>
+            <h1 class="page-hero-title">{% translate "Station reference climatologies" %}</h1>
+            <p class="page-hero-subtitle">{% translate "Monthly precipitation, rainy-day and temperature normals from African observing stations." %}</p>
+        </div></div>
+    </section>
+
+    <section class="rcc-reference-browser"><div class="container">
+        <div class="rcc-reference-breadcrumbs">
+            {% if data_services_page %}<a href="{{ data_services_page|public_page_url }}">{% translate "Data Services" %}</a><span>/</span>{% endif %}
+            <strong>{% translate "Reference climatologies" %}</strong>
+        </div>
+        <header class="rcc-reference-heading">
+            <div><p class="rcc-eyebrow">{% translate "Step 1" %}</p><h2>{% translate "Choose a country" %}</h2></div>
+            <p>{% translate "Select a country to view stations with locally mirrored climatology records." %}</p>
+        </header>
+        <form class="rcc-reference-search" method="get" role="search">
+            <label for="country-search">{% translate "Search countries" %}</label>
+            <div><input id="country-search" type="search" name="q" value="{{ search_query }}" placeholder="{% translate 'Enter a country name' %}"><button>{% translate "Search" %}</button>{% if search_query %}<a href="{% url 'rcc_reference_climatology_countries' %}">{% translate "Clear" %}</a>{% endif %}</div>
+        </form>
+        <div class="rcc-reference-country-grid">
+            {% for item in countries %}
+                <a href="{% url 'rcc_reference_climatology_country' item.slug %}" class="rcc-reference-country-card">
+                    <span class="rcc-reference-country-card__mark">{{ item.country|slice:":2"|upper }}</span>
+                    <div><h3>{{ item.country }}</h3><p>{% blocktranslate count count=item.station_count %}{{ count }} station{% plural %}{{ count }} stations{% endblocktranslate %} · {% blocktranslate count count=item.period_count %}{{ count }} climatology{% plural %}{{ count }} climatologies{% endblocktranslate %}</p></div>
+                    <b aria-hidden="true">&#8594;</b>
+                </a>
+            {% empty %}
+                <div class="rcc-reference-empty"><h3>{% translate "Climatologies are being prepared" %}</h3><p>{% translate "Imported countries will appear here." %}</p></div>
+            {% endfor %}
+        </div>
+    </div></section>
+</main>
+{% endblock %}

@@ -338,6 +338,57 @@ class RCCClimateIndexAsset(models.Model):
     class Meta:
         ordering = ("legacy_index",)
 
+
+@register_snippet
+class RCCReferenceClimatology(models.Model):
+    """Monthly station normals mirrored from the legacy African RCC service."""
+
+    country_code = models.CharField(max_length=3)
+    country = models.CharField(max_length=100)
+    station_id = models.CharField(max_length=20)
+    station_name = models.CharField(max_length=120)
+    period_start = models.PositiveSmallIntegerField()
+    period_end = models.PositiveSmallIntegerField()
+    monthly_data = models.JSONField(default=list)
+    source_url = models.URLField(max_length=700)
+    synced_at = models.DateTimeField(auto_now=True)
+
+    panels = [
+        MultiFieldPanel(
+            [
+                FieldPanel("country_code"),
+                FieldPanel("country"),
+                FieldPanel("station_id"),
+                FieldPanel("station_name"),
+            ],
+            heading=_("Station"),
+        ),
+        MultiFieldPanel(
+            [FieldPanel("period_start"), FieldPanel("period_end")],
+            heading=_("Reference period"),
+        ),
+        FieldPanel("monthly_data"),
+        FieldPanel("source_url"),
+    ]
+
+    class Meta:
+        ordering = ("country", "station_name", "period_start")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("country_code", "station_id", "period_start", "period_end"),
+                name="unique_rcc_station_climatology_period",
+            )
+        ]
+        verbose_name = _("RCC reference climatology")
+        verbose_name_plural = _("RCC reference climatologies")
+
+    def __str__(self):
+        return f"{self.country} — {self.station_name} ({self.period_start}–{self.period_end})"
+
+    @property
+    def period_label(self):
+        return f"{self.period_start}–{self.period_end}"
+
     @property
     def is_available(self):
         return bool(self.object_name and self.synced_at)
@@ -924,8 +975,8 @@ class RCCClimateMonitoringPage(AbstractBannerWithIntroPage):
             "cadence": _("Climate advisory"),
             "title": _("Climate Watch Bulletin"),
             "summary": _(
-                "Regional watch information on evolving climate anomalies, "
-                "extremes and potential impacts."
+                "Climate information and advisories focused on significant "
+                "anomalies, extremes and their potential impacts."
             ),
         },
         {

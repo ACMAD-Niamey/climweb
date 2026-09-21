@@ -372,6 +372,10 @@ class TestServicesPages(WagtailPageTestCase):
         self.assertContains(response, "Monitoring data and analysis tools")
         self.assertContains(response, f'href="{reverse("rcc_climate_index_gallery")}"')
         self.assertContains(response, f'href="{reverse("rcc_seasonal_map_gallery")}"')
+        self.assertContains(
+            response,
+            f'href="{reverse("rcc_reference_climatology_countries")}"',
+        )
         self.assertContains(response, f'href="{reverse("rcc_dataset_category")}"')
         self.assertContains(response, f'href="{reverse("rcc_cpc_dataset_category")}"')
         self.assertContains(response, f'href="{monitoring_page.url}"')

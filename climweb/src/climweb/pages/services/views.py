@@ -16,6 +16,7 @@ from .models import (
     RCCDataServicesPage,
     RCCDatasetAsset,
     RCCEIN15Asset,
+    RCCReferenceClimatology,
     RCCSeasonalMapAsset,
 )
 from .seasonal_map_importer import SEASONS
@@ -212,6 +213,139 @@ def rcc_climate_index_file(request, asset_id):
     response["X-Checksum-SHA256"] = asset.checksum_sha256
     response["X-Content-Type-Options"] = "nosniff"
     return response
+
+
+def rcc_reference_climatology_countries(request):
+    search_query = (request.GET.get("q") or "").strip()[:100]
+    records = RCCReferenceClimatology.objects.all()
+    if search_query:
+        records = records.filter(country__icontains=search_query)
+    countries = list(
+        records.values("country_code", "country")
+        .annotate(
+            station_count=Count("station_id", distinct=True),
+            period_count=Count("id"),
+        )
+        .order_by("country")
+    )
+    for country in countries:
+        country["slug"] = slugify(country["country"])
+    return render(
+        request,
+        "services/rcc_reference_climatology_countries.html",
+        {
+            "countries": countries,
+            "search_query": search_query,
+            "data_services_page": RCCDataServicesPage.objects.live().first(),
+        },
+    )
+
+
+def _reference_country_name(country_slug):
+    return next(
+        (
+            name
+            for name in RCCReferenceClimatology.objects.values_list(
+                "country", flat=True
+            ).distinct()
+            if slugify(name) == country_slug
+        ),
+        None,
+    )
+
+
+def rcc_reference_climatology_country(request, country):
+    country_name = _reference_country_name(country)
+    if not country_name:
+        raise Http404("This reference-climatology country is not available.")
+    search_query = (request.GET.get("q") or "").strip()[:100]
+    records = RCCReferenceClimatology.objects.filter(country=country_name)
+    if search_query:
+        records = records.filter(station_name__icontains=search_query)
+    stations = list(
+        records.values("station_id", "station_name")
+        .annotate(
+            period_count=Count("id"),
+            first_period=Min("period_start"),
+            last_period=Max("period_end"),
+        )
+        .order_by("station_name")
+    )
+    return render(
+        request,
+        "services/rcc_reference_climatology_country.html",
+        {
+            "country": country_name,
+            "country_slug": country,
+            "stations": stations,
+            "search_query": search_query,
+            "data_services_page": RCCDataServicesPage.objects.live().first(),
+        },
+    )
+
+
+def rcc_reference_climatology_station(request, country, station_id):
+    country_name = _reference_country_name(country)
+    if not country_name:
+        raise Http404("This reference-climatology country is not available.")
+    records = list(
+        RCCReferenceClimatology.objects.filter(
+            country=country_name,
+            station_id=station_id,
+        ).order_by("period_start", "period_end")
+    )
+    if not records:
+        raise Http404("This station climatology is not available.")
+    period_order = {
+        (1981, 1990): 0,
+        (1991, 2000): 1,
+        (2001, 2010): 2,
+        (1981, 2010): 3,
+    }
+    records.sort(
+        key=lambda record: period_order.get(
+            (record.period_start, record.period_end),
+            99,
+        )
+    )
+    for record in records:
+        rows_by_month = {row["month"]: dict(row) for row in record.monthly_data}
+        precipitation_values = [
+            row.get("precipitation") or 0 for row in rows_by_month.values()
+        ]
+        precipitation_max = max(precipitation_values or [1]) or 1
+        chart_rows = []
+        for month in range(1, 13):
+            row = rows_by_month.get(
+                month,
+                {
+                    "month": month,
+                    "month_name": datetime(2000, month, 1).strftime("%B"),
+                    "precipitation": None,
+                    "rainy_days": None,
+                    "tmax": None,
+                    "tmean": None,
+                    "tmin": None,
+                },
+            )
+            row["precipitation_height"] = round(
+                ((row.get("precipitation") or 0) / precipitation_max) * 100,
+                1,
+            )
+            chart_rows.append(row)
+        record.chart_rows = chart_rows
+    return render(
+        request,
+        "services/rcc_reference_climatology_station.html",
+        {
+            "country": country_name,
+            "country_slug": country,
+            "station_name": records[0].station_name,
+            "station_id": station_id,
+            "records": records,
+            "data_services_page": RCCDataServicesPage.objects.live().first(),
+        },
+    )
 
 
 def rcc_climsoft_resources(request):
