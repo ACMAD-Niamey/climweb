@@ -494,6 +494,7 @@ class ServicePage(AbstractBannerWithIntroPage):
     subpage_types = [
         'flex_page.FlexPage',
         'services.OnTheJobTrainingPage',
+        'services.RCCClimateMonitoringPage',
         'services.RCCClimateProductsPage',
         'services.RCCDataServicesPage',
     ]
@@ -650,6 +651,11 @@ class ServicePage(AbstractBannerWithIntroPage):
     def climate_products_page(self):
         """Return the published RCC climate-products catalogue below this page."""
         return RCCClimateProductsPage.objects.live().child_of(self).first()
+
+    @cached_property
+    def climate_monitoring_page(self):
+        """Return the published RCC climate-monitoring function page."""
+        return RCCClimateMonitoringPage.objects.live().child_of(self).first()
     
     @cached_property
     def listing_image(self):
@@ -826,6 +832,192 @@ class RCCClimateProductsPage(AbstractBannerWithIntroPage):
 
     class Meta:
         verbose_name = _("RCC Climate Products Page")
+
+
+class RCCClimateMonitoringPage(AbstractBannerWithIntroPage):
+    template = "services/rcc_climate_monitoring_page.html"
+    parent_page_types = ["services.ServicePage"]
+    subpage_types = []
+    max_count_per_parent = 1
+    show_in_menus_default = True
+
+    diagnostic_product_definitions = (
+        {
+            "key": "annual",
+            "slugs": ("annual-state-of-the-climate-report",),
+            "cadence": _("Annual assessment"),
+            "title": _("Annual State of the Climate Report"),
+            "summary": _(
+                "Observed climate conditions, significant extremes, impacts "
+                "and long-term trends across Africa."
+            ),
+        },
+        {
+            "key": "monthly",
+            "slugs": ("monthly-climate-diagnostic-bulletin",),
+            "cadence": _("Monthly diagnostics"),
+            "title": _("Monthly Climate Diagnostic Bulletin"),
+            "summary": _(
+                "Rainfall totals, anomalies, percent of normal and rainy-day "
+                "diagnostics for the continent."
+            ),
+        },
+        {
+            "key": "dekadal",
+            "slugs": ("dekadal-weather-forecast", "dekadal-climate-bulletin"),
+            "cadence": _("10-day assessment"),
+            "title": _("Dekadal Climate Bulletin"),
+            "summary": _(
+                "Ten-day climate conditions and technical guidance supporting "
+                "rapid regional assessment."
+            ),
+        },
+    )
+
+    rainfall_product_definitions = (
+        {
+            "key": "daily-rainfall",
+            "slugs": ("daily-rainfall-monitoring",),
+            "cadence": _("Daily monitoring"),
+            "title": _("Daily Rainfall Monitoring"),
+            "summary": _(
+                "Observed rainfall totals and spatial patterns supporting "
+                "day-to-day monitoring across Africa."
+            ),
+        },
+        {
+            "key": "seasonal-onset",
+            "slugs": ("rainfall-and-seasonal-onset-monitoring",),
+            "cadence": _("Seasonal tracking"),
+            "title": _("Rainfall and Seasonal Onset Monitoring"),
+            "summary": _(
+                "Tracks rainfall progression and the onset of the growing "
+                "season for climate-sensitive planning."
+            ),
+        },
+        {
+            "key": "five-day-rainfall",
+            "slugs": ("five-day-rainfall-probability-forecast",),
+            "cadence": _("Five-day outlook"),
+            "title": _("5-Day Rainfall Probability Forecast"),
+            "summary": _(
+                "Short-range rainfall probabilities for anticipating wet and "
+                "dry conditions."
+            ),
+        },
+        {
+            "key": "rainfall-exceedance",
+            "slugs": ("seasonal-rainfall-probability-of-exceedance",),
+            "cadence": _("Seasonal outlook"),
+            "title": _("Seasonal Rainfall Probability of Exceedance"),
+            "summary": _(
+                "Probability guidance showing where seasonal rainfall may "
+                "exceed decision-relevant thresholds."
+            ),
+        },
+    )
+
+    watch_product_definitions = (
+        {
+            "key": "climate-watch",
+            "slugs": ("climate-watch-bulletin",),
+            "cadence": _("Climate advisory"),
+            "title": _("Climate Watch Bulletin"),
+            "summary": _(
+                "Regional watch information on evolving climate anomalies, "
+                "extremes and potential impacts."
+            ),
+        },
+        {
+            "key": "atmospheric-analysis",
+            "slugs": ("atmospheric-analysis",),
+            "cadence": _("Synoptic analysis"),
+            "title": _("Atmospheric Analysis"),
+            "summary": _(
+                "Analysis of large-scale circulation and atmospheric drivers "
+                "affecting African climate."
+            ),
+        },
+        {
+            "key": "itd-itcz",
+            "slugs": ("itd-and-itcz-monitoring",),
+            "cadence": _("Position monitoring"),
+            "title": _("ITD and ITCZ Monitoring"),
+            "summary": _(
+                "Operational monitoring of tropical convergence features that "
+                "shape West African rainfall."
+            ),
+        },
+    )
+
+    cryosphere_product_definitions = (
+        {
+            "key": "cryosphere",
+            "slugs": ("cryosphere-and-african-mountain-glaciers",),
+            "cadence": _("Specialized monitoring"),
+            "title": _("Cryosphere and African Mountain Glaciers"),
+            "summary": _(
+                "Evidence and assessments of glacier and cryosphere change in "
+                "Africa's mountain environments."
+            ),
+        },
+    )
+
+    def _resolve_products(self, definitions, pages_by_slug):
+        products = []
+        for definition in definitions:
+            page = next(
+                (
+                    pages_by_slug[slug]
+                    for slug in definition["slugs"]
+                    if slug in pages_by_slug
+                ),
+                None,
+            )
+            item = dict(definition)
+            item["page"] = page
+            item["latest"] = page.all_products.first() if page else None
+            products.append(item)
+        return products
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        product_groups = (
+            self.diagnostic_product_definitions,
+            self.rainfall_product_definitions,
+            self.watch_product_definitions,
+            self.cryosphere_product_definitions,
+        )
+        slugs = {
+            slug
+            for definitions in product_groups
+            for definition in definitions
+            for slug in definition["slugs"]
+        }
+        pages_by_slug = {
+            page.slug: page
+            for page in ProductPage.objects.live().filter(slug__in=slugs)
+        }
+        context["diagnostic_products"] = self._resolve_products(
+            self.diagnostic_product_definitions,
+            pages_by_slug,
+        )
+        context["rainfall_products"] = self._resolve_products(
+            self.rainfall_product_definitions,
+            pages_by_slug,
+        )
+        context["watch_products"] = self._resolve_products(
+            self.watch_product_definitions,
+            pages_by_slug,
+        )
+        context["cryosphere_product"] = self._resolve_products(
+            self.cryosphere_product_definitions,
+            pages_by_slug,
+        )[0]
+        return context
+
+    class Meta:
+        verbose_name = _("RCC Climate Monitoring Page")
 
 
 class OnTheJobTrainingPage(AbstractBannerWithIntroPage):

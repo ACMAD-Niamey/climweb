@@ -56,6 +56,7 @@ def rcc_navigation(context):
     home_url = public_page_url(rcc_page.get_url(request=request) or rcc_page.url)
     data_page = rcc_page.data_services_page
     products_page = rcc_page.climate_products_page
+    monitoring_page = rcc_page.climate_monitoring_page
     main_site = Site.objects.filter(is_default_site=True).first()
     return {
         "home_url": home_url,
@@ -69,6 +70,11 @@ def rcc_navigation(context):
             public_page_url(data_page.get_url(request=request))
             if data_page
             else f"{home_url}#rcc-data-services"
+        ),
+        "monitoring_url": (
+            public_page_url(monitoring_page.get_url(request=request))
+            if monitoring_page
+            else f"{home_url}#rcc-monitoring"
         ),
         "show_events": rcc_page.events.exists(),
     }
