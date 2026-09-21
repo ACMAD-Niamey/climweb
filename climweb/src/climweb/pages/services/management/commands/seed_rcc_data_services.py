@@ -41,6 +41,16 @@ CLIMATE_INDICES_DATASET = dataset(
     source="ACMAD RCC",
 )
 
+CLIMSOFT_RESOURCES_DATASET = dataset(
+    "Climsoft resources and documentation",
+    "Locally preserved manuals for Climsoft installation, administration, development, routine use, data entry and climate-index analysis.",
+    "archive",
+    local_dataset_key="climsoft-resources",
+    coverage="Technical and operational guidance",
+    formats="PDF and PowerPoint",
+    source="ACMAD RCC",
+)
+
 
 DATA_GROUPS = [
     (
@@ -186,24 +196,7 @@ DATA_GROUPS = [
                     formats="HTML product archive",
                     source="ACMAD SGBD",
                 ),
-                dataset(
-                    "RClimDex user manual",
-                    "Technical guidance for calculating and interpreting climate-extreme indices.",
-                    "open",
-                    url="https://rcc.acmad.org/procedure/RClimDexUserManual.pdf",
-                    coverage="Technical guidance",
-                    formats="PDF",
-                    source="ACMAD RCC",
-                ),
-                dataset(
-                    "Climsoft administrator guide",
-                    "Administration guidance for the Climsoft climate-data management system.",
-                    "open",
-                    url="https://rcc.acmad.org/manuelclimsoft/Administrator%20Guide.pdf",
-                    coverage="Technical guidance",
-                    formats="PDF",
-                    source="ACMAD RCC",
-                ),
+                CLIMSOFT_RESOURCES_DATASET,
             ],
         },
     ),
@@ -230,12 +223,19 @@ class Command(BaseCommand):
                 datasets = []
                 for item in block.value["datasets"]:
                     entry = dict(item)
+                    if entry.get("title") == "RClimDex user manual":
+                        changed = True
+                        continue
+                    if entry.get("title") == "Climsoft administrator guide":
+                        entry = dict(CLIMSOFT_RESOURCES_DATASET)
+                        changed = True
                     local_keys = {
                         "ARC2 estimated daily station rainfall": "arc2",
                         "CPC-Unified estimated daily rainfall": "cpc-unified",
                         "Seasonal rainfall climatology maps": "seasonal-maps",
                         "Climate indices and historical graphs": "climate-indices",
                         "EIN15 regional model output": "ein15",
+                        "Climsoft resources and documentation": "climsoft-resources",
                     }
                     local_key = local_keys.get(entry.get("title"))
                     if local_key and entry.get("local_dataset_key") != local_key:
@@ -253,6 +253,11 @@ class Command(BaseCommand):
                     item.get("title") == CLIMATE_INDICES_DATASET["title"] for item in datasets
                 ):
                     datasets.append(dict(CLIMATE_INDICES_DATASET))
+                    changed = True
+                if group.get("anchor") == "tools-guidance" and not any(
+                    item.get("title") == CLIMSOFT_RESOURCES_DATASET["title"] for item in datasets
+                ):
+                    datasets.append(dict(CLIMSOFT_RESOURCES_DATASET))
                     changed = True
                 group["datasets"] = datasets
                 groups.append(("group", group))

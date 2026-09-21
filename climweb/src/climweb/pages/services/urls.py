@@ -4,6 +4,7 @@ from . import views
 
 
 urlpatterns = [
+    path("rcc/climsoft-resources/", views.rcc_climsoft_resources, name="rcc_climsoft_resources"),
     path("rcc/climate-indices/", views.rcc_climate_index_gallery, name="rcc_climate_index_gallery"),
     path("rcc/climate-indices/<int:asset_id>/image/", views.rcc_climate_index_file, name="rcc_climate_index_file"),
     path("rcc/ein15-model-output/", views.rcc_ein15_archive, name="rcc_ein15_archive"),

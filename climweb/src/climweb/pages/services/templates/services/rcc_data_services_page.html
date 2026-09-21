@@ -58,6 +58,8 @@
                                     <a href="{% url 'rcc_seasonal_map_gallery' %}">{{ dataset.title }}</a>
                                 {% elif dataset.local_dataset_key == 'climate-indices' %}
                                     <a href="{% url 'rcc_climate_index_gallery' %}">{{ dataset.title }}</a>
+                                {% elif dataset.local_dataset_key == 'climsoft-resources' %}
+                                    <a href="{% url 'rcc_climsoft_resources' %}">{{ dataset.title }}</a>
                                 {% elif dataset.local_dataset_key == 'ein15' %}
                                     <a href="{% url 'rcc_ein15_archive' %}">{{ dataset.title }}</a>
                                 {% elif dataset.local_dataset_key %}
@@ -90,6 +92,10 @@
                                 {% elif dataset.local_dataset_key == 'climate-indices' %}
                                     <a href="{% url 'rcc_climate_index_gallery' %}">
                                         {% translate "View graphs" %} <span aria-hidden="true">&#8594;</span>
+                                    </a>
+                                {% elif dataset.local_dataset_key == 'climsoft-resources' %}
+                                    <a href="{% url 'rcc_climsoft_resources' %}">
+                                        {% translate "Browse resources" %} <span aria-hidden="true">&#8594;</span>
                                     </a>
                                 {% elif dataset.local_dataset_key == 'ein15' %}
                                     <a href="{% url 'rcc_ein15_archive' %}">

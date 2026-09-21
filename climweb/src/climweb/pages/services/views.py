@@ -9,6 +9,7 @@ from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils.text import slugify
+from wagtail.documents import get_document_model
 
 from .models import (
     RCCClimateIndexAsset,
@@ -18,6 +19,7 @@ from .models import (
     RCCSeasonalMapAsset,
 )
 from .seasonal_map_importer import SEASONS
+from .climsoft_resources import CLIMSOFT_DOCUMENTS, CLIMSOFT_DOCUMENTS_BY_TITLE
 
 
 MAP_VARIANTS = (
@@ -210,6 +212,67 @@ def rcc_climate_index_file(request, asset_id):
     response["X-Checksum-SHA256"] = asset.checksum_sha256
     response["X-Content-Type-Options"] = "nosniff"
     return response
+
+
+def rcc_climsoft_resources(request):
+    query = (request.GET.get("q") or "").strip()[:100]
+    selected_category = (request.GET.get("category") or "").strip()[:80]
+    Document = get_document_model()
+    documents = list(Document.objects.filter(tags__name="Climsoft").distinct())
+    order = {item["title"]: position for position, item in enumerate(CLIMSOFT_DOCUMENTS)}
+    resources = []
+    for document in documents:
+        metadata = CLIMSOFT_DOCUMENTS_BY_TITLE.get(document.title)
+        if not metadata:
+            file_name = document.file.name.lower()
+            metadata = next(
+                (item for item in CLIMSOFT_DOCUMENTS if file_name.endswith(item["filename"].lower())),
+                {},
+            )
+        category = metadata.get("category", "Additional resource")
+        try:
+            size_bytes = document.file.size
+        except OSError:
+            size_bytes = document.file_size or 0
+        resource = {
+            "document": document,
+            "category": category,
+            "category_slug": slugify(category),
+            "description": metadata.get("description", "Additional Climsoft resource maintained by ACMAD."),
+            "format": document.file_extension.upper(),
+            "order": order.get(metadata.get("title"), len(order)),
+            "size_bytes": size_bytes,
+        }
+        resources.append(resource)
+    resources.sort(key=lambda item: (item["order"], item["document"].title.lower()))
+    category_options = []
+    for item in CLIMSOFT_DOCUMENTS:
+        option = (slugify(item["category"]), item["category"])
+        if option not in category_options:
+            category_options.append(option)
+    if any(item["category"] == "Additional resource" for item in resources):
+        category_options.append(("additional-resource", "Additional resource"))
+    valid_categories = {value for value, _ in category_options}
+    if selected_category not in valid_categories:
+        selected_category = ""
+    if query:
+        needle = query.casefold()
+        resources = [
+            item for item in resources
+            if needle in item["document"].title.casefold()
+            or needle in item["description"].casefold()
+            or needle in item["category"].casefold()
+        ]
+    if selected_category:
+        resources = [item for item in resources if item["category_slug"] == selected_category]
+    return render(request, "services/rcc_climsoft_resources.html", {
+        "resources": resources,
+        "total_resources": len(documents),
+        "query": query,
+        "selected_category": selected_category,
+        "category_options": category_options,
+        "data_services_page": RCCDataServicesPage.objects.live().first(),
+    })
 
 
 def rcc_ein15_archive(request):
