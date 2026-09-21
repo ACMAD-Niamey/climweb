@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
-{% load static i18n wagtailcore_tags wagtailimages_tags wagtailsettings_tags lazyimages_tags wagtailiconchooser_tags %}
-{% get_settings use_default_site=True %}
+{% load static i18n wagtailcore_tags wagtailimages_tags lazyimages_tags wagtailiconchooser_tags %}
 
 {% block extra_css %}
 {{ block.super }}
@@ -38,17 +37,6 @@
     </section>
     {% endif %}
 
-    <nav class="rcc-section-nav" aria-label="{% translate 'Regional Climate Center sections' %}">
-        <div class="container rcc-section-nav__inner">
-            <a href="#rcc-overview">{% translate "Overview" %}</a>
-            <a href="#rcc-products">{% translate "Climate products" %}</a>
-            <a href="#rcc-data-services">{% translate "Data services" %}</a>
-            <a href="#rcc-resources">{% translate "Forums and resources" %}</a>
-            <a href="#rcc-events">{% translate "Events" %}</a>
-            <a href="#rcc-updates">{% translate "Latest updates" %}</a>
-        </div>
-    </nav>
-
     <section id="rcc-overview" class="rcc-overview">
         <div class="container rcc-overview__grid">
             <div class="rcc-overview__content">
@@ -62,7 +50,7 @@
                     {% endif %}
                 </div>
             </div>
-            <div class="rcc-overview__map mhz-card">
+            <div id="rcc-monitoring" class="rcc-overview__map mhz-card">
                 <div class="mhz-card-header">
                     <div class="mhz-card-title">
                         <svg class="mhz-title-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"

@@ -317,7 +317,7 @@
 .rcc-ds-request { scroll-margin-top: 4rem; }
 
 .rcc-ds-group { padding: clamp(50px, 6vw, 72px) 0; }
-.rcc-ds-nav + .rcc-ds-group { padding-top: clamp(34px, 4vw, 52px); }
+.page-hero + .rcc-ds-group { padding-top: clamp(34px, 4vw, 52px); }
 .rcc-ds-group:nth-of-type(even) { background: #f7f9f8; }
 .rcc-ds-group__header { display: grid; margin-bottom: 34px; grid-template-columns: 70px minmax(0, 1fr); gap: 28px; }
 .rcc-ds-group__index { padding-top: 7px; color: var(--rcc-ds-primary); font-size: .76rem; font-weight: 800; letter-spacing: .12em; }

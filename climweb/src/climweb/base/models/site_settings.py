@@ -470,6 +470,14 @@ class NavigationSettings(BaseSiteSetting):
     main_menu = StreamField([
         ("navigation_item", NavigationItemBlock()),
     ], use_json_field=True, blank=True, null=True)
+    rcc_main_menu = StreamField(
+        [("navigation_item", NavigationItemBlock())],
+        use_json_field=True,
+        blank=True,
+        null=True,
+        verbose_name=_("RCC main menu"),
+        help_text=_("Links shown in the main header while browsing RCC pages."),
+    )
     header_utility_links = StreamField(
         [("utility_link", HeaderUtilityLinkBlock())],
         use_json_field=True,
@@ -484,6 +492,7 @@ class NavigationSettings(BaseSiteSetting):
     
     panels = [
         FieldPanel("main_menu"),
+        FieldPanel("rcc_main_menu"),
         FieldPanel("header_utility_links"),
         FieldPanel("footer_menu"),
     ]

@@ -1,5 +1,8 @@
+from django.urls import reverse
+from wagtail.models import Site
 from wagtail.test.utils import WagtailPageTestCase
 
+from climweb.base.models import NavigationSettings
 from climweb.base.seo_utils import get_html_meta_tags
 from climweb.base.test_utils import test_page_meta_tags
 from climweb.pages.home.tests.factories import get_or_create_homepage
@@ -71,8 +74,7 @@ class TestServicesPages(WagtailPageTestCase):
         self.assertContains(response, "Regional Climate Center products")
         self.assertContains(response, "Climate data services for Africa")
         self.assertContains(response, 'class="page-hero')
-        self.assertContains(response, 'class="rcc-section-nav"')
-        self.assertContains(response, 'href="#rcc-overview"')
+        self.assertNotContains(response, 'class="rcc-section-nav"')
         self.assertContains(response, 'id="multi-hazard-map"')
         self.assertContains(response, "Multi-Hazard Map")
         self.assertContains(response, "https://multi-hazard.acmad.org/geoportal")
@@ -81,6 +83,69 @@ class TestServicesPages(WagtailPageTestCase):
         self.assertContains(response, "Climate models and projections")
         self.assertContains(response, "Operational tools and guidance")
         self.assertContains(response, 'href="/on-the-job-training/"')
+
+    def test_rcc_pages_use_dedicated_main_menu(self):
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center navigation",
+            service__name="Regional Climate Center",
+        )
+        data_page = RCCDataServicesPageFactory(parent=rcc_page)
+        products_page = RCCClimateProductsPageFactory(parent=rcc_page)
+
+        for url in (rcc_page.get_url(), data_page.get_url(), products_page.get_url()):
+            response = self.client.get(url)
+
+            self.assertContains(response, "data-rcc-main-menu")
+            self.assertContains(response, f'href="{rcc_page.url}">Home</a>')
+            self.assertContains(response, f'href="{products_page.url}">Climate Products</a>')
+            self.assertContains(response, f'href="{data_page.url}">Data Services</a>')
+            self.assertContains(response, f'href="{rcc_page.url}#rcc-resources"')
+            self.assertContains(response, "Forums & Training")
+
+        dataset_response = self.client.get(reverse("rcc_dataset_category"))
+        self.assertContains(dataset_response, "data-rcc-main-menu")
+        self.assertContains(dataset_response, f'href="{rcc_page.url}">Home</a>')
+
+        main_site = Site.objects.get(is_default_site=True)
+        self.assertContains(
+            dataset_response,
+            f'data-main-site-logo href="{main_site.root_url}"',
+        )
+
+    def test_rcc_main_menu_can_be_configured_in_navigation_settings(self):
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center configurable navigation",
+            service__name="Regional Climate Center",
+        )
+        data_page = RCCDataServicesPageFactory(parent=rcc_page)
+        navigation = NavigationSettings.for_site(Site.objects.get(is_default_site=True))
+        navigation.rcc_main_menu = [
+            (
+                "navigation_item",
+                {
+                    "label": "RCC Data Catalogue",
+                    "page": data_page,
+                    "external_url": "",
+                    "include_subpages": False,
+                    "large_submenu": False,
+                    "sub_items": [],
+                },
+            )
+        ]
+        navigation.save()
+
+        response = self.client.get(rcc_page.get_url())
+
+        self.assertContains(response, "RCC Data Catalogue")
+        self.assertContains(response, f'href="{data_page.url}"')
+        self.assertNotContains(response, "Climate Monitoring")
+
+    def test_non_rcc_service_does_not_use_rcc_main_menu(self):
+        response = self.client.get(self.service1_page.get_url())
+
+        self.assertNotContains(response, "data-rcc-main-menu")
 
     def test_other_services_keep_default_template(self):
         response = self.client.get(self.service1_page.get_url())
@@ -122,12 +187,11 @@ class TestServicesPages(WagtailPageTestCase):
         self.assertContains(response, 'class="rcc-ds-card__icon"')
         self.assertContains(response, 'id="icon-location"')
         self.assertContains(response, 'class="page-hero rcc-ds-simple-hero"')
-        self.assertContains(response, 'class="rcc-ds-nav"')
-        self.assertContains(response, f'href="{rcc_page.url}">Home</a>')
+        self.assertNotContains(response, 'class="rcc-ds-nav"')
         self.assertNotContains(response, '>Access guide</a>')
         self.assertNotContains(response, "Know before you open a dataset")
         self.assertNotContains(response, "One catalogue for regional climate data")
-        self.assertContains(response, 'href="#observations"')
+        self.assertNotContains(response, 'href="#observations"')
 
     def test_rcc_landing_page_links_to_data_services_catalogue(self):
         rcc_page = ServicePageFactory(
@@ -158,7 +222,7 @@ class TestServicesPages(WagtailPageTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "services/rcc_climate_products_page.html")
         self.assertContains(response, "RCC climate product catalogue")
-        self.assertContains(response, f'href="{rcc_page.url}">Home</a>')
+        self.assertNotContains(response, 'class="rcc-section-nav"')
 
         landing_response = self.client.get(rcc_page.get_url())
         self.assertContains(landing_response, products_page.url)

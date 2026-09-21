@@ -1,0 +1,9 @@
+{% load i18n %}
+
+<a class="navbar-item nav-item-link" data-rcc-main-menu href="{{ rcc_nav.home_url }}">{% translate "Home" %}</a>
+<a class="navbar-item nav-item-link" href="{{ rcc_nav.products_url }}">{% translate "Climate Products" %}</a>
+<a class="navbar-item nav-item-link" href="{{ rcc_nav.data_url }}">{% translate "Data Services" %}</a>
+<a class="navbar-item nav-item-link" href="{{ rcc_nav.home_url }}#rcc-monitoring">{% translate "Climate Monitoring" %}</a>
+<a class="navbar-item nav-item-link" href="{{ rcc_nav.home_url }}#rcc-resources">{% translate "Forums & Training" %}</a>
+{% if rcc_nav.show_events %}<a class="navbar-item nav-item-link" href="{{ rcc_nav.home_url }}#rcc-events">{% translate "Events" %}</a>{% endif %}
+<a class="navbar-item nav-item-link" href="{{ rcc_nav.home_url }}#rcc-updates">{% translate "Latest Updates" %}</a>

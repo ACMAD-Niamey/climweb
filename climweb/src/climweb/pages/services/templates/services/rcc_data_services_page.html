@@ -25,14 +25,6 @@
         </section>
     {% endif %}
 
-    <nav class="rcc-ds-nav" aria-label="{% translate 'Page sections' %}">
-        <div class="container">
-            <a href="{{ page.get_parent.url }}">{% translate "Home" %}</a>
-            {% for block in page.data_groups %}<a href="#{{ block.value.anchor }}">{{ block.value.title }}</a>{% endfor %}
-            <a href="#request-data">{% translate "Request data" %}</a>
-        </div>
-    </nav>
-
     {% for block in page.data_groups %}
         <section id="{{ block.value.anchor }}" class="rcc-ds-group">
             <div class="container">
