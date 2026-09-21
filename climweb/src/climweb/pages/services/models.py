@@ -318,6 +318,22 @@ class RCCSeasonalMapAsset(models.Model):
         ordering = ("filename",)
 
 
+class RCCClimateIndexAsset(models.Model):
+    legacy_index = models.PositiveSmallIntegerField(unique=True)
+    title = models.CharField(max_length=240)
+    scope = models.CharField(max_length=30)
+    source_url = models.URLField(max_length=700)
+    object_name = models.CharField(max_length=500)
+    checksum_sha256 = models.CharField(max_length=64)
+    size_bytes = models.PositiveIntegerField()
+    width = models.PositiveIntegerField()
+    height = models.PositiveIntegerField()
+    synced_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ("legacy_index",)
+
+
 class RCCEIN15ImportConfig(models.Model):
     singleton_key = models.CharField(max_length=20, unique=True, default="ein15", editable=False)
     catalogue_url = models.URLField(

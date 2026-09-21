@@ -10,7 +10,13 @@ from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils.text import slugify
 
-from .models import RCCDataServicesPage, RCCDatasetAsset, RCCSeasonalMapAsset, RCCEIN15Asset
+from .models import (
+    RCCClimateIndexAsset,
+    RCCDataServicesPage,
+    RCCDatasetAsset,
+    RCCEIN15Asset,
+    RCCSeasonalMapAsset,
+)
 from .seasonal_map_importer import SEASONS
 
 
@@ -163,6 +169,41 @@ def rcc_seasonal_map_file(request, asset_id):
         storage.open(asset.object_name, "rb"),
         as_attachment=download,
         filename=asset.filename if download else None,
+        content_type="image/png",
+    )
+    response["Content-Length"] = asset.size_bytes
+    response["X-Checksum-SHA256"] = asset.checksum_sha256
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+def rcc_climate_index_gallery(request):
+    scope = request.GET.get("scope", "")
+    if scope not in {"central-africa", "africa"}:
+        scope = ""
+    assets = RCCClimateIndexAsset.objects.all()
+    total_charts = assets.count()
+    if scope:
+        assets = assets.filter(scope=scope)
+    return render(request, "services/rcc_climate_index_gallery.html", {
+        "assets": assets,
+        "total_charts": total_charts,
+        "selected_scope": scope,
+        "data_services_page": RCCDataServicesPage.objects.live().first(),
+    })
+
+
+def rcc_climate_index_file(request, asset_id):
+    asset = get_object_or_404(RCCClimateIndexAsset, pk=asset_id)
+    storage = storages["rcc_data"]
+    if not storage.exists(asset.object_name):
+        raise Http404("This climate-index chart is not available.")
+    download = request.GET.get("download") == "1"
+    filename = f"climate-index-{asset.legacy_index:02d}.png"
+    response = FileResponse(
+        storage.open(asset.object_name, "rb"),
+        as_attachment=download,
+        filename=filename if download else None,
         content_type="image/png",
     )
     response["Content-Length"] = asset.size_bytes

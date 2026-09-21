@@ -31,6 +31,17 @@ def dataset(
     }
 
 
+CLIMATE_INDICES_DATASET = dataset(
+    "Climate indices and historical graphs",
+    "Preserved rainfall and temperature anomaly, trend, scenario and ranking figures from the legacy RCC collection.",
+    "archive",
+    local_dataset_key="climate-indices",
+    coverage="Central Africa studies and Africa-wide analyses",
+    formats="PNG historical figures",
+    source="ACMAD RCC",
+)
+
+
 DATA_GROUPS = [
     (
         "group",
@@ -107,6 +118,7 @@ DATA_GROUPS = [
                     formats="PNG map archive",
                     source="ACMAD SGBD",
                 ),
+                CLIMATE_INDICES_DATASET,
             ],
         },
     ),
@@ -222,6 +234,7 @@ class Command(BaseCommand):
                         "ARC2 estimated daily station rainfall": "arc2",
                         "CPC-Unified estimated daily rainfall": "cpc-unified",
                         "Seasonal rainfall climatology maps": "seasonal-maps",
+                        "Climate indices and historical graphs": "climate-indices",
                         "EIN15 regional model output": "ein15",
                     }
                     local_key = local_keys.get(entry.get("title"))
@@ -236,6 +249,11 @@ class Command(BaseCommand):
                             entry["formats"] = "NetCDF"
                             changed = True
                     datasets.append(entry)
+                if group.get("anchor") == "gridded-data" and not any(
+                    item.get("title") == CLIMATE_INDICES_DATASET["title"] for item in datasets
+                ):
+                    datasets.append(dict(CLIMATE_INDICES_DATASET))
+                    changed = True
                 group["datasets"] = datasets
                 groups.append(("group", group))
             if changed:
