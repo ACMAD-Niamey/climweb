@@ -35,6 +35,7 @@
                     <option value="">{% translate "All scopes" %}</option>
                     <option value="central-africa" {% if selected_scope == "central-africa" %}selected{% endif %}>{% translate "Central Africa studies" %}</option>
                     <option value="africa" {% if selected_scope == "africa" %}selected{% endif %}>{% translate "Africa-wide analyses" %}</option>
+                    <option value="other" {% if selected_scope == "other" %}selected{% endif %}>{% translate "Other" %}</option>
                 </select></div>
                 <button type="submit">{% translate "Apply filter" %}</button>
                 {% if selected_scope %}<a href="{% url 'rcc_climate_index_gallery' %}">{% translate "Clear" %}</a>{% endif %}
@@ -49,7 +50,8 @@
                     </a>
                     <div class="rcc-seasonal-card__body">
                         <h3>{{ asset.title }}</h3>
-                        <p>{% if asset.scope == "central-africa" %}{% translate "Central Africa study" %}{% else %}{% translate "Africa-wide analysis" %}{% endif %}</p>
+                        <p>{% if asset.scope == "central-africa" %}{% translate "Central Africa study" %}{% elif asset.scope == "africa" %}{% translate "Africa-wide analysis" %}{% else %}{% translate "Other region" %}{% endif %}{% if asset.period %} · {{ asset.period }}{% endif %}</p>
+                        {% if asset.description %}<p>{{ asset.description }}</p>{% endif %}
                         <div class="rcc-seasonal-card__footer">
                             <a href="{% url 'rcc_climate_index_file' asset.pk %}" target="_blank" rel="noopener">{% translate "View full graph" %} <span aria-hidden="true">&#8599;</span></a>
                             <a href="{% url 'rcc_climate_index_file' asset.pk %}?download=1">{% translate "Download PNG" %} <span aria-hidden="true">&#8595;</span></a>

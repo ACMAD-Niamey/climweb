@@ -8,6 +8,7 @@ from .arc2_admin import (
 )
 from .seasonal_map_admin import rcc_seasonal_map_imports_view, rcc_seasonal_map_preview
 from .ein15_admin import rcc_ein15_imports_view, rcc_ein15_download
+from .climate_index_admin import rcc_climate_index_imports_view
 
 
 @hooks.register("register_admin_urls")
@@ -22,6 +23,7 @@ def rcc_import_urls():
         path("rcc-data-imports/seasonal-maps/preview/<int:asset_id>/", rcc_seasonal_map_preview, name="rcc_seasonal_map_preview"),
         path("rcc-data-imports/ein15/", rcc_ein15_imports_view, name="rcc_ein15_imports"),
         path("rcc-data-imports/ein15/download/<int:asset_id>/", rcc_ein15_download, name="rcc_ein15_download"),
+        path("rcc-data-imports/climate-indices/", rcc_climate_index_imports_view, name="rcc_climate_index_imports"),
     ]
 
 

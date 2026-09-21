@@ -322,6 +322,29 @@ class RCCClimateIndexAsset(models.Model):
     legacy_index = models.PositiveSmallIntegerField(unique=True)
     title = models.CharField(max_length=240)
     scope = models.CharField(max_length=30)
+    period = models.CharField(max_length=100, blank=True)
+    description = models.TextField(blank=True)
+    source_url = models.URLField(max_length=700)
+    active = models.BooleanField(default=True)
+    object_name = models.CharField(max_length=500, blank=True)
+    checksum_sha256 = models.CharField(max_length=64, blank=True)
+    size_bytes = models.PositiveIntegerField(default=0)
+    width = models.PositiveIntegerField(default=0)
+    height = models.PositiveIntegerField(default=0)
+    synced_at = models.DateTimeField(null=True, blank=True)
+    last_attempted_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ("legacy_index",)
+
+    @property
+    def is_available(self):
+        return bool(self.object_name and self.synced_at)
+
+
+class RCCClimateIndexVersion(models.Model):
+    asset = models.ForeignKey(RCCClimateIndexAsset, on_delete=models.CASCADE, related_name="versions")
     source_url = models.URLField(max_length=700)
     object_name = models.CharField(max_length=500)
     checksum_sha256 = models.CharField(max_length=64)
@@ -331,7 +354,39 @@ class RCCClimateIndexAsset(models.Model):
     synced_at = models.DateTimeField()
 
     class Meta:
-        ordering = ("legacy_index",)
+        ordering = ("-synced_at",)
+        constraints = [
+            models.UniqueConstraint(fields=("asset", "checksum_sha256"), name="unique_climate_index_version"),
+        ]
+
+
+class RCCClimateIndexImportConfig(models.Model):
+    singleton_key = models.CharField(max_length=30, unique=True, default="climate-indices", editable=False)
+    enabled = models.BooleanField(default=False)
+    interval_hours = models.PositiveSmallIntegerField(default=168)
+
+    def __str__(self):
+        return "Climate indices and historical graphs importer"
+
+
+class RCCClimateIndexImportRun(models.Model):
+    STATUS_CHOICES = BASE_IMPORT_STATUS_CHOICES
+    TRIGGER_CHOICES = RCCARC2ImportRun.TRIGGER_CHOICES
+
+    config = models.ForeignKey(RCCClimateIndexImportConfig, on_delete=models.CASCADE, related_name="runs")
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="queued")
+    trigger = models.CharField(max_length=12, choices=TRIGGER_CHOICES)
+    asset_ids = models.JSONField(default=list)
+    results = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    class Meta:
+        ordering = ("-created_at",)
 
 
 class RCCEIN15ImportConfig(models.Model):

@@ -179,9 +179,9 @@ def rcc_seasonal_map_file(request, asset_id):
 
 def rcc_climate_index_gallery(request):
     scope = request.GET.get("scope", "")
-    if scope not in {"central-africa", "africa"}:
+    if scope not in {"central-africa", "africa", "other"}:
         scope = ""
-    assets = RCCClimateIndexAsset.objects.all()
+    assets = RCCClimateIndexAsset.objects.filter(active=True, synced_at__isnull=False).exclude(object_name="")
     total_charts = assets.count()
     if scope:
         assets = assets.filter(scope=scope)
@@ -194,9 +194,9 @@ def rcc_climate_index_gallery(request):
 
 
 def rcc_climate_index_file(request, asset_id):
-    asset = get_object_or_404(RCCClimateIndexAsset, pk=asset_id)
+    asset = get_object_or_404(RCCClimateIndexAsset, pk=asset_id, synced_at__isnull=False)
     storage = storages["rcc_data"]
-    if not storage.exists(asset.object_name):
+    if not asset.object_name or not storage.exists(asset.object_name):
         raise Http404("This climate-index chart is not available.")
     download = request.GET.get("download") == "1"
     filename = f"climate-index-{asset.legacy_index:02d}.png"
