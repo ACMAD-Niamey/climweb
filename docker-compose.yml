@@ -131,16 +131,6 @@ services:
       - "5432"
     volumes:
       - ${CMS_DB_VOLUME:-./cms/db-data}:/var/lib/postgresql/data/
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}",
-        ]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 10s
 
   climweb_redis_dev:
     image: redis:alpine
@@ -148,18 +138,6 @@ services:
     command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
     restart: no
     profiles: ["dev"]
-    environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "redis-cli --no-auth-warning -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG",
-        ]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 5s
 
   climweb_dev:
     image: climweb_dev
@@ -178,11 +156,6 @@ services:
     environment:
       <<: *climweb-variables
       WAIT_HOSTS: climweb_db_dev:5432,climweb_redis_dev:6379
-    depends_on:
-      climweb_db_dev:
-        condition: service_healthy
-      climweb_redis_dev:
-        condition: service_healthy
     healthcheck:
       test:
         [
@@ -213,13 +186,6 @@ services:
     environment:
       <<: *climweb-variables
       WAIT_HOSTS: climweb_db_dev:5432,climweb_redis_dev:6379,climweb_dev:8000
-    depends_on:
-      climweb_db_dev:
-        condition: service_healthy
-      climweb_redis_dev:
-        condition: service_healthy
-      climweb_dev:
-        condition: service_healthy
     volumes:
       - ./climweb:/climweb/web
       - static:/climweb/web/src/climweb/static
@@ -238,13 +204,6 @@ services:
     environment:
       <<: *climweb-variables
       WAIT_HOSTS: climweb_db_dev:5432,climweb_redis_dev:6379,climweb_dev:8000
-    depends_on:
-      climweb_db_dev:
-        condition: service_healthy
-      climweb_redis_dev:
-        condition: service_healthy
-      climweb_dev:
-        condition: service_healthy
     volumes:
       - ./climweb:/climweb/web
       - static:/climweb/web/src/climweb/static

@@ -51,38 +51,30 @@ jobs:
       - name: Wait for climweb_dev to be ready
         run: |
           for i in $(seq 1 60); do
-            status="$(docker inspect --format '{{.State.Health.Status}}' climweb_dev 2>/dev/null || true)"
-
-            case "$status" in
-              healthy)
-                echo "climweb_dev is ready"
-                exit 0
-                ;;
-              unhealthy)
-                echo "climweb_dev became unhealthy"
-                docker compose --profile dev logs --no-color --timestamps climweb_dev
-                docker compose --profile dev ps -a
-                exit 1
-                ;;
-            esac
+            if docker compose --profile dev exec -T climweb_dev \
+                python -c 'import socket; s = socket.socket(); s.settimeout(2); s.connect(("127.0.0.1", 8000)); s.close()' \
+                >/dev/null 2>&1; then
+              echo "climweb_dev is ready"
+              exit 0
+            fi
 
             # Report startup failures immediately instead of waiting for the
             # full timeout and hiding the application error behind Celery's
             # dependency-wait messages.
-            if ! docker inspect --format '{{.State.Running}}' climweb_dev 2>/dev/null \
-                | grep -qx true; then
-              echo "climweb_dev stopped during startup"
-              docker compose --profile dev logs --no-color --timestamps climweb_dev
-              docker compose --profile dev ps -a
+            if ! docker compose --profile dev ps --status running --services \
+                | grep -qx 'climweb_dev'; then
+              echo "climweb_dev is not running"
+              docker compose --profile dev logs --no-color climweb_dev
+              docker compose --profile dev ps
               exit 1
             fi
 
             sleep 5
           done
 
-          echo "Timed out waiting for climweb_dev to become healthy"
-          docker compose --profile dev logs --no-color --timestamps climweb_dev
-          docker compose --profile dev ps -a
+          echo "Timed out waiting for climweb_dev to listen on port 8000"
+          docker compose --profile dev logs --no-color climweb_dev
+          docker compose --profile dev ps
           exit 1
 
       - name: Run tests
