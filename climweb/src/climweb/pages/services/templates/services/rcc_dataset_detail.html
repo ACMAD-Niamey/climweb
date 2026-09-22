@@ -19,13 +19,6 @@
         </div></div>
     </section>
 
-    <nav class="rcc-ds-nav" aria-label="{% translate 'Dataset navigation' %}"><div class="container">
-        {% if climate_monitoring_page %}<a href="{{ climate_monitoring_page|public_page_url }}">{% translate "Climate Monitoring" %}</a>{% endif %}
-        <a href="{% url category_url_name %}">{{ product_label }}</a>
-        <a href="{{ country_url }}">{{ asset.country }} {% translate "stations" %}</a>
-        <a href="#overview">{% translate "Overview" %}</a>
-        <a href="#preview">{% translate "Latest observations" %}</a>
-    </div></nav>
 
     <section id="overview" class="rcc-dataset-section"><div class="container">
         <div class="rcc-dataset-toolbar">
