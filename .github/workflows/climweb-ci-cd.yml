@@ -58,23 +58,34 @@ jobs:
               exit 0
             fi
 
-            # Report startup failures immediately instead of waiting for the
-            # full timeout and hiding the application error behind Celery's
-            # dependency-wait messages.
-            if ! docker compose --profile dev ps --status running --services \
-                | grep -qx 'climweb_dev'; then
-              echo "climweb_dev is not running"
-              docker compose --profile dev logs --no-color climweb_dev
-              docker compose --profile dev ps
-              exit 1
-            fi
+            # `docker compose ps --status running --services` can briefly
+            # return no match while Compose is updating container state. Read
+            # Docker's state directly and allow normal startup transitions.
+            container_state="$(
+              docker inspect --format '{{.State.Status}}' climweb_dev 2>/dev/null \
+                || true
+            )"
+
+            case "$container_state" in
+              running|created|restarting)
+                ;;
+              exited|dead)
+                echo "climweb_dev stopped during startup ($container_state)"
+                docker compose --profile dev logs --no-color --timestamps climweb_dev
+                docker compose --profile dev ps -a
+                exit 1
+                ;;
+              *)
+                echo "Waiting for climweb_dev container (state: ${container_state:-not-created})"
+                ;;
+            esac
 
             sleep 5
           done
 
           echo "Timed out waiting for climweb_dev to listen on port 8000"
-          docker compose --profile dev logs --no-color climweb_dev
-          docker compose --profile dev ps
+          docker compose --profile dev logs --no-color --timestamps climweb_dev
+          docker compose --profile dev ps -a
           exit 1
 
       - name: Run tests
