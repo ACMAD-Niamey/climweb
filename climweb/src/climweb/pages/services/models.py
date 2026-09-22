@@ -391,7 +391,7 @@ class RCCReferenceClimatology(models.Model):
 
     @property
     def is_available(self):
-        return bool(self.object_name and self.synced_at)
+        return bool(self.synced_at and self.monthly_data)
 
 
 class RCCClimateIndexVersion(models.Model):

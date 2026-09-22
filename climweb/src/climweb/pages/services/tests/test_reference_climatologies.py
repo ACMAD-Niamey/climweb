@@ -78,6 +78,13 @@ class ReferenceClimatologyTests(TestCase):
         self.assertEqual(first.pk, second.pk)
         self.assertEqual(RCCReferenceClimatology.objects.count(), 1)
 
+    def test_availability_uses_stored_monthly_data(self):
+        record = self.make_record()
+        self.assertTrue(record.is_available)
+
+        record.monthly_data = []
+        self.assertFalse(record.is_available)
+
     def test_country_station_and_period_pages(self):
         self.make_record()
         self.make_record(period_start=2001, period_end=2010)
