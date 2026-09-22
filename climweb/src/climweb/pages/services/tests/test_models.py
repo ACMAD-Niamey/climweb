@@ -366,6 +366,10 @@ class TestServicesPages(WagtailPageTestCase):
             response,
             "Climate watch, extremes and atmospheric conditions",
         )
+        self.assertContains(response, "Country monitoring")
+        self.assertContains(response, "Africa/africa_multimodele.html")
+        self.assertContains(response, "Niger/niger_multimodele.html")
+        self.assertContains(response, "Country monitoring forecast viewers")
         self.assertContains(response, "Climate indices and historical trends")
         self.assertContains(response, "Reference climatologies and historical observations")
         self.assertContains(response, "Cryosphere and African Mountain Glaciers")
@@ -379,8 +383,8 @@ class TestServicesPages(WagtailPageTestCase):
         self.assertContains(response, f'href="{reverse("rcc_dataset_category")}"')
         self.assertContains(response, f'href="{reverse("rcc_cpc_dataset_category")}"')
         self.assertContains(response, f'href="{monitoring_page.url}"')
-        self.assertNotContains(response, "sgbd.acmad.org")
-        self.assertNotContains(response, "thredds")
+        self.assertContains(response, "sgbd.acmad.org")
+        self.assertContains(response, "THREDDS")
 
     def test_climate_monitoring_seed_links_existing_custom_menu_item(self):
         rcc_page = ServicePageFactory(

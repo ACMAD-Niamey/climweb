@@ -1014,6 +1014,39 @@ class RCCClimateMonitoringPage(AbstractBannerWithIntroPage):
         },
     )
 
+    country_monitoring_links = (
+        {
+            "label": _("Africa"),
+            "scope": _("Continental view"),
+            "url": "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/WWFD/forecastinservice/Africa/africa_multimodele.html",
+        },
+        {
+            "label": _("Burundi"),
+            "scope": _("Country view"),
+            "url": "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/WWFD/forecastinservice/Burundi/burundi_multimodele.html",
+        },
+        {
+            "label": _("Cameroon"),
+            "scope": _("Country view"),
+            "url": "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/WWFD/forecastinservice/Cameroon/cameroon_multimodele.html",
+        },
+        {
+            "label": _("Guinea"),
+            "scope": _("Country view"),
+            "url": "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/WWFD/forecastinservice/Guinea/guinea_multimodele.html",
+        },
+        {
+            "label": _("Madagascar"),
+            "scope": _("Country view"),
+            "url": "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/WWFD/forecastinservice/Madagascar/madagascar_multimodele.html",
+        },
+        {
+            "label": _("Niger"),
+            "scope": _("Country view"),
+            "url": "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/WWFD/forecastinservice/Niger/niger_multimodele.html",
+        },
+    )
+
     def _resolve_products(self, definitions, pages_by_slug):
         products = []
         for definition in definitions:
@@ -1065,6 +1098,7 @@ class RCCClimateMonitoringPage(AbstractBannerWithIntroPage):
             self.cryosphere_product_definitions,
             pages_by_slug,
         )[0]
+        context["country_monitoring_links"] = self.country_monitoring_links
         return context
 
     class Meta:
