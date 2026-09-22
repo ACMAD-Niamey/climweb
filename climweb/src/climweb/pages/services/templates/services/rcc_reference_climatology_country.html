@@ -4,7 +4,7 @@
 {% block extra_css %}
     {{ block.super }}
     <link rel="stylesheet" href="{% static 'css/services_rcc.css' %}">
-    <link rel="stylesheet" href="{% static 'css/rcc_reference_climatologies.css' %}?v=1">
+    <link rel="stylesheet" href="{% static 'css/rcc_reference_climatologies.css' %}?v=7">
 {% endblock %}
 {% block body_class %}rcc-service-page rcc-reference-page{% endblock %}
 
@@ -20,6 +20,7 @@
     </section>
     <section class="rcc-reference-browser"><div class="container">
         <div class="rcc-reference-breadcrumbs">
+            {% if climate_monitoring_page %}<a href="{{ climate_monitoring_page|public_page_url }}">{% translate "Climate Monitoring" %}</a>{% else %}<span>{% translate "Climate Monitoring" %}</span>{% endif %}<span>/</span>
             <a href="{% url 'rcc_reference_climatology_countries' %}">{% translate "Countries" %}</a><span>/</span><strong>{{ country }}</strong>
         </div>
         <header class="rcc-reference-heading">

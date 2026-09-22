@@ -99,17 +99,21 @@ class ReferenceClimatologyTests(TestCase):
         self.assertEqual(countries.status_code, 200)
         self.assertContains(countries, "NIGER")
         self.assertContains(countries, "NIGERIA")
-        filtered = self.client.get(
-            reverse("rcc_reference_climatology_countries"), {"q": "Nigeria"}
-        )
-        self.assertContains(filtered, "NIGERIA")
-        self.assertNotContains(filtered, ">NIGER<")
+        self.assertContains(countries, "Climate Monitoring")
+        self.assertContains(countries, 'data-country-select')
+        self.assertContains(countries, 'data-station-select')
+        self.assertContains(countries, "NIAMEY-AERO")
+        self.assertContains(countries, "ABUJA")
+        self.assertEqual(len(countries.context["station_selector"]), 2)
+        self.assertNotContains(countries, "rcc-reference-country-card")
+        self.assertNotContains(countries, "Search countries")
 
         country = self.client.get(
             reverse("rcc_reference_climatology_country", args=["niger"])
         )
         self.assertContains(country, "NIAMEY-AERO")
         self.assertContains(country, "2 reference periods")
+        self.assertContains(country, "Climate Monitoring")
 
         station = self.client.get(
             reverse(
@@ -118,8 +122,24 @@ class ReferenceClimatologyTests(TestCase):
             )
         )
         self.assertEqual(station.status_code, 200)
+        self.assertContains(station, "Climate Monitoring")
         self.assertContains(station, "1991–2000")
         self.assertContains(station, "2001–2010")
-        self.assertContains(station, "Precipitation (mm)")
-        self.assertContains(station, "Mean max (°C)")
+        self.assertContains(station, 'name="period"')
+        self.assertContains(station, 'name="parameter"')
+        self.assertContains(station, "Precipitation")
+        self.assertContains(station, "Mean maximum temperature (°C)")
+        self.assertEqual(station.content.count(b'class="rcc-reference-chart"'), 1)
+        self.assertEqual(station.content.count(b'class="rcc-reference-table"'), 1)
+
+        selected = self.client.get(
+            reverse(
+                "rcc_reference_climatology_station",
+                args=["niger", "61052"],
+            ),
+            {"period": "2001-2010", "parameter": "tmax"},
+        )
+        self.assertContains(selected, "2001–2010")
+        self.assertContains(selected, "Mean maximum temperature")
+        self.assertContains(selected, "32.2")
         self.assertNotContains(station, 'href="https://rcc.acmad.org')
