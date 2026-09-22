@@ -41,57 +41,20 @@ jobs:
           GID=1000
           EOF
 
-      - name: Build and start the dev stack
-        run: docker compose --profile dev up -d --build
+      - name: Build the Django test image
+        run: docker compose --profile dev build climweb_dev
 
-      # Migrations run automatically on container startup (see
-      # climweb/docker/docker-entrypoint.sh), so we just need to wait for
-      # that startup sequence (db/redis wait + migrate + collectstatic) to
-      # finish and the dev server to actually be listening.
-      - name: Wait for climweb_dev to be ready
-        run: |
-          for i in $(seq 1 60); do
-            if docker compose --profile dev exec -T climweb_dev \
-                python -c 'import socket; s = socket.socket(); s.settimeout(2); s.connect(("127.0.0.1", 8000)); s.close()' \
-                >/dev/null 2>&1; then
-              echo "climweb_dev is ready"
-              exit 0
-            fi
-
-            # `docker compose ps --status running --services` can briefly
-            # return no match while Compose is updating container state. Read
-            # Docker's state directly and allow normal startup transitions.
-            container_state="$(
-              docker inspect --format '{{.State.Status}}' climweb_dev 2>/dev/null \
-                || true
-            )"
-
-            case "$container_state" in
-              running|created|restarting)
-                ;;
-              exited|dead)
-                echo "climweb_dev stopped during startup ($container_state)"
-                docker compose --profile dev logs --no-color --timestamps climweb_dev
-                docker compose --profile dev ps -a
-                exit 1
-                ;;
-              *)
-                echo "Waiting for climweb_dev container (state: ${container_state:-not-created})"
-                ;;
-            esac
-
-            sleep 5
-          done
-
-          echo "Timed out waiting for climweb_dev to listen on port 8000"
-          docker compose --profile dev logs --no-color --timestamps climweb_dev
-          docker compose --profile dev ps -a
-          exit 1
+      # The Django test runner creates and migrates its own test database. It
+      # needs PostgreSQL and Redis, but it does not need the long-lived web
+      # server startup path (content seeding, remote downloads, collectstatic,
+      # GeoManager initialization, and runserver).
+      - name: Start test dependencies
+        run: docker compose --profile dev up -d climweb_db_dev climweb_redis_dev
 
       - name: Run tests
-        run: >
-          docker compose --profile dev exec -T climweb_dev
-          python /climweb/web/src/climweb/manage.py test
+        run: |
+          docker compose --profile dev run --rm --no-deps climweb_dev \
+          manage test \
           --settings=climweb.config.settings.test --verbosity=2
 
       - name: Tear down
