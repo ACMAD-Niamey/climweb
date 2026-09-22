@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load static i18n nmhs_cms_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/services_rcc.css' %}">
+    <link rel="stylesheet" href="{% static 'css/rcc_reference_climatologies.css' %}?v=1">
+{% endblock %}
+{% block body_class %}rcc-service-page rcc-reference-page{% endblock %}
+
+{% block content %}
+<main>
+    <section class="page-hero rcc-simple-hero rcc-reference-hero rcc-reference-hero--compact">
+        <div class="page-hero-overlay"></div>
+        <div class="page-hero-body"><div class="container">
+            <span class="page-hero-badge">{{ country }} · {{ station_id }}</span>
+            <h1 class="page-hero-title">{{ station_name }}</h1>
+            <p class="page-hero-subtitle">{% translate "Monthly precipitation, rainy days and temperature reference values." %}</p>
+        </div></div>
+    </section>
+    <section class="rcc-reference-records"><div class="container">
+        <div class="rcc-reference-breadcrumbs">
+            <a href="{% url 'rcc_reference_climatology_countries' %}">{% translate "Countries" %}</a><span>/</span>
+            <a href="{% url 'rcc_reference_climatology_country' country_slug %}">{{ country }}</a><span>/</span><strong>{{ station_name }}</strong>
+        </div>
+        <header class="rcc-reference-heading">
+            <div><p class="rcc-eyebrow">{% translate "Climate normals" %}</p><h2>{% translate "Compare reference periods" %}</h2></div>
+            <p>{% translate "Bars show monthly mean precipitation. The table retains rainy-day and temperature values from the source; unavailable source months are marked with a dash." %}</p>
+        </header>
+
+        {% for record in records %}
+            <article class="rcc-reference-period">
+                <header><div><span>{% translate "Reference period" %}</span><h3>{{ record.period_label }}</h3></div><p>{{ station_name }} · {{ station_id }}</p></header>
+                <div class="rcc-reference-chart" aria-label="{% blocktranslate with period=record.period_label %}Monthly precipitation chart for {{ period }}{% endblocktranslate %}">
+                    {% for row in record.chart_rows %}
+                        <div class="rcc-reference-chart__column">
+                            <span class="rcc-reference-chart__value">{% if row.precipitation != None %}{{ row.precipitation|floatformat:1 }}{% else %}—{% endif %}</span>
+                            <div><i style="height: {{ row.precipitation_height }}%"></i></div>
+                            <b>{{ row.month_name|slice:":3" }}</b>
+                        </div>
+                    {% endfor %}
+                </div>
+                <div class="rcc-reference-table-wrap"><table class="rcc-reference-table">
+                    <thead><tr><th>{% translate "Month" %}</th><th>{% translate "Precipitation (mm)" %}</th><th>{% translate "Rainy days" %}</th><th>{% translate "Mean min (°C)" %}</th><th>{% translate "Mean (°C)" %}</th><th>{% translate "Mean max (°C)" %}</th></tr></thead>
+                    <tbody>{% for row in record.chart_rows %}<tr><th>{{ row.month_name }}</th><td>{{ row.precipitation|default_if_none:"—"|floatformat:1 }}</td><td>{{ row.rainy_days|default_if_none:"—"|floatformat:1 }}</td><td>{{ row.tmin|default_if_none:"—"|floatformat:1 }}</td><td>{{ row.tmean|default_if_none:"—"|floatformat:1 }}</td><td>{{ row.tmax|default_if_none:"—"|floatformat:1 }}</td></tr>{% endfor %}</tbody>
+                </table></div>
+            </article>
+        {% endfor %}
+    </div></section>
+</main>
+{% endblock %}

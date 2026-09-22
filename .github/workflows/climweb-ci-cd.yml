@@ -41,30 +41,20 @@ jobs:
           GID=1000
           EOF
 
-      - name: Build and start the dev stack
-        run: docker compose --profile dev up -d --build
+      - name: Build the Django test image
+        run: docker compose --profile dev build climweb_dev
 
-      # Migrations run automatically on container startup (see
-      # climweb/docker/docker-entrypoint.sh), so we just need to wait for
-      # that startup sequence (db/redis wait + migrate + collectstatic) to
-      # finish and the dev server to actually be listening.
-      - name: Wait for climweb_dev to be ready
-        run: |
-          for i in $(seq 1 60); do
-            if docker compose --profile dev logs climweb_dev 2>&1 | grep -q "Running Development Server"; then
-              echo "climweb_dev is ready"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "Timed out waiting for climweb_dev to start"
-          docker compose --profile dev logs
-          exit 1
+      # The Django test runner creates and migrates its own test database. It
+      # needs PostgreSQL and Redis, but it does not need the long-lived web
+      # server startup path (content seeding, remote downloads, collectstatic,
+      # GeoManager initialization, and runserver).
+      - name: Start test dependencies
+        run: docker compose --profile dev up -d climweb_db_dev climweb_redis_dev
 
       - name: Run tests
-        run: >
-          docker compose --profile dev exec -T climweb_dev
-          python /climweb/web/src/climweb/manage.py test
+        run: |
+          docker compose --profile dev run --rm --no-deps climweb_dev \
+          manage test \
           --settings=climweb.config.settings.test --verbosity=2
 
       - name: Tear down
@@ -107,4 +97,3 @@ jobs:
           docker image prune -f
           docker container prune -f
         EOF
-

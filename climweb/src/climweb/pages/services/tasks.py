@@ -11,9 +11,11 @@ from .models import (
     RCCARC2ImportConfig, RCCARC2ImportRun, RCCCPCImportConfig, RCCCPCImportRun,
     RCCSeasonalMapImportConfig, RCCSeasonalMapImportRun,
     RCCEIN15ImportConfig, RCCEIN15ImportRun,
+    RCCClimateIndexAsset, RCCClimateIndexImportConfig, RCCClimateIndexImportRun,
 )
 from .seasonal_map_importer import discover_maps, sync_map
 from .ein15_importer import sync_file as sync_ein15_file
+from .climate_index_importer import sync_asset as sync_climate_index_asset
 from .arc2_importer import (
     discover_countries,
     discover_stations,
@@ -308,3 +310,60 @@ def run_scheduled_rcc_ein15_import():
     run = create_rcc_ein15_run(config.pk, "scheduled")
     if run:
         execute_rcc_ein15_import(run.pk)
+
+
+def create_rcc_climate_index_run(config_id, trigger, requested_by=None, asset_ids=None):
+    with transaction.atomic():
+        config = RCCClimateIndexImportConfig.objects.select_for_update().filter(pk=config_id).first()
+        if not config or config.runs.filter(status__in=["queued", "running"]).exists():
+            return None
+        available = RCCClimateIndexAsset.objects.filter(active=True)
+        if asset_ids is not None:
+            available = available.filter(pk__in=asset_ids)
+        selected = list(available.order_by("legacy_index").values_list("pk", flat=True))
+        if not selected:
+            return None
+        return RCCClimateIndexImportRun.objects.create(
+            config=config, trigger=trigger, requested_by=requested_by, asset_ids=selected,
+        )
+
+
+@shared_task
+def execute_rcc_climate_index_import(run_id):
+    with transaction.atomic():
+        run = RCCClimateIndexImportRun.objects.select_for_update().get(pk=run_id)
+        if run.status != "queued":
+            return
+        run.status = "running"
+        run.started_at = timezone.now()
+        run.save(update_fields=["status", "started_at"])
+    results = []
+    for asset_id in run.asset_ids:
+        asset = RCCClimateIndexAsset.objects.filter(pk=asset_id, active=True).first()
+        if not asset:
+            results.append({"asset_id": asset_id, "title": "Unavailable record", "status": "failed", "error": "The graph was removed or disabled."})
+        else:
+            try:
+                sync_climate_index_asset(asset)
+                results.append({"asset_id": asset.pk, "title": asset.title, "status": "succeeded"})
+            except Exception as exc:
+                asset.last_attempted_at = timezone.now()
+                asset.last_error = f"{type(exc).__name__}: {exc}"[:1000]
+                asset.save(update_fields=["last_attempted_at", "last_error"])
+                results.append({"asset_id": asset.pk, "title": asset.title, "status": "failed", "error": str(exc)[:500]})
+        run.results = results
+        run.save(update_fields=["results"])
+    succeeded = sum(item["status"] == "succeeded" for item in results)
+    run.status = "succeeded" if succeeded == len(results) and succeeded else "partial" if succeeded else "failed"
+    run.finished_at = timezone.now()
+    run.save(update_fields=["status", "results", "finished_at"])
+
+
+@shared_task
+def run_scheduled_rcc_climate_index_import():
+    config = RCCClimateIndexImportConfig.objects.filter(singleton_key="climate-indices").first()
+    if not config or not config.enabled:
+        return
+    run = create_rcc_climate_index_run(config.pk, "scheduled")
+    if run:
+        execute_rcc_climate_index_import(run.pk)

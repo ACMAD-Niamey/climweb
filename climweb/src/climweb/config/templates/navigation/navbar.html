@@ -1,6 +1,7 @@
 {% load i18n wagtailcore_tags static wagtailimages_tags wagtailiconchooser_tags nmhs_cms_tags %}
 {% url 'wagtailadmin_home' as wagtail_admin_url %}
 {% wagtail_site as current_site %}
+{% rcc_navigation as rcc_nav %}
 
 <header class="site-header">
 
@@ -70,7 +71,7 @@
 
       <!-- MOBILE BRAND -->
       <div class="site-nav-brand">
-        <a class="mobile-logo" href="{{ current_site.root_url }}">
+        <a class="mobile-logo" data-main-site-logo href="{% if rcc_nav %}{{ rcc_nav.main_site_url }}{% else %}{{ current_site.root_url }}{% endif %}">
           {% if settings.base.OrganisationSetting.country_flag %}
             {% image settings.base.OrganisationSetting.country_flag original as country_flag %}
             <img src="{{ country_flag.url }}" alt="Flag" style="height:32px;">
@@ -91,7 +92,7 @@
       </div>
 
       <!-- DESKTOP BRAND -->
-      <a class="site-logo site-logo--desktop" href="{{ current_site.root_url }}"
+      <a class="site-logo site-logo--desktop" data-main-site-logo href="{% if rcc_nav %}{{ rcc_nav.main_site_url }}{% else %}{{ current_site.root_url }}{% endif %}"
          aria-label="{{ settings.base.OrganisationSetting.name|default:'ACMAD' }}">
         {% if settings.base.OrganisationSetting.logo %}
           {% image settings.base.OrganisationSetting.logo original as logo %}
@@ -117,9 +118,19 @@
             </button>
         </div>
         <div class="navbar-start">
-          {% for block in settings.base.NavigationSettings.main_menu %}
-            {% include_block block %}
-          {% endfor %}
+          {% if rcc_nav %}
+            {% if settings.base.NavigationSettings.rcc_main_menu %}
+              {% for block in settings.base.NavigationSettings.rcc_main_menu %}
+                {% include_block block %}
+              {% endfor %}
+            {% else %}
+              {% include "navigation/rcc_main_menu.html" %}
+            {% endif %}
+          {% else %}
+            {% for block in settings.base.NavigationSettings.main_menu %}
+              {% include_block block %}
+            {% endfor %}
+          {% endif %}
 
           <!-- MOBILE UTILITY BUTTONS -->
           <div class="mobile-utils buttons">

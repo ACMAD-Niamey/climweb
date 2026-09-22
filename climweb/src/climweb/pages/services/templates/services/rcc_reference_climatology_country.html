@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load static i18n nmhs_cms_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/services_rcc.css' %}">
+    <link rel="stylesheet" href="{% static 'css/rcc_reference_climatologies.css' %}?v=1">
+{% endblock %}
+{% block body_class %}rcc-service-page rcc-reference-page{% endblock %}
+
+{% block content %}
+<main>
+    <section class="page-hero rcc-simple-hero rcc-reference-hero rcc-reference-hero--compact">
+        <div class="page-hero-overlay"></div>
+        <div class="page-hero-body"><div class="container">
+            <span class="page-hero-badge">{% translate "Reference climatologies" %}</span>
+            <h1 class="page-hero-title">{{ country }}</h1>
+            <p class="page-hero-subtitle">{% translate "Choose an observing station to compare available climate-normal periods." %}</p>
+        </div></div>
+    </section>
+    <section class="rcc-reference-browser"><div class="container">
+        <div class="rcc-reference-breadcrumbs">
+            <a href="{% url 'rcc_reference_climatology_countries' %}">{% translate "Countries" %}</a><span>/</span><strong>{{ country }}</strong>
+        </div>
+        <header class="rcc-reference-heading">
+            <div><p class="rcc-eyebrow">{% translate "Step 2" %}</p><h2>{% translate "Choose a station" %}</h2></div>
+            <p>{% translate "Each station page compares monthly precipitation and temperature normals across its imported reference periods." %}</p>
+        </header>
+        <form class="rcc-reference-search" method="get" role="search">
+            <label for="station-search">{% translate "Search stations" %}</label>
+            <div><input id="station-search" type="search" name="q" value="{{ search_query }}" placeholder="{% translate 'Enter a station name' %}"><button>{% translate "Search" %}</button>{% if search_query %}<a href="{{ request.path }}">{% translate "Clear" %}</a>{% endif %}</div>
+        </form>
+        <div class="rcc-reference-station-grid">
+            {% for station in stations %}
+                <a href="{% url 'rcc_reference_climatology_station' country_slug station.station_id %}" class="rcc-reference-station-card">
+                    <span class="rcc-reference-station-card__id">{{ station.station_id }}</span>
+                    <h3>{{ station.station_name }}</h3>
+                    <p>{{ station.first_period }}–{{ station.last_period }} · {% blocktranslate count count=station.period_count %}{{ count }} reference period{% plural %}{{ count }} reference periods{% endblocktranslate %}</p>
+                    <b>{% translate "View climatology" %} &#8594;</b>
+                </a>
+            {% empty %}<div class="rcc-reference-empty"><h3>{% translate "No stations found" %}</h3></div>{% endfor %}
+        </div>
+    </div></section>
+</main>
+{% endblock %}
