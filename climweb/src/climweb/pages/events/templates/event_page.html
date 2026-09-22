@@ -3,7 +3,7 @@
 
 {% block extra_css %}
     {{ block.super }}
-    <link rel="stylesheet" type="text/css" href="{% static 'css/event_detail.css' %}?v=5">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/event_detail.css' %}?v=6">
 {% endblock %}
 
 {% block body_class %}ev-page{% endblock %}
@@ -25,67 +25,46 @@
         </div>
     </section>
 
+    <section class="ev-feature" aria-label="{% translate 'Event summary' %}">
+        <div class="container ev-feature__grid">
+            <div class="ev-banner">
+                {% if page.image %}
+                    {% image page.image width-1400 as evt_img %}
+                    <img src="{{ evt_img.url }}" alt="{{ page.title }}">
+                {% elif page.event_type.thumbnail %}
+                    {% image page.event_type.thumbnail width-1400 as evt_img %}
+                    <img src="{{ evt_img.url }}" alt="{{ page.event_type.event_type }}">
+                {% else %}
+                    <div class="ev-banner__placeholder">
+                        <span>{% if page.event_type %}{{ page.event_type.event_type }}{% else %}{% translate "Event" %}{% endif %}</span>
+                        <strong>{{ page.title }}</strong>
+                    </div>
+                {% endif %}
+            </div>
+            <aside class="ev-sidebar">
+                {% include 'event_meta_include.html' %}
+            </aside>
+        </div>
+    </section>
+
     <nav class="ev-nav" aria-label="{% translate 'Page sections' %}">
         <div class="container">
             <a href="#about">{% translate "About the Event" %}</a>
             {% if page.additional_materials %}<a href="#materials">{% translate "Materials" %}</a>{% endif %}
-            {% if page.panelists and not page.sessions_data %}<a href="#panelists">{% translate "Panelists" %}</a>{% endif %}
-            {% if page.sessions_data and not page.panelists %}<a href="#sessions">{% translate "Sessions" %}</a>{% endif %}
+            {% if page.zoom_events_details %}<a href="#zoom">{% translate "Online event" %}</a>{% endif %}
+            {% if page.panelists %}<a href="#panelists">{% translate "Panelists" %}</a>{% endif %}
+            {% if page.sessions_data %}<a href="#sessions">{% translate "Sessions" %}</a>{% endif %}
             {% if page.sponsors %}<a href="#sponsors">{% translate "Acknowledgements" %}</a>{% endif %}
         </div>
     </nav>
 
     <section id="about" class="ev-section ev-overview">
         <div class="container">
-            <div class="ev-intro{% if not page.image %} ev-intro--no-image{% endif %}">
-                <div>
-                    <p class="ev-eyebrow">{% translate "About the event" %}</p>
-                    <div class="format-text">{{ page.description|richtext }}</div>
-                    {% if page.agenda_document %}
-                        <br>
-                        <a class="ev-button" href="{{ page.agenda_document.url }}" target="_blank">
-                            <span class="icon">{% svg_icon name="download" %}</span>
-                            <span>{% translate "Download Agenda" %}</span>
-                        </a>
-                    {% endif %}
-                </div>
-                {% if page.image %}
-                    {% image page.image original as evt_img %}
-                    <img src="{{ evt_img.url }}" alt="{{ page.title }}" class="ev-intro-image">
-                {% endif %}
+            <div class="ev-intro">
+                <p class="ev-eyebrow">{% translate "About the event" %}</p>
+                <h2>{% translate "Event overview" %}</h2>
+                <div class="format-text ev-description">{{ page.description|richtext }}</div>
             </div>
-            
-            <div class="ev-facts">
-                <article><span>{% translate "Start Date:" %}</span><strong>{{ page.date_from|date:"d M, Y h:i A" }}</strong></article>
-                {% if page.date_to %}
-                <article><span>{% translate "End Date:" %}</span><strong>{{ page.date_to|date:"d M, Y h:i A" }}</strong></article>
-                {% endif %}
-                <article><span>{% translate "Location:" %}</span><strong>{{ page.location|default:"TBD" }}</strong></article>
-                <article><span>{% translate "Timezone:" %}</span><strong>{{ page.timezone|default:"GMT" }} ({{ page.tz_gmt_offset }})</strong></article>
-                {% if page.cost %}
-                <article><span>{% translate "Cost:" %}</span><strong>{{ page.cost }}</strong></article>
-                {% endif %}
-            </div>
-            
-            {% if page.is_ended %}
-                <div class="ev-benefits"><strong>{% translate "Status:" %}</strong> {% translate "This event has already taken place." %}</div>
-            {% elif page.registration_open and not page.is_ended %}
-                {% if page.registration_page and page.registration_page.live and not page.registration_page.is_closed %}
-                    <div class="ev-benefits">
-                        <strong>{% translate "Join This Event:" %}</strong> {% translate "Reserve your place by completing the registration form." %}
-                        <br><br>
-                        <a href="{{ page.registration_page.url }}" class="ev-button">{% translate "Register" %}</a>
-                    </div>
-                {% elif page.zoom_events_id and page.zoom_events_url %}
-                    <div class="ev-benefits">
-                        <strong>{% translate "Join This Event:" %}</strong> {% translate "Join the live session online via Zoom." %}
-                        <br><br>
-                        <a href="{{ page.zoom_events_url }}" target="_blank" rel="noopener" class="ev-button">{% translate "Register on Zoom" %}</a>
-                    </div>
-                {% endif %}
-            {% elif not page.registration_open or page.registration_page and page.registration_page.is_closed %}
-                <div class="ev-benefits"><strong>{% translate "Status:" %}</strong> {% translate "Registration for this event is closed." %}</div>
-            {% endif %}
         </div>
     </section>
 
@@ -111,38 +90,52 @@
     {% if page.zoom_events_details %}
         <section id="zoom" class="ev-section">
             <div class="container">
+                <p class="ev-eyebrow">{% translate "Join online" %}</p>
+                <h2>{% translate "Online event details" %}</h2>
                 {% include 'zoom_events_details_include.html' %}
             </div>
         </section>
-    {% else %}
-        {% if page.panelists and not page.sessions_data %}
-            <section id="panelists" class="ev-section">
-                <div class="container">
-                    <p class="ev-eyebrow">{% translate "Speakers" %}</p>
-                    <h2>{% translate "Panelists" %}</h2>
-                    {% include 'panelists_include.html' with panelists=page.panelists %}
-                </div>
-            </section>
-        {% endif %}
-        {% if page.sessions_data and not page.panelists %}
-            <section id="sessions" class="ev-section">
-                <div class="container">
-                    <p class="ev-eyebrow">{% translate "Schedule" %}</p>
-                    <h2>{% translate "Event Sessions" %}</h2>
-                    {% include 'event_sessions_include.html' with sessions=page.sessions_data %}
-                </div>
-            </section>
-        {% endif %}
-        {% if page.sponsors %}
-            <section id="sponsors" class="ev-section ev-muted">
-                <div class="container">
-                    <p class="ev-eyebrow">{% translate "Acknowledgements" %}</p>
-                    <h2>{% translate "Sponsors" %}</h2>
-                    {% include 'event_sponsors_include.html' with sponsors=page.sponsors %}
-                </div>
-            </section>
-        {% endif %}
     {% endif %}
+    {% if page.panelists %}
+        <section id="panelists" class="ev-section">
+            <div class="container">
+                <p class="ev-eyebrow">{% translate "Speakers" %}</p>
+                <h2>{% translate "Panelists" %}</h2>
+                {% include 'panelists_include.html' with panelists=page.panelists %}
+            </div>
+        </section>
+    {% endif %}
+    {% if page.sessions_data %}
+        <section id="sessions" class="ev-section ev-muted">
+            <div class="container">
+                <p class="ev-eyebrow">{% translate "Schedule" %}</p>
+                <h2>{% translate "Event Sessions" %}</h2>
+                {% include 'event_sessions_include.html' with sessions=page.sessions_data %}
+            </div>
+        </section>
+    {% endif %}
+    {% if page.sponsors %}
+        <section id="sponsors" class="ev-section ev-muted">
+            <div class="container">
+                <p class="ev-eyebrow">{% translate "Acknowledgements" %}</p>
+                <h2>{% translate "Sponsors" %}</h2>
+                {% include 'event_sponsors_include.html' with sponsors=page.sponsors %}
+            </div>
+        </section>
+    {% endif %}
+    <section class="ev-share-section">
+        <div class="container">
+            <div class="ev-share-card">
+                <div>
+                    <p class="ev-eyebrow">{% translate "Share" %}</p>
+                    <h2>{% translate "Share this event" %}</h2>
+                </div>
+                <div class="ev-share-links share-buttons">
+                    {% share_buttons url=page.get_full_url text=page.title %}
+                </div>
+            </div>
+        </div>
+    </section>
 </main>
 {% endblock content %}
 

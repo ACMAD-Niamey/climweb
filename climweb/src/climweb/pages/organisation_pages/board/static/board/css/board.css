@@ -1,0 +1,310 @@
+.board-section {
+    padding: 4rem 1.5rem;
+}
+
+.board-group + .board-group {
+    margin-top: 5rem;
+}
+
+.board-eyebrow {
+    margin: 0 0 .65rem;
+    color: var(--primary-color, #307461);
+    font-size: .78rem;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.board-grid {
+    margin-top: 2rem;
+    row-gap: 1.5rem;
+}
+
+.board-card {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    padding: 1.75rem 1.25rem;
+    border: 1px solid #eee;
+    border-radius: 14px;
+    background: #fff;
+    text-align: center;
+    transition: border-color .15s, box-shadow .15s, transform .15s;
+}
+
+.board-card:hover,
+.board-card:focus-within {
+    border-color: #e2e2e2;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, .08);
+    transform: translateY(-2px);
+}
+
+.board-card-trigger {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    appearance: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    text-align: inherit;
+}
+
+.board-card-trigger:focus-visible,
+.board-modal .modal-close:focus-visible,
+.board-back-link:focus-visible {
+    outline: 3px solid var(--primary-color, #307461);
+    outline-offset: 4px;
+}
+
+.board-figure {
+    display: block;
+    flex-shrink: 0;
+    width: 150px;
+    height: 150px;
+    margin: 0 0 1rem;
+    overflow: hidden;
+    border-radius: 50%;
+    background: var(--primary-color-lightest, #f3f7f5);
+}
+
+.board-figure img,
+.president-card-portrait img,
+.president-profile-portrait img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.board-page .board-name,
+.board-modal .board-name {
+    margin: 0 0 3px;
+    color: var(--text-color, #1a1a1a);
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.board-position {
+    display: block;
+    margin: 0 0 9px;
+    color: #717171;
+    font-size: .82rem;
+    font-style: italic;
+}
+
+.board-badge {
+    display: inline-block;
+    width: fit-content;
+    max-width: 100%;
+    margin-bottom: 8px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: var(--primary-color-lightest, #f3f7f5);
+    color: var(--primary-color, #307461);
+    font-size: .7rem;
+    font-weight: 700;
+}
+
+.board-view-bio {
+    display: inline-block;
+    margin-top: auto;
+    padding-top: 10px;
+    color: var(--primary-color, #307461);
+    font-size: .75rem;
+    font-weight: 700;
+}
+
+.board-modal-content {
+    width: 64rem;
+    max-width: calc(100vw - 40px);
+}
+
+.board-modal-content .board-figure {
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
+    aspect-ratio: 1;
+}
+
+.board-details {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.board-bio,
+.president-summary,
+.president-biography,
+.president-vision {
+    color: #555;
+    line-height: 1.75;
+}
+
+.president-card {
+    display: grid;
+    grid-template-columns: minmax(250px, 38%) 1fr;
+    max-width: 920px;
+    margin: 2rem auto 0;
+    overflow: hidden;
+    border: 1px solid #e8e8e8;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: 0 20px 55px rgba(15, 23, 42, .09);
+}
+
+.president-card-portrait {
+    min-height: 390px;
+    background: var(--primary-color-lightest, #f3f7f5);
+}
+
+.president-card-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: clamp(2rem, 5vw, 4rem);
+}
+
+.president-card-copy h3 {
+    margin: .5rem 0 .2rem;
+    font-size: clamp(1.75rem, 3vw, 2.6rem);
+    line-height: 1.15;
+}
+
+.board-country {
+    margin: 0 0 1.25rem;
+    color: #777;
+    font-weight: 600;
+}
+
+.president-summary {
+    margin-bottom: 1.5rem;
+}
+
+.president-page .president-profile {
+    display: flow-root;
+}
+
+.president-profile-portrait {
+    float: left;
+    width: min(42%, 440px);
+    height: auto;
+    max-height: none;
+    margin: 0 3rem 1.5rem 0;
+    aspect-ratio: 19 / 20;
+}
+
+.president-profile-copy h2 {
+    margin-bottom: .75rem;
+}
+
+.president-profile-copy {
+    display: contents;
+}
+
+.president-profile .president-biography,
+.president-profile .president-biography > .rich-text {
+    display: contents;
+}
+
+.president-profile .president-biography > .rich-text > :first-child {
+    margin-top: 0;
+}
+
+.president-profile-copy .board-country {
+    color: var(--ojt-muted, #66717d);
+}
+
+.president-biography,
+.president-vision {
+    color: var(--ojt-heading, #0a192f);
+}
+
+.president-vision {
+    padding: .9rem 0 .9rem 1.3rem;
+    border-left: 3px solid var(--ojt-accent, #f4c84a);
+}
+
+.president-video-card {
+    max-width: 960px;
+    overflow: hidden;
+    border: 1px solid var(--ojt-border, #dce4ea);
+    border-radius: var(--theme-border-radius, 5px);
+    background: #fff;
+    box-shadow: 0 10px 28px rgba(10, 25, 47, .06);
+}
+
+.president-video-embed {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    background: #111;
+    aspect-ratio: 16 / 9;
+}
+
+.president-video-embed iframe,
+.president-video-embed video,
+.president-video-embed > div {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.president-video-caption {
+    margin: 0;
+    padding: 1rem 1.25rem;
+    color: var(--ojt-muted, #66717d);
+    font-size: .82rem;
+}
+
+@media (max-width: 1023px) {
+    .board-modal-content .columns {
+        display: block;
+    }
+
+    .board-modal-content .board-figure {
+        max-width: 260px;
+        margin-inline: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .board-section {
+        padding: 3rem 1rem;
+    }
+
+    .president-card {
+        grid-template-columns: 1fr;
+    }
+
+    .president-card-portrait {
+        min-height: 0;
+        aspect-ratio: 4 / 3;
+    }
+
+    .president-profile-portrait {
+        float: none;
+        width: 100%;
+        max-width: 440px;
+        margin: 0 auto 2rem;
+    }
+}
+
+@media (max-width: 1280px) {
+    .board-card .board-figure {
+        width: 110px;
+        height: 110px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .board-card {
+        transition: none;
+    }
+}

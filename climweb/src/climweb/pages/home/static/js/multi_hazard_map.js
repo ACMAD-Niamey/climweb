@@ -8,12 +8,22 @@
         { key: 'flood', label: 'Flood' },
     ];
 
-    // The homepage card only ever shows these four tabs — never "Boundary
-    // Layers" or any other category the catalog API happens to return.
-    // Order here is the fixed display order, independent of API order.
+    // Fallback tab set, used only when NO layer has been flagged
+    // display_on_homepage in the Multi-Hazard admin. Order here is the fixed
+    // display order, independent of API order. Once layers are flagged, tabs
+    // come from their hazard_category instead (see flaggedTabs).
     const CORE_CATEGORY_KEYS = ['weather', 'drought', 'climate', 'flood'];
     const RASTER_SOURCE_ID = 'mhz-raster-source';
     const RASTER_LAYER_ID = 'mhz-raster-layer';
+
+    // "Always on top" overlay layers (e.g. the countries boundary). These are
+    // driven entirely by the Multi-Hazard catalog: any layer flagged both
+    // display_on_homepage and always_on_top in the Multi-Hazard admin is
+    // rendered here, above the hazard raster, and every addRasterLayer() call
+    // inserts the hazard raster *below* them so switching tabs never buries
+    // them. Populated by addTopLayers().
+    const TOP_LAYER_PREFIX = 'mhz-top-';
+    let topLayerIds = [];
 
     // The catalog API's hazard-categories endpoint returns icon_url as null
     // in production, so tab icons come from this local set instead — thin
@@ -35,28 +45,32 @@
     let config = {};
     let warnedCategoryFailure = false;
 
+    // WHY Esri and not CARTO: CARTO retired its anonymous (no-token) basemap
+    // tile endpoints — requests to basemaps.cartocdn.com without a CARTO
+    // account access token now get rate-limited / 403'd, which is what broke
+    // this map. Esri's World Light Gray Base is genuinely key-free for web use
+    // (attribution required) and gives a clean, muted canvas for the hazard
+    // overlays. This mirrors the basemap the Vue home map already switched to.
+    // No `glyphs` entry is needed here: every layer on this map is raster, so
+    // MapLibre never loads a font stack.
     const baseStyle = {
         version: 8,
-        glyphs: 'https://tiles.basemaps.cartocdn.com/fonts/{fontstack}/{range}.pbf',
         sources: {
-            voyager: {
+            basemap: {
                 type: 'raster',
                 tiles: [
-                    'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
-                    'https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
-                    'https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
-                    'https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+                    'https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
                 ],
                 tileSize: 256,
-                attribution: '&copy; OpenStreetMap &copy; CARTO',
+                attribution: '&copy; Esri &copy; OpenStreetMap contributors',
             },
         },
         layers: [{
-            id: 'voyager-layer',
-            source: 'voyager',
+            id: 'basemap-layer',
+            source: 'basemap',
             type: 'raster',
             minzoom: 0,
-            maxzoom: 22,
+            maxzoom: 16,
         }],
     };
 
@@ -112,6 +126,9 @@
                     .map((category) => ({
                         key: category.key || category.slug || category.name,
                         label: category.label || category.title || category.name || category.key,
+                        // Preserved so flaggedTabs() can order tabs the same
+                        // way the Multi-Hazard viewer orders its categories.
+                        order: Number.isFinite(category.order) ? category.order : 0,
                     }))
                     .filter((category) => category.key && category.label);
                 return categories.length ? categories : FALLBACK_CATEGORIES;
@@ -120,10 +137,41 @@
     }
 
     function loadLayers() {
+        // Return every layer — homepage selection (which layers, and whether
+        // an overlay is always-on-top) is decided from each layer's `ui`
+        // block by partitionHomepageLayers(), not filtered out here.
         const url = joinUrl(config.apiBaseUrl, `/api/catalog/ui/layers?project=${encodeURIComponent(config.projectSlug)}`);
-        return fetchJson(url).then((payload) => normalizeList(payload).filter((layer) => {
-            return layer && layer.icon && layer.icon.url && layer.dataset && layer.dataset.id;
-        }));
+        return fetchJson(url).then((payload) => normalizeList(payload).filter((layer) => layer && layer.id));
+    }
+
+    function hasDataset(layer) {
+        return !!(layer && layer.dataset && layer.dataset.id);
+    }
+
+    function normalizeOpacity(value, fallback) {
+        // The catalog stores opacity inconsistently — most layers use a 0-100
+        // percentage (e.g. 50), a few use a 0-1 fraction (e.g. 0.85). Treat
+        // anything greater than 1 as a percentage.
+        let opacity = typeof value === 'number' ? value : fallback;
+        if (!Number.isFinite(opacity)) {
+            return fallback;
+        }
+        if (opacity > 1) {
+            opacity = opacity / 100;
+        }
+        return Math.min(1, Math.max(0, opacity));
+    }
+
+    function partitionHomepageLayers(layers) {
+        // A layer reaches the homepage only if it is flagged
+        // ui.display_on_homepage in the Multi-Hazard admin. Of those,
+        // ui.always_on_top layers become permanent overlays (rendered from
+        // their WMS/XYZ tile.template); the rest drive the category tabs.
+        const flagged = layers.filter((layer) => layer.ui && layer.ui.display_on_homepage);
+        return {
+            topLayers: flagged.filter((layer) => layer.ui.always_on_top && layer.tile && layer.tile.template),
+            dataLayers: flagged.filter((layer) => !layer.ui.always_on_top && hasDataset(layer)),
+        };
     }
 
     function inferCategory(layer) {
@@ -177,11 +225,24 @@
         return grouped;
     }
 
+    function flaggedTabs(categories, grouped) {
+        // Alignment mode: one tab per hazard_category that has a
+        // display_on_homepage layer, ordered by the catalog's category order
+        // (the same order the Multi-Hazard viewer uses).
+        const byKey = {};
+        categories.forEach((category) => {
+            byKey[category.key] = category;
+        });
+        return Object.keys(grouped)
+            .filter((key) => key !== 'other' && grouped[key] && grouped[key].length)
+            .map((key) => byKey[key] || { key: key, label: key, order: 0 })
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
+    }
+
     function visibleTabs(categories, grouped) {
-        // Restrict to the fixed Weather/Drought/Climate/Flood set (in that
-        // order), regardless of how many other categories the API returns
-        // or what order it returns them in. A category only shows up as a
-        // tab if it actually has layers assigned to it.
+        // Fallback mode (nothing flagged display_on_homepage yet): restrict to
+        // the fixed Weather/Drought/Climate/Flood set, in that order. A
+        // category only shows up if it actually has layers assigned to it.
         const byKey = {};
         categories.forEach((category) => {
             byKey[category.key] = category;
@@ -350,6 +411,57 @@
         mount.appendChild(panel);
     }
 
+    function firstTopLayerId() {
+        // beforeId for addRasterLayer — the hazard raster is inserted directly
+        // below the first always-on-top overlay so the overlays always stay on
+        // top. Undefined until addTopLayers() has run (or when nothing is
+        // flagged always_on_top), in which case the raster goes on top and the
+        // overlays are stacked above it once they're added.
+        if (!map) {
+            return undefined;
+        }
+        return topLayerIds.find((id) => map.getLayer(id));
+    }
+
+    function addTopLayers(topLayers) {
+        if (!map || !topLayers.length) {
+            return;
+        }
+        const add = () => {
+            topLayers.forEach((layer, index) => {
+                const layerId = `${TOP_LAYER_PREFIX}${index}`;
+                const sourceId = `${layerId}-source`;
+                if (map.getLayer(layerId)) {
+                    return;
+                }
+                const ui = layer.ui || {};
+                // tile.template is a full WMS GetMap / XYZ URL from the
+                // catalog — MapLibre substitutes {bbox-epsg-3857} (WMS) or
+                // {z}/{x}/{y} (XYZ) per tile.
+                map.addSource(sourceId, {
+                    type: 'raster',
+                    tiles: [layer.tile.template],
+                    tileSize: 256,
+                });
+                map.addLayer({
+                    id: layerId,
+                    type: 'raster',
+                    source: sourceId,
+                    minzoom: Number.isFinite(ui.minzoom) ? ui.minzoom : 0,
+                    maxzoom: Number.isFinite(ui.maxzoom) ? ui.maxzoom : 22,
+                    paint: { 'raster-opacity': normalizeOpacity(ui.opacity, 1) },
+                });
+                topLayerIds.push(layerId);
+            });
+        };
+
+        if (map.loaded()) {
+            add();
+        } else {
+            map.once('load', add);
+        }
+    }
+
     function removeRasterLayer() {
         if (!map) {
             return;
@@ -375,7 +487,7 @@
                 type: 'raster',
                 source: RASTER_SOURCE_ID,
                 paint: { 'raster-opacity': 0.82 },
-            });
+            }, firstTopLayerId());
         };
 
         if (map.loaded()) {
@@ -496,16 +608,42 @@
                     showUnavailable(mount);
                     return;
                 }
-                groupedLayers = groupByCategory(layers, categories);
-                const tabs = visibleTabs(categories, groupedLayers);
-                if (!tabs.length) {
+
+                const { topLayers, dataLayers } = partitionHomepageLayers(layers);
+
+                // Alignment with the Multi-Hazard viewer: once layers are
+                // flagged display_on_homepage in the Multi-Hazard admin, the
+                // homepage shows exactly those. Until any hazard layer is
+                // flagged, fall back to the curated Weather/Drought/Climate/
+                // Flood set so the card is never empty.
+                const aligned = dataLayers.length > 0;
+                let tabLayers = dataLayers;
+                if (!aligned) {
+                    console.info(
+                        'Multi-Hazard: no layers flagged display_on_homepage — '
+                        + 'showing the curated fallback set. Flag layers in the '
+                        + 'Multi-Hazard admin to control what appears here.'
+                    );
+                    tabLayers = layers.filter((layer) => layer.icon && layer.icon.url && hasDataset(layer));
+                }
+
+                groupedLayers = groupByCategory(tabLayers, categories);
+                const tabs = aligned
+                    ? flaggedTabs(categories, groupedLayers)
+                    : visibleTabs(categories, groupedLayers);
+
+                if (!tabs.length && !topLayers.length) {
                     showUnavailable(mount);
                     return;
                 }
+
                 mount.innerHTML = '';
                 createMap(mount);
+                addTopLayers(topLayers);
                 renderTabs(mount, tabs);
-                activateCategory(mount, tabs[0].key);
+                if (tabs.length) {
+                    activateCategory(mount, tabs[0].key);
+                }
             })
             .catch((error) => {
                 console.warn('Multi-Hazard map unavailable', error);

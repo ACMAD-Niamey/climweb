@@ -47,6 +47,12 @@ build/deploy commands, as opposed to a generic Docker installation guide.
 The subdomain deployment section documents an ACMAD-fork-specific customization for serving a section of the site
 (e.g. Summer School) on its own subdomain, sharing the same application and database as the main site.
 
+### TLS Certificates
+
+The TLS certificates section documents how the host-managed Let's Encrypt certificate is issued, expanded and
+renewed - the single SAN cert covering every hostname, the certbot webroot setup, the renewal timer and hooks,
+and a command cheat sheet.
+
 ### ACMAD Product Migrations
 
 The ACMAD product migrations section documents the completed file-based product importers, dashboard operations,
@@ -76,4 +82,5 @@ management-commands
 extending-climweb/index
 deployment
 subdomain-deployment
+tls-certificates
 ```
