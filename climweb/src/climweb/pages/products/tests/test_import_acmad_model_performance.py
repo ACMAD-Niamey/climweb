@@ -1,4 +1,5 @@
 from datetime import date
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.test import SimpleTestCase, TestCase, override_settings
@@ -45,13 +46,39 @@ class TestModelPerformanceSources(SimpleTestCase):
         )
         self.assertEqual(static["date"], date(2017, 1, 1))
         self.assertEqual(static["name"], "CFS")
+        self.assertEqual(static["family"], "static")
         self.assertEqual(dynamic["name"], "Temperature — NMME")
         self.assertEqual(dynamic["category"], "Dynamical Model Skill Maps")
+        self.assertEqual(dynamic["family"], "dynamic")
 
     def test_audited_inventory_contains_175_files(self):
         total = 48 + sum(len(files) for files in performance.STATIC_ARCHIVES.values())
         total += len(performance.DYNAMIC_FILES)
         self.assertEqual(total, 175)
+
+    def test_dynamical_family_only_fetches_dynamical_selector(self):
+        html = "<select>{}</select>".format(
+            "".join(
+                f"<option>Jan-Feb-Mar_NMME_{number}</option>"
+                for number in range(1, 27)
+            )
+        ).encode()
+        command = performance.Command()
+        with patch.object(
+            command,
+            "_get",
+            return_value=SimpleNamespace(content=html),
+        ) as get:
+            assets = command._collect_assets(
+                {
+                    "source_url": performance.DEFAULT_SOURCE_URL,
+                    "family": "dynamical",
+                }
+            )
+
+        get.assert_called_once_with(performance.DYNAMIC_SELECTOR)
+        self.assertEqual(len(assets), len(performance.DYNAMIC_FILES))
+        self.assertTrue(all(asset["family"] == "dynamic" for asset in assets))
 
     def test_default_dashboard_source_schema_is_valid(self):
         defaults = PRODUCT_IMPORTS_BY_KEY["model-performance"]["source_defaults"]

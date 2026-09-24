@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load static i18n %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/services_rcc.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_consensus_forums.css' %}?v=1">
+{% endblock %}
+
+{% block body_class %}rcc-service-page rcc-consensus-page{% endblock %}
+
+{% block content %}
+<main>
+    <section class="page-hero rcc-simple-hero rcc-consensus-hero">
+        <div class="page-hero-overlay"></div>
+        <div class="page-hero-body"><div class="container">
+            <span class="page-hero-badge">{% translate "Regional Climate Outlook Forums" %}</span>
+            <h1 class="page-hero-title">{% translate "Consensus statements for the region and sub-regions" %}</h1>
+        </div></div>
+    </section>
+
+    <section class="rcc-consensus-section">
+        <div class="container">
+            <nav class="rcc-consensus-breadcrumb" aria-label="{% translate 'Breadcrumb' %}">
+                {% if long_range_page %}<a href="{{ long_range_page.url }}">{% translate "Long-range Forecasting" %}</a><span>/</span>{% endif %}
+                <span>{% translate "Consensus statements" %}</span>
+            </nav>
+
+            <header class="rcc-consensus-intro">
+                <div>
+                    <p class="rcc-eyebrow">{% translate "Collaborative regional outlooks" %}</p>
+                    <h2>{% translate "Choose a climate outlook forum" %}</h2>
+                </div>
+                <p>{% translate "ACMAD works with country experts, regional climate centres, global producing centres and climate-information users to assess forecast evidence and agree on seasonal outlooks. Select a forum to learn about its region, climate context and available statements." %}</p>
+            </header>
+
+            <div class="rcc-consensus-summary">
+                <strong>{{ forums|length }}</strong><span>{% translate "regional and continental forums" %}</span>
+                <strong>{{ document_count }}</strong><span>{% translate "locally available statements" %}</span>
+            </div>
+
+            <div class="rcc-consensus-grid">
+                {% for forum in forums %}
+                    <a class="rcc-consensus-card" href="{{ forum.url }}">
+                        <div class="rcc-consensus-card__top"><span>{{ forum.forum_code }}</span><span aria-hidden="true">&#8599;</span></div>
+                        <h3>{{ forum.title }}</h3>
+                        <p>{{ forum.summary }}</p>
+                        <footer><span>{{ forum.region }}</span><b>{% blocktranslate count count=forum.document_count %}{{ count }} statement{% plural %}{{ count }} statements{% endblocktranslate %}</b></footer>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+</main>
+{% endblock %}

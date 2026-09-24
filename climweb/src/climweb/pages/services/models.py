@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
+from django.urls import reverse
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 from modelcluster.fields import ParentalKey
@@ -12,7 +13,11 @@ from wagtailmetadata.models import MetadataPageMixin
 
 from climweb.base import blocks
 from climweb.base import blocks as base_blocks
-from climweb.base.models import ServiceCategory, AbstractBannerWithIntroPage
+from climweb.base.models import (
+    AbstractBannerPage,
+    AbstractBannerWithIntroPage,
+    ServiceCategory,
+)
 from climweb.config.settings.base import SUMMARY_RICHTEXT_FEATURES
 from climweb.pages.events.models import EventPage
 from climweb.pages.flex_page.models import FlexPage
@@ -1103,6 +1108,319 @@ class RCCClimateMonitoringPage(AbstractBannerWithIntroPage):
 
     class Meta:
         verbose_name = _("RCC Climate Monitoring Page")
+
+
+class RCCLongRangeForecastingPage(AbstractBannerWithIntroPage):
+    template = "services/rcc_long_range_forecasting_page.html"
+    parent_page_types = ["services.ServicePage"]
+    subpage_types = ["services.RCCConsensusForumPage"]
+    max_count_per_parent = 1
+    show_in_menus_default = True
+
+    outlook_product_definitions = (
+        {
+            "key": "maps",
+            "slug": "seasonal-forecast-maps",
+            "gallery_url_name": "rcc_tailored_forecast_gallery",
+            "label": _("Tailored forecast maps"),
+            "title": _("Tailored Precipitation and Temperature Forecasts"),
+            "summary": _(
+                "Regional and sub-regional precipitation and temperature "
+                "forecast maps tailored to upcoming seasons and climate "
+                "outlook regions."
+            ),
+            "topics": (_("Precipitation maps"), _("Temperature maps")),
+        },
+        {
+            "key": "bulletins",
+            "slug": "seasonal-outlook-bulletins",
+            "label": _("Forecast bulletins"),
+            "title": _("Seasonal Outlook Bulletins"),
+            "summary": _(
+                "Seasonal forecast interpretation, expected conditions and "
+                "regional guidance for climate-sensitive decisions."
+            ),
+        },
+        {
+            "key": "statements",
+            "slug": "seasonal-consensus-statements-and-communiques",
+            "gallery_url_name": "rcc_consensus_forums",
+            "label": _("Consensus products"),
+            "title": _("Consensus Statements for the Region and Sub-regions"),
+            "summary": _(
+                "Agreed regional outlooks prepared with climate experts through "
+                "Regional Climate Outlook Forums."
+            ),
+        },
+        {
+            "key": "recommendations",
+            "slug": "seasonal-recommendations-and-summaries",
+            "label": _("Decision guidance"),
+            "title": _("Recommendations and Summaries"),
+            "summary": _(
+                "Concise implications, recommendations and summaries accompanying "
+                "seasonal outlooks."
+            ),
+        },
+        {
+            "key": "technical-notes",
+            "slug": "seasonal-technical-notes",
+            "label": _("Technical documentation"),
+            "title": _("Technical Notes"),
+            "summary": _(
+                "Methods, interpretation details and supporting analysis behind "
+                "the seasonal forecast products."
+            ),
+        },
+    )
+
+    assessment_product_definitions = (
+        {
+            "key": "model-performance",
+            "slug": "seasonal-model-performance",
+            "gallery_url_name": "rcc_model_performance_gallery",
+            "label": _("Model assessment"),
+            "title": _("Statistical and Dynamical Model Performance"),
+            "summary": _(
+                "Maps and graphs assessing statistical and dynamical seasonal "
+                "forecasting systems."
+            ),
+            "topics": (_("Statistical models"), _("Dynamical models")),
+        },
+        {
+            "key": "verification",
+            "slug": "seasonal-forecast-verification",
+            "gallery_url_name": "rcc_forecast_verification_gallery",
+            "label": _("Forecast verification"),
+            "title": _("Forecast and Outlook Verification"),
+            "summary": _(
+                "Graphs, maps and evaluation reports showing how previous "
+                "precipitation and temperature outlooks performed against "
+                "observed conditions."
+            ),
+            "topics": (
+                _("Verification maps"),
+                _("Verification graphs and reports"),
+            ),
+        },
+    )
+
+    @staticmethod
+    def _resolve_products(definitions, pages_by_slug):
+        products = []
+        for definition in definitions:
+            item = dict(definition)
+            item["page"] = pages_by_slug.get(definition["slug"])
+            item["gallery_url"] = (
+                reverse(definition["gallery_url_name"])
+                if definition.get("gallery_url_name")
+                else ""
+            )
+            item["latest"] = (
+                item["page"].all_products.first() if item["page"] else None
+            )
+            item["count"] = (
+                item["page"].all_products.count() if item["page"] else 0
+            )
+            products.append(item)
+        return products
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        definitions = (
+            self.outlook_product_definitions + self.assessment_product_definitions
+        )
+        pages_by_slug = {
+            page.slug: page
+            for page in ProductPage.objects.live().filter(
+                slug__in=[definition["slug"] for definition in definitions]
+            )
+        }
+        context["outlook_products"] = self._resolve_products(
+            self.outlook_product_definitions,
+            pages_by_slug,
+        )
+        context["assessment_products"] = self._resolve_products(
+            self.assessment_product_definitions,
+            pages_by_slug,
+        )
+        context["outlook_forums"] = list(
+            RCCConsensusForumPage.objects.live().child_of(self).order_by("path")
+        )
+        return context
+
+    class Meta:
+        verbose_name = _("RCC Long-range Forecasting Page")
+
+
+class RCCConsensusForumPage(AbstractBannerPage):
+    template = "services/rcc_consensus_forum_detail.html"
+    parent_page_types = ["services.RCCLongRangeForecastingPage"]
+    subpage_types = []
+    show_in_menus_default = False
+
+    forum_code = models.CharField(
+        max_length=30,
+        verbose_name=_("Forum acronym"),
+        help_text=_("For example PRESAC, MEDCOF or ACCOF."),
+    )
+    region = models.CharField(max_length=180)
+    target_season = models.CharField(max_length=180, blank=True)
+    summary = models.TextField(
+        max_length=500,
+        help_text=_("Short description used on the forum directory card."),
+    )
+    overview = RichTextField(features=SUMMARY_RICHTEXT_FEATURES)
+    geographic_coverage = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    climate_drivers = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    climate_hazards = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    consensus_method = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("How the consensus is developed"),
+    )
+    user_involvement = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    development_priorities = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    archive_codes = models.CharField(
+        max_length=120,
+        blank=True,
+        help_text=_(
+            "Comma-separated acronyms used to associate documents from the "
+            "Consensus Statements product archive. Defaults to the forum acronym."
+        ),
+    )
+    photos = StreamField(
+        [("photo", local_blocks.RCCForumPhotoBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Photo gallery"),
+    )
+    attached_documents = StreamField(
+        [("document", local_blocks.RCCForumDocumentBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Additional forum documents"),
+    )
+
+    content_panels = Page.content_panels + [
+        *AbstractBannerPage.content_panels,
+        MultiFieldPanel(
+            [
+                FieldPanel("forum_code"),
+                FieldPanel("region"),
+                FieldPanel("target_season"),
+                FieldPanel("summary"),
+                FieldPanel("archive_codes"),
+            ],
+            heading=_("Forum profile"),
+        ),
+        FieldPanel("overview"),
+        MultiFieldPanel(
+            [
+                FieldPanel("geographic_coverage"),
+                FieldPanel("climate_drivers"),
+                FieldPanel("climate_hazards"),
+            ],
+            heading=_("Climate context"),
+        ),
+        FieldPanel("consensus_method"),
+        FieldPanel("user_involvement"),
+        FieldPanel("development_priorities"),
+        FieldPanel("photos"),
+        FieldPanel("attached_documents"),
+    ]
+
+    @property
+    def document_codes(self):
+        value = self.archive_codes or self.forum_code
+        return tuple(code.strip().upper() for code in value.split(",") if code.strip())
+
+    def consensus_documents(self):
+        documents = []
+        seen = set()
+        for block in self.attached_documents:
+            document = block.value.get("document")
+            if not document or document.pk in seen:
+                continue
+            seen.add(document.pk)
+            documents.append(
+                {
+                    "name": block.value.get("title") or document.title,
+                    "date": block.value.get("date"),
+                    "document": document,
+                    "thumbnail": None,
+                    "manual": True,
+                }
+            )
+
+        product_page = ProductPage.objects.live().filter(
+            slug="seasonal-consensus-statements-and-communiques"
+        ).first()
+        if product_page:
+            for item in product_page.all_products.live().specific():
+                for block in item.products:
+                    if block.block_type != "document_product":
+                        continue
+                    item_type = block.value.product_item_type()
+                    document = block.value.get("document")
+                    if (
+                        not item_type
+                        or not document
+                        or document.pk in seen
+                        or not any(
+                            code in item_type.name.upper()
+                            for code in self.document_codes
+                        )
+                    ):
+                        continue
+                    seen.add(document.pk)
+                    documents.append(
+                        {
+                            "name": item_type.name,
+                            "date": block.value.get("date") or item.date,
+                            "document": document,
+                            "thumbnail": block.value.get("thumbnail"),
+                            "manual": False,
+                        }
+                    )
+        return sorted(
+            documents,
+            key=lambda item: (item["date"] is not None, item["date"]),
+            reverse=True,
+        )
+
+    @property
+    def document_count(self):
+        return len(self.consensus_documents())
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        context.update(
+            {
+                "forum": self,
+                "documents": self.consensus_documents(),
+                "long_range_page": self.get_parent().specific,
+            }
+        )
+        return context
+
+    class Meta:
+        verbose_name = _("RCC Consensus Forum Page")
 
 
 class OnTheJobTrainingPage(AbstractBannerWithIntroPage):

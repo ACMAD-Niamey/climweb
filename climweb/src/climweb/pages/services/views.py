@@ -14,12 +14,15 @@ from wagtail.documents import get_document_model
 from .models import (
     RCCClimateIndexAsset,
     RCCClimateMonitoringPage,
+    RCCConsensusForumPage,
     RCCDataServicesPage,
     RCCDatasetAsset,
     RCCEIN15Asset,
     RCCReferenceClimatology,
     RCCSeasonalMapAsset,
+    RCCLongRangeForecastingPage,
 )
+from climweb.pages.products.models import ProductPage
 from .seasonal_map_importer import SEASONS
 from .climsoft_resources import CLIMSOFT_DOCUMENTS, CLIMSOFT_DOCUMENTS_BY_TITLE
 
@@ -31,6 +34,135 @@ MAP_VARIANTS = (
     ("50mm", "Days above 50 mm"),
 )
 EIN15_FAMILIES = ("ATM", "RAD", "SAV", "SRF", "STS")
+LONG_RANGE_GALLERIES = {
+    "tailored-forecasts": {
+        "slug": "seasonal-forecast-maps",
+        "badge": "RCC tailored forecasts",
+        "title": "Tailored precipitation and temperature forecasts",
+        "eyebrow": "Seasonal forecast maps",
+        "intro": (
+            "Explore locally managed regional and sub-regional forecast maps "
+            "by year and product type."
+        ),
+    },
+    "model-performance": {
+        "slug": "seasonal-model-performance",
+        "badge": "RCC model assessment",
+        "title": "Statistical and dynamical model performance",
+        "eyebrow": "Forecast system performance",
+        "intro": (
+            "Compare maps and graphs assessing statistical and dynamical "
+            "seasonal forecasting systems."
+        ),
+    },
+    "forecast-verification": {
+        "slug": "seasonal-forecast-verification",
+        "badge": "RCC forecast verification",
+        "title": "Forecast and outlook verification",
+        "eyebrow": "Verification maps and graphs",
+        "intro": (
+            "Review precipitation and temperature verification maps, graphs "
+            "and evaluation reports."
+        ),
+    },
+}
+
+
+def rcc_consensus_forums(request):
+    long_range_page = RCCLongRangeForecastingPage.objects.live().first()
+    forums = (
+        RCCConsensusForumPage.objects.live()
+        .child_of(long_range_page)
+        .order_by("path")
+        if long_range_page
+        else RCCConsensusForumPage.objects.none()
+    )
+    return render(
+        request,
+        "services/rcc_consensus_forums.html",
+        {
+            "forums": forums,
+            "document_count": sum(forum.document_count for forum in forums),
+            "long_range_page": long_range_page,
+        },
+    )
+
+
+def rcc_consensus_forum_detail(request, forum):
+    forum_page = get_object_or_404(
+        RCCConsensusForumPage.objects.live(),
+        slug=forum,
+    )
+    return forum_page.serve(request)
+
+
+def rcc_long_range_gallery(request, gallery):
+    config = LONG_RANGE_GALLERIES.get(gallery)
+    if not config:
+        raise Http404("This long-range forecast gallery does not exist.")
+
+    product_page = ProductPage.objects.live().filter(slug=config["slug"]).first()
+    cards = []
+    if product_page:
+        items = sorted(
+            product_page.all_products.live().specific(),
+            key=lambda item: item.date,
+            reverse=True,
+        )
+        for item in items:
+            for block in item.products:
+                if block.block_type not in {"image_product", "document_product"}:
+                    continue
+                item_type = block.value.product_item_type()
+                if not item_type:
+                    continue
+                cards.append(
+                    {
+                        "kind": "image" if block.block_type == "image_product" else "document",
+                        "name": item_type.name,
+                        "category": item_type.category.name,
+                        "date": block.value.get("date") or item.date,
+                        "image": block.value.get("image"),
+                        "thumbnail": block.value.get("thumbnail"),
+                        "document": block.value.get("document"),
+                    }
+                )
+
+    categories = sorted({card["category"] for card in cards})
+    product_names = sorted({card["name"] for card in cards})
+    years = sorted({card["date"].year for card in cards}, reverse=True)
+    selected_category = (request.GET.get("type") or "").strip()
+    selected_product = (request.GET.get("product") or "").strip()
+    selected_year = (request.GET.get("year") or "").strip()
+    if selected_category not in categories:
+        selected_category = ""
+    if selected_product not in product_names:
+        selected_product = ""
+    if selected_year and selected_year not in {str(year) for year in years}:
+        selected_year = ""
+    filtered_cards = [
+        card
+        for card in cards
+        if (not selected_category or card["category"] == selected_category)
+        and (not selected_product or card["name"] == selected_product)
+        and (not selected_year or str(card["date"].year) == selected_year)
+    ]
+    return render(
+        request,
+        "services/rcc_long_range_gallery.html",
+        {
+            **config,
+            "cards": filtered_cards,
+            "total_assets": len(cards),
+            "category_options": categories,
+            "product_options": product_names,
+            "year_options": years,
+            "selected_category": selected_category,
+            "selected_product": selected_product,
+            "selected_year": selected_year,
+            "long_range_page": RCCLongRangeForecastingPage.objects.live().first(),
+        },
+    )
 
 
 def _station_assets(product="arc2"):

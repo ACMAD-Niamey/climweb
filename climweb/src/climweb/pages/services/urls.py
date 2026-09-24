@@ -4,6 +4,34 @@ from . import views
 
 
 urlpatterns = [
+    path(
+        "rcc/long-range/consensus-statements/",
+        views.rcc_consensus_forums,
+        name="rcc_consensus_forums",
+    ),
+    path(
+        "rcc/long-range/consensus-statements/<slug:forum>/",
+        views.rcc_consensus_forum_detail,
+        name="rcc_consensus_forum_detail",
+    ),
+    path(
+        "rcc/long-range/tailored-forecasts/",
+        views.rcc_long_range_gallery,
+        {"gallery": "tailored-forecasts"},
+        name="rcc_tailored_forecast_gallery",
+    ),
+    path(
+        "rcc/long-range/model-performance/",
+        views.rcc_long_range_gallery,
+        {"gallery": "model-performance"},
+        name="rcc_model_performance_gallery",
+    ),
+    path(
+        "rcc/long-range/forecast-verification/",
+        views.rcc_long_range_gallery,
+        {"gallery": "forecast-verification"},
+        name="rcc_forecast_verification_gallery",
+    ),
     path("rcc/climsoft-resources/", views.rcc_climsoft_resources, name="rcc_climsoft_resources"),
     path("rcc/climate-indices/", views.rcc_climate_index_gallery, name="rcc_climate_index_gallery"),
     path("rcc/climate-indices/<int:asset_id>/image/", views.rcc_climate_index_file, name="rcc_climate_index_file"),
