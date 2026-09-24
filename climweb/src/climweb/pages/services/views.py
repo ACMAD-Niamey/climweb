@@ -13,12 +13,16 @@ from wagtail.documents import get_document_model
 
 from .models import (
     RCCClimateIndexAsset,
+    RCCClimateMonitoringPage,
+    RCCConsensusForumPage,
     RCCDataServicesPage,
     RCCDatasetAsset,
     RCCEIN15Asset,
     RCCReferenceClimatology,
     RCCSeasonalMapAsset,
+    RCCLongRangeForecastingPage,
 )
+from climweb.pages.products.models import ProductPage
 from .seasonal_map_importer import SEASONS
 from .climsoft_resources import CLIMSOFT_DOCUMENTS, CLIMSOFT_DOCUMENTS_BY_TITLE
 
@@ -30,6 +34,135 @@ MAP_VARIANTS = (
     ("50mm", "Days above 50 mm"),
 )
 EIN15_FAMILIES = ("ATM", "RAD", "SAV", "SRF", "STS")
+LONG_RANGE_GALLERIES = {
+    "tailored-forecasts": {
+        "slug": "seasonal-forecast-maps",
+        "badge": "RCC tailored forecasts",
+        "title": "Tailored precipitation and temperature forecasts",
+        "eyebrow": "Seasonal forecast maps",
+        "intro": (
+            "Explore locally managed regional and sub-regional forecast maps "
+            "by year and product type."
+        ),
+    },
+    "model-performance": {
+        "slug": "seasonal-model-performance",
+        "badge": "RCC model assessment",
+        "title": "Statistical and dynamical model performance",
+        "eyebrow": "Forecast system performance",
+        "intro": (
+            "Compare maps and graphs assessing statistical and dynamical "
+            "seasonal forecasting systems."
+        ),
+    },
+    "forecast-verification": {
+        "slug": "seasonal-forecast-verification",
+        "badge": "RCC forecast verification",
+        "title": "Forecast and outlook verification",
+        "eyebrow": "Verification maps and graphs",
+        "intro": (
+            "Review precipitation and temperature verification maps, graphs "
+            "and evaluation reports."
+        ),
+    },
+}
+
+
+def rcc_consensus_forums(request):
+    long_range_page = RCCLongRangeForecastingPage.objects.live().first()
+    forums = (
+        RCCConsensusForumPage.objects.live()
+        .child_of(long_range_page)
+        .order_by("path")
+        if long_range_page
+        else RCCConsensusForumPage.objects.none()
+    )
+    return render(
+        request,
+        "services/rcc_consensus_forums.html",
+        {
+            "forums": forums,
+            "document_count": sum(forum.document_count for forum in forums),
+            "long_range_page": long_range_page,
+        },
+    )
+
+
+def rcc_consensus_forum_detail(request, forum):
+    forum_page = get_object_or_404(
+        RCCConsensusForumPage.objects.live(),
+        slug=forum,
+    )
+    return forum_page.serve(request)
+
+
+def rcc_long_range_gallery(request, gallery):
+    config = LONG_RANGE_GALLERIES.get(gallery)
+    if not config:
+        raise Http404("This long-range forecast gallery does not exist.")
+
+    product_page = ProductPage.objects.live().filter(slug=config["slug"]).first()
+    cards = []
+    if product_page:
+        items = sorted(
+            product_page.all_products.live().specific(),
+            key=lambda item: item.date,
+            reverse=True,
+        )
+        for item in items:
+            for block in item.products:
+                if block.block_type not in {"image_product", "document_product"}:
+                    continue
+                item_type = block.value.product_item_type()
+                if not item_type:
+                    continue
+                cards.append(
+                    {
+                        "kind": "image" if block.block_type == "image_product" else "document",
+                        "name": item_type.name,
+                        "category": item_type.category.name,
+                        "date": block.value.get("date") or item.date,
+                        "image": block.value.get("image"),
+                        "thumbnail": block.value.get("thumbnail"),
+                        "document": block.value.get("document"),
+                    }
+                )
+
+    categories = sorted({card["category"] for card in cards})
+    product_names = sorted({card["name"] for card in cards})
+    years = sorted({card["date"].year for card in cards}, reverse=True)
+    selected_category = (request.GET.get("type") or "").strip()
+    selected_product = (request.GET.get("product") or "").strip()
+    selected_year = (request.GET.get("year") or "").strip()
+    if selected_category not in categories:
+        selected_category = ""
+    if selected_product not in product_names:
+        selected_product = ""
+    if selected_year and selected_year not in {str(year) for year in years}:
+        selected_year = ""
+    filtered_cards = [
+        card
+        for card in cards
+        if (not selected_category or card["category"] == selected_category)
+        and (not selected_product or card["name"] == selected_product)
+        and (not selected_year or str(card["date"].year) == selected_year)
+    ]
+    return render(
+        request,
+        "services/rcc_long_range_gallery.html",
+        {
+            **config,
+            "cards": filtered_cards,
+            "total_assets": len(cards),
+            "category_options": categories,
+            "product_options": product_names,
+            "year_options": years,
+            "selected_category": selected_category,
+            "selected_product": selected_product,
+            "selected_year": selected_year,
+            "long_range_page": RCCLongRangeForecastingPage.objects.live().first(),
+        },
+    )
 
 
 def _station_assets(product="arc2"):
@@ -40,29 +173,30 @@ def _station_assets(product="arc2"):
 
 
 def rcc_dataset_category(request, product="arc2"):
-    search_query = (request.GET.get("q") or "").strip()[:100]
     assets = _station_assets(product)
-    if search_query:
-        assets = assets.filter(country__icontains=search_query)
-    countries = list(
-        assets.values("country").annotate(
-            station_count=Count("id"),
-            coverage_start=Min("coverage_start"),
-            coverage_end=Max("coverage_end"),
-        ).order_by("country")
-    )
-    for country in countries:
-        country["slug"] = slugify(country["country"])
+    selector_countries = [
+        {"country": country, "slug": slugify(country)}
+        for country in assets.values_list("country", flat=True)
+        .distinct()
+        .order_by("country")
+    ]
+    station_selector = [
+        {
+            "country": slugify(asset.country),
+            "name": asset.station,
+            "url": reverse("rcc_dataset_detail", args=[asset.key]),
+        }
+        for asset in assets.order_by("country", "station")
+    ]
     return render(
         request,
         "services/rcc_dataset_category.html",
         {
-            "countries": countries,
-            "search_query": search_query,
+            "selector_countries": selector_countries,
+            "station_selector": station_selector,
             "product_title": "ARC2 daily station rainfall" if product == "arc2" else "CPC-Unified estimated daily rainfall",
             "product_label": "ARC2" if product == "arc2" else "CPC-Unified",
-            "country_url_name": "rcc_dataset_country" if product == "arc2" else "rcc_cpc_dataset_country",
-            "data_services_page": RCCDataServicesPage.objects.live().first(),
+            "climate_monitoring_page": RCCClimateMonitoringPage.objects.live().first(),
         },
     )
 
@@ -87,7 +221,7 @@ def rcc_dataset_country(request, country, product="arc2"):
             "search_query": search_query,
             "product_label": "ARC2" if product == "arc2" else "CPC-Unified",
             "category_url_name": "rcc_dataset_category" if product == "arc2" else "rcc_cpc_dataset_category",
-            "data_services_page": RCCDataServicesPage.objects.live().first(),
+            "climate_monitoring_page": RCCClimateMonitoringPage.objects.live().first(),
         },
     )
 
@@ -118,7 +252,8 @@ def rcc_dataset_detail(request, key):
                 args=[slugify(asset.country)],
             ),
             "product_label": "CPC-Unified" if asset.key.startswith("cpc-unified-") else "ARC2",
-            "data_services_page": RCCDataServicesPage.objects.live().first(),
+            "category_url_name": "rcc_cpc_dataset_category" if asset.key.startswith("cpc-unified-") else "rcc_dataset_category",
+            "climate_monitoring_page": RCCClimateMonitoringPage.objects.live().first(),
         },
     )
 
@@ -216,27 +351,41 @@ def rcc_climate_index_file(request, asset_id):
 
 
 def rcc_reference_climatology_countries(request):
-    search_query = (request.GET.get("q") or "").strip()[:100]
-    records = RCCReferenceClimatology.objects.all()
-    if search_query:
-        records = records.filter(country__icontains=search_query)
-    countries = list(
-        records.values("country_code", "country")
-        .annotate(
-            station_count=Count("station_id", distinct=True),
-            period_count=Count("id"),
-        )
+    all_records = RCCReferenceClimatology.objects.all()
+    selector_countries = [
+        {
+            "country": country,
+            "slug": slugify(country),
+        }
+        for country in all_records.values_list("country", flat=True)
+        .distinct()
         .order_by("country")
-    )
-    for country in countries:
-        country["slug"] = slugify(country["country"])
+    ]
+    station_selector = []
+    for station in (
+        all_records.values("country", "station_id", "station_name")
+        .distinct()
+        .order_by("country", "station_name")
+    ):
+        country_slug = slugify(station["country"])
+        station_selector.append(
+            {
+                "country": country_slug,
+                "id": station["station_id"],
+                "name": station["station_name"],
+                "url": reverse(
+                    "rcc_reference_climatology_station",
+                    args=[country_slug, station["station_id"]],
+                ),
+            }
+        )
     return render(
         request,
         "services/rcc_reference_climatology_countries.html",
         {
-            "countries": countries,
-            "search_query": search_query,
-            "data_services_page": RCCDataServicesPage.objects.live().first(),
+            "selector_countries": selector_countries,
+            "station_selector": station_selector,
+            "climate_monitoring_page": RCCClimateMonitoringPage.objects.live().first(),
         },
     )
 
@@ -279,7 +428,7 @@ def rcc_reference_climatology_country(request, country):
             "country_slug": country,
             "stations": stations,
             "search_query": search_query,
-            "data_services_page": RCCDataServicesPage.objects.live().first(),
+            "climate_monitoring_page": RCCClimateMonitoringPage.objects.live().first(),
         },
     )
 
@@ -308,32 +457,67 @@ def rcc_reference_climatology_station(request, country, station_id):
             99,
         )
     )
-    for record in records:
-        rows_by_month = {row["month"]: dict(row) for row in record.monthly_data}
-        precipitation_values = [
-            row.get("precipitation") or 0 for row in rows_by_month.values()
-        ]
-        precipitation_max = max(precipitation_values or [1]) or 1
-        chart_rows = []
-        for month in range(1, 13):
-            row = rows_by_month.get(
-                month,
-                {
-                    "month": month,
-                    "month_name": datetime(2000, month, 1).strftime("%B"),
-                    "precipitation": None,
-                    "rainy_days": None,
-                    "tmax": None,
-                    "tmean": None,
-                    "tmin": None,
-                },
-            )
-            row["precipitation_height"] = round(
-                ((row.get("precipitation") or 0) / precipitation_max) * 100,
-                1,
-            )
-            chart_rows.append(row)
-        record.chart_rows = chart_rows
+    parameter_options = (
+        ("precipitation", "Precipitation", "mm"),
+        ("rainy_days", "Rainy days", "days"),
+        ("tmin", "Mean minimum temperature", "°C"),
+        ("tmean", "Mean temperature", "°C"),
+        ("tmax", "Mean maximum temperature", "°C"),
+    )
+    parameters = {
+        key: {"key": key, "label": label, "unit": unit}
+        for key, label, unit in parameter_options
+    }
+    selected_parameter = parameters.get(
+        request.GET.get("parameter", "precipitation"),
+        parameters["precipitation"],
+    )
+    requested_period = request.GET.get("period", "")
+    selected_record = next(
+        (
+            record
+            for record in records
+            if f"{record.period_start}-{record.period_end}" == requested_period
+        ),
+        records[0],
+    )
+    rows_by_month = {
+        row["month"]: dict(row) for row in selected_record.monthly_data
+    }
+    chart_rows = []
+    for month in range(1, 13):
+        row = rows_by_month.get(
+            month,
+            {
+                "month": month,
+                "month_name": datetime(2000, month, 1).strftime("%B"),
+                "precipitation": None,
+                "rainy_days": None,
+                "tmax": None,
+                "tmean": None,
+                "tmin": None,
+            },
+        )
+        row["chart_value"] = row.get(selected_parameter["key"])
+        chart_rows.append(row)
+
+    available_values = [
+        row["chart_value"]
+        for row in chart_rows
+        if row["chart_value"] is not None
+    ]
+    minimum = min(available_values or [0])
+    maximum = max(available_values or [1])
+    baseline = min(0, minimum)
+    value_range = maximum - baseline or 1
+    for row in chart_rows:
+        value = row["chart_value"]
+        row["chart_height"] = (
+            round(max(3, ((value - baseline) / value_range) * 100), 1)
+            if value is not None
+            else 0
+        )
+    selected_record.chart_rows = chart_rows
     return render(
         request,
         "services/rcc_reference_climatology_station.html",
@@ -343,7 +527,10 @@ def rcc_reference_climatology_station(request, country, station_id):
             "station_name": records[0].station_name,
             "station_id": station_id,
             "records": records,
-            "data_services_page": RCCDataServicesPage.objects.live().first(),
+            "selected_record": selected_record,
+            "parameter_options": parameters.values(),
+            "selected_parameter": selected_parameter,
+            "climate_monitoring_page": RCCClimateMonitoringPage.objects.live().first(),
         },
     )
 

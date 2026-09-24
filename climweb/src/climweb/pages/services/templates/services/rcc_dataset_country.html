@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static i18n %}
+{% load static i18n nmhs_cms_tags %}
 
 {% block extra_css %}
     {{ block.super }}
@@ -17,12 +17,12 @@
             <p class="page-hero-subtitle">{% translate "Choose a station to view coverage, recent observations and download the daily CSV." %}</p>
         </div></div>
     </section>
-    <nav class="rcc-ds-nav" aria-label="{% translate 'Country navigation' %}"><div class="container">
-        <a href="{% url category_url_name %}">{% translate "Countries" %}</a>
-        <a href="#stations">{{ country }} {% translate "stations" %}</a>
-    </div></nav>
 
     <section id="stations" class="rcc-dataset-section rcc-browser-section"><div class="container">
+        <nav class="rcc-reference-breadcrumbs" aria-label="{% translate 'Breadcrumb' %}">
+            {% if climate_monitoring_page %}<a href="{{ climate_monitoring_page.url|public_page_url }}">{% translate "Climate Monitoring" %}</a>{% else %}<span>{% translate "Climate Monitoring" %}</span>{% endif %}
+            <span>/</span><a href="{% url category_url_name %}">{{ product_label }}</a><span>/</span><strong>{{ country }}</strong>
+        </nav>
         <div class="rcc-browser-heading">
             <div><p class="rcc-ds-eyebrow">{% translate "Step 2" %}</p><h2>{% translate "Choose a station" %}</h2></div>
             <div class="rcc-browser-heading__actions">

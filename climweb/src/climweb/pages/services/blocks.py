@@ -149,6 +149,26 @@ class TrainingGalleryItemBlock(blocks.StructBlock):
         label = _("Gallery item")
 
 
+class RCCForumPhotoBlock(blocks.StructBlock):
+    image = ImageChooserBlock(required=True)
+    caption = blocks.CharBlock(max_length=220, required=False)
+    credit = blocks.CharBlock(max_length=160, required=False)
+
+    class Meta:
+        icon = "image"
+        label = _("Forum photo")
+
+
+class RCCForumDocumentBlock(blocks.StructBlock):
+    title = blocks.CharBlock(max_length=220, required=False)
+    date = blocks.DateBlock(required=False)
+    document = DocumentChooserBlock(required=True)
+
+    class Meta:
+        icon = "doc-full"
+        label = _("Forum document")
+
+
 class TrainingAccommodationBlock(blocks.StructBlock):
     name = blocks.CharBlock(max_length=160)
     description = blocks.TextBlock(required=False)

@@ -4,7 +4,7 @@
 {% block extra_css %}
     {{ block.super }}
     <link rel="stylesheet" type="text/css" href="{% static 'css/services_rcc.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_climate_monitoring.css' %}?v=2">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_climate_monitoring.css' %}?v=4">
 {% endblock %}
 
 {% block body_class %}rcc-service-page rcc-climate-monitoring-page{% endblock %}
@@ -171,6 +171,28 @@
                         </div>
                     </article>
                 {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section id="country-monitoring" class="rcc-monitoring-country rcc-monitoring-section">
+        <div class="container">
+            <div class="rcc-monitoring-country__panel">
+                <div class="rcc-monitoring-country__copy">
+                    <p class="rcc-eyebrow">{% translate "External forecast service" %}</p>
+                    <h2>{% translate "Country monitoring" %}</h2>
+                    <p>{% translate "Explore operational multimodel forecast guidance for Africa and selected countries, including rainfall, temperature, wind and atmospheric conditions." %}</p>
+                    <span>{% translate "These links open the legacy THREDDS service in a new tab." %}</span>
+                </div>
+                <nav class="rcc-monitoring-country__links" aria-label="{% translate 'Country monitoring forecast viewers' %}">
+                    {% for item in country_monitoring_links %}
+                        <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">
+                            <span>{{ item.scope }}</span>
+                            <strong>{{ item.label }}</strong>
+                            <i aria-hidden="true">&#8599;</i>
+                        </a>
+                    {% endfor %}
+                </nav>
             </div>
         </div>
     </section>

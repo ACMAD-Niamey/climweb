@@ -16,10 +16,13 @@ from climweb.pages.products.tests.factories import (
     ProductItemPageFactory,
     ProductPageFactory,
 )
+from climweb.pages.services.long_range_forums import CONSENSUS_FORUMS
 from .factories import (
     RCCClimateMonitoringPageFactory,
+    RCCConsensusForumPageFactory,
     RCCClimateProductsPageFactory,
     RCCDataServicesPageFactory,
+    RCCLongRangeForecastingPageFactory,
     ServiceIndexPageFactory,
     ServicePageFactory,
 )
@@ -366,6 +369,10 @@ class TestServicesPages(WagtailPageTestCase):
             response,
             "Climate watch, extremes and atmospheric conditions",
         )
+        self.assertContains(response, "Country monitoring")
+        self.assertContains(response, "Africa/africa_multimodele.html")
+        self.assertContains(response, "Niger/niger_multimodele.html")
+        self.assertContains(response, "Country monitoring forecast viewers")
         self.assertContains(response, "Climate indices and historical trends")
         self.assertContains(response, "Reference climatologies and historical observations")
         self.assertContains(response, "Cryosphere and African Mountain Glaciers")
@@ -379,8 +386,8 @@ class TestServicesPages(WagtailPageTestCase):
         self.assertContains(response, f'href="{reverse("rcc_dataset_category")}"')
         self.assertContains(response, f'href="{reverse("rcc_cpc_dataset_category")}"')
         self.assertContains(response, f'href="{monitoring_page.url}"')
-        self.assertNotContains(response, "sgbd.acmad.org")
-        self.assertNotContains(response, "thredds")
+        self.assertContains(response, "sgbd.acmad.org")
+        self.assertContains(response, "THREDDS")
 
     def test_climate_monitoring_seed_links_existing_custom_menu_item(self):
         rcc_page = ServicePageFactory(
@@ -411,6 +418,154 @@ class TestServicesPages(WagtailPageTestCase):
         navigation.refresh_from_db()
         menu_item = navigation.rcc_main_menu[0].value
         self.assertEqual(menu_item["page"].pk, monitoring_page.pk)
+        self.assertEqual(menu_item["external_url"], "")
+
+    def test_rcc_long_range_forecasting_page_uses_local_archives(self):
+        product_index = ProductIndexPageFactory(parent=get_or_create_homepage())
+        product_pages = {}
+        for slug, title in (
+            ("seasonal-forecast-maps", "Seasonal Forecast Maps"),
+            ("seasonal-outlook-bulletins", "Seasonal Outlook Bulletins"),
+            (
+                "seasonal-consensus-statements-and-communiques",
+                "Consensus Statements and Communiqués",
+            ),
+            (
+                "seasonal-recommendations-and-summaries",
+                "Recommendations and Summaries",
+            ),
+            ("seasonal-technical-notes", "Technical Notes"),
+            ("seasonal-model-performance", "Seasonal Model Performance"),
+            ("seasonal-forecast-verification", "Seasonal Forecast Verification"),
+        ):
+            product_pages[slug] = ProductPageFactory(
+                parent=product_index,
+                slug=slug,
+                title=title,
+            )
+
+        ProductItemPageFactory(
+            parent=product_pages["seasonal-forecast-maps"],
+            title="Seasonal map",
+            date=date(2026, 9, 1),
+        )
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center long-range parent",
+            service__name="Regional Climate Center",
+        )
+        forecasting_page = RCCLongRangeForecastingPageFactory(parent=rcc_page)
+        forum_pages = {}
+        for forum in CONSENSUS_FORUMS:
+            forum_pages[forum["slug"]] = RCCConsensusForumPageFactory(
+                parent=forecasting_page,
+                title=str(forum["name"]),
+                slug=forum["slug"],
+                banner_title=str(forum["name"]),
+                forum_code=forum["code"],
+                region=str(forum["region"]),
+                target_season=str(forum["season"]),
+                summary=str(forum["summary"]),
+                archive_codes=",".join(forum["document_codes"]),
+            )
+
+        response = self.client.get(forecasting_page.get_url())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(
+            response,
+            "services/rcc_long_range_forecasting_page.html",
+        )
+        self.assertContains(response, "Seasonal forecast products")
+        self.assertContains(response, "Performance and verification")
+        self.assertContains(
+            response,
+            "Tailored Precipitation and Temperature Forecasts",
+        )
+        self.assertContains(response, "Statistical and Dynamical Model Performance")
+        self.assertContains(response, "Forecast and Outlook Verification")
+        self.assertContains(response, "Climate Outlook Forums")
+        gallery_slugs = {
+            "seasonal-forecast-maps",
+            "seasonal-consensus-statements-and-communiques",
+            "seasonal-model-performance",
+            "seasonal-forecast-verification",
+        }
+        for slug, product_page in product_pages.items():
+            if slug in gallery_slugs:
+                continue
+            self.assertContains(response, f'href="{product_page.url}"')
+        for url_name in (
+            "rcc_tailored_forecast_gallery",
+            "rcc_model_performance_gallery",
+            "rcc_forecast_verification_gallery",
+        ):
+            gallery_url = reverse(url_name)
+            self.assertContains(response, f'href="{gallery_url}"')
+            gallery_response = self.client.get(gallery_url)
+            self.assertEqual(gallery_response.status_code, 200)
+            self.assertTemplateUsed(
+                gallery_response,
+                "services/rcc_long_range_gallery.html",
+            )
+        consensus_url = reverse("rcc_consensus_forums")
+        self.assertContains(response, f'href="{consensus_url}"')
+        consensus_response = self.client.get(consensus_url)
+        self.assertEqual(consensus_response.status_code, 200)
+        self.assertTemplateUsed(
+            consensus_response,
+            "services/rcc_consensus_forums.html",
+        )
+        for forum in ("accof", "presao", "presass", "presac", "presagg", "medcof", "swiocof", "sarcof", "ghacof"):
+            detail_url = reverse("rcc_consensus_forum_detail", args=[forum])
+            self.assertContains(
+                consensus_response,
+                f'href="{forum_pages[forum].url}"',
+            )
+            detail_response = self.client.get(detail_url)
+            self.assertEqual(detail_response.status_code, 200)
+            self.assertTemplateUsed(
+                detail_response,
+                "services/rcc_consensus_forum_detail.html",
+            )
+        self.assertEqual(
+            self.client.get(
+                reverse("rcc_consensus_forum_detail", args=["unknown-forum"])
+            ).status_code,
+            404,
+        )
+        self.assertNotContains(response, "sgbd.acmad.org")
+        self.assertNotContains(response, "rcc.acmad.org")
+
+    def test_long_range_forecasting_seed_links_existing_menu_item(self):
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center long-range menu",
+            service__name="Regional Climate Center",
+        )
+        products_page = RCCClimateProductsPageFactory(parent=rcc_page)
+        forecasting_page = RCCLongRangeForecastingPageFactory(parent=rcc_page)
+        navigation = NavigationSettings.for_site(Site.objects.get(is_default_site=True))
+        navigation.rcc_main_menu = [
+            (
+                "navigation_item",
+                {
+                    "label": "Long-range Forecasting",
+                    "page": products_page,
+                    "external_url": "",
+                    "include_subpages": False,
+                    "large_submenu": False,
+                    "sub_items": [],
+                },
+            )
+        ]
+        navigation.save()
+
+        call_command("seed_rcc_long_range_forecasting", stdout=StringIO())
+
+        navigation.refresh_from_db()
+        menu_item = navigation.rcc_main_menu[0].value
+        self.assertEqual(menu_item["page"].pk, forecasting_page.pk)
         self.assertEqual(menu_item["external_url"], "")
 
     def test_rcc_climate_products_introduction_title_is_optional(self):

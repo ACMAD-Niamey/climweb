@@ -117,6 +117,7 @@ def make_asset(selector_url, year, family, kind, number, label, legacy=False):
     filename = f"hs_{kind}{number}.jpg"
     return {
         "key": key,
+        "family": family,
         "name": name,
         "category": category,
         "kind": "image",
@@ -136,6 +137,12 @@ class Command(MixedMediaImportCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--source-url", default=DEFAULT_SOURCE_URL)
+        parser.add_argument(
+            "--family",
+            choices=("all", "statistical", "dynamical"),
+            default="all",
+            help="Restrict the import to statistical or dynamical model assets.",
+        )
         parser.add_argument("--include-history", action="store_true")
         parser.add_argument("--history-only", action="store_true")
         parser.add_argument("--from-date", type=iso_date)
@@ -149,40 +156,42 @@ class Command(MixedMediaImportCommand):
 
     def _collect_assets(self, options):
         source_url = options["source_url"]
-        self._get(source_url)
+        family = options["family"]
         static_url = STATIC_SELECTOR
         dynamic_url = DYNAMIC_SELECTOR
         if source_url != DEFAULT_SOURCE_URL:
             static_url = source_url
 
-        static_options = parse_options(self._get(static_url).content)
-        dynamic_options = parse_options(self._get(dynamic_url).content)
         assets = []
-        for number, label in enumerate(static_options, 1):
-            assets.append(
-                make_asset(static_url, 2017, "static", "hg", number, label)
-            )
-        for year, files in STATIC_ARCHIVES.items():
-            archive_url = urljoin(static_url, f"{year}/modelstatique{year}.php")
-            labels = parse_options(self._get(archive_url).content)
-            for kind, number in files:
-                label = labels[number - 1]
+        if family in {"all", "statistical"}:
+            static_options = parse_options(self._get(static_url).content)
+            for number, label in enumerate(static_options, 1):
                 assets.append(
-                    make_asset(
-                        archive_url,
-                        year,
-                        "static",
-                        kind,
-                        number,
-                        label,
-                        legacy=year in {2012, 2013},
-                    )
+                    make_asset(static_url, 2017, "static", "hg", number, label)
                 )
-        for kind, number in DYNAMIC_FILES:
-            label = dynamic_options[number - 1]
-            assets.append(
-                make_asset(dynamic_url, 2014, "dynamic", kind, number, label)
-            )
+            for year, files in STATIC_ARCHIVES.items():
+                archive_url = urljoin(static_url, f"{year}/modelstatique{year}.php")
+                labels = parse_options(self._get(archive_url).content)
+                for kind, number in files:
+                    label = labels[number - 1]
+                    assets.append(
+                        make_asset(
+                            archive_url,
+                            year,
+                            "static",
+                            kind,
+                            number,
+                            label,
+                            legacy=year in {2012, 2013},
+                        )
+                    )
+        if family in {"all", "dynamical"}:
+            dynamic_options = parse_options(self._get(dynamic_url).content)
+            for kind, number in DYNAMIC_FILES:
+                label = dynamic_options[number - 1]
+                assets.append(
+                    make_asset(dynamic_url, 2014, "dynamic", kind, number, label)
+                )
         return assets
 
     @staticmethod

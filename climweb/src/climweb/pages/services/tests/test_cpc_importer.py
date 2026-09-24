@@ -89,11 +89,12 @@ class CPCImporterTests(TestCase):
                     self.assertTrue(asset.object_name.startswith("cpc-unified/niger/"))
                     category = self.client.get(reverse("rcc_cpc_dataset_category"))
                     self.assertContains(category, "Niger")
-                    self.assertContains(category, "Search countries")
-                    self.assertContains(
-                        self.client.get(reverse("rcc_cpc_dataset_category"), {"q": "ghana"}),
-                        "No countries match your search.",
-                    )
+                    self.assertContains(category, "Climate Monitoring")
+                    self.assertContains(category, 'data-country-select')
+                    self.assertContains(category, 'data-station-select')
+                    self.assertContains(category, "NIAMEY-AERO")
+                    self.assertNotContains(category, "rcc-country-card")
+                    self.assertNotContains(category, "Search countries")
                     country = self.client.get(reverse("rcc_cpc_dataset_country", args=["niger"]))
                     self.assertContains(country, "NIAMEY-AERO")
                     self.assertContains(country, "Search stations")

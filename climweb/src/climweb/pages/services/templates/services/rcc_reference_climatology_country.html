@@ -4,7 +4,7 @@
 {% block extra_css %}
     {{ block.super }}
     <link rel="stylesheet" href="{% static 'css/services_rcc.css' %}">
-    <link rel="stylesheet" href="{% static 'css/rcc_reference_climatologies.css' %}?v=1">
+    <link rel="stylesheet" href="{% static 'css/rcc_reference_climatologies.css' %}?v=7">
 {% endblock %}
 {% block body_class %}rcc-service-page rcc-reference-page{% endblock %}
 
@@ -19,9 +19,10 @@
         </div></div>
     </section>
     <section class="rcc-reference-browser"><div class="container">
-        <div class="rcc-reference-breadcrumbs">
-            <a href="{% url 'rcc_reference_climatology_countries' %}">{% translate "Countries" %}</a><span>/</span><strong>{{ country }}</strong>
-        </div>
+        <nav class="rcc-reference-breadcrumbs" aria-label="{% translate 'Breadcrumb' %}">
+            {% if climate_monitoring_page %}<a href="{{ climate_monitoring_page.url|public_page_url }}">{% translate "Climate Monitoring" %}</a>{% else %}<span>{% translate "Climate Monitoring" %}</span>{% endif %}
+            <span>/</span><a href="{% url 'rcc_reference_climatology_countries' %}">{% translate "Station reference climatologies" %}</a><span>/</span><strong>{{ country }}</strong>
+        </nav>
         <header class="rcc-reference-heading">
             <div><p class="rcc-eyebrow">{% translate "Step 2" %}</p><h2>{% translate "Choose a station" %}</h2></div>
             <p>{% translate "Each station page compares monthly precipitation and temperature normals across its imported reference periods." %}</p>

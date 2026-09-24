@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta
 from urllib.parse import quote, urlparse
 
 import requests
+from bs4 import BeautifulSoup
 from django.core.files import File
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
@@ -61,6 +62,13 @@ THREDDS_CATALOGS = (
     "MEDCOF/statement",
     "MEDCOF/fcst_map",
 )
+LEGACY_LONG_RANGE_URL = "https://rcc.acmad.org/longerangebulletin.php"
+LEGACY_TAILORED_MAPS = {
+    "imagetn1.jpg": ("tailored-temperature-1", "Tailored Temperature Forecast Map 1"),
+    "imagetn2.jpg": ("tailored-temperature-2", "Tailored Temperature Forecast Map 2"),
+    "imagerr1.jpg": ("tailored-precipitation-1", "Tailored Precipitation Forecast Map 1"),
+    "imagerr2.jpg": ("tailored-precipitation-2", "Tailored Precipitation Forecast Map 2"),
+}
 SOURCE_WORDPRESS = "ACMAD WordPress Media"
 SOURCE_THREDDS = "ACMAD THREDDS"
 USER_AGENT = "ACMAD-ClimWeb-Seasonal-Forecast-Importer/1.0 (+https://new.acmad.org/)"
@@ -297,6 +305,34 @@ def parse_thredds_catalog(xml_content):
     return assets
 
 
+def parse_legacy_tailored_maps(html, issue_date=None):
+    issue_date = issue_date or date.today()
+    assets = []
+    seen = set()
+    for element in BeautifulSoup(html, "html.parser").find_all(["a", "img"]):
+        source_url = element.get("href") or element.get("src") or ""
+        filename = os.path.basename(urlparse(source_url).path).lower()
+        definition = LEGACY_TAILORED_MAPS.get(filename)
+        if not definition or source_url in seen:
+            continue
+        seen.add(source_url)
+        key, name = definition
+        assets.append(
+            {
+                "key": key,
+                "name": name,
+                "category": "Seasonal Forecast Maps",
+                "kind": "image",
+                "date": issue_date,
+                "filename": filename,
+                "source_url": source_url,
+                "provenance_url": source_url,
+                "source_system": "ACMAD RCC Long-range Forecast",
+            }
+        )
+    return assets
+
+
 class Command(BaseCommand):
     help = "Import current or historical ACMAD Seasonal and Long-Range Forecasts."
     no_files_message = "No Seasonal and Long-Range Forecast files matched"
@@ -306,6 +342,12 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--api-url", action="append")
         parser.add_argument("--catalog-url", action="append")
+        parser.add_argument("--legacy-url", default=LEGACY_LONG_RANGE_URL)
+        parser.add_argument(
+            "--legacy-only",
+            action="store_true",
+            help="Import only the tailored maps exposed by the legacy RCC page.",
+        )
         parser.add_argument("--include-history", action="store_true")
         parser.add_argument("--history-only", action="store_true")
         parser.add_argument("--from-date", type=iso_date)
@@ -407,21 +449,31 @@ class Command(BaseCommand):
 
     def _collect_assets(self, options):
         assets = []
-        api_urls = options["api_url"] or [
-            f"{API_URL}?search={term}&per_page=100"
-            for term in DEFAULT_SEARCH_TERMS
-        ]
-        for url in api_urls:
-            try:
-                assets.extend(parse_media_inventory(self._get(url).json()))
-            except requests.JSONDecodeError as exc:
-                raise CommandError("ACMAD media API returned invalid JSON") from exc
-        catalog_urls = options["catalog_url"] or [
-            f"{THREDDS_ROOT}/{path}/catalog.xml" for path in THREDDS_CATALOGS
-        ]
-        for url in catalog_urls:
+        if not options.get("legacy_only"):
+            api_urls = options["api_url"] or [
+                f"{API_URL}?search={term}&per_page=100"
+                for term in DEFAULT_SEARCH_TERMS
+            ]
+            for url in api_urls:
+                try:
+                    assets.extend(parse_media_inventory(self._get(url).json()))
+                except requests.JSONDecodeError as exc:
+                    raise CommandError(
+                        "ACMAD media API returned invalid JSON"
+                    ) from exc
+            catalog_urls = options["catalog_url"] or [
+                f"{THREDDS_ROOT}/{path}/catalog.xml" for path in THREDDS_CATALOGS
+            ]
+            for url in catalog_urls:
+                assets.extend(
+                    parse_thredds_catalog(
+                        self._get(operational_url(url)).content
+                    )
+                )
+        legacy_url = options.get("legacy_url")
+        if legacy_url:
             assets.extend(
-                parse_thredds_catalog(self._get(operational_url(url)).content)
+                parse_legacy_tailored_maps(self._get(legacy_url).content)
             )
         by_url = {asset["provenance_url"]: asset for asset in assets}
         return list(by_url.values())

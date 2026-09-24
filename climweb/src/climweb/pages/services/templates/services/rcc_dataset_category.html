@@ -1,9 +1,10 @@
 {% extends "base.html" %}
-{% load static i18n %}
+{% load static i18n nmhs_cms_tags %}
 
 {% block extra_css %}
     {{ block.super }}
     <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_data_services.css' %}?v=20260917-1">
+    <link rel="stylesheet" href="{% static 'css/rcc_reference_climatologies.css' %}?v=7">
 {% endblock %}
 {% block body_class %}rcc-data-services-page{% endblock %}
 
@@ -17,50 +18,53 @@
             <p class="page-hero-subtitle">{% translate "Browse satellite rainfall estimates by country and synoptic station." %}</p>
         </div></div>
     </section>
-    <nav class="rcc-ds-nav" aria-label="{% translate 'Collection navigation' %}"><div class="container">
-        {% if data_services_page %}<a href="{{ data_services_page.url }}">{% translate "Data Services" %}</a>{% endif %}
-        <a href="#countries">{% translate "Countries" %}</a>
-    </div></nav>
-
     <section id="countries" class="rcc-dataset-section rcc-browser-section"><div class="container">
+        <nav class="rcc-reference-breadcrumbs" aria-label="{% translate 'Breadcrumb' %}">
+            {% if climate_monitoring_page %}<a href="{{ climate_monitoring_page.url|public_page_url }}">{% translate "Climate Monitoring" %}</a>{% else %}<span>{% translate "Climate Monitoring" %}</span>{% endif %}
+            <span>/</span><strong>{{ product_label }}</strong>
+        </nav>
         <div class="rcc-browser-heading">
             <div><p class="rcc-ds-eyebrow">{% translate "Step 1" %}</p><h2>{% translate "Choose a country" %}</h2></div>
-            <div class="rcc-browser-heading__actions">
-                <p>Select a country to see its available {{ product_label }} station series.</p>
-                <div class="rcc-view-toggle">
-                    <button class="rcc-view-toggle__btn is-active" data-view="grid" aria-label="{% translate 'Grid view' %}">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                    </button>
-                    <button class="rcc-view-toggle__btn" data-view="list" aria-label="{% translate 'List view' %}">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-                    </button>
-                </div>
-            </div>
+            <div class="rcc-browser-heading__actions"><p>Select a country and station to open its available {{ product_label }} daily rainfall series.</p></div>
         </div>
-        <form class="rcc-browser-search" method="get" role="search" aria-label="{% translate 'Search countries' %}">
-            <label for="rcc-country-search">{% translate "Search countries" %}</label>
-            <div class="rcc-browser-search__field">
-                <input id="rcc-country-search" type="search" name="q" value="{{ search_query }}" maxlength="100" placeholder="{% translate 'Enter a country name' %}">
-                <button type="submit">{% translate "Search" %}</button>
-                {% if search_query %}<a href="{{ request.path }}">{% translate "Clear" %}</a>{% endif %}
-            </div>
+        <form class="rcc-reference-finder" data-station-finder>
+            <div class="rcc-reference-finder__intro"><span>{{ product_label }}</span><strong>{% translate "Go directly to a station dataset" %}</strong></div>
+            <label for="dataset-country-select">{% translate "Country" %}</label>
+            <select id="dataset-country-select" data-country-select><option value="">{% translate "Select a country" %}</option>{% for item in selector_countries %}<option value="{{ item.slug }}">{{ item.country }}</option>{% endfor %}</select>
+            <label for="dataset-station-select">{% translate "Station" %}</label>
+            <select id="dataset-station-select" data-station-select disabled><option value="">{% translate "Select a country first" %}</option></select>
+            <button type="submit" disabled>{% translate "View station" %}</button>
         </form>
-        {% if search_query %}<p class="rcc-browser-results" role="status">{% blocktranslate count count=countries|length %}{{ count }} country matches “{{ search_query }}”.{% plural %}{{ count }} countries match “{{ search_query }}”.{% endblocktranslate %}</p>{% endif %}
-        <div class="rcc-country-grid">
-            {% for country in countries %}
-                <a class="rcc-country-card" href="{% url country_url_name country.slug %}">
-                    <span class="rcc-country-card__flag" aria-hidden="true">{{ country.country|slice:":1" }}</span>
-                    <div><h3>{{ country.country }}</h3><p>{{ country.station_count }} {% blocktranslate count count=country.station_count %}station{% plural %}stations{% endblocktranslate %}</p></div>
-                    <dl><div><dt>{% translate "Coverage" %}</dt><dd>{{ country.coverage_start|date:"Y" }}–{{ country.coverage_end|date:"Y" }}</dd></div></dl>
-                    <b aria-hidden="true">&#8594;</b>
-                </a>
-            {% empty %}<p>{% if search_query %}{% translate "No countries match your search." %}{% else %}{% translate "No countries are available yet." %}{% endif %}</p>{% endfor %}
-        </div>
+        {{ station_selector|json_script:"dataset-station-data" }}
     </div></section>
 </main>
 {% endblock %}
 
 {% block extra_js %}
     {{ block.super }}
-    <script src="{% static 'js/rcc_view_toggle.js' %}"></script>
+    {% translate "Select a station" as choose_station_label %}
+    {% translate "Select a country first" as choose_country_label %}
+    <script>
+        (() => {
+            const form = document.querySelector("[data-station-finder]");
+            if (!form) return;
+            const countrySelect = form.querySelector("[data-country-select]");
+            const stationSelect = form.querySelector("[data-station-select]");
+            const submitButton = form.querySelector("button[type='submit']");
+            const stations = JSON.parse(document.getElementById("dataset-station-data").textContent);
+            const replaceStations = () => {
+                const matches = stations.filter(station => station.country === countrySelect.value);
+                stationSelect.replaceChildren(new Option(countrySelect.value ? "{{ choose_station_label|escapejs }}" : "{{ choose_country_label|escapejs }}", ""));
+                matches.forEach(station => stationSelect.add(new Option(station.name, station.url)));
+                stationSelect.disabled = !countrySelect.value || matches.length === 0;
+                submitButton.disabled = true;
+            };
+            countrySelect.addEventListener("change", replaceStations);
+            stationSelect.addEventListener("change", () => submitButton.disabled = !stationSelect.value);
+            form.addEventListener("submit", event => {
+                event.preventDefault();
+                if (stationSelect.value) window.location.assign(stationSelect.value);
+            });
+        })();
+    </script>
 {% endblock %}
