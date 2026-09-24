@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% load static i18n wagtailcore_tags wagtailiconchooser_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/services_rcc.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_training.css' %}?v=1">
+{% endblock %}
+
+{% block body_class %}rcc-service-page rcc-training-page{% endblock %}
+
+{% block content %}
+<main>
+    {% if page.banner_image %}
+        {% include "hero.html" with page=page %}
+    {% else %}
+        <section class="page-hero rcc-simple-hero">
+            <div class="page-hero-overlay"></div>
+            <div class="page-hero-body"><div class="container">
+                <span class="page-hero-badge">{% translate "RCC climate function" %}</span>
+                <h1 class="page-hero-title">{{ page.banner_title|default:page.title }}</h1>
+                {% if page.banner_subtitle %}<p class="page-hero-subtitle">{{ page.banner_subtitle }}</p>{% endif %}
+            </div></div>
+        </section>
+    {% endif %}
+
+    <section class="rcc-training-overview">
+        <div class="container">
+            <a class="rcc-training-back" href="{{ page.get_parent.url }}">&#8592; {% translate "Regional Climate Centre" %}</a>
+            <div class="rcc-training-overview__grid">
+                <div>
+                    <p class="rcc-eyebrow">{% translate "Training function" %}</p>
+                    {% if page.introduction_title %}<h2>{{ page.introduction_title }}</h2>{% endif %}
+                    {% if page.introduction_text %}<div class="format-text">{{ page.introduction_text|richtext }}</div>{% endif %}
+                </div>
+                <div class="rcc-training-focus" aria-label="{% translate 'Training focus areas' %}">
+                    {% for block in page.focus_areas %}
+                        <article>
+                            <span>0{{ forloop.counter }}</span>
+                            <h3>{{ block.value.title }}</h3>
+                            <p>{{ block.value.description }}</p>
+                        </article>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="rcc-training-section rcc-training-programmes">
+        <div class="container">
+            <header class="rcc-training-heading">
+                <div><p class="rcc-eyebrow">{% translate "Capacity development" %}</p><h2>{% translate "Programmes and learning activities" %}</h2></div>
+                <p>{% translate "Practical learning combines methods, product development, interpretation, professional placements and regional exchange." %}</p>
+            </header>
+            <div class="rcc-training-programme-grid">
+                {% for block in page.programmes %}
+                    <article class="rcc-training-programme-card">
+                        <span class="rcc-training-icon">{% if block.value.icon %}{% svg_icon name=block.value.icon %}{% else %}{% svg_icon name="pick" %}{% endif %}</span>
+                        <h3>{{ block.value.title }}</h3>
+                        <p>{{ block.value.description }}</p>
+                        {% if block.value.page %}<a href="{% pageurl block.value.page %}">{% if block.value.link_label %}{{ block.value.link_label }}{% else %}{% translate "Explore programme" %}{% endif %} &#8594;</a>
+                        {% elif block.value.external_url %}<a href="{{ block.value.external_url }}" target="_blank" rel="noopener">{% if block.value.link_label %}{{ block.value.link_label }}{% else %}{% translate "Open resource" %}{% endif %} &#8599;</a>{% endif %}
+                    </article>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="rcc-training-section rcc-training-library" id="methods-and-guidance">
+        <div class="container">
+            <header class="rcc-training-heading">
+                <div><p class="rcc-eyebrow">{% translate "Technical library" %}</p><h2>{% translate "Methods, tools and guidance" %}</h2></div>
+                <p>{% translate "Quality-control procedures, climate-index guidance, data-rescue references and Climsoft documentation preserved from the RCC training library." %}</p>
+            </header>
+            <div class="rcc-training-resource-groups">
+                {% for block in page.methodology_groups %}
+                    <section class="rcc-training-resource-group" id="{{ block.value.anchor }}">
+                        <header>
+                            <span class="rcc-training-icon">{% svg_icon name=block.value.icon %}</span>
+                            <div><h3>{{ block.value.title }}</h3>{% if block.value.description %}<p>{{ block.value.description }}</p>{% endif %}</div>
+                        </header>
+                        <div class="rcc-training-resource-list">
+                            {% for resource in block.value.resources %}
+                                <article>
+                                    <div><small>{{ resource.resource_type }}</small><h4>{{ resource.title }}</h4>{% if resource.description %}<p>{{ resource.description }}</p>{% endif %}</div>
+                                    {% if resource.document %}<a href="{{ resource.document.url }}" target="_blank" rel="noopener">{% translate "View document" %} &#8599;</a>
+                                    {% elif resource.external_url %}<a href="{{ resource.external_url }}" target="_blank" rel="noopener">{% translate "View document" %} &#8599;</a>{% endif %}
+                                </article>
+                            {% empty %}<p class="rcc-training-empty">{% translate "Resources are being prepared." %}</p>{% endfor %}
+                        </div>
+                    </section>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="rcc-training-section rcc-training-reports" id="reports">
+        <div class="container">
+            <header class="rcc-training-heading">
+                <div><p class="rcc-eyebrow">{% translate "Learning record" %}</p><h2>{% translate "Workshop, training and survey reports" %}</h2></div>
+                <p>{% translate "Reports document the regional forums, professional placements, scientific stays and needs assessments that shaped RCC capacity development." %}</p>
+            </header>
+            <div class="rcc-training-report-grid">
+                {% for block in page.report_groups %}
+                    <section class="rcc-training-report-group" id="{{ block.value.anchor }}">
+                        <span class="rcc-training-icon">{% svg_icon name=block.value.icon %}</span>
+                        <h3>{{ block.value.title }}</h3>
+                        {% if block.value.description %}<p>{{ block.value.description }}</p>{% endif %}
+                        <ul>
+                            {% for resource in block.value.resources %}
+                                <li>
+                                    {% if resource.document %}<a href="{{ resource.document.url }}" target="_blank" rel="noopener">{{ resource.title }}</a>
+                                    {% elif resource.external_url %}<a href="{{ resource.external_url }}" target="_blank" rel="noopener">{{ resource.title }}</a>
+                                    {% else %}<span>{{ resource.title }}</span>{% endif %}
+                                    <small>{{ resource.resource_type }}</small>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="rcc-training-section rcc-training-videos">
+        <div class="container">
+            <header class="rcc-training-heading">
+                <div><p class="rcc-eyebrow">{% translate "Watch and learn" %}</p><h2>{% translate "Seasonal forecast training series" %}</h2></div>
+                <p>{% translate "A four-part introduction to seasonal forecast production, interpretation and delivery as a climate service." %}</p>
+            </header>
+            <div class="rcc-training-video-grid">
+                {% for block in page.training_videos %}
+                    <article class="rcc-training-video-card">
+                        <div class="rcc-training-video-frame"><iframe src="https://www.youtube-nocookie.com/embed/{{ block.value.youtube_id }}" title="{{ block.value.title }}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
+                        <div><span>{% blocktranslate with number=forloop.counter %}Part {{ number }}{% endblocktranslate %}</span><h3><a href="{{ block.value.video_url }}" target="_blank" rel="noopener">{{ block.value.title }}</a></h3>{% if block.value.description %}<p>{{ block.value.description }}</p>{% endif %}</div>
+                    </article>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    {% if page.closing_text %}
+        <section class="rcc-training-contact"><div class="container"><div class="rcc-training-contact__panel"><div><p class="rcc-eyebrow">{% translate "Work with ACMAD" %}</p><h2>{% translate "Plan a training activity" %}</h2></div><div class="format-text">{{ page.closing_text|richtext }}</div><a href="mailto:secretariat@acmad.org">{% translate "Contact ACMAD" %} &#8594;</a></div></div></section>
+    {% endif %}
+</main>
+{% endblock %}

@@ -10,6 +10,8 @@ from ..models import (
     RCCClimateProductsPage,
     RCCDataServicesPage,
     RCCLongRangeForecastingPage,
+    RCCRecommendedFunctionsPage,
+    RCCTrainingPage,
     ServiceIndexPage,
     ServicePage,
 )
@@ -120,6 +122,82 @@ class RCCLongRangeForecastingPageFactory(wagtail_factories.PageFactory):
     introduction_text = RichText(
         "<p>ACMAD assesses global ensemble guidance and develops consolidated outlooks for Africa.</p>"
     )
+
+
+class RCCTrainingPageFactory(wagtail_factories.PageFactory):
+    class Meta:
+        model = RCCTrainingPage
+
+    title = "Training"
+    banner_title = "Strengthening climate-service capacity"
+    banner_subtitle = "Methods, practical learning and regional knowledge exchange."
+    introduction_title = "From climate data to usable regional services"
+    introduction_text = RichText(
+        "<p>ACMAD develops and shares practical climate-service skills.</p>"
+    )
+    focus_areas = [
+        (
+            "area",
+            {
+                "title": "Climate data services",
+                "description": "Quality control, rescue and management.",
+            },
+        )
+    ]
+    programmes = [
+        (
+            "programme",
+            {
+                "title": "Workshops and seminars",
+                "description": "Regional learning and knowledge exchange.",
+                "icon": "group",
+                "page": None,
+                "external_url": "",
+                "link_label": "",
+            },
+        )
+    ]
+    training_videos = [
+        (
+            "video",
+            {
+                "title": "Seasonal Forecasts Explained: Introduction",
+                "description": "An introduction to seasonal forecasts.",
+                "youtube_id": "CucEP23gWfU",
+                "video_url": "https://www.youtube.com/watch?v=CucEP23gWfU",
+            },
+        )
+    ]
+
+
+class RCCRecommendedFunctionsPageFactory(wagtail_factories.PageFactory):
+    class Meta:
+        model = RCCRecommendedFunctionsPage
+
+    title = "Highly Recommended Functions"
+    banner_title = "Climate-change analysis for African decision-making"
+    banner_subtitle = "Model evaluation, scenarios, risk studies and indices."
+    introduction_title = "Turning climate science into regional evidence"
+    introduction_text = RichText(
+        "<p>ACMAD assesses observed and projected climate change across Africa.</p>"
+    )
+    functions = [
+        (
+            "function",
+            {
+                "activity": "Detect and project changes in climate indices",
+                "output_title": "Climate-change indices",
+                "description": "Observed trends and projected indices for African stations.",
+                "icon": "globe",
+                "topics": ["Observed trends", "RCP scenarios"],
+                "related_page": None,
+                "external_url": "https://example.com/climate-indices/",
+                "link_label": "Open indices application",
+            },
+        )
+    ]
+    evidence_heading = "Research reports and climate-change evidence"
+    evidence_introduction = RichText("<p>Regional climate-change reports.</p>")
 
 
 class RCCConsensusForumPageFactory(wagtail_factories.PageFactory):
