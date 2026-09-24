@@ -116,7 +116,7 @@ class RCCDatasetTests(TestCase):
         self.assertContains(response, 'class="rcc-dataset-toolbar"')
         self.assertNotContains(response, 'class="rcc-dataset-lead"')
 
-    def test_category_page_lists_countries_before_stations(self):
+    def test_category_page_lists_country_and_station_selectors(self):
         self.make_asset()
         self.make_zinder_asset()
 
@@ -126,23 +126,29 @@ class RCCDatasetTests(TestCase):
         self.assertTemplateUsed(response, "services/rcc_dataset_category.html")
         self.assertContains(response, "Choose a country")
         self.assertContains(response, "Niger")
-        self.assertContains(response, "2 stations")
+        self.assertContains(response, 'data-country-select')
+        self.assertContains(response, 'data-station-select')
+        self.assertContains(response, "NIAMEY-AERO")
+        self.assertContains(response, "ZINDER")
+        self.assertEqual(len(response.context["selector_countries"]), 1)
+        self.assertEqual(len(response.context["station_selector"]), 2)
         self.assertNotContains(response, 'class="rcc-station-card"')
 
-    def test_country_search_filters_names_and_handles_no_matches(self):
+    def test_category_selector_lists_all_countries_and_stations(self):
         self.make_asset()
         RCCDatasetAsset.objects.create(
             key="arc2-ghana-yendi", title="ARC2 Yendi", country="Ghana", station="YENDI",
             object_name="arc2/ghana/yendi/test/YENDI.csv", synced_at=timezone.now(),
         )
         url = reverse("rcc_dataset_category")
-        response = self.client.get(url, {"q": "  nIG  "})
-        self.assertContains(response, 'name="q" value="nIG"')
+        response = self.client.get(url, {"q": "nIG"})
         self.assertContains(response, "Niger")
-        self.assertNotContains(response, "Ghana")
-        self.assertContains(response, "Search countries")
-        response = self.client.get(url, {"q": "Kenya"})
-        self.assertContains(response, "No countries match your search.")
+        self.assertContains(response, "Ghana")
+        self.assertContains(response, "NIAMEY-AERO")
+        self.assertContains(response, "YENDI")
+        self.assertEqual(len(response.context["selector_countries"]), 2)
+        self.assertEqual(len(response.context["station_selector"]), 2)
+        self.assertNotContains(response, "Search countries")
         self.assertNotContains(response, 'class="rcc-country-card"')
 
     def test_country_page_lists_station_grid(self):

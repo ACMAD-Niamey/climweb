@@ -19,6 +19,10 @@
         </div></div>
     </section>
     <section class="rcc-reference-records"><div class="container">
+        <nav class="rcc-reference-breadcrumbs" aria-label="{% translate 'Breadcrumb' %}">
+            {% if climate_monitoring_page %}<a href="{{ climate_monitoring_page.url|public_page_url }}">{% translate "Climate Monitoring" %}</a>{% else %}<span>{% translate "Climate Monitoring" %}</span>{% endif %}
+            <span>/</span><a href="{% url 'rcc_reference_climatology_countries' %}">{% translate "Station reference climatologies" %}</a><span>/</span><a href="{% url 'rcc_reference_climatology_country' country_slug %}">{{ country }}</a><span>/</span><strong>{{ station_name }}</strong>
+        </nav>
         <header class="rcc-reference-heading">
             <div><p class="rcc-eyebrow">{% translate "Climate normals" %}</p><h2>{% translate "Explore reference climatology" %}</h2></div>
             <p>{% translate "Select a reference period and parameter. The chart reveals the monthly pattern while the table provides the exact source values." %}</p>

@@ -11,6 +11,11 @@
 
 .rcc-dataset-section { padding: clamp(2.75rem, 5vw, 4.75rem) 0; scroll-margin-top: 3.5rem; }
 
+.rcc-reference-breadcrumbs { display: flex; margin-bottom: 2.4rem; color: var(--rcc-ds-muted); font-size: .76rem; align-items: center; flex-wrap: wrap; gap: .6rem; }
+.rcc-reference-breadcrumbs a { color: var(--rcc-ds-primary-dark); font-weight: 750; text-decoration: none; }
+.rcc-reference-breadcrumbs a:hover { text-decoration: underline; }
+.rcc-reference-breadcrumbs strong { color: var(--rcc-ds-ink); }
+
 .rcc-dataset-lead {
     display: grid;
     overflow: hidden;

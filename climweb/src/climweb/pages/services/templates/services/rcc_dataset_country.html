@@ -19,6 +19,10 @@
     </section>
 
     <section id="stations" class="rcc-dataset-section rcc-browser-section"><div class="container">
+        <nav class="rcc-reference-breadcrumbs" aria-label="{% translate 'Breadcrumb' %}">
+            {% if climate_monitoring_page %}<a href="{{ climate_monitoring_page.url|public_page_url }}">{% translate "Climate Monitoring" %}</a>{% else %}<span>{% translate "Climate Monitoring" %}</span>{% endif %}
+            <span>/</span><a href="{% url category_url_name %}">{{ product_label }}</a><span>/</span><strong>{{ country }}</strong>
+        </nav>
         <div class="rcc-browser-heading">
             <div><p class="rcc-ds-eyebrow">{% translate "Step 2" %}</p><h2>{% translate "Choose a station" %}</h2></div>
             <div class="rcc-browser-heading__actions">
