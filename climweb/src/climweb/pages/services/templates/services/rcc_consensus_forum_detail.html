@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load static i18n wagtailcore_tags wagtailimages_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/services_rcc.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_consensus_forums.css' %}?v=1">
+{% endblock %}
+
+{% block body_class %}rcc-service-page rcc-consensus-page rcc-consensus-detail-page{% endblock %}
+
+{% block content %}
+<main>
+    <section class="page-hero rcc-simple-hero rcc-consensus-hero">
+        <div class="page-hero-overlay"></div>
+        <div class="page-hero-body"><div class="container">
+            <span class="page-hero-badge">{{ forum.forum_code }} · {{ forum.region }}</span>
+            <h1 class="page-hero-title">{{ forum.banner_title|default:forum.title }}</h1>
+        </div></div>
+    </section>
+
+    <section class="rcc-consensus-section">
+        <div class="container">
+            <nav class="rcc-consensus-breadcrumb" aria-label="{% translate 'Breadcrumb' %}">
+                {% if long_range_page %}<a href="{{ long_range_page.url }}">{% translate "Long-range Forecasting" %}</a><span>/</span>{% endif %}
+                <a href="{% url 'rcc_consensus_forums' %}">{% translate "Consensus statements" %}</a><span>/</span><span>{{ forum.forum_code }}</span>
+            </nav>
+
+            <div class="rcc-forum-layout">
+                <article class="rcc-forum-main">
+                    <p class="rcc-eyebrow">{% translate "Regional forum profile" %}</p>
+                    <h2>{% translate "About the forum" %}</h2>
+                    <div class="rcc-forum-lead format-text">{{ forum.overview|richtext }}</div>
+
+                    <div class="rcc-forum-facts">
+                        <section><span>{% translate "Geographic coverage" %}</span><div class="format-text">{{ forum.geographic_coverage|richtext }}</div></section>
+                        <section><span>{% translate "Target season" %}</span><p>{{ forum.target_season }}</p></section>
+                        <section><span>{% translate "Climate drivers considered" %}</span><div class="format-text">{{ forum.climate_drivers|richtext }}</div></section>
+                        <section><span>{% translate "Principal climate hazards" %}</span><div class="format-text">{{ forum.climate_hazards|richtext }}</div></section>
+                    </div>
+
+                    <section class="rcc-forum-text-section">
+                        <h2>{% translate "How the consensus is developed" %}</h2>
+                        <div class="format-text">{{ forum.consensus_method|richtext }}</div>
+                    </section>
+                    <section class="rcc-forum-text-section">
+                        <h2>{% translate "User involvement" %}</h2><div class="format-text">{{ forum.user_involvement|richtext }}</div>
+                    </section>
+                    <section class="rcc-forum-text-section">
+                        <h2>{% translate "Development priorities" %}</h2><div class="format-text">{{ forum.development_priorities|richtext }}</div>
+                    </section>
+                </article>
+
+                <aside class="rcc-forum-aside">
+                    <div class="rcc-forum-aside__card">
+                        <span>{% translate "Forum" %}</span><strong>{{ forum.forum_code }}</strong>
+                        <dl><div><dt>{% translate "Region" %}</dt><dd>{{ forum.region }}</dd></div><div><dt>{% translate "Focus" %}</dt><dd>{{ forum.target_season }}</dd></div></dl>
+                    </div>
+                    <a class="rcc-forum-back" href="{% url 'rcc_consensus_forums' %}">&#8592; {% translate "View all outlook forums" %}</a>
+                </aside>
+            </div>
+
+            {% if forum.photos %}
+                <section class="rcc-forum-gallery">
+                    <header><p class="rcc-eyebrow">{% translate "Forum gallery" %}</p><h2>{% translate "Photos" %}</h2></header>
+                    <div class="rcc-forum-gallery__grid">
+                        {% for block in forum.photos %}
+                            {% image block.value.image fill-720x480 as forum_photo %}
+                            <figure><img src="{{ forum_photo.url }}" alt="{{ block.value.caption|default:forum.title }}" loading="lazy"><figcaption>{% if block.value.caption %}<span>{{ block.value.caption }}</span>{% endif %}{% if block.value.credit %}<small>{{ block.value.credit }}</small>{% endif %}</figcaption></figure>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
+
+            <section class="rcc-forum-documents">
+                <header><div><p class="rcc-eyebrow">{% translate "Local document archive" %}</p><h2>{% translate "Consensus statements and communiqués" %}</h2></div><span>{% blocktranslate count count=documents|length %}{{ count }} document{% plural %}{{ count }} documents{% endblocktranslate %}</span></header>
+                {% if documents %}
+                    <div class="rcc-forum-document-grid">
+                        {% for item in documents %}
+                            <article class="rcc-forum-document">
+                                {% if item.thumbnail %}{% image item.thumbnail fill-480x300 as document_thumbnail %}<img src="{{ document_thumbnail.url }}" alt="" loading="lazy">{% else %}<div class="rcc-forum-document__icon" aria-hidden="true">PDF</div>{% endif %}
+                                <div><time datetime="{{ item.date|date:'Y-m-d' }}">{{ item.date|date:"j F Y" }}</time><h3>{{ item.name }}</h3><a href="{{ item.document.url }}" target="_blank" rel="noopener">{% translate "Open statement" %} &#8599;</a></div>
+                            </article>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="rcc-forum-empty"><h3>{% translate "No local statements are available yet" %}</h3><p>{% translate "Validated statements will appear here after they are added to the seasonal consensus archive." %}</p></div>
+                {% endif %}
+            </section>
+        </div>
+    </section>
+</main>
+{% endblock %}

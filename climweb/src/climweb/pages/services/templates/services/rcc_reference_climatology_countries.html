@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% load static i18n nmhs_cms_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/services_rcc.css' %}">
+    <link rel="stylesheet" href="{% static 'css/rcc_reference_climatologies.css' %}?v=7">
+{% endblock %}
+{% block body_class %}rcc-service-page rcc-reference-page{% endblock %}
+
+{% block content %}
+<main>
+    <section class="page-hero rcc-simple-hero rcc-reference-hero">
+        <div class="page-hero-overlay"></div>
+        <div class="page-hero-body"><div class="container">
+            <span class="page-hero-badge">{% translate "RCC climate baseline" %}</span>
+            <h1 class="page-hero-title">{% translate "Station reference climatologies" %}</h1>
+            <p class="page-hero-subtitle">{% translate "Monthly precipitation, rainy-day and temperature normals from African observing stations." %}</p>
+        </div></div>
+    </section>
+
+    <section class="rcc-reference-browser"><div class="container">
+        <nav class="rcc-reference-breadcrumbs" aria-label="{% translate 'Breadcrumb' %}">
+            {% if climate_monitoring_page %}<a href="{{ climate_monitoring_page.url|public_page_url }}">{% translate "Climate Monitoring" %}</a>{% else %}<span>{% translate "Climate Monitoring" %}</span>{% endif %}
+            <span>/</span><strong>{% translate "Station reference climatologies" %}</strong>
+        </nav>
+        <header class="rcc-reference-heading">
+            <div><p class="rcc-eyebrow">{% translate "Step 1" %}</p><h2>{% translate "Choose a country" %}</h2></div>
+            <p>{% translate "Select a country to view stations with locally mirrored climatology records." %}</p>
+        </header>
+        <form class="rcc-reference-finder" data-station-finder>
+            <div class="rcc-reference-finder__intro">
+                <span>{% translate "Quick station lookup" %}</span>
+                <strong>{% translate "Go directly to a station climatology" %}</strong>
+            </div>
+            <label for="reference-country-select">{% translate "Country" %}</label>
+            <select id="reference-country-select" data-country-select>
+                <option value="">{% translate "Select a country" %}</option>
+                {% for item in selector_countries %}<option value="{{ item.slug }}">{{ item.country }}</option>{% endfor %}
+            </select>
+            <label for="reference-station-select">{% translate "Station" %}</label>
+            <select id="reference-station-select" data-station-select disabled>
+                <option value="">{% translate "Select a country first" %}</option>
+            </select>
+            <button type="submit" disabled>{% translate "View climatology" %}</button>
+        </form>
+        {{ station_selector|json_script:"reference-station-data" }}
+    </div></section>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    {% translate "Select a station" as choose_station_label %}
+    {% translate "Select a country first" as choose_country_label %}
+    <script>
+        (() => {
+            const form = document.querySelector("[data-station-finder]");
+            if (!form) return;
+
+            const countrySelect = form.querySelector("[data-country-select]");
+            const stationSelect = form.querySelector("[data-station-select]");
+            const submitButton = form.querySelector("button[type='submit']");
+            const stations = JSON.parse(document.getElementById("reference-station-data").textContent);
+            const chooseStationLabel = "{{ choose_station_label|escapejs }}";
+            const chooseCountryLabel = "{{ choose_country_label|escapejs }}";
+
+            const replaceStations = () => {
+                const country = countrySelect.value;
+                const matches = stations.filter(station => station.country === country);
+                stationSelect.replaceChildren(new Option(country ? chooseStationLabel : chooseCountryLabel, ""));
+                matches.forEach(station => {
+                    stationSelect.add(new Option(`${station.name} (${station.id})`, station.url));
+                });
+                stationSelect.disabled = !country || matches.length === 0;
+                submitButton.disabled = true;
+            };
+
+            countrySelect.addEventListener("change", replaceStations);
+            stationSelect.addEventListener("change", () => {
+                submitButton.disabled = !stationSelect.value;
+            });
+            form.addEventListener("submit", event => {
+                event.preventDefault();
+                if (stationSelect.value) window.location.assign(stationSelect.value);
+            });
+        })();
+    </script>
+{% endblock extra_js %}

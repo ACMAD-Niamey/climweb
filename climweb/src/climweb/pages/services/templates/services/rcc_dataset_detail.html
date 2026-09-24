@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static i18n %}
+{% load static i18n nmhs_cms_tags %}
 
 {% block extra_css %}
     {{ block.super }}
@@ -19,14 +19,12 @@
         </div></div>
     </section>
 
-    <nav class="rcc-ds-nav" aria-label="{% translate 'Dataset navigation' %}"><div class="container">
-        {% if data_services_page %}<a href="{{ data_services_page.url }}">{% translate "Data Services" %}</a>{% endif %}
-        <a href="{{ country_url }}">{{ asset.country }} {% translate "stations" %}</a>
-        <a href="#overview">{% translate "Overview" %}</a>
-        <a href="#preview">{% translate "Latest observations" %}</a>
-    </div></nav>
 
     <section id="overview" class="rcc-dataset-section"><div class="container">
+        <nav class="rcc-reference-breadcrumbs" aria-label="{% translate 'Breadcrumb' %}">
+            {% if climate_monitoring_page %}<a href="{{ climate_monitoring_page.url|public_page_url }}">{% translate "Climate Monitoring" %}</a>{% else %}<span>{% translate "Climate Monitoring" %}</span>{% endif %}
+            <span>/</span><a href="{% url category_url_name %}">{{ product_label }}</a><span>/</span><a href="{{ country_url }}">{{ asset.country }}</a><span>/</span><strong>{{ asset.station }}</strong>
+        </nav>
         <div class="rcc-dataset-toolbar">
             <div class="rcc-dataset-tags" aria-label="{% translate 'Dataset characteristics' %}">
                 <span>{{ product_label }}</span><span>{% translate "Daily" %}</span><span>CSV</span>

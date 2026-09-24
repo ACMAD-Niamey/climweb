@@ -23,6 +23,7 @@ from .models import (
     RCCARC2ImportConfig, RCCARC2ImportRun, RCCCPCImportConfig, RCCCPCImportRun, RCCDatasetAsset,
     RCCSeasonalMapAsset, RCCSeasonalMapImportConfig,
     RCCEIN15Asset, RCCEIN15ImportConfig,
+    RCCClimateIndexAsset, RCCClimateIndexImportConfig,
 )
 from .tasks import (
     create_rcc_arc2_run, create_rcc_cpc_run, execute_rcc_arc2_import, execute_rcc_cpc_import,
@@ -157,6 +158,21 @@ def rcc_imports_view(request):
         "last_imported": ein15_assets.order_by("-synced_at").values_list("synced_at", flat=True).first(),
         "last_run": ein15_config.runs.first() if ein15_config else None,
         "is_file": True,
+    })
+    index_config = RCCClimateIndexImportConfig.objects.filter(singleton_key="climate-indices").first()
+    index_assets = RCCClimateIndexAsset.objects.all()
+    rows.append({
+        "label": "Climate indices and historical graphs",
+        "description": "Managed PNG graph sources with retained local versions",
+        "url": reverse("rcc_climate_index_imports"),
+        "configured": index_config is not None,
+        "enabled": bool(index_config and index_config.enabled),
+        "interval_hours": index_config.interval_hours if index_config else None,
+        "selected_count": index_assets.filter(active=True).count(),
+        "imported_count": index_assets.filter(synced_at__isnull=False).count(),
+        "last_imported": index_assets.order_by("-synced_at").values_list("synced_at", flat=True).first(),
+        "last_run": index_config.runs.first() if index_config else None,
+        "is_graph": True,
     })
     return TemplateResponse(
         request,

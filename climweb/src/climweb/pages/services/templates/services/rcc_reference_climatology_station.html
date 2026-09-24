@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load static i18n nmhs_cms_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/services_rcc.css' %}">
+    <link rel="stylesheet" href="{% static 'css/rcc_reference_climatologies.css' %}?v=7">
+{% endblock %}
+{% block body_class %}rcc-service-page rcc-reference-page{% endblock %}
+
+{% block content %}
+<main>
+    <section class="page-hero rcc-simple-hero rcc-reference-hero rcc-reference-hero--compact">
+        <div class="page-hero-overlay"></div>
+        <div class="page-hero-body"><div class="container">
+            <span class="page-hero-badge">{{ country }} · {{ station_id }}</span>
+            <h1 class="page-hero-title">{{ station_name }}</h1>
+            <p class="page-hero-subtitle">{% translate "Monthly precipitation, rainy days and temperature reference values." %}</p>
+        </div></div>
+    </section>
+    <section class="rcc-reference-records"><div class="container">
+        <nav class="rcc-reference-breadcrumbs" aria-label="{% translate 'Breadcrumb' %}">
+            {% if climate_monitoring_page %}<a href="{{ climate_monitoring_page.url|public_page_url }}">{% translate "Climate Monitoring" %}</a>{% else %}<span>{% translate "Climate Monitoring" %}</span>{% endif %}
+            <span>/</span><a href="{% url 'rcc_reference_climatology_countries' %}">{% translate "Station reference climatologies" %}</a><span>/</span><a href="{% url 'rcc_reference_climatology_country' country_slug %}">{{ country }}</a><span>/</span><strong>{{ station_name }}</strong>
+        </nav>
+        <header class="rcc-reference-heading">
+            <div><p class="rcc-eyebrow">{% translate "Climate normals" %}</p><h2>{% translate "Explore reference climatology" %}</h2></div>
+            <p>{% translate "Select a reference period and parameter. The chart reveals the monthly pattern while the table provides the exact source values." %}</p>
+        </header>
+
+        <form class="rcc-reference-controls" method="get">
+            <label for="reference-period">{% translate "Reference period" %}</label>
+            <select id="reference-period" name="period">
+                {% for record in records %}
+                    <option value="{{ record.period_start }}-{{ record.period_end }}"{% if record.pk == selected_record.pk %} selected{% endif %}>{{ record.period_label }}</option>
+                {% endfor %}
+            </select>
+            <label for="reference-parameter">{% translate "Parameter" %}</label>
+            <select id="reference-parameter" name="parameter">
+                {% for parameter in parameter_options %}
+                    <option value="{{ parameter.key }}"{% if parameter.key == selected_parameter.key %} selected{% endif %}>{{ parameter.label }} ({{ parameter.unit }})</option>
+                {% endfor %}
+            </select>
+            <button type="submit">{% translate "Update view" %}</button>
+        </form>
+
+        <article class="rcc-reference-period">
+            <header>
+                <div><span>{% translate "Reference period" %}</span><h3>{{ selected_record.period_label }}</h3></div>
+                <p>{{ selected_parameter.label }} · {{ station_name }} · {{ station_id }}</p>
+            </header>
+            <div class="rcc-reference-period__content">
+                <div class="rcc-reference-chart" aria-label="{% blocktranslate with parameter=selected_parameter.label period=selected_record.period_label %}Monthly {{ parameter }} chart for {{ period }}{% endblocktranslate %}">
+                    {% for row in selected_record.chart_rows %}
+                        <div class="rcc-reference-chart__column">
+                            <span class="rcc-reference-chart__value">{% if row.chart_value != None %}{{ row.chart_value|floatformat:1 }}{% else %}—{% endif %}</span>
+                            <div><i style="height: {{ row.chart_height }}%"></i></div>
+                            <b>{{ row.month_name|slice:":3" }}</b>
+                        </div>
+                    {% endfor %}
+                </div>
+                <div class="rcc-reference-table-wrap"><table class="rcc-reference-table">
+                    <thead><tr><th>{% translate "Month" %}</th><th>{{ selected_parameter.label }} ({{ selected_parameter.unit }})</th></tr></thead>
+                    <tbody>{% for row in selected_record.chart_rows %}<tr><th>{{ row.month_name }}</th><td>{% if row.chart_value != None %}{{ row.chart_value|floatformat:1 }}{% else %}—{% endif %}</td></tr>{% endfor %}</tbody>
+                </table></div>
+            </div>
+        </article>
+    </div></section>
+</main>
+{% endblock %}

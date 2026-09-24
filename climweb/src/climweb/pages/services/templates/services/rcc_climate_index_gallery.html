@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load static i18n %}
+
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static 'css/rcc_data_services.css' %}">
+<link rel="stylesheet" type="text/css" href="{% static 'css/rcc_seasonal_map_gallery.css' %}">
+{% endblock %}
+{% block body_class %}rcc-data-services-page{% endblock %}
+
+{% block content %}
+<main>
+    <section class="page-hero rcc-ds-simple-hero rcc-dataset-hero">
+        <div class="page-hero-overlay"></div>
+        <div class="page-hero-body"><div class="container">
+            <span class="page-hero-badge">{% translate "RCC historical archive" %}</span>
+            <h1 class="page-hero-title">{% translate "Climate indices and historical graphs" %}</h1>
+            <p class="page-hero-subtitle">{% translate "Preserved rainfall and temperature analyses from the legacy ACMAD RCC collection." %}</p>
+        </div></div>
+    </section>
+
+    <section class="rcc-dataset-section rcc-seasonal-gallery">
+        <div class="container">
+            <div class="rcc-seasonal-gallery__heading">
+                <div>
+                    <p class="rcc-ds-eyebrow">{% translate "Historical reference collection" %}</p>
+                    <h2>{% translate "Explore the graphs" %}</h2>
+                </div>
+                <p>{% blocktranslate count count=total_charts %}{{ count }} graph preserved{% plural %}{{ count }} graphs preserved{% endblocktranslate %}</p>
+            </div>
+            <p class="rcc-seasonal-gallery__intro">{% translate "These figures are preserved historical outputs. Their periods, methods and geographic coverage vary; consult each title before reuse." %}</p>
+
+            <form class="rcc-seasonal-gallery__filters" method="get" aria-label="{% translate 'Filter historical graphs' %}">
+                <div><label for="scope-filter">{% translate "Geographic scope" %}</label><select id="scope-filter" name="scope">
+                    <option value="">{% translate "All scopes" %}</option>
+                    <option value="central-africa" {% if selected_scope == "central-africa" %}selected{% endif %}>{% translate "Central Africa studies" %}</option>
+                    <option value="africa" {% if selected_scope == "africa" %}selected{% endif %}>{% translate "Africa-wide analyses" %}</option>
+                    <option value="other" {% if selected_scope == "other" %}selected{% endif %}>{% translate "Other" %}</option>
+                </select></div>
+                <button type="submit">{% translate "Apply filter" %}</button>
+                {% if selected_scope %}<a href="{% url 'rcc_climate_index_gallery' %}">{% translate "Clear" %}</a>{% endif %}
+            </form>
+
+            {% if assets %}
+            <div class="rcc-seasonal-gallery__grid">
+                {% for asset in assets %}
+                <article class="rcc-seasonal-card">
+                    <a class="rcc-seasonal-card__image" href="{% url 'rcc_climate_index_file' asset.pk %}" target="_blank" rel="noopener" aria-label="{% blocktranslate with title=asset.title %}Open {{ title }}{% endblocktranslate %}">
+                        <img src="{% url 'rcc_climate_index_file' asset.pk %}" alt="{{ asset.title }}" loading="lazy" width="{{ asset.width }}" height="{{ asset.height }}">
+                    </a>
+                    <div class="rcc-seasonal-card__body">
+                        <h3>{{ asset.title }}</h3>
+                        <p>{% if asset.scope == "central-africa" %}{% translate "Central Africa study" %}{% elif asset.scope == "africa" %}{% translate "Africa-wide analysis" %}{% else %}{% translate "Other region" %}{% endif %}{% if asset.period %} · {{ asset.period }}{% endif %}</p>
+                        {% if asset.description %}<p>{{ asset.description }}</p>{% endif %}
+                        <div class="rcc-seasonal-card__footer">
+                            <a href="{% url 'rcc_climate_index_file' asset.pk %}" target="_blank" rel="noopener">{% translate "View full graph" %} <span aria-hidden="true">&#8599;</span></a>
+                            <a href="{% url 'rcc_climate_index_file' asset.pk %}?download=1">{% translate "Download PNG" %} <span aria-hidden="true">&#8595;</span></a>
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="rcc-seasonal-gallery__empty">
+                <h3>{% if total_charts %}{% translate "No graphs match this filter" %}{% else %}{% translate "Historical graphs are being prepared" %}{% endif %}</h3>
+                <p>{% if total_charts %}{% translate "Try another geographic scope." %}{% else %}{% translate "Preserved graphs will appear here after import." %}{% endif %}</p>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+</main>
+{% endblock %}

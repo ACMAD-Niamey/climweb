@@ -10,6 +10,7 @@ from climweb.pages.products.management.commands.import_acmad_seasonal_forecasts 
     PRODUCT_DEFINITIONS,
     classify_asset,
     operational_url,
+    parse_legacy_tailored_maps,
     parse_media_inventory,
     parse_thredds_catalog,
 )
@@ -100,6 +101,34 @@ class TestSeasonalForecastSources(SimpleTestCase):
         self.assertEqual(
             operational_url("https://sgbd.acmad.org/thredds/catalog/a.xml"),
             "http://sgbd.acmad.org:8080/thredds/catalog/a.xml",
+        )
+
+    def test_legacy_page_exposes_four_tailored_forecast_maps(self):
+        root = "https://sgbd.acmad.org/thredds/fileServer/Doc_Web/"
+        html = "".join(
+            f'<a href="{root}{name}"><img src="{root}{name}"></a>'
+            for name in (
+                "imagetn1.jpg",
+                "imagetn2.jpg",
+                "imagerr1.jpg",
+                "imagerr2.jpg",
+            )
+        )
+
+        assets = parse_legacy_tailored_maps(html, date(2026, 6, 26))
+
+        self.assertEqual(len(assets), 4)
+        self.assertEqual(
+            {asset["key"] for asset in assets},
+            {
+                "tailored-temperature-1",
+                "tailored-temperature-2",
+                "tailored-precipitation-1",
+                "tailored-precipitation-2",
+            },
+        )
+        self.assertTrue(
+            all(asset["date"] == date(2026, 6, 26) for asset in assets)
         )
 
 

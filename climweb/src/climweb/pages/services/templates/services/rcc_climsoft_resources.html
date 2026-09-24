@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load static i18n %}
+
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static 'css/rcc_data_services.css' %}">
+<link rel="stylesheet" type="text/css" href="{% static 'css/rcc_climsoft_resources.css' %}">
+{% endblock %}
+{% block body_class %}rcc-data-services-page{% endblock %}
+
+{% block content %}
+<main>
+    <section class="page-hero rcc-ds-simple-hero rcc-dataset-hero">
+        <div class="page-hero-overlay"></div>
+        <div class="page-hero-body"><div class="container">
+            <span class="page-hero-badge">{% translate "Climate data management" %}</span>
+            <h1 class="page-hero-title">{% translate "Climsoft resources and documentation" %}</h1>
+            <p class="page-hero-subtitle">{% translate "Locally preserved manuals and technical guidance supporting climate-data management, quality control and climate-index analysis." %}</p>
+        </div></div>
+    </section>
+
+    <section class="rcc-climsoft-intro">
+        <div class="container rcc-climsoft-intro__grid">
+            <div>
+                <p class="rcc-ds-eyebrow">{% translate "Reference library" %}</p>
+                <h2>{% translate "Operational guidance in one place" %}</h2>
+            </div>
+            <div>
+                <p>{% translate "These archived resources cover database fundamentals, installation, administration, programming, routine use and data entry. The RClimDex manual supports the calculation and interpretation of climate-extreme indices." %}</p>
+                <p class="rcc-climsoft-note">{% translate "Some manuals describe Climsoft Version 3.0 and are retained as historical operational references. Confirm compatibility before applying procedures to newer installations." %}</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="rcc-climsoft-library">
+        <div class="container">
+            <div class="rcc-climsoft-library__heading">
+                <div><p class="rcc-ds-eyebrow">{% translate "Local document collection" %}</p><h2>{% translate "Browse resources" %}</h2></div>
+                <p>{% blocktranslate count count=total_resources %}{{ count }} resource available{% plural %}{{ count }} resources available{% endblocktranslate %}</p>
+            </div>
+
+            <form class="rcc-climsoft-filters" method="get" aria-label="{% translate 'Filter Climsoft resources' %}">
+                <div><label for="climsoft-search">{% translate "Search" %}</label><input id="climsoft-search" name="q" type="search" value="{{ query }}" placeholder="{% translate 'Search manuals and topics' %}"></div>
+                <div><label for="climsoft-category">{% translate "Category" %}</label><select id="climsoft-category" name="category"><option value="">{% translate "All categories" %}</option>{% for value, label in category_options %}<option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+                <button type="submit">{% translate "Apply" %}</button>
+                {% if query or selected_category %}<a href="{% url 'rcc_climsoft_resources' %}">{% translate "Clear" %}</a>{% endif %}
+            </form>
+
+            {% if resources %}<div class="rcc-climsoft-grid">
+                {% for resource in resources %}<article class="rcc-climsoft-card">
+                    <div class="rcc-climsoft-card__meta"><span>{{ resource.category }}</span><span>{{ resource.format }}</span></div>
+                    <h3><a href="{{ resource.document.url }}" target="_blank" rel="noopener">{{ resource.document.title }}</a></h3>
+                    <p>{{ resource.description }}</p>
+                    <div class="rcc-climsoft-card__details"><span>{{ resource.size_bytes|filesizeformat }}</span></div>
+                    <footer><a href="{{ resource.document.url }}" target="_blank" rel="noopener">{% translate "Open resource" %} <span aria-hidden="true">&#8599;</span></a></footer>
+                </article>{% endfor %}
+            </div>{% else %}<div class="rcc-climsoft-empty"><h3>{% if total_resources %}{% translate "No resources match these filters" %}{% else %}{% translate "Resources are being prepared" %}{% endif %}</h3><p>{% if total_resources %}{% translate "Try a broader search or another category." %}{% else %}{% translate "The locally hosted Climsoft library will appear after the initial import." %}{% endif %}</p></div>{% endif %}
+        </div>
+    </section>
+</main>
+{% endblock %}

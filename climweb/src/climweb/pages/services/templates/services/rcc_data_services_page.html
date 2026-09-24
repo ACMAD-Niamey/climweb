@@ -25,14 +25,6 @@
         </section>
     {% endif %}
 
-    <nav class="rcc-ds-nav" aria-label="{% translate 'Page sections' %}">
-        <div class="container">
-            <a href="{{ page.get_parent.url }}">{% translate "Home" %}</a>
-            {% for block in page.data_groups %}<a href="#{{ block.value.anchor }}">{{ block.value.title }}</a>{% endfor %}
-            <a href="#request-data">{% translate "Request data" %}</a>
-        </div>
-    </nav>
-
     {% for block in page.data_groups %}
         <section id="{{ block.value.anchor }}" class="rcc-ds-group">
             <div class="container">
@@ -64,8 +56,16 @@
                                     <a href="{% url 'rcc_cpc_dataset_category' %}">{{ dataset.title }}</a>
                                 {% elif dataset.local_dataset_key == 'seasonal-maps' %}
                                     <a href="{% url 'rcc_seasonal_map_gallery' %}">{{ dataset.title }}</a>
+                                {% elif dataset.local_dataset_key == 'climate-indices' %}
+                                    <a href="{% url 'rcc_climate_index_gallery' %}">{{ dataset.title }}</a>
+                                {% elif dataset.local_dataset_key == 'climsoft-resources' %}
+                                    <a href="{% url 'rcc_climsoft_resources' %}">{{ dataset.title }}</a>
                                 {% elif dataset.local_dataset_key == 'ein15' %}
                                     <a href="{% url 'rcc_ein15_archive' %}">{{ dataset.title }}</a>
+                                {% elif dataset.local_dataset_key == 'thunderstorm-nowcasting' %}
+                                    {% if rdt_product_url %}<a href="{{ rdt_product_url }}">{{ dataset.title }}</a>{% else %}{{ dataset.title }}{% endif %}
+                                {% elif dataset.local_dataset_key == 'itd-itcz' %}
+                                    {% if itd_product_url %}<a href="{{ itd_product_url }}">{{ dataset.title }}</a>{% else %}{{ dataset.title }}{% endif %}
                                 {% elif dataset.local_dataset_key %}
                                     <a href="{% url 'rcc_dataset_detail' dataset.local_dataset_key %}">{{ dataset.title }}</a>
                                 {% elif dataset.access_url %}
@@ -93,10 +93,30 @@
                                     <a href="{% url 'rcc_seasonal_map_gallery' %}">
                                         {% translate "View maps" %} <span aria-hidden="true">&#8594;</span>
                                     </a>
+                                {% elif dataset.local_dataset_key == 'climate-indices' %}
+                                    <a href="{% url 'rcc_climate_index_gallery' %}">
+                                        {% translate "View graphs" %} <span aria-hidden="true">&#8594;</span>
+                                    </a>
+                                {% elif dataset.local_dataset_key == 'climsoft-resources' %}
+                                    <a href="{% url 'rcc_climsoft_resources' %}">
+                                        {% translate "Browse resources" %} <span aria-hidden="true">&#8594;</span>
+                                    </a>
                                 {% elif dataset.local_dataset_key == 'ein15' %}
                                     <a href="{% url 'rcc_ein15_archive' %}">
                                         {% translate "View files" %} <span aria-hidden="true">&#8594;</span>
                                     </a>
+                                {% elif dataset.local_dataset_key == 'thunderstorm-nowcasting' %}
+                                    {% if rdt_product_url %}
+                                        <a href="{{ rdt_product_url }}">{% translate "View products" %} <span aria-hidden="true">&#8594;</span></a>
+                                    {% else %}
+                                        <span class="rcc-ds-card__pending">{% translate "Product archive pending" %}</span>
+                                    {% endif %}
+                                {% elif dataset.local_dataset_key == 'itd-itcz' %}
+                                    {% if itd_product_url %}
+                                        <a href="{{ itd_product_url }}">{% translate "View products" %} <span aria-hidden="true">&#8594;</span></a>
+                                    {% else %}
+                                        <span class="rcc-ds-card__pending">{% translate "Product archive pending" %}</span>
+                                    {% endif %}
                                 {% elif dataset.local_dataset_key %}
                                     <a href="{% url 'rcc_dataset_detail' dataset.local_dataset_key %}">
                                         {% translate "View dataset" %} <span aria-hidden="true">&#8594;</span>

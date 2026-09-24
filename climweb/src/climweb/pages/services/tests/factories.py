@@ -4,7 +4,15 @@ from faker import Faker
 from wagtail.rich_text import RichText
 
 from climweb.base.models import ServiceCategory
-from ..models import RCCClimateProductsPage, RCCDataServicesPage, ServiceIndexPage, ServicePage
+from ..models import (
+    RCCClimateMonitoringPage,
+    RCCConsensusForumPage,
+    RCCClimateProductsPage,
+    RCCDataServicesPage,
+    RCCLongRangeForecastingPage,
+    ServiceIndexPage,
+    ServicePage,
+)
 
 fake = Faker()
 
@@ -86,3 +94,42 @@ class RCCClimateProductsPageFactory(wagtail_factories.PageFactory):
     banner_subtitle = "Operational monitoring and forecast products from ACMAD."
     introduction_title = "Regional climate intelligence"
     introduction_text = RichText("<p>Browse RCC climate products for Africa.</p>")
+
+
+class RCCClimateMonitoringPageFactory(wagtail_factories.PageFactory):
+    class Meta:
+        model = RCCClimateMonitoringPage
+
+    title = "Climate Monitoring"
+    banner_title = "Climate monitoring for Africa"
+    banner_subtitle = "Tracking present climate conditions, anomalies and extremes."
+    introduction_title = "Monitoring Africa's climate system"
+    introduction_text = RichText(
+        "<p>ACMAD monitors the ocean-land-atmosphere system using observations, analyses and reanalyses.</p>"
+    )
+
+
+class RCCLongRangeForecastingPageFactory(wagtail_factories.PageFactory):
+    class Meta:
+        model = RCCLongRangeForecastingPage
+
+    title = "Long-range Forecasting"
+    banner_title = "Seasonal outlooks for Africa"
+    banner_subtitle = "Regional climate guidance for the months and seasons ahead."
+    introduction_title = "From global guidance to regional outlooks"
+    introduction_text = RichText(
+        "<p>ACMAD assesses global ensemble guidance and develops consolidated outlooks for Africa.</p>"
+    )
+
+
+class RCCConsensusForumPageFactory(wagtail_factories.PageFactory):
+    class Meta:
+        model = RCCConsensusForumPage
+
+    title = "Central Africa Climate Outlook Forum"
+    banner_title = "Central Africa Climate Outlook Forum"
+    forum_code = "PRESAC"
+    region = "Central Africa"
+    target_season = "October–November–December"
+    summary = "Consensus seasonal guidance for Central Africa."
+    overview = RichText("<p>Regional forum overview.</p>")

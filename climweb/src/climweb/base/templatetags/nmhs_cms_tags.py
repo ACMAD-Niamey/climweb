@@ -20,6 +20,66 @@ from django.utils.safestring import mark_safe
 register = template.Library()
 
 
+@register.simple_tag(takes_context=True)
+def rcc_navigation(context):
+    """Return the dedicated RCC navigation when the request belongs to RCC."""
+    from climweb.pages.services.models import ServicePage
+
+    request = context.get("request")
+    page = context.get("page")
+    rcc_page = None
+
+    if page:
+        rcc_page = (
+            ServicePage.objects.live()
+            .filter(service__name=ServicePage.rcc_service_name)
+            .ancestor_of(page, inclusive=True)
+            .first()
+        )
+
+    resolver_match = getattr(request, "resolver_match", None) if request else None
+    is_rcc_route = bool(
+        resolver_match
+        and resolver_match.url_name
+        and resolver_match.url_name.startswith("rcc_")
+    )
+    if not rcc_page and is_rcc_route:
+        rcc_page = (
+            ServicePage.objects.live()
+            .filter(service__name=ServicePage.rcc_service_name)
+            .first()
+        )
+
+    if not rcc_page:
+        return None
+
+    home_url = public_page_url(rcc_page.get_url(request=request) or rcc_page.url)
+    data_page = rcc_page.data_services_page
+    products_page = rcc_page.climate_products_page
+    monitoring_page = rcc_page.climate_monitoring_page
+    main_site = Site.objects.filter(is_default_site=True).first()
+    return {
+        "home_url": home_url,
+        "main_site_url": main_site.root_url if main_site else "/",
+        "products_url": (
+            public_page_url(products_page.get_url(request=request))
+            if products_page
+            else f"{home_url}#rcc-products"
+        ),
+        "data_url": (
+            public_page_url(data_page.get_url(request=request))
+            if data_page
+            else f"{home_url}#rcc-data-services"
+        ),
+        "monitoring_url": (
+            public_page_url(monitoring_page.get_url(request=request))
+            if monitoring_page
+            else f"{home_url}#rcc-monitoring"
+        ),
+        "show_events": rcc_page.events.exists(),
+    }
+
+
 @register.filter
 def public_page_url(page_or_url):
     """Return a public URL without the internal restored HomePage slug."""

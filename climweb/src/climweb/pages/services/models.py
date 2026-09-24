@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
+from django.urls import reverse
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 from modelcluster.fields import ParentalKey
@@ -12,7 +13,11 @@ from wagtailmetadata.models import MetadataPageMixin
 
 from climweb.base import blocks
 from climweb.base import blocks as base_blocks
-from climweb.base.models import ServiceCategory, AbstractBannerWithIntroPage
+from climweb.base.models import (
+    AbstractBannerPage,
+    AbstractBannerWithIntroPage,
+    ServiceCategory,
+)
 from climweb.config.settings.base import SUMMARY_RICHTEXT_FEATURES
 from climweb.pages.events.models import EventPage
 from climweb.pages.flex_page.models import FlexPage
@@ -318,6 +323,128 @@ class RCCSeasonalMapAsset(models.Model):
         ordering = ("filename",)
 
 
+class RCCClimateIndexAsset(models.Model):
+    legacy_index = models.PositiveSmallIntegerField(unique=True)
+    title = models.CharField(max_length=240)
+    scope = models.CharField(max_length=30)
+    period = models.CharField(max_length=100, blank=True)
+    description = models.TextField(blank=True)
+    source_url = models.URLField(max_length=700)
+    active = models.BooleanField(default=True)
+    object_name = models.CharField(max_length=500, blank=True)
+    checksum_sha256 = models.CharField(max_length=64, blank=True)
+    size_bytes = models.PositiveIntegerField(default=0)
+    width = models.PositiveIntegerField(default=0)
+    height = models.PositiveIntegerField(default=0)
+    synced_at = models.DateTimeField(null=True, blank=True)
+    last_attempted_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ("legacy_index",)
+
+
+@register_snippet
+class RCCReferenceClimatology(models.Model):
+    """Monthly station normals mirrored from the legacy African RCC service."""
+
+    country_code = models.CharField(max_length=3)
+    country = models.CharField(max_length=100)
+    station_id = models.CharField(max_length=20)
+    station_name = models.CharField(max_length=120)
+    period_start = models.PositiveSmallIntegerField()
+    period_end = models.PositiveSmallIntegerField()
+    monthly_data = models.JSONField(default=list)
+    source_url = models.URLField(max_length=700)
+    synced_at = models.DateTimeField(auto_now=True)
+
+    panels = [
+        MultiFieldPanel(
+            [
+                FieldPanel("country_code"),
+                FieldPanel("country"),
+                FieldPanel("station_id"),
+                FieldPanel("station_name"),
+            ],
+            heading=_("Station"),
+        ),
+        MultiFieldPanel(
+            [FieldPanel("period_start"), FieldPanel("period_end")],
+            heading=_("Reference period"),
+        ),
+        FieldPanel("monthly_data"),
+        FieldPanel("source_url"),
+    ]
+
+    class Meta:
+        ordering = ("country", "station_name", "period_start")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("country_code", "station_id", "period_start", "period_end"),
+                name="unique_rcc_station_climatology_period",
+            )
+        ]
+        verbose_name = _("RCC reference climatology")
+        verbose_name_plural = _("RCC reference climatologies")
+
+    def __str__(self):
+        return f"{self.country} — {self.station_name} ({self.period_start}–{self.period_end})"
+
+    @property
+    def period_label(self):
+        return f"{self.period_start}–{self.period_end}"
+
+    @property
+    def is_available(self):
+        return bool(self.synced_at and self.monthly_data)
+
+
+class RCCClimateIndexVersion(models.Model):
+    asset = models.ForeignKey(RCCClimateIndexAsset, on_delete=models.CASCADE, related_name="versions")
+    source_url = models.URLField(max_length=700)
+    object_name = models.CharField(max_length=500)
+    checksum_sha256 = models.CharField(max_length=64)
+    size_bytes = models.PositiveIntegerField()
+    width = models.PositiveIntegerField()
+    height = models.PositiveIntegerField()
+    synced_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ("-synced_at",)
+        constraints = [
+            models.UniqueConstraint(fields=("asset", "checksum_sha256"), name="unique_climate_index_version"),
+        ]
+
+
+class RCCClimateIndexImportConfig(models.Model):
+    singleton_key = models.CharField(max_length=30, unique=True, default="climate-indices", editable=False)
+    enabled = models.BooleanField(default=False)
+    interval_hours = models.PositiveSmallIntegerField(default=168)
+
+    def __str__(self):
+        return "Climate indices and historical graphs importer"
+
+
+class RCCClimateIndexImportRun(models.Model):
+    STATUS_CHOICES = BASE_IMPORT_STATUS_CHOICES
+    TRIGGER_CHOICES = RCCARC2ImportRun.TRIGGER_CHOICES
+
+    config = models.ForeignKey(RCCClimateIndexImportConfig, on_delete=models.CASCADE, related_name="runs")
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="queued")
+    trigger = models.CharField(max_length=12, choices=TRIGGER_CHOICES)
+    asset_ids = models.JSONField(default=list)
+    results = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    class Meta:
+        ordering = ("-created_at",)
+
+
 class RCCEIN15ImportConfig(models.Model):
     singleton_key = models.CharField(max_length=20, unique=True, default="ein15", editable=False)
     catalogue_url = models.URLField(
@@ -423,6 +550,7 @@ class ServicePage(AbstractBannerWithIntroPage):
     subpage_types = [
         'flex_page.FlexPage',
         'services.OnTheJobTrainingPage',
+        'services.RCCClimateMonitoringPage',
         'services.RCCClimateProductsPage',
         'services.RCCDataServicesPage',
     ]
@@ -579,6 +707,11 @@ class ServicePage(AbstractBannerWithIntroPage):
     def climate_products_page(self):
         """Return the published RCC climate-products catalogue below this page."""
         return RCCClimateProductsPage.objects.live().child_of(self).first()
+
+    @cached_property
+    def climate_monitoring_page(self):
+        """Return the published RCC climate-monitoring function page."""
+        return RCCClimateMonitoringPage.objects.live().child_of(self).first()
     
     @cached_property
     def listing_image(self):
@@ -702,6 +835,26 @@ class RCCDataServicesPage(AbstractBannerWithIntroPage):
         PageChooserPanel("data_request_page"),
     ]
 
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+
+        # Imported here to avoid coupling the services and products model modules
+        # while still resolving the current Wagtail URL for each local archive.
+        from climweb.pages.products.models import ProductPage
+
+        product_urls = {}
+        for key, slug in (
+            ("rdt_product_url", "thunderstorm-and-nowcasting"),
+            ("itd_product_url", "itd-and-itcz-monitoring"),
+        ):
+            product_page = ProductPage.objects.live().filter(slug=slug).first()
+            product_urls[key] = (
+                product_page.get_url(request=request) if product_page else ""
+            )
+
+        context.update(product_urls)
+        return context
+
     class Meta:
         verbose_name = _("RCC Data Services Page")
 
@@ -735,6 +888,539 @@ class RCCClimateProductsPage(AbstractBannerWithIntroPage):
 
     class Meta:
         verbose_name = _("RCC Climate Products Page")
+
+
+class RCCClimateMonitoringPage(AbstractBannerWithIntroPage):
+    template = "services/rcc_climate_monitoring_page.html"
+    parent_page_types = ["services.ServicePage"]
+    subpage_types = []
+    max_count_per_parent = 1
+    show_in_menus_default = True
+
+    diagnostic_product_definitions = (
+        {
+            "key": "annual",
+            "slugs": ("annual-state-of-the-climate-report",),
+            "cadence": _("Annual assessment"),
+            "title": _("Annual State of the Climate Report"),
+            "summary": _(
+                "Observed climate conditions, significant extremes, impacts "
+                "and long-term trends across Africa."
+            ),
+        },
+        {
+            "key": "monthly",
+            "slugs": ("monthly-climate-diagnostic-bulletin",),
+            "cadence": _("Monthly diagnostics"),
+            "title": _("Monthly Climate Diagnostic Bulletin"),
+            "summary": _(
+                "Rainfall totals, anomalies, percent of normal and rainy-day "
+                "diagnostics for the continent."
+            ),
+        },
+        {
+            "key": "dekadal",
+            "slugs": ("dekadal-weather-forecast", "dekadal-climate-bulletin"),
+            "cadence": _("10-day assessment"),
+            "title": _("Dekadal Climate Bulletin"),
+            "summary": _(
+                "Ten-day climate conditions and technical guidance supporting "
+                "rapid regional assessment."
+            ),
+        },
+    )
+
+    rainfall_product_definitions = (
+        {
+            "key": "daily-rainfall",
+            "slugs": ("daily-rainfall-monitoring",),
+            "cadence": _("Daily monitoring"),
+            "title": _("Daily Rainfall Monitoring"),
+            "summary": _(
+                "Observed rainfall totals and spatial patterns supporting "
+                "day-to-day monitoring across Africa."
+            ),
+        },
+        {
+            "key": "seasonal-onset",
+            "slugs": ("rainfall-and-seasonal-onset-monitoring",),
+            "cadence": _("Seasonal tracking"),
+            "title": _("Rainfall and Seasonal Onset Monitoring"),
+            "summary": _(
+                "Tracks rainfall progression and the onset of the growing "
+                "season for climate-sensitive planning."
+            ),
+        },
+        {
+            "key": "five-day-rainfall",
+            "slugs": ("five-day-rainfall-probability-forecast",),
+            "cadence": _("Five-day outlook"),
+            "title": _("5-Day Rainfall Probability Forecast"),
+            "summary": _(
+                "Short-range rainfall probabilities for anticipating wet and "
+                "dry conditions."
+            ),
+        },
+        {
+            "key": "rainfall-exceedance",
+            "slugs": ("seasonal-rainfall-probability-of-exceedance",),
+            "cadence": _("Seasonal outlook"),
+            "title": _("Seasonal Rainfall Probability of Exceedance"),
+            "summary": _(
+                "Probability guidance showing where seasonal rainfall may "
+                "exceed decision-relevant thresholds."
+            ),
+        },
+    )
+
+    watch_product_definitions = (
+        {
+            "key": "climate-watch",
+            "slugs": ("climate-watch-bulletin",),
+            "cadence": _("Climate advisory"),
+            "title": _("Climate Watch Bulletin"),
+            "summary": _(
+                "Climate information and advisories focused on significant "
+                "anomalies, extremes and their potential impacts."
+            ),
+        },
+        {
+            "key": "atmospheric-analysis",
+            "slugs": ("atmospheric-analysis",),
+            "cadence": _("Synoptic analysis"),
+            "title": _("Atmospheric Analysis"),
+            "summary": _(
+                "Analysis of large-scale circulation and atmospheric drivers "
+                "affecting African climate."
+            ),
+        },
+        {
+            "key": "itd-itcz",
+            "slugs": ("itd-and-itcz-monitoring",),
+            "cadence": _("Position monitoring"),
+            "title": _("ITD and ITCZ Monitoring"),
+            "summary": _(
+                "Operational monitoring of tropical convergence features that "
+                "shape West African rainfall."
+            ),
+        },
+    )
+
+    cryosphere_product_definitions = (
+        {
+            "key": "cryosphere",
+            "slugs": ("cryosphere-and-african-mountain-glaciers",),
+            "cadence": _("Specialized monitoring"),
+            "title": _("Cryosphere and African Mountain Glaciers"),
+            "summary": _(
+                "Evidence and assessments of glacier and cryosphere change in "
+                "Africa's mountain environments."
+            ),
+        },
+    )
+
+    country_monitoring_links = (
+        {
+            "label": _("Africa"),
+            "scope": _("Continental view"),
+            "url": "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/WWFD/forecastinservice/Africa/africa_multimodele.html",
+        },
+        {
+            "label": _("Burundi"),
+            "scope": _("Country view"),
+            "url": "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/WWFD/forecastinservice/Burundi/burundi_multimodele.html",
+        },
+        {
+            "label": _("Cameroon"),
+            "scope": _("Country view"),
+            "url": "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/WWFD/forecastinservice/Cameroon/cameroon_multimodele.html",
+        },
+        {
+            "label": _("Guinea"),
+            "scope": _("Country view"),
+            "url": "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/WWFD/forecastinservice/Guinea/guinea_multimodele.html",
+        },
+        {
+            "label": _("Madagascar"),
+            "scope": _("Country view"),
+            "url": "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/WWFD/forecastinservice/Madagascar/madagascar_multimodele.html",
+        },
+        {
+            "label": _("Niger"),
+            "scope": _("Country view"),
+            "url": "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/WWFD/forecastinservice/Niger/niger_multimodele.html",
+        },
+    )
+
+    def _resolve_products(self, definitions, pages_by_slug):
+        products = []
+        for definition in definitions:
+            page = next(
+                (
+                    pages_by_slug[slug]
+                    for slug in definition["slugs"]
+                    if slug in pages_by_slug
+                ),
+                None,
+            )
+            item = dict(definition)
+            item["page"] = page
+            item["latest"] = page.all_products.first() if page else None
+            products.append(item)
+        return products
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        product_groups = (
+            self.diagnostic_product_definitions,
+            self.rainfall_product_definitions,
+            self.watch_product_definitions,
+            self.cryosphere_product_definitions,
+        )
+        slugs = {
+            slug
+            for definitions in product_groups
+            for definition in definitions
+            for slug in definition["slugs"]
+        }
+        pages_by_slug = {
+            page.slug: page
+            for page in ProductPage.objects.live().filter(slug__in=slugs)
+        }
+        context["diagnostic_products"] = self._resolve_products(
+            self.diagnostic_product_definitions,
+            pages_by_slug,
+        )
+        context["rainfall_products"] = self._resolve_products(
+            self.rainfall_product_definitions,
+            pages_by_slug,
+        )
+        context["watch_products"] = self._resolve_products(
+            self.watch_product_definitions,
+            pages_by_slug,
+        )
+        context["cryosphere_product"] = self._resolve_products(
+            self.cryosphere_product_definitions,
+            pages_by_slug,
+        )[0]
+        context["country_monitoring_links"] = self.country_monitoring_links
+        return context
+
+    class Meta:
+        verbose_name = _("RCC Climate Monitoring Page")
+
+
+class RCCLongRangeForecastingPage(AbstractBannerWithIntroPage):
+    template = "services/rcc_long_range_forecasting_page.html"
+    parent_page_types = ["services.ServicePage"]
+    subpage_types = ["services.RCCConsensusForumPage"]
+    max_count_per_parent = 1
+    show_in_menus_default = True
+
+    outlook_product_definitions = (
+        {
+            "key": "maps",
+            "slug": "seasonal-forecast-maps",
+            "gallery_url_name": "rcc_tailored_forecast_gallery",
+            "label": _("Tailored forecast maps"),
+            "title": _("Tailored Precipitation and Temperature Forecasts"),
+            "summary": _(
+                "Regional and sub-regional precipitation and temperature "
+                "forecast maps tailored to upcoming seasons and climate "
+                "outlook regions."
+            ),
+            "topics": (_("Precipitation maps"), _("Temperature maps")),
+        },
+        {
+            "key": "bulletins",
+            "slug": "seasonal-outlook-bulletins",
+            "label": _("Forecast bulletins"),
+            "title": _("Seasonal Outlook Bulletins"),
+            "summary": _(
+                "Seasonal forecast interpretation, expected conditions and "
+                "regional guidance for climate-sensitive decisions."
+            ),
+        },
+        {
+            "key": "statements",
+            "slug": "seasonal-consensus-statements-and-communiques",
+            "gallery_url_name": "rcc_consensus_forums",
+            "label": _("Consensus products"),
+            "title": _("Consensus Statements for the Region and Sub-regions"),
+            "summary": _(
+                "Agreed regional outlooks prepared with climate experts through "
+                "Regional Climate Outlook Forums."
+            ),
+        },
+        {
+            "key": "recommendations",
+            "slug": "seasonal-recommendations-and-summaries",
+            "label": _("Decision guidance"),
+            "title": _("Recommendations and Summaries"),
+            "summary": _(
+                "Concise implications, recommendations and summaries accompanying "
+                "seasonal outlooks."
+            ),
+        },
+        {
+            "key": "technical-notes",
+            "slug": "seasonal-technical-notes",
+            "label": _("Technical documentation"),
+            "title": _("Technical Notes"),
+            "summary": _(
+                "Methods, interpretation details and supporting analysis behind "
+                "the seasonal forecast products."
+            ),
+        },
+    )
+
+    assessment_product_definitions = (
+        {
+            "key": "model-performance",
+            "slug": "seasonal-model-performance",
+            "gallery_url_name": "rcc_model_performance_gallery",
+            "label": _("Model assessment"),
+            "title": _("Statistical and Dynamical Model Performance"),
+            "summary": _(
+                "Maps and graphs assessing statistical and dynamical seasonal "
+                "forecasting systems."
+            ),
+            "topics": (_("Statistical models"), _("Dynamical models")),
+        },
+        {
+            "key": "verification",
+            "slug": "seasonal-forecast-verification",
+            "gallery_url_name": "rcc_forecast_verification_gallery",
+            "label": _("Forecast verification"),
+            "title": _("Forecast and Outlook Verification"),
+            "summary": _(
+                "Graphs, maps and evaluation reports showing how previous "
+                "precipitation and temperature outlooks performed against "
+                "observed conditions."
+            ),
+            "topics": (
+                _("Verification maps"),
+                _("Verification graphs and reports"),
+            ),
+        },
+    )
+
+    @staticmethod
+    def _resolve_products(definitions, pages_by_slug):
+        products = []
+        for definition in definitions:
+            item = dict(definition)
+            item["page"] = pages_by_slug.get(definition["slug"])
+            item["gallery_url"] = (
+                reverse(definition["gallery_url_name"])
+                if definition.get("gallery_url_name")
+                else ""
+            )
+            item["latest"] = (
+                item["page"].all_products.first() if item["page"] else None
+            )
+            item["count"] = (
+                item["page"].all_products.count() if item["page"] else 0
+            )
+            products.append(item)
+        return products
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        definitions = (
+            self.outlook_product_definitions + self.assessment_product_definitions
+        )
+        pages_by_slug = {
+            page.slug: page
+            for page in ProductPage.objects.live().filter(
+                slug__in=[definition["slug"] for definition in definitions]
+            )
+        }
+        context["outlook_products"] = self._resolve_products(
+            self.outlook_product_definitions,
+            pages_by_slug,
+        )
+        context["assessment_products"] = self._resolve_products(
+            self.assessment_product_definitions,
+            pages_by_slug,
+        )
+        context["outlook_forums"] = list(
+            RCCConsensusForumPage.objects.live().child_of(self).order_by("path")
+        )
+        return context
+
+    class Meta:
+        verbose_name = _("RCC Long-range Forecasting Page")
+
+
+class RCCConsensusForumPage(AbstractBannerPage):
+    template = "services/rcc_consensus_forum_detail.html"
+    parent_page_types = ["services.RCCLongRangeForecastingPage"]
+    subpage_types = []
+    show_in_menus_default = False
+
+    forum_code = models.CharField(
+        max_length=30,
+        verbose_name=_("Forum acronym"),
+        help_text=_("For example PRESAC, MEDCOF or ACCOF."),
+    )
+    region = models.CharField(max_length=180)
+    target_season = models.CharField(max_length=180, blank=True)
+    summary = models.TextField(
+        max_length=500,
+        help_text=_("Short description used on the forum directory card."),
+    )
+    overview = RichTextField(features=SUMMARY_RICHTEXT_FEATURES)
+    geographic_coverage = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    climate_drivers = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    climate_hazards = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    consensus_method = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("How the consensus is developed"),
+    )
+    user_involvement = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    development_priorities = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    archive_codes = models.CharField(
+        max_length=120,
+        blank=True,
+        help_text=_(
+            "Comma-separated acronyms used to associate documents from the "
+            "Consensus Statements product archive. Defaults to the forum acronym."
+        ),
+    )
+    photos = StreamField(
+        [("photo", local_blocks.RCCForumPhotoBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Photo gallery"),
+    )
+    attached_documents = StreamField(
+        [("document", local_blocks.RCCForumDocumentBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Additional forum documents"),
+    )
+
+    content_panels = Page.content_panels + [
+        *AbstractBannerPage.content_panels,
+        MultiFieldPanel(
+            [
+                FieldPanel("forum_code"),
+                FieldPanel("region"),
+                FieldPanel("target_season"),
+                FieldPanel("summary"),
+                FieldPanel("archive_codes"),
+            ],
+            heading=_("Forum profile"),
+        ),
+        FieldPanel("overview"),
+        MultiFieldPanel(
+            [
+                FieldPanel("geographic_coverage"),
+                FieldPanel("climate_drivers"),
+                FieldPanel("climate_hazards"),
+            ],
+            heading=_("Climate context"),
+        ),
+        FieldPanel("consensus_method"),
+        FieldPanel("user_involvement"),
+        FieldPanel("development_priorities"),
+        FieldPanel("photos"),
+        FieldPanel("attached_documents"),
+    ]
+
+    @property
+    def document_codes(self):
+        value = self.archive_codes or self.forum_code
+        return tuple(code.strip().upper() for code in value.split(",") if code.strip())
+
+    def consensus_documents(self):
+        documents = []
+        seen = set()
+        for block in self.attached_documents:
+            document = block.value.get("document")
+            if not document or document.pk in seen:
+                continue
+            seen.add(document.pk)
+            documents.append(
+                {
+                    "name": block.value.get("title") or document.title,
+                    "date": block.value.get("date"),
+                    "document": document,
+                    "thumbnail": None,
+                    "manual": True,
+                }
+            )
+
+        product_page = ProductPage.objects.live().filter(
+            slug="seasonal-consensus-statements-and-communiques"
+        ).first()
+        if product_page:
+            for item in product_page.all_products.live().specific():
+                for block in item.products:
+                    if block.block_type != "document_product":
+                        continue
+                    item_type = block.value.product_item_type()
+                    document = block.value.get("document")
+                    if (
+                        not item_type
+                        or not document
+                        or document.pk in seen
+                        or not any(
+                            code in item_type.name.upper()
+                            for code in self.document_codes
+                        )
+                    ):
+                        continue
+                    seen.add(document.pk)
+                    documents.append(
+                        {
+                            "name": item_type.name,
+                            "date": block.value.get("date") or item.date,
+                            "document": document,
+                            "thumbnail": block.value.get("thumbnail"),
+                            "manual": False,
+                        }
+                    )
+        return sorted(
+            documents,
+            key=lambda item: (item["date"] is not None, item["date"]),
+            reverse=True,
+        )
+
+    @property
+    def document_count(self):
+        return len(self.consensus_documents())
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        context.update(
+            {
+                "forum": self,
+                "documents": self.consensus_documents(),
+                "long_range_page": self.get_parent().specific,
+            }
+        )
+        return context
+
+    class Meta:
+        verbose_name = _("RCC Consensus Forum Page")
 
 
 class OnTheJobTrainingPage(AbstractBannerWithIntroPage):
