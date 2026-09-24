@@ -102,6 +102,90 @@ class TrainingModuleBlock(blocks.StructBlock):
         label = _("Training module")
 
 
+class RCCTrainingProgrammeBlock(blocks.StructBlock):
+    title = blocks.CharBlock(max_length=180)
+    description = blocks.TextBlock()
+    icon = IconChooserBlock(required=False, default="graduation-cap")
+    page = blocks.PageChooserBlock(required=False)
+    external_url = blocks.URLBlock(required=False, max_length=500)
+    link_label = blocks.CharBlock(
+        max_length=60,
+        required=False,
+        default=_("Explore programme"),
+    )
+
+    class Meta:
+        icon = "pick"
+        label = _("Training programme or activity")
+
+
+class RCCTrainingResourceBlock(blocks.StructBlock):
+    title = blocks.CharBlock(max_length=220)
+    description = blocks.TextBlock(required=False)
+    document = DocumentChooserBlock(required=False)
+    external_url = blocks.URLBlock(required=False, max_length=500)
+    resource_type = blocks.CharBlock(
+        max_length=60,
+        required=False,
+        default=_("Document"),
+    )
+
+    class Meta:
+        icon = "doc-full"
+        label = _("Training resource")
+
+
+class RCCTrainingResourceGroupBlock(blocks.StructBlock):
+    anchor = blocks.CharBlock(
+        max_length=60,
+        help_text=_("Short URL-safe name, for example data-rescue."),
+    )
+    title = blocks.CharBlock(max_length=180)
+    description = blocks.TextBlock(required=False)
+    icon = IconChooserBlock(required=False, default="doc-full")
+    resources = blocks.ListBlock(
+        RCCTrainingResourceBlock(),
+        required=False,
+    )
+
+    class Meta:
+        icon = "folder-open-inverse"
+        label = _("Training resource group")
+
+
+class RCCTrainingVideoBlock(blocks.StructBlock):
+    title = blocks.CharBlock(max_length=180)
+    description = blocks.TextBlock(required=False)
+    youtube_id = blocks.CharBlock(
+        max_length=24,
+        help_text=_("The value after v= in the YouTube URL."),
+    )
+    video_url = blocks.URLBlock(max_length=500)
+
+    class Meta:
+        icon = "media"
+        label = _("Training video")
+
+
+class RCCRecommendedFunctionBlock(blocks.StructBlock):
+    activity = blocks.CharBlock(max_length=180)
+    output_title = blocks.CharBlock(max_length=180, label=_("Product or output"))
+    description = blocks.TextBlock()
+    icon = IconChooserBlock(required=False, default="globe")
+    topics = blocks.ListBlock(
+        blocks.CharBlock(max_length=100),
+        required=False,
+        label=_("Topics"),
+    )
+    related_page = blocks.PageChooserBlock(required=False)
+    external_url = blocks.URLBlock(required=False, max_length=500)
+    link_label = blocks.CharBlock(max_length=60, required=False)
+
+    class Meta:
+        icon = "tasks"
+        label = _("Highly recommended function")
+
+
 class ApplicationStepBlock(blocks.StructBlock):
     title = blocks.CharBlock(max_length=120)
     description = blocks.RichTextBlock(features=SUMMARY_RICHTEXT_FEATURES)

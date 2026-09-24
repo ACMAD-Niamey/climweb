@@ -1,0 +1,103 @@
+.rcc-training-page main { color: var(--rcc-ink); background: #f4f7f6; }
+.rcc-training-page .page-hero { margin-bottom: 0; }
+.rcc-training-section { padding: clamp(52px, 6vw, 78px) 0; }
+.rcc-training-back { display: inline-flex; margin-bottom: 30px; color: var(--rcc-teal); font-size: .76rem; font-weight: 800; text-decoration: none; }
+.rcc-training-back:hover { text-decoration: underline; }
+
+.rcc-training-overview { padding: 30px 0 clamp(52px, 6vw, 78px); background: #fff; }
+.rcc-training-overview__grid { display: grid; grid-template-columns: minmax(0, .8fr) minmax(480px, 1.2fr); align-items: center; gap: clamp(40px, 7vw, 90px); }
+.rcc-training-overview h2 { max-width: 680px; margin: 0 0 20px; font-size: clamp(2rem, 3.8vw, 3rem); line-height: 1.08; }
+.rcc-training-overview .format-text { color: var(--rcc-muted); line-height: 1.75; }
+.rcc-training-focus { display: grid; overflow: hidden; border: 1px solid #d8e4e1; border-radius: 18px; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #f8fbfa; box-shadow: 0 16px 42px rgba(17,56,48,.07); }
+.rcc-training-focus article { min-height: 168px; padding: 24px; }
+.rcc-training-focus article:nth-child(odd) { border-right: 1px solid #d8e4e1; }
+.rcc-training-focus article:nth-child(n + 3) { border-top: 1px solid #d8e4e1; }
+.rcc-training-focus span { color: var(--rcc-teal); font-size: .65rem; font-weight: 900; }
+.rcc-training-focus h3 { margin: 24px 0 6px; font-size: 1rem; }
+.rcc-training-focus p { margin: 0; color: var(--rcc-muted); font-size: .75rem; line-height: 1.5; }
+
+.rcc-training-heading { display: grid; margin-bottom: 32px; grid-template-columns: minmax(0, 1fr) minmax(280px, .65fr); align-items: end; gap: 32px; }
+.rcc-training-heading h2 { margin: 0; font-size: clamp(1.85rem, 3vw, 2.65rem); line-height: 1.12; }
+.rcc-training-heading > p { max-width: 530px; margin: 0; color: var(--rcc-muted); line-height: 1.7; }
+.rcc-training-icon { display: grid; width: 44px; height: 44px; border-radius: 10px; color: var(--rcc-teal); background: #e7f2ef; place-items: center; }
+.rcc-training-icon svg { width: 20px; height: 20px; fill: currentColor; }
+
+.rcc-training-programmes { border-top: 1px solid #dce6e3; }
+.rcc-training-programme-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.rcc-training-programme-card { display: flex; min-height: 248px; padding: 26px; border: 1px solid #d8e4e1; border-radius: 15px; flex-direction: column; background: #fff; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.rcc-training-programme-card:hover { border-color: #a9cbc3; box-shadow: 0 16px 34px rgba(17,56,48,.09); transform: translateY(-4px); }
+.rcc-training-programme-card h3 { margin: 28px 0 10px; font-size: 1.08rem; }
+.rcc-training-programme-card p { margin: 0; color: var(--rcc-muted); font-size: .8rem; line-height: 1.65; }
+.rcc-training-programme-card > a { margin-top: auto; padding-top: 22px; color: var(--rcc-teal); font-size: .75rem; font-weight: 850; text-decoration: none; }
+
+.rcc-training-library { color: #fff; background: #103c43; }
+.rcc-training-library .rcc-eyebrow { color: #91daca; }
+.rcc-training-library .rcc-training-heading h2 { color: #fff; }
+.rcc-training-library .rcc-training-heading > p { color: rgba(255,255,255,.68); }
+.rcc-training-resource-groups { display: grid; gap: 18px; }
+.rcc-training-resource-group { overflow: hidden; border: 1px solid rgba(255,255,255,.16); border-radius: 16px; background: rgba(255,255,255,.06); }
+.rcc-training-resource-group > header { display: grid; padding: 26px; grid-template-columns: auto 1fr; gap: 18px; }
+.rcc-training-resource-group .rcc-training-icon { color: #d9fff5; background: rgba(255,255,255,.1); }
+.rcc-training-resource-group h3 { margin: 0 0 6px; color: #fff; font-size: 1.2rem; }
+.rcc-training-resource-group header p { margin: 0; color: rgba(255,255,255,.68); font-size: .8rem; line-height: 1.55; }
+.rcc-training-resource-list { display: grid; border-top: 1px solid rgba(255,255,255,.14); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.rcc-training-resource-list article { display: flex; min-height: 145px; padding: 23px 26px; border-bottom: 1px solid rgba(255,255,255,.12); align-items: center; justify-content: space-between; gap: 24px; }
+.rcc-training-resource-list article:nth-child(odd) { border-right: 1px solid rgba(255,255,255,.12); }
+.rcc-training-resource-list small { color: #91daca; font-size: .61rem; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; }
+.rcc-training-resource-list h4 { margin: 6px 0; color: #fff; font-size: .92rem; }
+.rcc-training-resource-list p { margin: 0; color: rgba(255,255,255,.6); font-size: .71rem; line-height: 1.45; }
+.rcc-training-resource-list a { flex: 0 0 auto; color: #fff; font-size: .7rem; font-weight: 850; text-decoration: none; }
+.rcc-training-empty { padding: 24px; color: rgba(255,255,255,.7); }
+
+.rcc-training-reports { background: #fff; }
+.rcc-training-report-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.rcc-training-report-group { padding: 28px; border: 1px solid #d8e4e1; border-radius: 16px; background: #f8fbfa; }
+.rcc-training-report-group h3 { margin: 24px 0 8px; font-size: 1.15rem; }
+.rcc-training-report-group > p { min-height: 62px; margin: 0 0 20px; color: var(--rcc-muted); font-size: .77rem; line-height: 1.55; }
+.rcc-training-report-group ul { margin: 0; padding: 0; border-top: 1px solid #dce6e3; list-style: none; }
+.rcc-training-report-group li { display: flex; padding: 13px 0; border-bottom: 1px solid #dce6e3; align-items: flex-start; justify-content: space-between; gap: 15px; }
+.rcc-training-report-group li a,
+.rcc-training-report-group li span { color: var(--rcc-ink); font-size: .75rem; font-weight: 750; line-height: 1.35; text-decoration: none; }
+.rcc-training-report-group li a:hover { color: var(--rcc-teal); }
+.rcc-training-report-group li small { flex: 0 0 auto; color: var(--rcc-muted); font-size: .58rem; text-transform: uppercase; }
+
+.rcc-training-videos { border-top: 1px solid #dce6e3; }
+.rcc-training-video-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.rcc-training-video-card { overflow: hidden; border: 1px solid #d8e4e1; border-radius: 16px; background: #fff; transition: transform .2s ease, box-shadow .2s ease; }
+.rcc-training-video-card:hover { box-shadow: 0 16px 34px rgba(17,56,48,.09); transform: translateY(-3px); }
+.rcc-training-video-frame { position: relative; padding-top: 56.25%; background: #0d302f; }
+.rcc-training-video-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.rcc-training-video-card > div:last-child { padding: 23px 25px 26px; }
+.rcc-training-video-card span { color: var(--rcc-teal); font-size: .64rem; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
+.rcc-training-video-card h3 { margin: 7px 0 8px; font-size: 1.05rem; }
+.rcc-training-video-card h3 a { color: var(--rcc-ink); text-decoration: none; }
+.rcc-training-video-card p { margin: 0; color: var(--rcc-muted); font-size: .78rem; line-height: 1.55; }
+
+.rcc-training-contact { padding: 0 0 clamp(52px, 6vw, 78px); }
+.rcc-training-contact__panel { display: grid; padding: clamp(30px, 5vw, 52px); border: 1px solid #d8e4e1; border-radius: 18px; grid-template-columns: .7fr 1fr auto; align-items: center; gap: 34px; background: #fff; }
+.rcc-training-contact h2 { margin: 0; font-size: clamp(1.7rem, 3vw, 2.4rem); }
+.rcc-training-contact .format-text { color: var(--rcc-muted); line-height: 1.65; }
+.rcc-training-contact .format-text p { margin: 0; }
+.rcc-training-contact__panel > a { padding: 13px 18px; border-radius: 7px; color: #fff; background: var(--rcc-teal); font-size: .76rem; font-weight: 850; text-decoration: none; white-space: nowrap; }
+
+@media (max-width: 980px) {
+    .rcc-training-overview__grid,
+    .rcc-training-heading,
+    .rcc-training-contact__panel { grid-template-columns: 1fr; align-items: start; }
+    .rcc-training-programme-grid,
+    .rcc-training-report-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .rcc-training-report-group:last-child { grid-column: 1 / -1; }
+}
+
+@media (max-width: 640px) {
+    .rcc-training-focus,
+    .rcc-training-programme-grid,
+    .rcc-training-resource-list,
+    .rcc-training-report-grid,
+    .rcc-training-video-grid { grid-template-columns: 1fr; }
+    .rcc-training-focus article:nth-child(odd),
+    .rcc-training-resource-list article:nth-child(odd) { border-right: 0; }
+    .rcc-training-focus article + article { border-top: 1px solid #d8e4e1; }
+    .rcc-training-report-group:last-child { grid-column: auto; }
+    .rcc-training-resource-list article { align-items: flex-start; flex-direction: column; }
+}

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% load static i18n wagtailcore_tags wagtailiconchooser_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/services_rcc.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_recommended_functions.css' %}?v=1">
+{% endblock %}
+
+{% block body_class %}rcc-service-page rcc-recommended-page{% endblock %}
+
+{% block content %}
+<main>
+    {% if page.banner_image %}
+        {% include "hero.html" with page=page %}
+    {% else %}
+        <section class="page-hero rcc-simple-hero">
+            <div class="page-hero-overlay"></div>
+            <div class="page-hero-body"><div class="container">
+                <span class="page-hero-badge">{% translate "RCC climate function" %}</span>
+                <h1 class="page-hero-title">{{ page.banner_title|default:page.title }}</h1>
+                {% if page.banner_subtitle %}<p class="page-hero-subtitle">{{ page.banner_subtitle }}</p>{% endif %}
+            </div></div>
+        </section>
+    {% endif %}
+
+    <section class="rcc-rec-overview">
+        <div class="container">
+            <a class="rcc-rec-back" href="{{ page.get_parent.url }}">&#8592; {% translate "Regional Climate Centre" %}</a>
+            <div class="rcc-rec-overview__grid">
+                <div>
+                    <p class="rcc-eyebrow">{% translate "Highly recommended functions" %}</p>
+                    {% if page.introduction_title %}<h2>{{ page.introduction_title }}</h2>{% endif %}
+                    {% if page.introduction_text %}<div class="format-text">{{ page.introduction_text|richtext }}</div>{% endif %}
+                </div>
+                <aside class="rcc-rec-process" aria-label="{% translate 'Climate-change evidence process' %}">
+                    <div><span>01</span><strong>{% translate "Access" %}</strong><p>{% translate "Global and regional simulations" %}</p></div>
+                    <div><span>02</span><strong>{% translate "Evaluate" %}</strong><p>{% translate "Models against observations" %}</p></div>
+                    <div><span>03</span><strong>{% translate "Downscale" %}</strong><p>{% translate "Regional and national information" %}</p></div>
+                    <div><span>04</span><strong>{% translate "Assess" %}</strong><p>{% translate "Scenarios, indices and risk" %}</p></div>
+                    <div><span>05</span><strong>{% translate "Inform" %}</strong><p>{% translate "Adaptation and planning" %}</p></div>
+                </aside>
+            </div>
+        </div>
+    </section>
+
+    <section class="rcc-rec-section rcc-rec-functions">
+        <div class="container">
+            <header class="rcc-rec-heading">
+                <div><p class="rcc-eyebrow">{% translate "Climate-change services" %}</p><h2>{% translate "Functions and outputs" %}</h2></div>
+                <p>{% translate "A connected set of scientific activities turns observations and model simulations into evidence that can be applied across Africa." %}</p>
+            </header>
+            <div class="rcc-rec-function-grid">
+                {% for block in page.functions %}
+                    <article class="rcc-rec-function-card">
+                        <div class="rcc-rec-function-card__top">
+                            <span class="rcc-rec-icon">{% if block.value.icon %}{% svg_icon name=block.value.icon %}{% else %}{% svg_icon name="globe" %}{% endif %}</span>
+                            <small>0{{ forloop.counter }}</small>
+                        </div>
+                        <p class="rcc-rec-activity">{{ block.value.activity }}</p>
+                        <h3>{{ block.value.output_title }}</h3>
+                        <p>{{ block.value.description }}</p>
+                        {% if block.value.topics %}<ul>{% for topic in block.value.topics %}<li>{{ topic }}</li>{% endfor %}</ul>{% endif %}
+                        {% if block.value.related_page %}<a href="{% pageurl block.value.related_page %}">{% if block.value.link_label %}{{ block.value.link_label }}{% else %}{% translate "Explore output" %}{% endif %} &#8594;</a>
+                        {% elif block.value.external_url %}<a href="{{ block.value.external_url }}" target="_blank" rel="noopener">{% if block.value.link_label %}{{ block.value.link_label }}{% else %}{% translate "Open application" %}{% endif %} &#8599;</a>{% endif %}
+                    </article>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="rcc-rec-section rcc-rec-evidence">
+        <div class="container">
+            <header class="rcc-rec-heading rcc-rec-heading--light">
+                <div><p class="rcc-eyebrow">{% translate "Regional evidence" %}</p><h2>{{ page.evidence_heading }}</h2></div>
+                {% if page.evidence_introduction %}<div class="format-text">{{ page.evidence_introduction|richtext }}</div>{% endif %}
+            </header>
+            {% if report_items %}
+                <div class="rcc-rec-report-grid">
+                    {% for item in report_items %}
+                        <article>
+                            <span>{% translate "Research report" %}</span>
+                            <h3><a href="{% pageurl item %}">{{ item.title }}</a></h3>
+                            <p>{% if item.date %}{{ item.date|date:"j F Y" }}{% else %}{% translate "Climate Change and Climate Projections archive" %}{% endif %}</p>
+                            <a href="{% pageurl item %}">{% translate "View report" %} &#8594;</a>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="rcc-rec-empty"><h3>{% translate "The local evidence archive is being prepared" %}</h3><p>{% translate "Imported climate-change reports will appear here automatically." %}</p></div>
+            {% endif %}
+            {% if report_product %}<a class="rcc-rec-archive-link" href="{% pageurl report_product %}">{% translate "Explore the full Climate Change and Climate Projections archive" %} &#8594;</a>{% endif %}
+        </div>
+    </section>
+
+</main>
+{% endblock %}
