@@ -884,6 +884,10 @@ class RCCClimateProductsPage(AbstractBannerWithIntroPage):
         help_text=_("Optional introduction section description"),
     )
 
+    content_panels = Page.content_panels + [
+        *AbstractBannerWithIntroPage.content_panels,
+    ]
+
     @cached_property
     def products(self):
         parent = self.get_parent().specific
@@ -899,6 +903,10 @@ class RCCClimateMonitoringPage(AbstractBannerWithIntroPage):
     subpage_types = []
     max_count_per_parent = 1
     show_in_menus_default = True
+
+    content_panels = Page.content_panels + [
+        *AbstractBannerWithIntroPage.content_panels,
+    ]
 
     diagnostic_product_definitions = (
         {
@@ -1119,6 +1127,10 @@ class RCCLongRangeForecastingPage(AbstractBannerWithIntroPage):
     subpage_types = ["services.RCCConsensusForumPage"]
     max_count_per_parent = 1
     show_in_menus_default = True
+
+    content_panels = Page.content_panels + [
+        *AbstractBannerWithIntroPage.content_panels,
+    ]
 
     outlook_product_definitions = (
         {
