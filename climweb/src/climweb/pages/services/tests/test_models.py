@@ -17,6 +17,11 @@ from climweb.pages.products.tests.factories import (
     ProductPageFactory,
 )
 from climweb.pages.services.long_range_forums import CONSENSUS_FORUMS
+from climweb.pages.services.models import (
+    RCCClimateMonitoringPage,
+    RCCClimateProductsPage,
+    RCCLongRangeForecastingPage,
+)
 from .factories import (
     RCCClimateMonitoringPageFactory,
     RCCConsensusForumPageFactory,
@@ -63,6 +68,21 @@ class TestServicesPages(WagtailPageTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, '<h2 class="intro-title"></h2>', html=True)
+
+    def test_rcc_page_creation_forms_include_required_page_title(self):
+        page_types = (
+            RCCClimateProductsPage,
+            RCCClimateMonitoringPage,
+            RCCLongRangeForecastingPage,
+        )
+
+        for page_type in page_types:
+            with self.subTest(page_type=page_type.__name__):
+                form_class = page_type.get_edit_handler().get_form_class()
+
+                self.assertIn("title", form_class.base_fields)
+                self.assertIn("slug", form_class.base_fields)
+                self.assertIn("banner_title", form_class.base_fields)
     
     def test_news_page_meta_tags(self):
         resp = self.client.get(self.service1_page.get_url())
