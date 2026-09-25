@@ -553,6 +553,9 @@ class ServicePage(AbstractBannerWithIntroPage):
         'services.RCCClimateMonitoringPage',
         'services.RCCClimateProductsPage',
         'services.RCCDataServicesPage',
+        'services.RCCLongRangeForecastingPage',
+        'services.RCCRecommendedFunctionsPage',
+        'services.RCCTrainingPage',
     ]
     show_in_menus_default = True
 
@@ -1251,6 +1254,111 @@ class RCCLongRangeForecastingPage(AbstractBannerWithIntroPage):
 
     class Meta:
         verbose_name = _("RCC Long-range Forecasting Page")
+
+
+class RCCTrainingPage(AbstractBannerWithIntroPage):
+    template = "services/rcc_training_page.html"
+    parent_page_types = ["services.ServicePage"]
+    subpage_types = []
+    max_count_per_parent = 1
+    show_in_menus_default = True
+
+    focus_areas = StreamField(
+        [("area", local_blocks.TrainingModuleBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("RCC training focus areas"),
+    )
+    programmes = StreamField(
+        [("programme", local_blocks.RCCTrainingProgrammeBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Programmes and activities"),
+    )
+    methodology_groups = StreamField(
+        [("group", local_blocks.RCCTrainingResourceGroupBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Methods, tools and guidance"),
+    )
+    report_groups = StreamField(
+        [("group", local_blocks.RCCTrainingResourceGroupBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Workshop, training and survey reports"),
+    )
+    training_videos = StreamField(
+        [("video", local_blocks.RCCTrainingVideoBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Forecast training videos"),
+    )
+    closing_text = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Closing note"),
+    )
+
+    content_panels = Page.content_panels + [
+        *AbstractBannerWithIntroPage.content_panels,
+        FieldPanel("focus_areas"),
+        FieldPanel("programmes"),
+        FieldPanel("methodology_groups"),
+        FieldPanel("report_groups"),
+        FieldPanel("training_videos"),
+        FieldPanel("closing_text"),
+    ]
+
+    class Meta:
+        verbose_name = _("RCC Training Page")
+
+
+class RCCRecommendedFunctionsPage(AbstractBannerWithIntroPage):
+    template = "services/rcc_recommended_functions_page.html"
+    parent_page_types = ["services.ServicePage"]
+    subpage_types = []
+    max_count_per_parent = 1
+    show_in_menus_default = True
+
+    functions = StreamField(
+        [("function", local_blocks.RCCRecommendedFunctionBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Highly recommended functions"),
+    )
+    evidence_heading = models.CharField(
+        max_length=180,
+        blank=True,
+        default="Research reports and climate-change evidence",
+    )
+    evidence_introduction = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    content_panels = Page.content_panels + [
+        *AbstractBannerWithIntroPage.content_panels,
+        FieldPanel("functions"),
+        MultiFieldPanel(
+            [FieldPanel("evidence_heading"), FieldPanel("evidence_introduction")],
+            heading=_("Evidence archive"),
+        ),
+    ]
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        report_product = ProductPage.objects.live().filter(
+            slug="climate-change-and-climate-projections"
+        ).first()
+        context["report_product"] = report_product
+        context["report_items"] = (
+            report_product.all_products.live().specific()[:6]
+            if report_product
+            else []
+        )
+        return context
+
+    class Meta:
+        verbose_name = _("RCC Highly Recommended Functions Page")
 
 
 class RCCConsensusForumPage(AbstractBannerPage):

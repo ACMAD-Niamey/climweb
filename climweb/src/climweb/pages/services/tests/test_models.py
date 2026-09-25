@@ -23,6 +23,8 @@ from .factories import (
     RCCClimateProductsPageFactory,
     RCCDataServicesPageFactory,
     RCCLongRangeForecastingPageFactory,
+    RCCRecommendedFunctionsPageFactory,
+    RCCTrainingPageFactory,
     ServiceIndexPageFactory,
     ServicePageFactory,
 )
@@ -575,3 +577,123 @@ class TestServicesPages(WagtailPageTestCase):
 
         self.assertTrue(title_field.blank)
         self.assertTrue(text_field.blank)
+
+    def test_rcc_training_page_renders_complete_training_structure(self):
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center training parent",
+            service__name="Regional Climate Center",
+        )
+        training_page = RCCTrainingPageFactory(parent=rcc_page)
+
+        response = self.client.get(training_page.get_url())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "services/rcc_training_page.html")
+        self.assertContains(response, "Programmes and learning activities")
+        self.assertContains(response, "Methods, tools and guidance")
+        self.assertContains(response, "Workshop, training and survey reports")
+        self.assertContains(response, "Seasonal forecast training series")
+        self.assertContains(response, "Climate data services")
+        self.assertContains(response, "Workshops and seminars")
+        self.assertContains(response, "CucEP23gWfU")
+
+    def test_rcc_training_seed_links_existing_menu_item(self):
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center training menu",
+            service__name="Regional Climate Center",
+        )
+        products_page = RCCClimateProductsPageFactory(parent=rcc_page)
+        navigation = NavigationSettings.for_site(Site.objects.get(is_default_site=True))
+        navigation.rcc_main_menu = [
+            (
+                "navigation_item",
+                {
+                    "label": "Training",
+                    "page": products_page,
+                    "external_url": "",
+                    "include_subpages": False,
+                    "large_submenu": False,
+                    "sub_items": [],
+                },
+            )
+        ]
+        navigation.save()
+
+        call_command("seed_rcc_training", stdout=StringIO())
+
+        training_page = RCCTrainingPageFactory._meta.model.objects.child_of(
+            rcc_page
+        ).get()
+        navigation.refresh_from_db()
+        menu_item = navigation.rcc_main_menu[0].value
+        self.assertEqual(menu_item["page"].pk, training_page.pk)
+        self.assertEqual(menu_item["external_url"], "")
+
+    def test_rcc_recommended_functions_page_renders_all_sections(self):
+        product_index = ProductIndexPageFactory(parent=get_or_create_homepage())
+        report_product = ProductPageFactory(
+            parent=product_index,
+            title="Climate Change and Climate Projections",
+            slug="climate-change-and-climate-projections",
+        )
+        report_item = ProductItemPageFactory(
+            parent=report_product,
+            title="Climate variability and risk study",
+            date=date(2014, 2, 20),
+        )
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center recommended functions parent",
+            service__name="Regional Climate Center",
+        )
+        page = RCCRecommendedFunctionsPageFactory(parent=rcc_page)
+
+        response = self.client.get(page.get_url())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(
+            response,
+            "services/rcc_recommended_functions_page.html",
+        )
+        self.assertContains(response, "Functions and outputs")
+        self.assertContains(response, "Climate-change indices")
+        self.assertContains(response, "Research reports and climate-change evidence")
+        self.assertContains(response, report_item.title)
+        self.assertContains(response, f'href="{report_item.url}"')
+        self.assertNotContains(response, "Climate-change indices for African stations")
+        self.assertContains(response, 'href="https://example.com/climate-indices/"')
+
+    def test_rcc_recommended_functions_seed_links_menu_item(self):
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center recommended functions menu",
+            service__name="Regional Climate Center",
+        )
+        products_page = RCCClimateProductsPageFactory(parent=rcc_page)
+        navigation = NavigationSettings.for_site(Site.objects.get(is_default_site=True))
+        navigation.rcc_main_menu = [
+            (
+                "navigation_item",
+                {
+                    "label": "Highly Recommended Functions",
+                    "page": products_page,
+                    "external_url": "",
+                    "include_subpages": False,
+                    "large_submenu": False,
+                    "sub_items": [],
+                },
+            )
+        ]
+        navigation.save()
+
+        call_command("seed_rcc_recommended_functions", stdout=StringIO())
+
+        page = RCCRecommendedFunctionsPageFactory._meta.model.objects.child_of(
+            rcc_page
+        ).get()
+        navigation.refresh_from_db()
+        menu_item = navigation.rcc_main_menu[0].value
+        self.assertEqual(menu_item["page"].pk, page.pk)
+        self.assertEqual(menu_item["external_url"], "")
