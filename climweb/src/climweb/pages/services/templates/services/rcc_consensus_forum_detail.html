@@ -4,7 +4,7 @@
 {% block extra_css %}
     {{ block.super }}
     <link rel="stylesheet" type="text/css" href="{% static 'css/services_rcc.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_consensus_forums.css' %}?v=1">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_consensus_forums.css' %}?v=2">
 {% endblock %}
 
 {% block body_class %}rcc-service-page rcc-consensus-page rcc-consensus-detail-page{% endblock %}
@@ -22,14 +22,18 @@
     <section class="rcc-consensus-section">
         <div class="container">
             <nav class="rcc-consensus-breadcrumb" aria-label="{% translate 'Breadcrumb' %}">
-                {% if long_range_page %}<a href="{{ long_range_page.url }}">{% translate "Long-range Forecasting" %}</a><span>/</span>{% endif %}
-                <a href="{% url 'rcc_consensus_forums' %}">{% translate "Consensus statements" %}</a><span>/</span><span>{{ forum.forum_code }}</span>
+                {% if forum.forum_code == "ACCOF" and coordination_page %}
+                    <a href="{{ coordination_page.url }}">{% translate "Coordination" %}</a><span>/</span><span>{{ forum.forum_code }}</span>
+                {% else %}
+                    {% if long_range_page %}<a href="{{ long_range_page.url }}">{% translate "Long-range Forecasting" %}</a><span>/</span>{% endif %}
+                    <a href="{% url 'rcc_consensus_forums' %}">{% translate "Consensus statements" %}</a><span>/</span><span>{{ forum.forum_code }}</span>
+                {% endif %}
             </nav>
 
             <div class="rcc-forum-layout">
                 <article class="rcc-forum-main">
-                    <p class="rcc-eyebrow">{% translate "Regional forum profile" %}</p>
-                    <h2>{% translate "About the forum" %}</h2>
+                    <p class="rcc-eyebrow">{% if forum.forum_code == "ACCOF" %}{% translate "Continental coordination forum" %}{% else %}{% translate "Regional forum profile" %}{% endif %}</p>
+                    <h2>{% translate "Background" %}</h2>
                     <div class="rcc-forum-lead format-text">{{ forum.overview|richtext }}</div>
 
                     <div class="rcc-forum-facts">
@@ -39,16 +43,16 @@
                         <section><span>{% translate "Principal climate hazards" %}</span><div class="format-text">{{ forum.climate_hazards|richtext }}</div></section>
                     </div>
 
-                    <section class="rcc-forum-text-section">
-                        <h2>{% translate "How the consensus is developed" %}</h2>
+                    {% if forum.consensus_method %}<section class="rcc-forum-text-section">
+                        <h2>{% if forum.forum_code == "ACCOF" %}{% translate "Objectives of the forum" %}{% else %}{% translate "The RCOF" %}{% endif %}</h2>
                         <div class="format-text">{{ forum.consensus_method|richtext }}</div>
-                    </section>
-                    <section class="rcc-forum-text-section">
+                    </section>{% endif %}
+                    {% if forum.user_involvement %}<section class="rcc-forum-text-section">
                         <h2>{% translate "User involvement" %}</h2><div class="format-text">{{ forum.user_involvement|richtext }}</div>
-                    </section>
-                    <section class="rcc-forum-text-section">
-                        <h2>{% translate "Development priorities" %}</h2><div class="format-text">{{ forum.development_priorities|richtext }}</div>
-                    </section>
+                    </section>{% endif %}
+                    {% if forum.development_priorities %}<section class="rcc-forum-text-section">
+                        <h2>{% translate "Way forward" %}</h2><div class="format-text">{{ forum.development_priorities|richtext }}</div>
+                    </section>{% endif %}
                 </article>
 
                 <aside class="rcc-forum-aside">
@@ -56,7 +60,7 @@
                         <span>{% translate "Forum" %}</span><strong>{{ forum.forum_code }}</strong>
                         <dl><div><dt>{% translate "Region" %}</dt><dd>{{ forum.region }}</dd></div><div><dt>{% translate "Focus" %}</dt><dd>{{ forum.target_season }}</dd></div></dl>
                     </div>
-                    <a class="rcc-forum-back" href="{% url 'rcc_consensus_forums' %}">&#8592; {% translate "View all outlook forums" %}</a>
+                    {% if forum.forum_code == "ACCOF" and coordination_page %}<a class="rcc-forum-back" href="{{ coordination_page.url }}">&#8592; {% translate "Back to Coordination" %}</a>{% else %}<a class="rcc-forum-back" href="{% url 'rcc_consensus_forums' %}">&#8592; {% translate "View all outlook forums" %}</a>{% endif %}
                 </aside>
             </div>
 

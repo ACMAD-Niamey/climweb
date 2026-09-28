@@ -60,6 +60,8 @@
 .rcc-training-report-group li span { color: var(--rcc-ink); font-size: .75rem; font-weight: 750; line-height: 1.35; text-decoration: none; }
 .rcc-training-report-group li a:hover { color: var(--rcc-teal); }
 .rcc-training-report-group li small { flex: 0 0 auto; color: var(--rcc-muted); font-size: .58rem; text-transform: uppercase; }
+.rcc-training-report-more { margin-top: 18px; padding: 9px 13px; border: 1px solid #b9d2cc; border-radius: 7px; color: var(--rcc-teal); background: #fff; font-size: .7rem; font-weight: 850; cursor: pointer; }
+.rcc-training-report-more:hover { color: #fff; background: var(--rcc-teal); }
 
 .rcc-training-videos { border-top: 1px solid #dce6e3; }
 .rcc-training-video-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }

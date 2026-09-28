@@ -186,6 +186,20 @@ class RCCRecommendedFunctionBlock(blocks.StructBlock):
         label = _("Highly recommended function")
 
 
+class RCCCoordinationAreaBlock(blocks.StructBlock):
+    activity = blocks.CharBlock(max_length=180)
+    output_title = blocks.CharBlock(max_length=180, label=_("Product or output"))
+    description = blocks.TextBlock(required=False)
+    icon = IconChooserBlock(required=False, default="group")
+    related_page = blocks.PageChooserBlock(required=False)
+    external_url = blocks.URLBlock(required=False, max_length=500)
+    link_label = blocks.CharBlock(max_length=60, required=False)
+
+    class Meta:
+        icon = "group"
+        label = _("Coordination area")
+
+
 class ApplicationStepBlock(blocks.StructBlock):
     title = blocks.CharBlock(max_length=120)
     description = blocks.RichTextBlock(features=SUMMARY_RICHTEXT_FEATURES)

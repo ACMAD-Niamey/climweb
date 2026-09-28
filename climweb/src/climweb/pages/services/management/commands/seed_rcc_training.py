@@ -41,7 +41,7 @@ REPORT_GROUPS = (
     ),
     (
         "training-reports",
-        "Trainee and scientific-stay reports",
+        "On the Job training reports",
         "Learning outputs and reports prepared through ACMAD placements and scientific stays.",
         "user",
     ),

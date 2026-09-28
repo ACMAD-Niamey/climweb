@@ -552,6 +552,7 @@ class ServicePage(AbstractBannerWithIntroPage):
         'services.OnTheJobTrainingPage',
         'services.RCCClimateMonitoringPage',
         'services.RCCClimateProductsPage',
+        'services.RCCCoordinationPage',
         'services.RCCDataServicesPage',
         'services.RCCLongRangeForecastingPage',
         'services.RCCRecommendedFunctionsPage',
@@ -1317,8 +1318,6 @@ class RCCTrainingPage(AbstractBannerWithIntroPage):
         FieldPanel("programmes"),
         FieldPanel("methodology_groups"),
         FieldPanel("report_groups"),
-        FieldPanel("training_videos"),
-        FieldPanel("closing_text"),
     ]
 
     class Meta:
@@ -1371,6 +1370,36 @@ class RCCRecommendedFunctionsPage(AbstractBannerWithIntroPage):
 
     class Meta:
         verbose_name = _("RCC Highly Recommended Functions Page")
+
+
+class RCCCoordinationPage(AbstractBannerWithIntroPage):
+    template = "services/rcc_coordination_page.html"
+    parent_page_types = ["services.ServicePage"]
+    subpage_types = []
+    max_count_per_parent = 1
+    show_in_menus_default = True
+
+    coordination_areas = StreamField(
+        [("area", local_blocks.RCCCoordinationAreaBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Coordination activities and outputs"),
+    )
+
+    content_panels = Page.content_panels + [
+        *AbstractBannerWithIntroPage.content_panels,
+        FieldPanel("coordination_areas"),
+    ]
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        context["accof_page"] = RCCConsensusForumPage.objects.live().filter(
+            forum_code__iexact="ACCOF"
+        ).first()
+        return context
+
+    class Meta:
+        verbose_name = _("RCC Coordination Page")
 
 
 class RCCConsensusForumPage(AbstractBannerPage):
@@ -1530,11 +1559,15 @@ class RCCConsensusForumPage(AbstractBannerPage):
 
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
+        parent = self.get_parent().specific
         context.update(
             {
                 "forum": self,
                 "documents": self.consensus_documents(),
-                "long_range_page": self.get_parent().specific,
+                "long_range_page": (
+                    parent if isinstance(parent, RCCLongRangeForecastingPage) else None
+                ),
+                "coordination_page": RCCCoordinationPage.objects.live().first(),
             }
         )
         return context

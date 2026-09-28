@@ -4,7 +4,7 @@
 {% block extra_css %}
     {{ block.super }}
     <link rel="stylesheet" type="text/css" href="{% static 'css/services_rcc.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_recommended_functions.css' %}?v=1">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_recommended_functions.css' %}?v=2">
 {% endblock %}
 
 {% block body_class %}rcc-service-page rcc-recommended-page{% endblock %}
@@ -60,7 +60,6 @@
                         <p class="rcc-rec-activity">{{ block.value.activity }}</p>
                         <h3>{{ block.value.output_title }}</h3>
                         <p>{{ block.value.description }}</p>
-                        {% if block.value.topics %}<ul>{% for topic in block.value.topics %}<li>{{ topic }}</li>{% endfor %}</ul>{% endif %}
                         {% if block.value.related_page %}<a href="{% pageurl block.value.related_page %}">{% if block.value.link_label %}{{ block.value.link_label }}{% else %}{% translate "Explore output" %}{% endif %} &#8594;</a>
                         {% elif block.value.external_url %}<a href="{{ block.value.external_url }}" target="_blank" rel="noopener">{% if block.value.link_label %}{{ block.value.link_label }}{% else %}{% translate "Open application" %}{% endif %} &#8599;</a>{% endif %}
                     </article>

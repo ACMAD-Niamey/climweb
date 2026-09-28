@@ -8,6 +8,7 @@ from ..models import (
     RCCClimateMonitoringPage,
     RCCConsensusForumPage,
     RCCClimateProductsPage,
+    RCCCoordinationPage,
     RCCDataServicesPage,
     RCCLongRangeForecastingPage,
     RCCRecommendedFunctionsPage,
@@ -157,6 +158,27 @@ class RCCTrainingPageFactory(wagtail_factories.PageFactory):
             },
         )
     ]
+    report_groups = [
+        (
+            "group",
+            {
+                "anchor": "training-reports",
+                "title": "On the Job training reports",
+                "description": "Reports from ACMAD professional placements.",
+                "icon": "user",
+                "resources": [
+                    {
+                        "title": f"Training report {number}",
+                        "description": "",
+                        "document": None,
+                        "external_url": f"https://example.com/report-{number}.pdf",
+                        "resource_type": "PDF report",
+                    }
+                    for number in range(1, 5)
+                ],
+            },
+        )
+    ]
     training_videos = [
         (
             "video",
@@ -198,6 +220,33 @@ class RCCRecommendedFunctionsPageFactory(wagtail_factories.PageFactory):
     ]
     evidence_heading = "Research reports and climate-change evidence"
     evidence_introduction = RichText("<p>Regional climate-change reports.</p>")
+
+
+class RCCCoordinationPageFactory(wagtail_factories.PageFactory):
+    class Meta:
+        model = RCCCoordinationPage
+
+    title = "Coordination"
+    banner_title = "Coordinating climate services across Africa"
+    banner_subtitle = "Connecting African RCCs, national services and global partners."
+    introduction_title = "A connected Regional Climate Centre community"
+    introduction_text = RichText(
+        "<p>ACMAD coordinates RCC activities across WMO Regional Association I.</p>"
+    )
+    coordination_areas = [
+        (
+            "area",
+            {
+                "activity": "Coordination of training",
+                "output_title": "RCC meetings and training reports",
+                "description": "Regional learning and technical exchange.",
+                "icon": "group",
+                "related_page": None,
+                "external_url": "",
+                "link_label": "",
+            },
+        )
+    ]
 
 
 class RCCConsensusForumPageFactory(wagtail_factories.PageFactory):
