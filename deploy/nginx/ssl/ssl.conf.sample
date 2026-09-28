@@ -2,6 +2,7 @@
 # Included by the SSL nginx configs via `include /etc/nginx/ssl/ssl.conf;` so the
 # path lives in one place across every server block.
 #
-# ACMAD uses one SAN cert for all hostnames (acmad.org + www + new + summerschool):
+# ACMAD uses one SAN cert for all hostnames
+# (acmad.org + www + new + summerschool + nrcc):
 ssl_certificate     /etc/letsencrypt/live/acmad.org/fullchain.pem;
 ssl_certificate_key /etc/letsencrypt/live/acmad.org/privkey.pem;

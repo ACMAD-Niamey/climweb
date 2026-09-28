@@ -78,6 +78,20 @@ This does not move the page in the tree. The section's index page stays reachabl
 default site *and* becomes reachable at `/` on the new subdomain simultaneously - both routes resolve through the
 same page-tree object.
 
+For the ACMAD RCC hostname, the equivalent Site record can be created or
+reconciled after deployment with:
+
+```bash
+docker compose --profile prod exec -T climweb_prod \
+  python /climweb/web/src/climweb/manage.py configure_rcc_subdomain
+```
+
+This configures `nrcc.acmad.org`, external port `443`, the live Regional
+Climate Center page as the root, and leaves the existing default Site unchanged.
+The ACMAD deployment serves it from `deploy/nginx/nginx.prod.acmad.ssl.conf`;
+the generic `nginx.prod.ssl.conf` supports the same hostname for installations
+that use that configuration instead.
+
 ## 4. Gotcha: `get_meta_description()` / `get_meta_image()` self-reference
 
 Several page types (`SummerSchoolIndexPage`, and the same pattern in `contact`, `feedback`, `data_request`,

@@ -36,7 +36,7 @@ lineage named `acmad.org`:
 
 | lineage | domains | path |
 | ------- | ------- | ---- |
-| `acmad.org` | `acmad.org`, `www.acmad.org`, `new.acmad.org`, `summerschool.acmad.org` | `/etc/letsencrypt/live/acmad.org/` |
+| `acmad.org` | `acmad.org`, `www.acmad.org`, `new.acmad.org`, `summerschool.acmad.org`, `nrcc.acmad.org` | `/etc/letsencrypt/live/acmad.org/` |
 
 `deploy/nginx/ssl/ssl.conf` therefore contains:
 
@@ -58,6 +58,7 @@ First issue, or add a domain to the existing cert (`--expand`):
 sudo certbot certonly --webroot -w /var/www/certbot \
   --cert-name acmad.org --expand \
   -d acmad.org -d www.acmad.org -d new.acmad.org -d summerschool.acmad.org \
+  -d nrcc.acmad.org \
   --deploy-hook "docker exec climweb_nginx_prod nginx -s reload"
 ```
 
@@ -144,6 +145,7 @@ Re-run the issuing command with the extra `-d`, keeping every existing name:
 sudo certbot certonly --webroot -w /var/www/certbot \
   --cert-name acmad.org --expand \
   -d acmad.org -d www.acmad.org -d new.acmad.org -d summerschool.acmad.org \
+  -d nrcc.acmad.org \
   -d dev.acmad.org \
   --deploy-hook "docker exec climweb_nginx_prod nginx -s reload"
 ```
