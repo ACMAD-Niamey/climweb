@@ -39,7 +39,7 @@
         <div class="rcc-import-field"><label for="{{ settings_form.interval_hours.id_for_label }}">Run every (hours)</label>{{ settings_form.interval_hours }}{{ settings_form.interval_hours.errors }}</div>
         <div class="rcc-import-field"><label for="{{ settings_form.enabled.id_for_label }}">{{ settings_form.enabled }} Enable automatic imports</label>{{ settings_form.enabled.errors }}</div>
       </div>
-      <div class="rcc-import-field"><label for="{{ settings_form.import_all_stations.id_for_label }}">{{ settings_form.import_all_stations }} Import all stations in every country</label><p class="rcc-import-muted">When off, only the stations selected below are imported. All-station imports can be large; they discover the current catalogue on each run.</p></div>
+      <div class="rcc-import-field"><label for="{{ settings_form.import_all_stations.id_for_label }}">{{ settings_form.import_all_stations }} Import all stations in every country</label><p class="rcc-import-muted">When off, only the stations selected below are imported. All-station imports can be large; they discover the current catalogue on each run. Save these settings after changing this option.</p></div>
       <button class="button button-primary" name="action" value="save_settings">Save {{ importer.label }} settings</button>
     </form>
   </section>
@@ -54,7 +54,22 @@
     <section class="rcc-import-card">
       <h2>Run now</h2>
       <p>Start one background {{ importer.label }} run using the saved scope. Only one run of this product can be active at a time.</p>
-      <form method="post">{% csrf_token %}<button class="button button-primary" name="action" value="run" {% if not config.import_all_stations and not config.selected_stations %}disabled{% endif %}>Run now</button></form>
+      <p class="rcc-import-muted"><strong>Saved scope:</strong> {% if config.import_all_stations %}all stations in every country{% elif config.selected_stations %}{{ config.selected_stations|length }} selected station{{ config.selected_stations|length|pluralize }}{% else %}none — save the all-stations option or select stations first{% endif %}.</p>
+      {% if active_run %}
+        <p><strong>Run {{ active_run.pk }}:</strong> {% if active_run.cancel_requested %}stopping after the current station{% else %}{{ active_run.get_status_display }}{% endif %}</p>
+        <div class="rcc-import-actions">
+          <a class="button" href="{{ active_run_log_url }}">View live log</a>
+          {% if not active_run.cancel_requested %}
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="run_id" value="{{ active_run.pk }}">
+            <button class="button no" name="action" value="stop" aria-label="Stop current {{ importer.label }} import">Stop current import</button>
+          </form>
+          {% endif %}
+        </div>
+      {% else %}
+        <form method="post">{% csrf_token %}<button class="button button-primary" name="action" value="run" {% if not config.import_all_stations and not config.selected_stations %}disabled{% endif %}>Run now</button></form>
+      {% endif %}
     </section>
   </div>
 

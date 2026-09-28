@@ -94,6 +94,34 @@ class ImportDashboardTests(TestCase):
         self.assertTrue(self.config.import_all_stations)
         self.assertTrue(PeriodicTask.objects.get(name="rcc-arc2-import").enabled)
 
+    def test_run_explains_that_all_station_scope_must_be_saved(self):
+        self.config.selected_stations = []
+        self.config.import_all_stations = False
+        self.config.save(update_fields=["selected_stations", "import_all_stations"])
+        response = self.client.post(reverse("rcc_arc2_imports"), {"action": "run"}, follow=True)
+        self.assertContains(response, "No saved import scope")
+        self.assertContains(response, "save the ARC2 settings")
+
+    def test_run_identifies_the_active_import_that_blocks_a_new_run(self):
+        active = RCCARC2ImportRun.objects.create(
+            config=self.config, trigger="manual", status="running",
+            catalogue_url=CATALOGUE_URL, stations=["Niger/NIAMEY-AERO"],
+        )
+        response = self.client.post(reverse("rcc_arc2_imports"), {"action": "run"}, follow=True)
+        self.assertContains(response, f"ARC2 import run {active.pk} is still running")
+
+    def test_cpc_page_shows_prominent_stop_control_for_active_run(self):
+        config = RCCCPCImportConfig.objects.create(
+            singleton_key="cpc-unified", import_all_stations=True,
+        )
+        run = RCCCPCImportRun.objects.create(
+            config=config, trigger="manual", status="running", import_all_stations=True,
+        )
+        response = self.client.get(reverse("rcc_cpc_imports"))
+        self.assertContains(response, f"Run {run.pk}:")
+        self.assertContains(response, "Stop current import")
+        self.assertContains(response, reverse("rcc_cpc_import_log", args=[run.pk]))
+
     def test_source_url_change_clears_discovery_and_disables_schedule(self):
         updated_url = CATALOGUE_URL.replace("http://", "https://")
         response = self.client.post(reverse("rcc_arc2_imports"), {
