@@ -145,6 +145,9 @@ class ImportDashboardTests(TestCase):
             config=self.config, trigger="manual", catalogue_url=CATALOGUE_URL,
             stations=["Niger/NIAMEY-AERO"],
         )
+        dashboard = self.client.get(reverse("rcc_imports"))
+        self.assertContains(dashboard, "Stop import")
+        self.assertContains(dashboard, f'value="{run.pk}"')
         self.assertContains(self.client.get(reverse("rcc_arc2_imports")), "Stop import")
         response = self.client.post(reverse("rcc_arc2_imports"), {
             "action": "stop", "run_id": str(run.pk),

@@ -111,6 +111,7 @@ def rcc_imports_view(request):
     rows = []
     for key, importer in IMPORTERS.items():
         config = importer["model"].objects.filter(singleton_key=key).first()
+        last_run = config.runs.first() if config else None
         assets = RCCDatasetAsset.objects.filter(
             key__startswith=f"{key}-", synced_at__isnull=False
         ).exclude(object_name="")
@@ -126,7 +127,12 @@ def rcc_imports_view(request):
             "selected_count": len(config.selected_stations) if config else 0,
             "imported_count": assets.count(),
             "last_imported": assets.order_by("-synced_at").values_list("synced_at", flat=True).first(),
-            "last_run": config.runs.first() if config else None,
+            "last_run": last_run,
+            "can_stop": bool(
+                last_run
+                and last_run.status in ("queued", "running")
+                and not last_run.cancel_requested
+            ),
         })
     map_config = RCCSeasonalMapImportConfig.objects.filter(singleton_key="seasonal-maps").first()
     map_assets = RCCSeasonalMapAsset.objects.all()
