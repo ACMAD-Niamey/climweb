@@ -33,7 +33,7 @@
 .rcc-forum-aside { position: sticky; top: 100px; }
 .rcc-forum-aside__card { overflow: hidden; padding: 26px; border-radius: 15px; color: #fff; background: #103c43; }
 .rcc-forum-aside__card > span { color: #91daca; font-size: .66rem; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; }
-.rcc-forum-aside__card > strong { display: block; margin: 8px 0 26px; font-size: 2rem; }
+.rcc-forum-aside__card > strong { display: block; margin: 8px 0 26px; color: #fff; font-size: 2rem; }
 .rcc-forum-aside dl { margin: 0; }
 .rcc-forum-aside dl div { padding-top: 16px; border-top: 1px solid rgba(255,255,255,.15); }
 .rcc-forum-aside dl div + div { margin-top: 16px; }

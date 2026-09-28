@@ -33,8 +33,6 @@
 .rcc-rec-activity { min-height: 42px; margin: 28px 0 7px !important; color: var(--rcc-teal) !important; font-size: .65rem !important; font-weight: 850; letter-spacing: .055em; line-height: 1.45 !important; text-transform: uppercase; }
 .rcc-rec-function-card h3 { margin: 0 0 10px; font-size: 1.14rem; }
 .rcc-rec-function-card > p { margin: 0; color: var(--rcc-muted); font-size: .79rem; line-height: 1.62; }
-.rcc-rec-function-card ul { display: flex; margin: 17px 0 0; padding: 0; flex-wrap: wrap; gap: 6px; list-style: none; }
-.rcc-rec-function-card li { padding: 5px 8px; border: 1px solid #d8e4e1; border-radius: 999px; color: var(--rcc-teal); background: #f6faf9; font-size: .61rem; font-weight: 750; }
 .rcc-rec-function-card > a { margin-top: auto; padding-top: 23px; color: var(--rcc-teal); font-size: .74rem; font-weight: 850; text-decoration: none; }
 
 .rcc-rec-evidence { color: #fff; background: #103c43; }

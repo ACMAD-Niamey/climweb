@@ -4,7 +4,7 @@
 {% block extra_css %}
     {{ block.super }}
     <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_data_services.css' %}?v=20260917-1">
-    <link rel="stylesheet" href="{% static 'css/rcc_reference_climatologies.css' %}?v=7">
+    <link rel="stylesheet" href="{% static 'css/rcc_reference_climatologies.css' %}?v=8">
 {% endblock %}
 {% block body_class %}rcc-data-services-page{% endblock %}
 
@@ -29,12 +29,19 @@
         </div>
         <form class="rcc-reference-finder" data-station-finder>
             <div class="rcc-reference-finder__intro"><span>{{ product_label }}</span><strong>{% translate "Go directly to a station dataset" %}</strong></div>
-            <label for="dataset-country-select">{% translate "Country" %}</label>
-            <select id="dataset-country-select" data-country-select><option value="">{% translate "Select a country" %}</option>{% for item in selector_countries %}<option value="{{ item.slug }}">{{ item.country }}</option>{% endfor %}</select>
-            <label for="dataset-station-select">{% translate "Station" %}</label>
-            <select id="dataset-station-select" data-station-select disabled><option value="">{% translate "Select a country first" %}</option></select>
+            <div class="rcc-reference-finder__field">
+                <label for="dataset-country-search">{% translate "Country" %}</label>
+                <input id="dataset-country-search" type="search" data-country-search placeholder="{% translate 'Search countries' %}" autocomplete="off">
+                <select id="dataset-country-select" data-country-select size="7" aria-label="{% translate 'Available countries' %}"><option value="">{% translate "Select a country" %}</option>{% for item in selector_countries %}<option value="{{ item.slug }}">{{ item.country }}</option>{% endfor %}</select>
+            </div>
+            <div class="rcc-reference-finder__field">
+                <label for="dataset-station-search">{% translate "Station" %}</label>
+                <input id="dataset-station-search" type="search" data-station-search placeholder="{% translate 'Search stations' %}" autocomplete="off" disabled>
+                <select id="dataset-station-select" data-station-select size="7" disabled aria-label="{% translate 'Available stations' %}"><option value="">{% translate "Select a country first" %}</option></select>
+            </div>
             <button type="submit" disabled>{% translate "View station" %}</button>
         </form>
+        {{ selector_countries|json_script:"dataset-country-data" }}
         {{ station_selector|json_script:"dataset-station-data" }}
     </div></section>
 </main>
@@ -44,22 +51,42 @@
     {{ block.super }}
     {% translate "Select a station" as choose_station_label %}
     {% translate "Select a country first" as choose_country_label %}
+    {% translate "Select a country" as choose_country_option_label %}
     <script>
         (() => {
             const form = document.querySelector("[data-station-finder]");
             if (!form) return;
             const countrySelect = form.querySelector("[data-country-select]");
             const stationSelect = form.querySelector("[data-station-select]");
+            const countrySearch = form.querySelector("[data-country-search]");
+            const stationSearch = form.querySelector("[data-station-search]");
             const submitButton = form.querySelector("button[type='submit']");
+            const countries = JSON.parse(document.getElementById("dataset-country-data").textContent);
             const stations = JSON.parse(document.getElementById("dataset-station-data").textContent);
+            let countryStations = [];
+            const matchesQuery = (value, query) => value.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
+            const replaceCountries = () => {
+                const selected = countrySelect.value;
+                const matches = countries.filter(country => matchesQuery(country.country, countrySearch.value));
+                countrySelect.replaceChildren(new Option("{{ choose_country_option_label|escapejs }}", ""));
+                matches.forEach(country => countrySelect.add(new Option(country.country, country.slug)));
+                if (matches.some(country => country.slug === selected)) countrySelect.value = selected;
+            };
             const replaceStations = () => {
-                const matches = stations.filter(station => station.country === countrySelect.value);
+                const matches = countryStations.filter(station => matchesQuery(station.name, stationSearch.value));
                 stationSelect.replaceChildren(new Option(countrySelect.value ? "{{ choose_station_label|escapejs }}" : "{{ choose_country_label|escapejs }}", ""));
                 matches.forEach(station => stationSelect.add(new Option(station.name, station.url)));
-                stationSelect.disabled = !countrySelect.value || matches.length === 0;
+                stationSelect.disabled = !countrySelect.value || countryStations.length === 0;
+                stationSearch.disabled = stationSelect.disabled;
                 submitButton.disabled = true;
             };
-            countrySelect.addEventListener("change", replaceStations);
+            countrySearch.addEventListener("input", replaceCountries);
+            stationSearch.addEventListener("input", replaceStations);
+            countrySelect.addEventListener("change", () => {
+                countryStations = stations.filter(station => station.country === countrySelect.value);
+                stationSearch.value = "";
+                replaceStations();
+            });
             stationSelect.addEventListener("change", () => submitButton.disabled = !stationSelect.value);
             form.addEventListener("submit", event => {
                 event.preventDefault();

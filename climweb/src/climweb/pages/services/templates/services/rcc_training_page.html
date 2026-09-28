@@ -4,7 +4,7 @@
 {% block extra_css %}
     {{ block.super }}
     <link rel="stylesheet" type="text/css" href="{% static 'css/services_rcc.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_training.css' %}?v=1">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_training.css' %}?v=2">
 {% endblock %}
 
 {% block body_class %}rcc-service-page rcc-training-page{% endblock %}
@@ -108,7 +108,7 @@
                         {% if block.value.description %}<p>{{ block.value.description }}</p>{% endif %}
                         <ul>
                             {% for resource in block.value.resources %}
-                                <li>
+                                <li{% if forloop.counter > 3 %} hidden data-report-extra{% endif %}>
                                     {% if resource.document %}<a href="{{ resource.document.url }}" target="_blank" rel="noopener">{{ resource.title }}</a>
                                     {% elif resource.external_url %}<a href="{{ resource.external_url }}" target="_blank" rel="noopener">{{ resource.title }}</a>
                                     {% else %}<span>{{ resource.title }}</span>{% endif %}
@@ -116,31 +116,28 @@
                                 </li>
                             {% endfor %}
                         </ul>
+                        {% if block.value.resources|length > 3 %}<button type="button" class="rcc-training-report-more" data-report-more data-more-label="{% translate 'See more' %}" data-less-label="{% translate 'Show less' %}" aria-expanded="false">{% translate "See more" %} &#8595;</button>{% endif %}
                     </section>
                 {% endfor %}
             </div>
         </div>
     </section>
 
-    <section class="rcc-training-section rcc-training-videos">
-        <div class="container">
-            <header class="rcc-training-heading">
-                <div><p class="rcc-eyebrow">{% translate "Watch and learn" %}</p><h2>{% translate "Seasonal forecast training series" %}</h2></div>
-                <p>{% translate "A four-part introduction to seasonal forecast production, interpretation and delivery as a climate service." %}</p>
-            </header>
-            <div class="rcc-training-video-grid">
-                {% for block in page.training_videos %}
-                    <article class="rcc-training-video-card">
-                        <div class="rcc-training-video-frame"><iframe src="https://www.youtube-nocookie.com/embed/{{ block.value.youtube_id }}" title="{{ block.value.title }}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
-                        <div><span>{% blocktranslate with number=forloop.counter %}Part {{ number }}{% endblocktranslate %}</span><h3><a href="{{ block.value.video_url }}" target="_blank" rel="noopener">{{ block.value.title }}</a></h3>{% if block.value.description %}<p>{{ block.value.description }}</p>{% endif %}</div>
-                    </article>
-                {% endfor %}
-            </div>
-        </div>
-    </section>
-
-    {% if page.closing_text %}
-        <section class="rcc-training-contact"><div class="container"><div class="rcc-training-contact__panel"><div><p class="rcc-eyebrow">{% translate "Work with ACMAD" %}</p><h2>{% translate "Plan a training activity" %}</h2></div><div class="format-text">{{ page.closing_text|richtext }}</div><a href="mailto:secretariat@acmad.org">{% translate "Contact ACMAD" %} &#8594;</a></div></div></section>
-    {% endif %}
 </main>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <script>
+        document.querySelectorAll("[data-report-more]").forEach(button => {
+            button.addEventListener("click", () => {
+                const card = button.closest(".rcc-training-report-group");
+                const extras = card.querySelectorAll("[data-report-extra]");
+                const expanded = button.getAttribute("aria-expanded") === "true";
+                extras.forEach(item => item.hidden = expanded);
+                button.setAttribute("aria-expanded", String(!expanded));
+                button.textContent = expanded ? `${button.dataset.moreLabel} ↓` : `${button.dataset.lessLabel} ↑`;
+            });
+        });
+    </script>
 {% endblock %}

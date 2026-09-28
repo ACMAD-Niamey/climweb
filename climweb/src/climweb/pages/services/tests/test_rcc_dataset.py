@@ -128,6 +128,9 @@ class RCCDatasetTests(TestCase):
         self.assertContains(response, "Niger")
         self.assertContains(response, 'data-country-select')
         self.assertContains(response, 'data-station-select')
+        self.assertContains(response, 'data-country-search')
+        self.assertContains(response, 'data-station-search')
+        self.assertContains(response, 'size="7"')
         self.assertContains(response, "NIAMEY-AERO")
         self.assertContains(response, "ZINDER")
         self.assertEqual(len(response.context["selector_countries"]), 1)
@@ -148,7 +151,7 @@ class RCCDatasetTests(TestCase):
         self.assertContains(response, "YENDI")
         self.assertEqual(len(response.context["selector_countries"]), 2)
         self.assertEqual(len(response.context["station_selector"]), 2)
-        self.assertNotContains(response, "Search countries")
+        self.assertContains(response, "Search countries")
         self.assertNotContains(response, 'class="rcc-country-card"')
 
     def test_country_page_lists_station_grid(self):
