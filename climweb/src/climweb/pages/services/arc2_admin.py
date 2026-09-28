@@ -386,9 +386,25 @@ def _importer_view(request, product):
                     messages.success(request, f"{country} station selection saved.")
                     return _redirect(country, route)
         if action == "run":
+            if not (config.import_all_stations or config.selected_stations):
+                messages.error(
+                    request,
+                    "No saved import scope. Select ‘Import all stations in every country’ "
+                    f"and save the {importer['label']} settings, or save one or more stations.",
+                )
+                return _redirect(route=route)
+            active_run = config.runs.filter(status__in=("queued", "running")).first()
+            if active_run:
+                state = "stopping" if active_run.cancel_requested else active_run.get_status_display().lower()
+                messages.error(
+                    request,
+                    f"{importer['label']} import run {active_run.pk} is still {state}. "
+                    "Wait for it to finish or stop it before starting another run.",
+                )
+                return _redirect(route=route)
             run = importer["create_run"](config.pk, "manual", request.user)
             if not run:
-                messages.error(request, "Enable all stations or select stations, and wait for any active run to finish.")
+                messages.error(request, "The import could not be started because its saved scope or active-run state changed. Refresh this page and try again.")
             else:
                 try:
                     importer["execute"].delay(run.pk)
@@ -410,6 +426,7 @@ def _importer_view(request, product):
             "errors": failed[:10],
             "log_url": reverse(importer["log_route"], args=[run.pk]),
         })
+    active_run = config.runs.filter(status__in=("queued", "running")).first()
     return TemplateResponse(
         request,
         "services/arc2_imports.html",
@@ -423,5 +440,7 @@ def _importer_view(request, product):
             "country_station_count": sum(s.startswith(f"{country}/") for s in config.discovered_stations) if country else 0,
             "country_selected_count": sum(s.startswith(f"{country}/") for s in config.selected_stations) if country else 0,
             "run_rows": run_rows,
+            "active_run": active_run,
+            "active_run_log_url": reverse(importer["log_route"], args=[active_run.pk]) if active_run else "",
         },
     )
