@@ -20,12 +20,14 @@ from climweb.pages.services.long_range_forums import CONSENSUS_FORUMS
 from climweb.pages.services.models import (
     RCCClimateMonitoringPage,
     RCCClimateProductsPage,
+    RCCCoordinationPage,
     RCCLongRangeForecastingPage,
 )
 from .factories import (
     RCCClimateMonitoringPageFactory,
     RCCConsensusForumPageFactory,
     RCCClimateProductsPageFactory,
+    RCCCoordinationPageFactory,
     RCCDataServicesPageFactory,
     RCCLongRangeForecastingPageFactory,
     RCCRecommendedFunctionsPageFactory,
@@ -73,6 +75,7 @@ class TestServicesPages(WagtailPageTestCase):
         page_types = (
             RCCClimateProductsPage,
             RCCClimateMonitoringPage,
+            RCCCoordinationPage,
             RCCLongRangeForecastingPage,
         )
 
@@ -550,6 +553,7 @@ class TestServicesPages(WagtailPageTestCase):
                 detail_response,
                 "services/rcc_consensus_forum_detail.html",
             )
+            self.assertContains(detail_response, "Background")
         self.assertEqual(
             self.client.get(
                 reverse("rcc_consensus_forum_detail", args=["unknown-forum"])
@@ -590,6 +594,47 @@ class TestServicesPages(WagtailPageTestCase):
         self.assertEqual(menu_item["page"].pk, forecasting_page.pk)
         self.assertEqual(menu_item["external_url"], "")
 
+    def test_forum_seed_can_sync_exact_legacy_backgrounds(self):
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center forum background parent",
+            service__name="Regional Climate Center",
+        )
+        forecasting_page = RCCLongRangeForecastingPageFactory(parent=rcc_page)
+        forum_page = RCCConsensusForumPageFactory(
+            parent=forecasting_page,
+            title="Seasonal Outlook Forum for the Sudano-Sahelian Region",
+            slug="presass",
+            forum_code="PRESASS",
+            overview="<p>Temporary background.</p>",
+        )
+
+        call_command(
+            "seed_rcc_consensus_forums",
+            sync_content=True,
+            stdout=StringIO(),
+        )
+
+        forum_page.refresh_from_db()
+        self.assertIn(
+            "This region typically covers the area between the Sahara desert",
+            str(forum_page.overview),
+        )
+        self.assertIn(
+            "Floods and droughts, late onsets, early and late cessation of rains",
+            str(forum_page.overview),
+        )
+        self.assertIn("The RCOF started in 1998", str(forum_page.consensus_method))
+        self.assertIn(
+            "Success stories based on feedback of users",
+            str(forum_page.user_involvement),
+        )
+        self.assertIn(
+            "Predictions at subseasonal timescales",
+            str(forum_page.development_priorities),
+        )
+        self.assertNotIn("Temporary background", str(forum_page.overview))
+
     def test_rcc_climate_products_introduction_title_is_optional(self):
         page_model = RCCClimateProductsPageFactory._meta.model
         title_field = page_model._meta.get_field("introduction_title")
@@ -613,10 +658,13 @@ class TestServicesPages(WagtailPageTestCase):
         self.assertContains(response, "Programmes and learning activities")
         self.assertContains(response, "Methods, tools and guidance")
         self.assertContains(response, "Workshop, training and survey reports")
-        self.assertContains(response, "Seasonal forecast training series")
+        self.assertContains(response, "On the Job training reports")
+        self.assertContains(response, 'data-report-more')
         self.assertContains(response, "Climate data services")
         self.assertContains(response, "Workshops and seminars")
-        self.assertContains(response, "CucEP23gWfU")
+        self.assertNotContains(response, "Seasonal forecast training series")
+        self.assertNotContains(response, "Plan a training activity")
+        self.assertNotContains(response, "CucEP23gWfU")
 
     def test_rcc_training_seed_links_existing_menu_item(self):
         rcc_page = ServicePageFactory(
@@ -684,6 +732,91 @@ class TestServicesPages(WagtailPageTestCase):
         self.assertContains(response, f'href="{report_item.url}"')
         self.assertNotContains(response, "Climate-change indices for African stations")
         self.assertContains(response, 'href="https://example.com/climate-indices/"')
+        self.assertNotContains(response, "<li>Observed trends</li>", html=True)
+        self.assertNotContains(response, "<li>RCP scenarios</li>", html=True)
+
+    def test_rcc_coordination_page_links_accof_and_renders_legacy_functions(self):
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center coordination parent",
+            service__name="Regional Climate Center",
+        )
+        long_range_page = RCCLongRangeForecastingPageFactory(parent=rcc_page)
+        accof_page = RCCConsensusForumPageFactory(
+            parent=long_range_page,
+            title="African Continental Climate Outlook Forum",
+            slug="accof",
+            forum_code="ACCOF",
+            region="Africa",
+        )
+        coordination_page = RCCCoordinationPageFactory(parent=rcc_page)
+
+        response = self.client.get(coordination_page.get_url())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "services/rcc_coordination_page.html")
+        self.assertContains(response, "Activities and products")
+        self.assertContains(response, "Coordination of training")
+        self.assertContains(response, "African Continental Climate Outlook Forum")
+        self.assertContains(response, f'href="{accof_page.url}"')
+
+    def test_rcc_coordination_seed_links_menu_and_refreshes_accof_profile(self):
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center coordination menu",
+            service__name="Regional Climate Center",
+        )
+        products_page = RCCClimateProductsPageFactory(parent=rcc_page)
+        long_range_page = RCCLongRangeForecastingPageFactory(parent=rcc_page)
+        accof_page = RCCConsensusForumPageFactory(
+            parent=long_range_page,
+            title="African Continental Climate Outlook Forum",
+            slug="accof",
+            forum_code="ACCOF",
+            region="Africa",
+        )
+        navigation = NavigationSettings.for_site(Site.objects.get(is_default_site=True))
+        navigation.rcc_main_menu = [
+            (
+                "navigation_item",
+                {
+                    "label": "Coordination",
+                    "page": products_page,
+                    "external_url": "",
+                    "include_subpages": False,
+                    "large_submenu": False,
+                    "sub_items": [
+                        (
+                            "sub_item",
+                            {
+                                "label": "ACCOF",
+                                "page": products_page,
+                                "external_url": "",
+                                "is_action": False,
+                            },
+                        )
+                    ],
+                },
+            )
+        ]
+        navigation.save()
+
+        call_command("seed_rcc_coordination", stdout=StringIO())
+
+        coordination_page = RCCCoordinationPageFactory._meta.model.objects.child_of(
+            rcc_page
+        ).get()
+        navigation.refresh_from_db()
+        menu_item = navigation.rcc_main_menu[0].value
+        self.assertEqual(menu_item["page"].pk, coordination_page.pk)
+        self.assertEqual(menu_item["sub_items"][0].value["page"].pk, accof_page.pk)
+        accof_page.refresh_from_db()
+        self.assertIn("Objectives of the forum", self.client.get(accof_page.url).content.decode())
+        self.assertIn("review and verify", str(accof_page.consensus_method))
+        self.assertIn(
+            "The World Meteorological Organization has established a three-tiered approach",
+            str(accof_page.overview),
+        )
 
     def test_rcc_recommended_functions_seed_links_menu_item(self):
         rcc_page = ServicePageFactory(

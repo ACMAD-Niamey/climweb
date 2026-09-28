@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load static i18n wagtailcore_tags wagtailiconchooser_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/services_rcc.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_coordination.css' %}?v=1">
+{% endblock %}
+
+{% block body_class %}rcc-service-page rcc-coordination-page{% endblock %}
+
+{% block content %}
+<main>
+    {% if page.banner_image %}
+        {% include "hero.html" with page=page %}
+    {% else %}
+        <section class="page-hero rcc-simple-hero">
+            <div class="page-hero-overlay"></div>
+            <div class="page-hero-body"><div class="container">
+                <span class="page-hero-badge">{% translate "RCC coordination function" %}</span>
+                <h1 class="page-hero-title">{{ page.banner_title|default:page.title }}</h1>
+                {% if page.banner_subtitle %}<p class="page-hero-subtitle">{{ page.banner_subtitle }}</p>{% endif %}
+            </div></div>
+        </section>
+    {% endif %}
+
+    <section class="rcc-coordination-overview">
+        <div class="container">
+            <a class="rcc-coordination-back" href="{{ page.get_parent.url }}">&#8592; {% translate "Regional Climate Centre" %}</a>
+            <div class="rcc-coordination-overview__grid">
+                <div>
+                    <p class="rcc-eyebrow">{% translate "Coordination across WMO Regional Association I" %}</p>
+                    {% if page.introduction_title %}<h2>{{ page.introduction_title }}</h2>{% endif %}
+                    {% if page.introduction_text %}<div class="format-text">{{ page.introduction_text|richtext }}</div>{% endif %}
+                </div>
+                <aside>
+                    <span>{% translate "Regional mandate" %}</span>
+                    <strong>{% translate "Connect African RCCs, NMHSs and global producing centres" %}</strong>
+                    <p>{% translate "Harmonised methods, consistent outlooks and coordinated climate-service delivery." %}</p>
+                </aside>
+            </div>
+        </div>
+    </section>
+
+    <section class="rcc-coordination-section">
+        <div class="container">
+            <header class="rcc-coordination-heading">
+                <div><p class="rcc-eyebrow">{% translate "Coordination function" %}</p><h2>{% translate "Activities and products" %}</h2></div>
+                <p>{% translate "The coordination function links training, data services and operational climate activities with documented regional outputs." %}</p>
+            </header>
+            <div class="rcc-coordination-grid">
+                {% for block in page.coordination_areas %}
+                    <article>
+                        <span class="rcc-coordination-icon">{% if block.value.icon %}{% svg_icon name=block.value.icon %}{% else %}{% svg_icon name="group" %}{% endif %}</span>
+                        <p>{{ block.value.activity }}</p>
+                        <h3>{{ block.value.output_title }}</h3>
+                        {% if block.value.description %}<div>{{ block.value.description }}</div>{% endif %}
+                        {% if block.value.related_page %}<a href="{% pageurl block.value.related_page %}">{% if block.value.link_label %}{{ block.value.link_label }}{% else %}{% translate "Explore output" %}{% endif %} &#8594;</a>
+                        {% elif block.value.external_url %}<a href="{{ block.value.external_url }}" target="_blank" rel="noopener">{% if block.value.link_label %}{{ block.value.link_label }}{% else %}{% translate "Open resource" %}{% endif %} &#8599;</a>{% endif %}
+                    </article>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="rcc-coordination-accof">
+        <div class="container">
+            <div class="rcc-coordination-accof__panel">
+                <div><p class="rcc-eyebrow">{% translate "Continental coordination" %}</p><h2>{% translate "African Continental Climate Outlook Forum (ACCOF)" %}</h2></div>
+                <div><p>{% translate "ACCOF provides a continental platform for African RCCs, NMHSs, global producing centres and users to review recent outlooks, discuss climate drivers and develop a consensus outlook for Africa." %}</p>
+                {% if accof_page %}<a href="{{ accof_page.url }}">{% translate "Explore ACCOF" %} &#8594;</a>{% endif %}</div>
+            </div>
+        </div>
+    </section>
+</main>
+{% endblock %}
