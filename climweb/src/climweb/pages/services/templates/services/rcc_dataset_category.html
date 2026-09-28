@@ -4,7 +4,7 @@
 {% block extra_css %}
     {{ block.super }}
     <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_data_services.css' %}?v=20260917-1">
-    <link rel="stylesheet" href="{% static 'css/rcc_reference_climatologies.css' %}?v=8">
+    <link rel="stylesheet" href="{% static 'css/rcc_reference_climatologies.css' %}?v=10">
 {% endblock %}
 {% block body_class %}rcc-data-services-page{% endblock %}
 
@@ -27,17 +27,17 @@
             <div><p class="rcc-ds-eyebrow">{% translate "Step 1" %}</p><h2>{% translate "Choose a country" %}</h2></div>
             <div class="rcc-browser-heading__actions"><p>Select a country and station to open its available {{ product_label }} daily rainfall series.</p></div>
         </div>
-        <form class="rcc-reference-finder" data-station-finder>
+        <form class="rcc-reference-finder rcc-reference-finder--searchable" data-station-finder>
             <div class="rcc-reference-finder__intro"><span>{{ product_label }}</span><strong>{% translate "Go directly to a station dataset" %}</strong></div>
-            <div class="rcc-reference-finder__field">
+            <div class="rcc-reference-finder__field rcc-reference-finder__field--country">
                 <label for="dataset-country-search">{% translate "Country" %}</label>
                 <input id="dataset-country-search" type="search" data-country-search placeholder="{% translate 'Search countries' %}" autocomplete="off">
-                <select id="dataset-country-select" data-country-select size="7" aria-label="{% translate 'Available countries' %}"><option value="">{% translate "Select a country" %}</option>{% for item in selector_countries %}<option value="{{ item.slug }}">{{ item.country }}</option>{% endfor %}</select>
+                <select id="dataset-country-select" data-country-select aria-label="{% translate 'Available countries' %}"><option value="">{% translate "Select a country" %}</option>{% for item in selector_countries %}<option value="{{ item.slug }}">{{ item.country }}</option>{% endfor %}</select>
             </div>
-            <div class="rcc-reference-finder__field">
+            <div class="rcc-reference-finder__field rcc-reference-finder__field--station">
                 <label for="dataset-station-search">{% translate "Station" %}</label>
                 <input id="dataset-station-search" type="search" data-station-search placeholder="{% translate 'Search stations' %}" autocomplete="off" disabled>
-                <select id="dataset-station-select" data-station-select size="7" disabled aria-label="{% translate 'Available stations' %}"><option value="">{% translate "Select a country first" %}</option></select>
+                <select id="dataset-station-select" data-station-select disabled aria-label="{% translate 'Available stations' %}"><option value="">{% translate "Select a country first" %}</option></select>
             </div>
             <button type="submit" disabled>{% translate "View station" %}</button>
         </form>

@@ -24,21 +24,27 @@
 .rcc-reference-finder__intro span { color: var(--rcc-teal); font-size: .65rem; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
 .rcc-reference-finder__intro strong { font-size: .88rem; line-height: 1.35; }
 .rcc-reference-finder label { color: var(--rcc-ink); font-size: .68rem; font-weight: 850; text-transform: uppercase; }
-.rcc-reference-finder label:first-of-type { grid-column: 2; grid-row: 1; }
-.rcc-reference-finder label:last-of-type { grid-column: 3; grid-row: 1; }
-.rcc-reference-finder__field { display: grid; min-width: 0; align-self: stretch; gap: 7px; }
-.rcc-reference-finder__field:first-of-type { grid-column: 2; grid-row: 1 / 3; }
-.rcc-reference-finder__field:last-of-type { grid-column: 3; grid-row: 1 / 3; }
+.rcc-reference-finder > label:first-of-type { grid-column: 2; grid-row: 1; }
+.rcc-reference-finder > label:last-of-type { grid-column: 3; grid-row: 1; }
+.rcc-reference-finder__field { display: flex; min-width: 0; flex-direction: column; gap: 7px; }
 .rcc-reference-finder__field input { width: 100%; min-height: 40px; padding: 0 12px; border: 1px solid #c5d7d2; border-radius: 8px; background: #fff; font: inherit; font-size: .76rem; }
 .rcc-reference-finder__field input:disabled { color: #84928f; background: #f2f5f4; cursor: not-allowed; }
 .rcc-reference-finder select { width: 100%; min-width: 0; min-height: 44px; padding: 0 38px 0 13px; border: 1px solid #c5d7d2; border-radius: 8px; color: var(--rcc-ink); background: #fff; font: inherit; font-size: .77rem; }
-.rcc-reference-finder__field select[size] { height: 184px; padding: 5px; overflow-y: auto; }
-.rcc-reference-finder__field select[size] option { padding: 7px 9px; border-radius: 5px; }
-.rcc-reference-finder select[data-country-select] { grid-column: 2; grid-row: 2; }
-.rcc-reference-finder select[data-station-select] { grid-column: 3; grid-row: 2; }
+.rcc-reference-finder > select[data-country-select] { grid-column: 2; grid-row: 2; }
+.rcc-reference-finder > select[data-station-select] { grid-column: 3; grid-row: 2; }
 .rcc-reference-finder select:disabled { color: #84928f; background: #f2f5f4; cursor: not-allowed; }
 .rcc-reference-finder button { min-height: 44px; padding: 0 18px; border: 0; border-radius: 8px; grid-column: 4; grid-row: 2; color: #fff; background: var(--rcc-teal); font-size: .73rem; font-weight: 850; cursor: pointer; white-space: nowrap; }
 .rcc-reference-finder button:disabled { opacity: .45; cursor: not-allowed; }
+
+.rcc-reference-finder--searchable { grid-template-rows: auto; align-items: end; gap: 18px; }
+.rcc-reference-finder--searchable .rcc-reference-finder__intro { grid-column: 1; grid-row: auto; }
+.rcc-reference-finder--searchable .rcc-reference-finder__field { align-self: auto; grid-row: auto; }
+.rcc-reference-finder--searchable .rcc-reference-finder__field--country { grid-column: 2; }
+.rcc-reference-finder--searchable .rcc-reference-finder__field--station { grid-column: 3; }
+.rcc-reference-finder--searchable .rcc-reference-finder__field label { grid-column: auto; grid-row: auto; }
+.rcc-reference-finder--searchable button { grid-column: 4; grid-row: auto; }
+.rcc-reference-finder--searchable input:focus,
+.rcc-reference-finder--searchable select:focus { border-color: var(--rcc-teal); box-shadow: 0 0 0 3px rgba(23, 107, 92, .12); outline: 0; }
 
 .rcc-reference-search { margin-bottom: 30px; padding: 20px; border: 1px solid #dbe5e2; border-radius: 12px; background: #fff; }
 .rcc-reference-search label { display: block; margin-bottom: 8px; color: var(--rcc-ink); font-size: .72rem; font-weight: 850; }
@@ -103,6 +109,9 @@
     .rcc-reference-finder > * { grid-column: auto !important; grid-row: auto !important; }
     .rcc-reference-finder__intro { margin-bottom: 6px; grid-column: 1 / -1 !important; }
     .rcc-reference-finder button { grid-column: 2 !important; }
+    .rcc-reference-finder--searchable { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; }
+    .rcc-reference-finder--searchable .rcc-reference-finder__intro { grid-column: 1 / -1 !important; }
+    .rcc-reference-finder--searchable button { grid-column: 2 !important; justify-self: end; }
     .rcc-reference-controls { grid-template-columns: auto 1fr; }
     .rcc-reference-controls button { grid-column: 2; }
     .rcc-reference-period__content { grid-template-columns: 1fr; }
@@ -117,6 +126,8 @@
     .rcc-reference-finder { grid-template-columns: 1fr; }
     .rcc-reference-finder__intro,
     .rcc-reference-finder button { grid-column: auto !important; }
+    .rcc-reference-finder--searchable { grid-template-columns: 1fr; }
+    .rcc-reference-finder--searchable button { width: 100%; justify-self: stretch; }
     .rcc-reference-controls { grid-template-columns: 1fr; }
     .rcc-reference-controls button { grid-column: auto; }
     .rcc-reference-period > header { align-items: start; flex-direction: column; }
