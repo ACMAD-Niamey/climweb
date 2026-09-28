@@ -850,3 +850,29 @@ class TestServicesPages(WagtailPageTestCase):
         menu_item = navigation.rcc_main_menu[0].value
         self.assertEqual(menu_item["page"].pk, page.pk)
         self.assertEqual(menu_item["external_url"], "")
+
+    def test_configure_rcc_subdomain_is_idempotent(self):
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center subdomain root",
+            service__name="Regional Climate Center",
+        )
+
+        call_command(
+            "configure_rcc_subdomain",
+            hostname="nrcc.example.com",
+            stdout=StringIO(),
+        )
+        call_command(
+            "configure_rcc_subdomain",
+            hostname="nrcc.example.com",
+            port=443,
+            stdout=StringIO(),
+        )
+
+        sites = Site.objects.filter(hostname="nrcc.example.com")
+        self.assertEqual(sites.count(), 1)
+        site = sites.get()
+        self.assertEqual(site.port, 443)
+        self.assertEqual(site.root_page_id, rcc_page.pk)
+        self.assertFalse(site.is_default_site)
