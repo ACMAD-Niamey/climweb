@@ -1,8 +1,11 @@
 # Homepage hero: Latest Updates
 
-The meteorological homepage's right-hand hero card now rotates through up to
-three news and event pages. Product imports and the separate featured-products
-section are unchanged. The lower Latest Updates section is also unchanged.
+The meteorological homepage's right-hand hero card rotates through up to three
+updates. When a published monthly issue exists below the dedicated **El Niño in
+Africa** page, that issue is always the first slide and links to the El Niño
+landing page. The remaining positions use news and events. Product imports and
+the separate featured-products section are unchanged. The lower Latest Updates
+section is also unchanged.
 
 ## Dashboard
 
@@ -13,7 +16,8 @@ Open **Pages → Homepage → Hero Latest Updates** and select:
   if there is insufficient news. Finished events and future-dated news are excluded.
   Single-day events remain eligible throughout their start date in the site's timezone.
 - **Manual**: select and reorder up to three news/event pages. An empty selection
-  hides the card; past events may be deliberately selected in this mode.
+  hides the news/event portion of the card; the El Niño bulletin still appears
+  when one has been published. Past events may be deliberately selected in this mode.
 
 Save and publish the homepage to apply configuration changes. Titles,
 dates and images are inherited from the source pages; edit and publish those pages
@@ -29,7 +33,17 @@ Missing images use a branded ACMAD fallback. Multiple slides rotate every 7.5
 seconds, with arrows and indicators. There is no heading above the card, excerpt,
 or pause/play button. Rotation pauses during hover, keyboard focus or when the tab
 is hidden; reduced-motion users navigate manually without automatic rotation.
-A single slide has no carousel controls. With no eligible updates the card is hidden.
+A single slide has no carousel controls. With no eligible updates or published
+El Niño bulletin the card is hidden.
+
+## El Niño monthly bulletin workflow
+
+The deployment bootstrap creates an editable **Products → El Niño in Africa**
+page if it does not already exist. To publish a new edition, add a **Product
+Item** below that page, set its effective date, add the bulletin document and an
+optional cover thumbnail, then publish it. The newest dated live issue becomes
+the featured bulletin on the landing page and the first homepage hero slide;
+older issues move into the page archive automatically.
 
 ## Deployment
 

@@ -9,6 +9,11 @@ from wagtail.test.utils import WagtailPageTestCase
 
 from climweb.pages.events.tests.factories import EventIndexPageFactory, EventPageFactory
 from climweb.pages.news.tests.factories import NewsIndexPageFactory, NewsPageFactory
+from climweb.pages.products.tests.factories import (
+    ElNinoPageFactory,
+    ProductIndexPageFactory,
+    ProductItemPageFactory,
+)
 from .factories import get_or_create_homepage
 
 
@@ -149,3 +154,17 @@ class HeroUpdatesTests(WagtailPageTestCase):
     def test_empty_widget_has_no_markup(self):
         html = render_to_string("home/section/hero_updates_widget.html", {"hero_updates": []})
         self.assertEqual(html.strip(), "")
+
+    def test_latest_el_nino_bulletin_is_first_and_links_to_landing_page(self):
+        product_index = ProductIndexPageFactory(parent=self.home)
+        el_nino_page = ElNinoPageFactory(parent=product_index)
+        older = ProductItemPageFactory(parent=el_nino_page, title="El Niño Bulletin — July")
+        latest = ProductItemPageFactory(parent=el_nino_page, title="El Niño Bulletin — August")
+        type(older).objects.filter(pk=older.pk).update(date=timezone.localdate() - timedelta(days=35))
+        type(latest).objects.filter(pk=latest.pk).update(date=timezone.localdate())
+
+        slides = self.home.get_hero_updates()
+
+        self.assertEqual(slides[0]["kind"], "bulletin")
+        self.assertEqual(slides[0]["title"], latest.title)
+        self.assertEqual(slides[0]["url"], el_nino_page.url)

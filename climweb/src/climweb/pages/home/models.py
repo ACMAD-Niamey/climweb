@@ -38,7 +38,7 @@ from climweb.pages.events.models import EventPage
 from climweb.pages.news.models import NewsPage
 from climweb.pages.organisation_pages.partners.models import Partner
 from climweb.pages.organisation_pages.staff.models import StaffMember
-from climweb.pages.products.models import ProductItemPage, ProductPage
+from climweb.pages.products.models import ElNinoPage, ProductItemPage, ProductPage
 from climweb.pages.publications.models import PublicationPage
 from climweb.pages.services.models import ServicePage
 from climweb.pages.summer_school.models import SummerSchoolPage
@@ -788,7 +788,7 @@ class HomePage(MetadataPageMixin, Page):
             selected_ids = [block.value.pk for block in self.hero_featured_updates if block.value]
             eligible = {item.pk: item for item in news.filter(pk__in=selected_ids)}
             eligible.update({item.pk: item for item in events.filter(pk__in=selected_ids)})
-            pages = [eligible[pk] for pk in dict.fromkeys(selected_ids) if pk in eligible][:3]
+            pages = [eligible[pk] for pk in dict.fromkeys(selected_ids) if pk in eligible]
         else:
             # Include single-day events for their whole day; exclude finished multi-day events.
             current_events = list(events.filter(
@@ -796,10 +796,31 @@ class HomePage(MetadataPageMixin, Page):
                 | models.Q(date_to__isnull=True, date_from__date__gte=timezone.localdate())
             ).order_by("date_from", "pk")[:3])
             latest_news = list(news.order_by("-date", "-pk")[:3])
-            pages = (current_events[:1] + latest_news + current_events[1:])[:3]
+            pages = current_events[:1] + latest_news + current_events[1:]
 
         slides = []
+        el_nino_page = ElNinoPage.objects.live().public().descendant_of(self).filter(
+            locale_id=self.locale_id,
+        ).first()
+        if el_nino_page:
+            latest_bulletin = ProductItemPage.objects.live().public().child_of(el_nino_page).order_by(
+                "-date", "-first_published_at",
+            ).first()
+            page_url = el_nino_page.get_url(request=request)
+            if latest_bulletin and page_url:
+                slides.append({
+                    "id": f"el-nino-{latest_bulletin.pk}",
+                    "title": latest_bulletin.title,
+                    "kind": "bulletin",
+                    "date": latest_bulletin.date,
+                    "end_date": None,
+                    "image": latest_bulletin.get_meta_image() or el_nino_page.get_meta_image(),
+                    "url": canonical_public_page_url(page_url),
+                })
+
         for item in pages:
+            if len(slides) >= 3:
+                break
             is_event = isinstance(item, EventPage)
             url = item.get_url(request=request)
             if not url:

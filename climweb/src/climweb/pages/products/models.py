@@ -27,6 +27,7 @@ from wagtailcaptcha.forms import remove_captcha_field
 from wagtailcaptcha.models import WagtailCaptchaEmailForm
 
 from climweb.base.choosers import register_searchable_chooser
+from climweb.config.settings.base import SUMMARY_RICHTEXT_FEATURES
 
 from climweb.base.blocks import UUIDModelChooserBlock
 from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin,
@@ -50,6 +51,7 @@ class ProductIndexPage(AbstractBannerPage):
     parent_page_types = ['home.HomePage']
     subpage_types = [
         'products.ProductPage',
+        'products.ElNinoPage',
         'products.SubNationalProductsLandingPage',
         'products.ProductSubscriptionPage',
     ]
@@ -335,6 +337,71 @@ class ProductPage(BaseProductPage):
         return super().serve(request, *args, **kwargs)
 
 
+class ElNinoPage(ProductPage):
+    """Africa-focused El Nino information hub backed by monthly product issues."""
+
+    template = "products/el_nino_page.html"
+    parent_page_types = ["products.ProductIndexPage"]
+    subpage_types = ["products.ProductItemPage"]
+    max_count = 1
+
+    africa_context = RichTextField(
+        features=SUMMARY_RICHTEXT_FEATURES,
+        default=(
+            "<p>El Niño can shift rainfall and temperature patterns across Africa, with impacts that vary "
+            "by region and season. These changes can affect water availability, agriculture, food security, "
+            "health, energy and disaster risk.</p>"
+        ),
+        verbose_name=_("El Niño in Africa"),
+    )
+    acmad_response = RichTextField(
+        features=SUMMARY_RICHTEXT_FEATURES,
+        default=(
+            "<p>ACMAD monitors ocean and atmosphere conditions, assesses likely impacts across African "
+            "regions, and works with Regional Climate Centres and National Meteorological and Hydrological "
+            "Services to turn the latest science into actionable climate information.</p>"
+        ),
+        verbose_name=_("What ACMAD is doing"),
+    )
+    bulletin_intro = models.TextField(
+        max_length=500,
+        default=(
+            "The monthly bulletin brings together the latest ENSO status, the outlook for Africa and "
+            "region-specific considerations for preparedness and early action."
+        ),
+        verbose_name=_("Monthly bulletin introduction"),
+    )
+
+    content_panels = ProductPage.content_panels + [
+        MultiFieldPanel(
+            [
+                FieldPanel("africa_context"),
+                FieldPanel("acmad_response"),
+                FieldPanel("bulletin_intro"),
+            ],
+            heading=_("El Niño page content"),
+        ),
+    ]
+
+    class Meta:
+        verbose_name = _("El Niño Page")
+        verbose_name_plural = _("El Niño Pages")
+
+    @cached_property
+    def latest_bulletin(self):
+        return self.all_products.first()
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        latest_bulletin = self.latest_bulletin
+        archive = self.all_products
+        if latest_bulletin:
+            archive = archive.exclude(pk=latest_bulletin.pk)
+        context["latest_bulletin"] = latest_bulletin
+        context["products"] = paginate(archive, request.GET.get("page"), self.products_per_page)
+        return context
+
+
 register_searchable_chooser(RasterFileLayer)
 
 
@@ -366,7 +433,7 @@ class ProductItemPageForm(WagtailAdminPageForm):
 
 class ProductItemPage(MetadataPageMixin, Page):
     template = 'products/product_detail.html'
-    parent_page_types = ['products.ProductPage', 'products.SubNationalProductPage']
+    parent_page_types = ['products.ProductPage', 'products.ElNinoPage', 'products.SubNationalProductPage']
     subpage_types = []
     base_form_class = ProductItemPageForm
     

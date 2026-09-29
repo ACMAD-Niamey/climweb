@@ -92,6 +92,14 @@ class ProductPageFactory(wagtail_factories.PageFactory):
         return RichText(f"<p>{p}</p>")
 
 
+class ElNinoPageFactory(ProductPageFactory):
+    class Meta:
+        model = models.ElNinoPage
+
+    title = "El Niño in Africa"
+    introduction_title = "Understanding El Niño and its implications for Africa"
+
+
 class ProductItemImageContentBlockFactory(wagtail_factories.StructBlockFactory):
     class Meta:
         model = ProductItemImageContentBlock
