@@ -42,8 +42,9 @@ class ElNinoPageTests(WagtailPageTestCase):
 
         response = self.client.get(self.page.url)
 
-        self.assertContains(response, "Latest issue")
-        self.assertContains(response, latest.title)
+        self.assertNotContains(response, "Latest issue")
+        self.assertNotContains(response, latest.title)
+        self.assertNotContains(response, "August 2026")
         document_url = next(
             block.value.get("document").url
             for block in latest.products

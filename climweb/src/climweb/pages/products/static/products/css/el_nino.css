@@ -60,7 +60,7 @@
   line-height: 1.7;
 }
 
-.enso-overview { padding-block: 5rem; }
+.enso-overview { padding: 5rem 0 2.5rem; }
 .enso-intro-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(420px, .95fr); gap: 4rem; align-items: start; }
 .enso-intro-grid h2, .enso-actions h2, .enso-bulletin h2, .enso-archive h2 { color: #123c36; font-size: clamp(1.8rem, 4vw, 3rem); }
 .enso-intro-copy .enso-prose { margin-top: 1.5rem; }
@@ -69,15 +69,12 @@
 
 .enso-intro-bulletin { padding: 1.75rem; border: 1px solid #dce5e0; border-radius: 12px; background: #fff; box-shadow: 0 12px 32px rgba(15, 62, 54, .08); }
 .enso-intro-bulletin > h2 { margin-bottom: 1.4rem; font-size: 1.65rem; }
-.enso-intro-bulletin__file { display: grid; grid-template-columns: 145px minmax(0, 1fr); overflow: hidden; border-radius: 8px; background: #eef3f0; }
-.enso-intro-bulletin__cover { min-height: 190px; background: #dce8e3; }
+.enso-intro-bulletin__file { display: grid; grid-template-columns: minmax(0, 1fr) 135px; min-height: 320px; overflow: hidden; border-radius: 8px; background: #eef3f0; }
+.enso-intro-bulletin__cover { min-height: 320px; background: #dce8e3; }
 .enso-intro-bulletin__cover img { width: 100%; height: 100%; object-fit: cover; }
 .enso-intro-bulletin__details { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 1.25rem; }
-.enso-intro-bulletin__details time { color: #627b75; font-size: .72rem; text-transform: uppercase; }
-.enso-intro-bulletin__details h3 { margin: .45rem 0 0; font-size: 1.15rem; line-height: 1.3; }
-.enso-intro-bulletin__details h3 a { color: #123c36; }
-.enso-intro-bulletin__details .enso-latest__actions { margin-top: 1rem; }
-.enso-intro-bulletin__details .button { font-size: .78rem; }
+.enso-intro-bulletin__details .enso-latest__actions { flex-direction: column; margin-top: 0; }
+.enso-intro-bulletin__details .button { width: 100%; font-size: .78rem; }
 
 .enso-context-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 3.5rem; }
 .enso-context-card { position: relative; padding: 2.25rem; border: 1px solid #dce5e0; border-radius: 10px; background: #fff; }
@@ -95,7 +92,6 @@
 .enso-cover-placeholder { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(145deg, #07564f, #0c8378); color: #fff; }
 .enso-cover-placeholder span { font-size: 1.7rem; font-weight: 900; letter-spacing: .12em; }
 .enso-cover-placeholder small { letter-spacing: .42em; }
-.enso-latest__badge { align-self: flex-start; margin-bottom: 1.2rem; padding: .35rem .7rem; border-radius: 4px; background: #d89431; color: #17352f; font-size: .68rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
 .enso-latest__actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.5rem; }
 .enso-empty { padding: 3rem; border: 1px dashed #b7c9c2; border-radius: 10px; text-align: center; background: #f3f7f5; }
 .enso-empty--compact { padding: 1.5rem; }
@@ -122,9 +118,11 @@
 }
 
 @media (max-width: 640px) {
-  .enso-overview, .enso-archive { padding-block: 3.5rem; }
+  .enso-overview { padding: 3.5rem 0 2rem; }
+  .enso-archive { padding-block: 3.5rem; }
   .enso-context-grid, .enso-action-grid, .enso-intro-bulletin__file { grid-template-columns: 1fr; }
-  .enso-intro-bulletin__cover { min-height: 220px; }
+  .enso-intro-bulletin__cover { min-height: 340px; }
+  .enso-intro-bulletin__details { padding: 1rem; }
 }
 
 @media (max-width: 480px) {

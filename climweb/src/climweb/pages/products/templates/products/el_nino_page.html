@@ -36,18 +36,15 @@
           <h2 id="latest-bulletin-heading">{% translate "Latest Elnino Bulletin" %}</h2>
           {% if latest_bulletin %}
             <div class="enso-intro-bulletin__file">
-              <a class="enso-intro-bulletin__cover" href="{{ latest_bulletin.url }}">
+              <a class="enso-intro-bulletin__cover" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}" aria-label="{% translate 'View latest El Niño bulletin' %}">
                 {% if latest_bulletin.products_listing_image %}
                   {% image latest_bulletin.products_listing_image fill-320x400 as bulletin_cover %}
-                  <img src="{{ bulletin_cover.url }}" alt="{{ latest_bulletin.title }}">
+                  <img src="{{ bulletin_cover.url }}" alt="{% translate 'El Niño bulletin cover preview' %}">
                 {% else %}
                   <div class="enso-cover-placeholder" aria-hidden="true"><span>ENSO</span><small>AFRICA</small></div>
                 {% endif %}
               </a>
               <div class="enso-intro-bulletin__details">
-                <span class="enso-latest__badge">{% translate "Latest issue" %}</span>
-                <time datetime="{{ latest_bulletin.date|date:'Y-m-d' }}">{{ latest_bulletin.date|date:"F Y" }}</time>
-                <h3><a href="{{ latest_bulletin.url }}">{{ latest_bulletin.title }}</a></h3>
                 <div class="enso-latest__actions">
                   <a class="button is-primary" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}">{% translate "View bulletin" %}</a>
                   {% for product in latest_bulletin.products %}
