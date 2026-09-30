@@ -87,6 +87,11 @@ run_setup_commands_if_configured() {
     echo "python /climweb/web/src/climweb/manage.py seed_cuip_service --download-documents"
     /climweb/web/src/climweb/manage.py seed_cuip_service --download-documents
 
+    # Keep the dedicated Africa-focused El Niño hub available. Monthly bulletin
+    # issues remain normal editable Product Item pages beneath it.
+    echo "python /climweb/web/src/climweb/manage.py seed_el_nino_page"
+    /climweb/web/src/climweb/manage.py seed_el_nino_page
+
     echo "python /climweb/web/src/climweb/manage.py seed_on_the_job_training"
     /climweb/web/src/climweb/manage.py seed_on_the_job_training
 

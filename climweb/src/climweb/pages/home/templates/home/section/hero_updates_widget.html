@@ -1,6 +1,6 @@
 {% load i18n wagtailimages_tags %}
 {% if hero_updates %}
-<section class="hero-product-carousel hero-updates-carousel glide" id="hero-updates-carousel" aria-label="{% translate 'Latest news and events' %}" aria-roledescription="carousel">
+<section class="hero-product-carousel hero-updates-carousel glide" id="hero-updates-carousel" aria-label="{% translate 'Featured news and programmes' %}" aria-roledescription="carousel">
   <div class="glide__track" data-glide-el="track">
     <div class="glide__slides">
       {% for update in hero_updates %}
@@ -13,13 +13,13 @@
             {% else %}
               <div class="hero-update-placeholder" aria-hidden="true"><span>ACMAD</span><span>{% translate "Climate knowledge for Africa" %}</span></div>
             {% endif %}
-            <span class="hero-update-badge">{% if update.kind == 'event' %}{% translate "Event" %}{% else %}{% translate "News" %}{% endif %}</span>
+            <span class="hero-update-badge">{{ update.badge }}</span>
           </div>
           <div class="hero-product-body hero-update-body">
-            <p class="hero-update-date"><time datetime="{{ update.date|date:'c' }}">{{ update.date|date:"d M Y" }}</time>{% if update.end_date %} – <time datetime="{{ update.end_date|date:'c' }}">{{ update.end_date|date:"d M Y" }}</time>{% endif %}</p>
+            {% if update.date %}<p class="hero-update-date"><time datetime="{{ update.date|date:'c' }}">{{ update.date|date:"d M Y" }}</time>{% if update.end_date %} – <time datetime="{{ update.end_date|date:'c' }}">{{ update.end_date|date:"d M Y" }}</time>{% endif %}</p>{% endif %}
             <h2><a href="{{ update.url }}">{{ update.title }}</a></h2>
             <a class="hero-product-primary hero-update-link" href="{{ update.url }}">
-              {% if update.kind == 'event' %}{% translate "View event" %}{% else %}{% translate "Read more" %}{% endif %}
+              {{ update.cta_label }}
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
             </a>
           </div>
