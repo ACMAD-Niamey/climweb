@@ -13,6 +13,11 @@ from climweb.pages.products.tests.factories import (
     ElNinoPageFactory,
     ProductIndexPageFactory,
     ProductItemPageFactory,
+    ProductPageFactory,
+)
+from climweb.pages.summer_school.tests.factories import (
+    SummerSchoolIndexPageFactory,
+    SummerSchoolPageFactory,
 )
 from .factories import get_or_create_homepage
 
@@ -39,13 +44,13 @@ class HeroUpdatesTests(WagtailPageTestCase):
             ("news" if hasattr(page, "date") else "event", page) for page in pages
         ]
 
-    def test_automatic_prioritises_nearest_event_then_newest_news_and_caps_at_three(self):
+    def test_automatic_uses_only_the_newest_news_as_the_lead_slide(self):
         self.event(20)
-        event = self.event(2)
+        self.event(2)
         older = self.news(-2)
         newest = self.news(-1)
         self.news(-5)
-        self.assertEqual(self.ids(), [event.pk, newest.pk, older.pk])
+        self.assertEqual(self.ids(), [newest.pk])
 
     def test_excludes_past_events_and_future_dated_news(self):
         self.event(-2)
@@ -53,22 +58,24 @@ class HeroUpdatesTests(WagtailPageTestCase):
         self.news(1)
         self.assertEqual(self.ids(), [])
 
-    def test_includes_ongoing_events(self):
-        ongoing = self.event(-1, date_to=timezone.now() + timedelta(days=1))
-        upcoming = self.event(2)
-        self.assertEqual(self.ids(), [ongoing.pk, upcoming.pk])
+    def test_automatic_does_not_use_events(self):
+        self.event(-1, date_to=timezone.now() + timedelta(days=1))
+        self.event(2)
+        self.assertEqual(self.ids(), [])
 
-    def test_single_day_event_is_included_for_its_whole_day(self):
+    def test_manual_mode_can_still_use_an_event_as_the_lead(self):
         event = EventPageFactory(parent=self.events_index, date_from=timezone.now().replace(hour=0, minute=0))
+        self.manual(event)
         self.assertEqual(self.ids(), [event.pk])
 
-    def test_news_only_fills_available_slots(self):
+    def test_news_only_uses_the_newest_item(self):
         news = [self.news(-days) for days in range(1, 5)]
-        self.assertEqual(self.ids(), [page.pk for page in news[:3]])
+        self.assertEqual(self.ids(), [news[0].pk])
 
-    def test_events_only_fill_three_slots_in_start_date_order(self):
-        events = [self.event(days) for days in range(1, 5)]
-        self.assertEqual(self.ids(), [page.pk for page in events[:3]])
+    def test_events_only_do_not_create_an_automatic_lead(self):
+        for days in range(1, 5):
+            self.event(days)
+        self.assertEqual(self.ids(), [])
 
     def test_manual_configuration_survives_publishing(self):
         news = self.news(-1)
@@ -77,7 +84,7 @@ class HeroUpdatesTests(WagtailPageTestCase):
         self.home.save_revision().publish()
         self.home.refresh_from_db()
         self.assertEqual(self.home.hero_updates_mode, "manual")
-        self.assertEqual(self.ids(), [news.pk, event.pk])
+        self.assertEqual(self.ids(), [news.pk])
 
     def test_dashboard_panel_exposes_only_new_hero_fields_and_limits_selection(self):
         from wagtail.blocks import StreamBlockValidationError
@@ -102,7 +109,7 @@ class HeroUpdatesTests(WagtailPageTestCase):
         older = self.news(-2)
         newest = self.news(-1)
         self.manual(older, newest, older)
-        self.assertEqual(self.ids(), [older.pk, newest.pk])
+        self.assertEqual(self.ids(), [older.pk])
 
     def test_manual_skips_unpublished_or_private_selected_pages(self):
         news = self.news(-1)
@@ -148,14 +155,14 @@ class HeroUpdatesTests(WagtailPageTestCase):
         self.assertNotContains(response, "Pause updates")
         self.assertNotContains(response, "hero-updates-heading")
         self.assertNotContains(response, "hero-update-summary")
-        self.assertContains(response, "Next update")
+        self.assertNotContains(response, "Next update")
         self.assertNotContains(response, 'id="hero-product-carousel"')
 
     def test_empty_widget_has_no_markup(self):
         html = render_to_string("home/section/hero_updates_widget.html", {"hero_updates": []})
         self.assertEqual(html.strip(), "")
 
-    def test_latest_el_nino_bulletin_is_first_and_links_to_landing_page(self):
+    def test_latest_el_nino_bulletin_links_to_landing_page(self):
         product_index = ProductIndexPageFactory(parent=self.home)
         el_nino_page = ElNinoPageFactory(parent=product_index)
         older = ProductItemPageFactory(parent=el_nino_page, title="El Niño Bulletin — July")
@@ -165,6 +172,32 @@ class HeroUpdatesTests(WagtailPageTestCase):
 
         slides = self.home.get_hero_updates()
 
-        self.assertEqual(slides[0]["kind"], "bulletin")
+        self.assertEqual(slides[0]["kind"], "el_nino")
         self.assertEqual(slides[0]["title"], latest.title)
         self.assertEqual(slides[0]["url"], el_nino_page.url)
+
+    def test_carousel_order_is_news_el_nino_heat_ews_then_summer_school(self):
+        latest_news = self.news(-1)
+        product_index = ProductIndexPageFactory(parent=self.home)
+        el_nino_page = ElNinoPageFactory(parent=product_index)
+        ProductItemPageFactory(parent=el_nino_page)
+        heat_page = ProductPageFactory(
+            parent=product_index,
+            title="Heat and Thermal Stress",
+            slug="heat-and-thermal-stress",
+        )
+        ProductItemPageFactory(parent=heat_page)
+        summer_school_index = SummerSchoolIndexPageFactory(parent=self.home)
+        summer_school = SummerSchoolPageFactory(parent=summer_school_index)
+
+        slides = self.home.get_hero_updates()
+
+        self.assertEqual(
+            [slide["kind"] for slide in slides],
+            ["news", "el_nino", "heat_ews", "summer_school"],
+        )
+        self.assertEqual(slides[0]["id"], latest_news.pk)
+        self.assertEqual(slides[1]["url"], el_nino_page.url)
+        self.assertEqual(slides[2]["url"], heat_page.url)
+        self.assertEqual(slides[3]["url"], summer_school_index.url)
+        self.assertEqual(slides[3]["title"], summer_school.hero_heading)

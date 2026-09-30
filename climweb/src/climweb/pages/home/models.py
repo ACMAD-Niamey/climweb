@@ -41,7 +41,7 @@ from climweb.pages.organisation_pages.staff.models import StaffMember
 from climweb.pages.products.models import ElNinoPage, ProductItemPage, ProductPage
 from climweb.pages.publications.models import PublicationPage
 from climweb.pages.services.models import ServicePage
-from climweb.pages.summer_school.models import SummerSchoolPage
+from climweb.pages.summer_school.models import SummerSchoolIndexPage, SummerSchoolPage
 from climweb.pages.videos.models import YoutubePlaylist
 from .blocks import AreaBoundaryBlock, AreaPolygonBlock
 
@@ -452,16 +452,16 @@ class HomePage(MetadataPageMixin, Page):
         max_length=10, default="automatic",
         choices=[("automatic", _("Automatic")), ("manual", _("Manual"))],
         verbose_name=_("Update selection"),
-        help_text=_("Automatic shows the nearest upcoming/ongoing event, then the newest news. "
+        help_text=_("Automatic uses the newest news item as the lead slide. "
                     "Only public, published pages from this homepage are included."),
     )
     hero_featured_updates = StreamField([
         ('news', blocks.PageChooserBlock(page_type=['news.NewsPage'])),
         ('event', blocks.PageChooserBlock(page_type=['events.EventPage'])),
-    ], null=True, blank=True, use_json_field=True, max_num=3,
-        verbose_name=_("Selected updates"),
-        help_text=_("In Manual mode, choose and order up to three news or event pages. "
-                    "An empty selection hides the hero card. Edit titles, images and text on the original pages."))
+    ], null=True, blank=True, use_json_field=True, max_num=1,
+        verbose_name=_("Lead update"),
+        help_text=_("In Manual mode, choose one news or event page for the first slide. "
+                    "Leave empty to show only the El Niño, HeatEWS and Summer School slides."))
 
     services_strip = StreamField([
         ('item', blocks.StructBlock([
@@ -571,7 +571,7 @@ class HomePage(MetadataPageMixin, Page):
         MultiFieldPanel([
             FieldPanel('hero_updates_mode'),
             FieldPanel('hero_featured_updates'),
-        ], heading=_("Hero Latest Updates")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
+        ], heading=_("Hero Carousel")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
         MultiFieldPanel([
             FieldPanel('services_strip'),
         ], heading=_("Services Strip")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
@@ -778,7 +778,7 @@ class HomePage(MetadataPageMixin, Page):
         return context
 
     def get_hero_updates(self, request=None):
-        """Use live database copies, never a chooser's stale/draft page instance."""
+        """Build the lead update followed by the three homepage programme slides."""
         now = timezone.now()
         news = NewsPage.objects.live().public().descendant_of(self).filter(
             locale_id=self.locale_id, date__lte=now,
@@ -788,39 +788,13 @@ class HomePage(MetadataPageMixin, Page):
             selected_ids = [block.value.pk for block in self.hero_featured_updates if block.value]
             eligible = {item.pk: item for item in news.filter(pk__in=selected_ids)}
             eligible.update({item.pk: item for item in events.filter(pk__in=selected_ids)})
-            pages = [eligible[pk] for pk in dict.fromkeys(selected_ids) if pk in eligible]
+            pages = [eligible[pk] for pk in dict.fromkeys(selected_ids) if pk in eligible][:1]
         else:
-            # Include single-day events for their whole day; exclude finished multi-day events.
-            current_events = list(events.filter(
-                models.Q(date_to__gte=now)
-                | models.Q(date_to__isnull=True, date_from__date__gte=timezone.localdate())
-            ).order_by("date_from", "pk")[:3])
-            latest_news = list(news.order_by("-date", "-pk")[:3])
-            pages = current_events[:1] + latest_news + current_events[1:]
+            latest_news = news.order_by("-date", "-pk").first()
+            pages = [latest_news] if latest_news else []
 
         slides = []
-        el_nino_page = ElNinoPage.objects.live().public().descendant_of(self).filter(
-            locale_id=self.locale_id,
-        ).first()
-        if el_nino_page:
-            latest_bulletin = ProductItemPage.objects.live().public().child_of(el_nino_page).order_by(
-                "-date", "-first_published_at",
-            ).first()
-            page_url = el_nino_page.get_url(request=request)
-            if latest_bulletin and page_url:
-                slides.append({
-                    "id": f"el-nino-{latest_bulletin.pk}",
-                    "title": latest_bulletin.title,
-                    "kind": "bulletin",
-                    "date": latest_bulletin.date,
-                    "end_date": None,
-                    "image": latest_bulletin.get_meta_image() or el_nino_page.get_meta_image(),
-                    "url": canonical_public_page_url(page_url),
-                })
-
         for item in pages:
-            if len(slides) >= 3:
-                break
             is_event = isinstance(item, EventPage)
             url = item.get_url(request=request)
             if not url:
@@ -829,11 +803,86 @@ class HomePage(MetadataPageMixin, Page):
                 "id": item.pk,
                 "title": item.title,
                 "kind": "event" if is_event else "news",
+                "badge": _("Event") if is_event else _("Latest news"),
+                "cta_label": _("View event") if is_event else _("Read more"),
                 "date": item.date_from if is_event else item.date,
                 "end_date": item.date_to if is_event else None,
                 "image": item.get_meta_image(),
                 "url": canonical_public_page_url(url),
             })
+
+        el_nino_page = ElNinoPage.objects.live().public().descendant_of(self).filter(
+            locale_id=self.locale_id,
+        ).first()
+        if el_nino_page:
+            latest_bulletin = ProductItemPage.objects.live().public().child_of(el_nino_page).order_by(
+                "-date", "-first_published_at",
+            ).first()
+            page_url = el_nino_page.get_url(request=request)
+            if page_url:
+                slides.append({
+                    "id": f"el-nino-{el_nino_page.pk}",
+                    "title": latest_bulletin.title if latest_bulletin else el_nino_page.title,
+                    "kind": "el_nino",
+                    "badge": _("El Niño"),
+                    "cta_label": _("Visit El Niño page"),
+                    "date": latest_bulletin.date if latest_bulletin else None,
+                    "end_date": None,
+                    "image": (
+                        latest_bulletin.get_meta_image() if latest_bulletin else None
+                    ) or el_nino_page.get_meta_image(),
+                    "url": canonical_public_page_url(page_url),
+                })
+
+        heat_page = ProductPage.objects.live().public().descendant_of(self).filter(
+            locale_id=self.locale_id, slug="heat-and-thermal-stress",
+        ).first()
+        if heat_page:
+            latest_heat_issue = ProductItemPage.objects.live().public().child_of(heat_page).order_by(
+                "-date", "-first_published_at",
+            ).first()
+            page_url = heat_page.get_url(request=request)
+            if page_url:
+                slides.append({
+                    "id": f"heat-ews-{heat_page.pk}",
+                    "title": _("Heat Early Warning System (HeatEWS)"),
+                    "kind": "heat_ews",
+                    "badge": _("HeatEWS"),
+                    "cta_label": _("View heat outlook"),
+                    "date": latest_heat_issue.date if latest_heat_issue else None,
+                    "end_date": latest_heat_issue.valid_until if latest_heat_issue else None,
+                    "image": (
+                        latest_heat_issue.get_meta_image() if latest_heat_issue else None
+                    ) or heat_page.get_meta_image(),
+                    "url": canonical_public_page_url(page_url),
+                })
+
+        summer_school_index = SummerSchoolIndexPage.objects.live().public().descendant_of(self).filter(
+            locale_id=self.locale_id,
+        ).first()
+        if summer_school_index:
+            featured_edition = SummerSchoolPage.objects.live().public().child_of(
+                summer_school_index,
+            ).order_by("-featured", "-edition_start_date", "-pk").first()
+            page_url = summer_school_index.get_url(request=request)
+            if page_url:
+                slides.append({
+                    "id": f"summer-school-{summer_school_index.pk}",
+                    "title": (
+                        featured_edition.hero_heading if featured_edition
+                        else summer_school_index.hero_heading or summer_school_index.title
+                    ),
+                    "kind": "summer_school",
+                    "badge": _("Summer School"),
+                    "cta_label": _("Explore Summer School"),
+                    "date": featured_edition.edition_start_date if featured_edition else None,
+                    "end_date": None,
+                    "image": (
+                        featured_edition.featured_display_image if featured_edition else None
+                    ) or summer_school_index.get_meta_image(),
+                    "url": canonical_public_page_url(page_url),
+                })
+
         return slides
 
     @cached_property
