@@ -38,10 +38,10 @@ from climweb.pages.events.models import EventPage
 from climweb.pages.news.models import NewsPage
 from climweb.pages.organisation_pages.partners.models import Partner
 from climweb.pages.organisation_pages.staff.models import StaffMember
-from climweb.pages.products.models import ProductItemPage, ProductPage
+from climweb.pages.products.models import ElNinoPage, ProductItemPage, ProductPage
 from climweb.pages.publications.models import PublicationPage
 from climweb.pages.services.models import ServicePage
-from climweb.pages.summer_school.models import SummerSchoolPage
+from climweb.pages.summer_school.models import SummerSchoolIndexPage, SummerSchoolPage
 from climweb.pages.videos.models import YoutubePlaylist
 from .blocks import AreaBoundaryBlock, AreaPolygonBlock
 
@@ -89,6 +89,15 @@ SIGNIFICANT_PRODUCT_SPECS = (
         "parent_title": "Thunderstorm and Nowcasting",
     },
 )
+
+
+def default_hero_carousel_order():
+    return [
+        ("news", None),
+        ("event", None),
+        ("el_nino", None),
+        ("summer_school", None),
+    ]
 
 
 def canonical_public_page_url(url):
@@ -452,16 +461,42 @@ class HomePage(MetadataPageMixin, Page):
         max_length=10, default="automatic",
         choices=[("automatic", _("Automatic")), ("manual", _("Manual"))],
         verbose_name=_("Update selection"),
-        help_text=_("Automatic shows the nearest upcoming/ongoing event, then the newest news. "
+        help_text=_("Automatic uses the newest news item as the lead slide. "
                     "Only public, published pages from this homepage are included."),
     )
-    hero_featured_updates = StreamField([
-        ('news', blocks.PageChooserBlock(page_type=['news.NewsPage'])),
-        ('event', blocks.PageChooserBlock(page_type=['events.EventPage'])),
-    ], null=True, blank=True, use_json_field=True, max_num=3,
-        verbose_name=_("Selected updates"),
-        help_text=_("In Manual mode, choose and order up to three news or event pages. "
-                    "An empty selection hides the hero card. Edit titles, images and text on the original pages."))
+    hero_featured_news = models.ForeignKey(
+        'news.NewsPage', null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+        verbose_name=_("News slide"),
+        help_text=_("News page to show first when Update selection is Manual."),
+    )
+    hero_featured_event = models.ForeignKey(
+        'events.EventPage', null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+        verbose_name=_("Event slide"),
+        help_text=_("Event page to show after the news slide when Update selection is Manual."),
+    )
+    hero_show_el_nino = models.BooleanField(
+        default=True, verbose_name=_("Show El Niño"),
+        help_text=_("Include the El Niño programme slide in the carousel."),
+    )
+    hero_show_summer_school = models.BooleanField(
+        default=True, verbose_name=_("Show Summer School"),
+        help_text=_("Include the Summer School programme slide in the carousel."),
+    )
+    hero_carousel_order = StreamField([
+        ('news', blocks.StaticBlock(label=_("News"), admin_text=_("News slide"))),
+        ('event', blocks.StaticBlock(label=_("Event"), admin_text=_("Event slide"))),
+        ('el_nino', blocks.StaticBlock(label=_("El Niño"), admin_text=_("El Niño slide"))),
+        ('summer_school', blocks.StaticBlock(label=_("Summer School"), admin_text=_("Summer School slide"))),
+    ], blank=True, use_json_field=True, default=default_hero_carousel_order, max_num=4,
+        block_counts={
+            'news': {'max_num': 1},
+            'event': {'max_num': 1},
+            'el_nino': {'max_num': 1},
+            'summer_school': {'max_num': 1},
+        },
+        verbose_name=_("Slide order"),
+        help_text=_("In Manual mode, drag these items into the order they should appear. "
+                    "Missing or disabled slides are skipped."))
 
     services_strip = StreamField([
         ('item', blocks.StructBlock([
@@ -570,8 +605,12 @@ class HomePage(MetadataPageMixin, Page):
         ], heading=_("Utility Navbar Products")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
         MultiFieldPanel([
             FieldPanel('hero_updates_mode'),
-            FieldPanel('hero_featured_updates'),
-        ], heading=_("Hero Latest Updates")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
+            PageChooserPanel('hero_featured_news', 'news.NewsPage'),
+            PageChooserPanel('hero_featured_event', 'events.EventPage'),
+            FieldPanel('hero_show_el_nino'),
+            FieldPanel('hero_show_summer_school'),
+            FieldPanel('hero_carousel_order'),
+        ], heading=_("Hero Carousel")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
         MultiFieldPanel([
             FieldPanel('services_strip'),
         ], heading=_("Services Strip")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
@@ -778,42 +817,106 @@ class HomePage(MetadataPageMixin, Page):
         return context
 
     def get_hero_updates(self, request=None):
-        """Use live database copies, never a chooser's stale/draft page instance."""
+        """Build the selected updates followed by the enabled programme slides."""
         now = timezone.now()
         news = NewsPage.objects.live().public().descendant_of(self).filter(
             locale_id=self.locale_id, date__lte=now,
         )
         events = EventPage.objects.live().public().descendant_of(self).filter(locale_id=self.locale_id)
         if self.hero_updates_mode == "manual":
-            selected_ids = [block.value.pk for block in self.hero_featured_updates if block.value]
-            eligible = {item.pk: item for item in news.filter(pk__in=selected_ids)}
-            eligible.update({item.pk: item for item in events.filter(pk__in=selected_ids)})
-            pages = [eligible[pk] for pk in dict.fromkeys(selected_ids) if pk in eligible][:3]
+            pages = []
+            if self.hero_featured_news_id:
+                selected_news = news.filter(pk=self.hero_featured_news_id).first()
+                if selected_news:
+                    pages.append(selected_news)
+            if self.hero_featured_event_id:
+                selected_event = events.filter(pk=self.hero_featured_event_id).first()
+                if selected_event:
+                    pages.append(selected_event)
         else:
-            # Include single-day events for their whole day; exclude finished multi-day events.
-            current_events = list(events.filter(
-                models.Q(date_to__gte=now)
-                | models.Q(date_to__isnull=True, date_from__date__gte=timezone.localdate())
-            ).order_by("date_from", "pk")[:3])
-            latest_news = list(news.order_by("-date", "-pk")[:3])
-            pages = (current_events[:1] + latest_news + current_events[1:])[:3]
+            latest_news = news.order_by("-date", "-pk").first()
+            pages = [latest_news] if latest_news else []
 
-        slides = []
+        slides_by_kind = {}
         for item in pages:
             is_event = isinstance(item, EventPage)
             url = item.get_url(request=request)
             if not url:
                 continue
-            slides.append({
+            kind = "event" if is_event else "news"
+            slides_by_kind[kind] = {
                 "id": item.pk,
                 "title": item.title,
-                "kind": "event" if is_event else "news",
+                "kind": kind,
+                "badge": _("Event") if is_event else _("Latest news"),
+                "cta_label": _("View event") if is_event else _("Read more"),
                 "date": item.date_from if is_event else item.date,
                 "end_date": item.date_to if is_event else None,
                 "image": item.get_meta_image(),
                 "url": canonical_public_page_url(url),
-            })
-        return slides
+            }
+
+        el_nino_page = None
+        if self.hero_show_el_nino:
+            el_nino_page = ElNinoPage.objects.live().public().descendant_of(self).filter(
+                locale_id=self.locale_id,
+            ).first()
+        if el_nino_page:
+            latest_bulletin = ProductItemPage.objects.live().public().child_of(el_nino_page).order_by(
+                "-date", "-first_published_at",
+            ).first()
+            page_url = el_nino_page.get_url(request=request)
+            if page_url:
+                slides_by_kind["el_nino"] = {
+                    "id": f"el-nino-{el_nino_page.pk}",
+                    "title": latest_bulletin.title if latest_bulletin else el_nino_page.title,
+                    "kind": "el_nino",
+                    "badge": _("El Niño"),
+                    "cta_label": _("Visit El Niño page"),
+                    "date": latest_bulletin.date if latest_bulletin else None,
+                    "end_date": None,
+                    "image": (
+                        latest_bulletin.get_meta_image() if latest_bulletin else None
+                    ) or el_nino_page.get_meta_image(),
+                    "url": canonical_public_page_url(page_url),
+                }
+
+        summer_school_index = None
+        if self.hero_show_summer_school:
+            summer_school_index = SummerSchoolIndexPage.objects.live().public().descendant_of(self).filter(
+                locale_id=self.locale_id,
+            ).first()
+        if summer_school_index:
+            featured_edition = SummerSchoolPage.objects.live().public().child_of(
+                summer_school_index,
+            ).order_by("-featured", "-edition_start_date", "-pk").first()
+            page_url = summer_school_index.get_url(request=request)
+            if page_url:
+                slides_by_kind["summer_school"] = {
+                    "id": f"summer-school-{summer_school_index.pk}",
+                    "title": (
+                        featured_edition.hero_heading if featured_edition
+                        else summer_school_index.hero_heading or summer_school_index.title
+                    ),
+                    "kind": "summer_school",
+                    "badge": _("Summer School"),
+                    "cta_label": _("Explore Summer School"),
+                    "date": featured_edition.edition_start_date if featured_edition else None,
+                    "end_date": None,
+                    "image": (
+                        featured_edition.featured_display_image if featured_edition else None
+                    ) or summer_school_index.get_meta_image(),
+                    "url": canonical_public_page_url(page_url),
+                }
+
+        if self.hero_updates_mode == "manual":
+            order = [block.block_type for block in self.hero_carousel_order]
+            if not order:
+                order = [kind for kind, _value in default_hero_carousel_order()]
+        else:
+            order = ["news", "el_nino", "summer_school"]
+
+        return [slides_by_kind[kind] for kind in order if kind in slides_by_kind]
 
     @cached_property
     def partners(self):

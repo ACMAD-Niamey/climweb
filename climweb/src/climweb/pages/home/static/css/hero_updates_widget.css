@@ -1,6 +1,12 @@
+.hero-update-card {
+  display: flex;
+  flex-direction: column;
+}
+
 .hero-update-image {
   position: relative;
-  height: 150px;
+  flex-shrink: 0;
+  height: 180px;
   overflow: hidden;
   background: var(--theme-header-dark);
 }
@@ -48,21 +54,24 @@
 
 .hero-update-body {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  min-height: 140px;
-  padding: 12px 18px 14px;
+  min-height: 122px;
+  padding: 8px 18px;
 }
 
 .hero-update-body .hero-update-date {
-  margin: 0 0 8px;
+  margin: 0 0 2px;
+  padding: 0;
   font-size: .68rem;
+  line-height: 1.2;
   color: var(--theme-muted);
 }
 
 .hero-update-body h2 {
   font-size: 1rem;
   line-height: 1.3;
-  margin-bottom: 12px;
+  margin: 0 0 6px;
 }
 
 .hero-update-body h2 a {
@@ -142,7 +151,7 @@
   }
 
   .hero-update-image {
-    height: 130px;
+    height: 155px;
   }
 
   .hero-update-controls {
