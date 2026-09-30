@@ -398,6 +398,14 @@ class ElNinoPage(ProductPage):
         if latest_bulletin:
             archive = archive.exclude(pk=latest_bulletin.pk)
         context["latest_bulletin"] = latest_bulletin
+        context["latest_bulletin_document_url"] = None
+        if latest_bulletin:
+            for product_block in latest_bulletin.products:
+                if product_block.block_type == "document_product":
+                    document = product_block.value.get("document")
+                    if document:
+                        context["latest_bulletin_document_url"] = document.url
+                        break
         context["products"] = paginate(archive, request.GET.get("page"), self.products_per_page)
         return context
 

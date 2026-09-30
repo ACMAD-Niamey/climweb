@@ -23,12 +23,20 @@ class ElNinoPageTests(WagtailPageTestCase):
         self.assertNotContains(response, "Read the latest bulletin")
         self.assertContains(response, 'class="enso-intro-copy"')
         self.assertContains(response, 'class="enso-intro-bulletin"')
+        self.assertContains(response, "Latest Elnino Bulletin")
+        self.assertNotContains(response, "Updated monthly")
+        self.assertNotContains(response, "The monthly bulletin brings together")
         self.assertContains(response, "Previous El Niño bulletins")
         self.assertContains(response, "No previous editions yet")
 
     def test_latest_monthly_bulletin_is_featured(self):
         older = ProductItemPageFactory(parent=self.page, title="El Niño Bulletin — July 2026")
-        latest = ProductItemPageFactory(parent=self.page, title="El Niño Bulletin — August 2026")
+        latest = ProductItemPageFactory(
+            parent=self.page,
+            title="El Niño Bulletin — August 2026",
+            products__0__document_product__product_type="Monthly El Niño Bulletin",
+            products__0__document_product__date=date(2026, 8, 1),
+        )
         type(older).objects.filter(pk=older.pk).update(date=date(2026, 7, 1))
         type(latest).objects.filter(pk=latest.pk).update(date=date(2026, 8, 1))
 
@@ -36,5 +44,14 @@ class ElNinoPageTests(WagtailPageTestCase):
 
         self.assertContains(response, "Latest issue")
         self.assertContains(response, latest.title)
+        document_url = next(
+            block.value.get("document").url
+            for block in latest.products
+            if block.block_type == "document_product"
+        )
+        self.assertContains(
+            response,
+            f'class="button is-primary" href="{document_url}"',
+        )
         self.assertContains(response, older.title)
         self.assertContains(response, "Previous El Niño bulletins")

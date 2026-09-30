@@ -33,9 +33,7 @@
         </div>
 
         <aside class="enso-intro-bulletin" aria-labelledby="latest-bulletin-heading">
-          <p class="enso-section-label">{% translate "Updated monthly" %}</p>
-          <h2 id="latest-bulletin-heading">{% translate "El Niño Bulletin" %}</h2>
-          <p class="enso-intro-bulletin__summary">{{ page.bulletin_intro }}</p>
+          <h2 id="latest-bulletin-heading">{% translate "Latest Elnino Bulletin" %}</h2>
           {% if latest_bulletin %}
             <div class="enso-intro-bulletin__file">
               <a class="enso-intro-bulletin__cover" href="{{ latest_bulletin.url }}">
@@ -51,7 +49,7 @@
                 <time datetime="{{ latest_bulletin.date|date:'Y-m-d' }}">{{ latest_bulletin.date|date:"F Y" }}</time>
                 <h3><a href="{{ latest_bulletin.url }}">{{ latest_bulletin.title }}</a></h3>
                 <div class="enso-latest__actions">
-                  <a class="button is-primary" href="{{ latest_bulletin.url }}">{% translate "View bulletin" %}</a>
+                  <a class="button is-primary" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}">{% translate "View bulletin" %}</a>
                   {% for product in latest_bulletin.products %}
                     {% if product.block_type == "document_product" and product.value.document %}
                       <a class="button is-light" href="{{ product.value.document.url }}" download>{% translate "Download PDF" %}</a>
