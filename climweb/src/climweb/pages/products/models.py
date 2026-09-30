@@ -3,7 +3,6 @@ import uuid
 from adminboundarymanager.models import AdminBoundarySettings
 from django import forms
 from django.conf import settings
-from django.http import Http404
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.template.defaultfilters import truncatechars
@@ -346,15 +345,6 @@ class ElNinoPage(ProductPage):
     subpage_types = ["products.ProductItemPage"]
     max_count = 1
 
-    is_visible = models.BooleanField(
-        default=True,
-        verbose_name=_("Visible on website"),
-        help_text=_(
-            "Untick to hide the El Niño page, its bulletins, and its homepage carousel slide. "
-            "Editors can still preview the page in Wagtail."
-        ),
-    )
-
     africa_context = RichTextField(
         features=SUMMARY_RICHTEXT_FEATURES,
         default=(
@@ -393,13 +383,6 @@ class ElNinoPage(ProductPage):
         ),
     ]
 
-    settings_panels = ProductPage.settings_panels + [
-        MultiFieldPanel(
-            [FieldPanel("is_visible")],
-            heading=_("Page visibility"),
-        ),
-    ]
-
     class Meta:
         verbose_name = _("El Niño Page")
         verbose_name_plural = _("El Niño Pages")
@@ -407,16 +390,6 @@ class ElNinoPage(ProductPage):
     @cached_property
     def latest_bulletin(self):
         return self.all_products.first()
-
-    def save(self, *args, **kwargs):
-        # Keep product menus in step with the dedicated page visibility switch.
-        self.show_in_menus = self.is_visible
-        return super().save(*args, **kwargs)
-
-    def route(self, request, path_components):
-        if not self.is_visible:
-            raise Http404
-        return super().route(request, path_components)
 
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)

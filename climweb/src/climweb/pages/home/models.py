@@ -860,7 +860,6 @@ class HomePage(MetadataPageMixin, Page):
         if self.hero_show_el_nino:
             el_nino_page = ElNinoPage.objects.live().public().descendant_of(self).filter(
                 locale_id=self.locale_id,
-                is_visible=True,
             ).first()
         if el_nino_page:
             latest_bulletin = ProductItemPage.objects.live().public().child_of(el_nino_page).order_by(

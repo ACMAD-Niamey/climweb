@@ -86,7 +86,7 @@
                 id="products-list-wrapper-{{ forloop.counter }}">
                 {% for sub_page in page.get_children %}
                 {% if category.name == sub_page.specific.service.name %}
-                {% if sub_page.live and sub_page.show_in_menus %}
+                {% if sub_page.live %}
                 <div class="result-list-item pub-item column is-one-third-desktop is-full-mobile">
                   <div class="pub-item-inner">
 
@@ -143,7 +143,7 @@
             <div class="pub-list spl-grid results-list grid-view columns is-mobile is-multiline"
               id="products-list-wrapper-flat">
               {% for sub_page in page.get_children %}
-              {% if sub_page.live and sub_page.show_in_menus %}
+              {% if sub_page.live %}
               <div class="result-list-item pub-item column is-one-third-desktop is-full-mobile">
                 <div class="pub-item-inner">
                   <a href="{{ sub_page.url }}" class="pub-thumb">

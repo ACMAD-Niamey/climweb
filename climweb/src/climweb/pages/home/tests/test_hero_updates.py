@@ -232,12 +232,3 @@ class HeroUpdatesTests(WagtailPageTestCase):
         slides = self.home.get_hero_updates()
 
         self.assertEqual(slides, [])
-
-    def test_hidden_el_nino_page_is_excluded_from_carousel(self):
-        product_index = ProductIndexPageFactory(parent=self.home)
-        el_nino_page = ElNinoPageFactory(parent=product_index, is_visible=False)
-        ProductItemPageFactory(parent=el_nino_page)
-
-        slides = self.home.get_hero_updates()
-
-        self.assertNotIn("el_nino", [slide["kind"] for slide in slides])

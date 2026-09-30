@@ -29,19 +29,6 @@ class ElNinoPageTests(WagtailPageTestCase):
         self.assertContains(response, "Previous El Niño bulletins")
         self.assertContains(response, "No previous editions yet")
 
-    def test_settings_expose_page_visibility_control(self):
-        form = type(self.page).get_edit_handler().get_form_class()
-
-        self.assertIn("is_visible", form.base_fields)
-
-    def test_hidden_page_and_its_bulletins_are_not_public(self):
-        bulletin = ProductItemPageFactory(parent=self.page)
-        self.page.is_visible = False
-        self.page.save_revision().publish()
-
-        self.assertEqual(self.client.get(self.page.url).status_code, 404)
-        self.assertEqual(self.client.get(bulletin.url).status_code, 404)
-
     def test_latest_monthly_bulletin_is_featured(self):
         older = ProductItemPageFactory(parent=self.page, title="El Niño Bulletin — July 2026")
         latest = ProductItemPageFactory(
