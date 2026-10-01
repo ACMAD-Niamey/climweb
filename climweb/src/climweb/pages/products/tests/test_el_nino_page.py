@@ -106,6 +106,10 @@ class ElNinoPageTests(WagtailPageTestCase):
         self.assertContains(response, related_news.title)
         self.assertNotContains(response, related.listing_summary)
         self.assertNotContains(response, related_news.listing_summary)
+        self.assertLess(
+            response.content.index(b'id="el-nino-updates-heading"'),
+            response.content.index(b'id="acmad-action-heading"'),
+        )
         self.assertNotContains(response, unrelated.title)
         self.assertNotContains(response, hidden.title)
         self.assertNotContains(response, unrelated_news.title)
