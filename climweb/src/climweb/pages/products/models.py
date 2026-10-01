@@ -475,7 +475,11 @@ class ElNinoPage(ProductPage):
             for news_item in news_items
         ]
         recent_updates.sort(key=lambda item: item["date"], reverse=True)
-        context["el_nino_updates"] = upcoming_updates + recent_updates
+        context["el_nino_updates"] = paginate(
+            upcoming_updates + recent_updates,
+            request.GET.get("updates_page"),
+            3,
+        )
         context["products"] = paginate(archive, request.GET.get("page"), self.products_per_page)
         return context
 

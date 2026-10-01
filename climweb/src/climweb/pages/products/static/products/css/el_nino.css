@@ -34,7 +34,7 @@
   z-index: 1;
 }
 
-.enso-hero__layout { display: grid; grid-template-columns: minmax(0, 1fr) 390px; align-items: center; gap: 3rem; }
+.enso-hero__layout { display: grid; grid-template-columns: minmax(0, 1fr) 270px; align-items: center; gap: 3rem; }
 
 .enso-kicker,
 .enso-section-label {
@@ -64,11 +64,10 @@
 
 .enso-hero-bulletin { padding: .85rem; border: 1px solid rgba(255,255,255,.3); border-radius: 10px; background: rgba(255,255,255,.96); color: #17352f; box-shadow: 0 12px 30px rgba(0,0,0,.15); }
 .enso-hero-bulletin > h2 { margin: 0 0 .65rem; color: #123c36; font-size: 1rem; line-height: 1.2; }
-.enso-hero-bulletin__body { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: .85rem; min-height: 108px; }
-.enso-hero-bulletin__cover { display: block; overflow: hidden; border-radius: 5px; background: #dce8e3; }
-.enso-hero-bulletin__cover img { width: 100%; height: 100%; object-fit: cover; }
-.enso-hero-bulletin__actions { display: flex; flex-direction: column; justify-content: center; gap: .55rem; }
-.enso-hero-bulletin__actions .button { width: 100%; min-height: 2.25rem; font-size: .75rem; }
+.enso-hero-bulletin__body { display: flex; flex-direction: column; gap: .55rem; }
+.enso-hero-bulletin__cover { display: block; height: 82px; overflow: hidden; border-radius: 5px; background: #dce8e3; }
+.enso-hero-bulletin__cover img { width: 100%; height: 100%; object-fit: contain; }
+.enso-hero-bulletin__button { width: 100%; min-height: 2.1rem; font-size: .75rem; }
 .enso-hero-bulletin__empty { margin: 0; color: #526b66; font-size: .85rem; }
 
 .enso-overview { padding: 5rem 0 2.5rem; }
@@ -119,6 +118,8 @@
 .enso-event-card h3 { margin: .75rem 0 1rem; font-size: 1.05rem; line-height: 1.4; }
 .enso-event-card h3 a { color: #123c36; }
 .enso-event-card__link { color: #08766c; font-size: .84rem; font-weight: 800; }
+.enso-events-pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 2rem; color: #526b66; font-size: .85rem; }
+.enso-events-pagination a { min-width: 84px; padding: .55rem .85rem; border: 1px solid #c9d8d1; border-radius: 5px; color: #08766c; font-weight: 800; text-align: center; background: #fff; }
 
 .enso-cover-placeholder { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(145deg, #07564f, #0c8378); color: #fff; }
 .enso-cover-placeholder span { font-size: 1.7rem; font-weight: 900; letter-spacing: .12em; }
@@ -139,14 +140,14 @@
 
 @media (max-width: 1024px) {
   .enso-hero { height: 360px; }
-  .enso-hero__layout { grid-template-columns: minmax(0, 1fr) 350px; gap: 2rem; }
+  .enso-hero__layout { grid-template-columns: minmax(0, 1fr) 250px; gap: 2rem; }
   .enso-hero h1 { font-size: 32px; }
 }
 
 @media (max-width: 768px) {
   .enso-hero { height: auto; min-height: 320px; padding: 3rem 0; }
   .enso-hero__layout { grid-template-columns: 1fr; }
-  .enso-hero-bulletin { width: 100%; max-width: 440px; justify-self: start; }
+  .enso-hero-bulletin { width: 100%; max-width: 300px; justify-self: start; }
   .enso-hero h1 { max-width: 100%; font-size: 26px; }
   .enso-hero__copy > p:not(.enso-kicker) { max-width: 100%; font-size: 14px; }
 }
@@ -160,9 +161,16 @@
   .enso-events__heading { display: block; }
   .enso-events__heading > p { margin-top: 1rem; }
   .enso-events__grid { grid-template-columns: 1fr; }
+  .enso-event-card { display: grid; grid-template-columns: 112px minmax(0, 1fr); }
+  .enso-event-card__image { height: 100%; min-height: 150px; }
+  .enso-event-card__body { padding: 1rem; }
+  .enso-event-card__meta { gap: .35rem .65rem; font-size: .65rem; }
+  .enso-event-card h3 { margin: .55rem 0 .75rem; font-size: .95rem; }
+  .enso-event-card__link { font-size: .78rem; }
 }
 
 @media (max-width: 480px) {
   .enso-hero { min-height: 280px; padding: 2.5rem 0; }
   .enso-hero h1 { font-size: 22px; }
+  .enso-event-card { grid-template-columns: 96px minmax(0, 1fr); }
 }

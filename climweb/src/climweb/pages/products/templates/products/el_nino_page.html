@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n static wagtailcore_tags wagtailimages_tags lazyimages_tags %}
+{% load i18n static wagtailcore_tags wagtailimages_tags lazyimages_tags nmhs_cms_tags %}
 
 {% block body_class %}el-nino-page{% endblock %}
 
@@ -35,14 +35,7 @@
                 <div class="enso-cover-placeholder" aria-hidden="true"><span>ENSO</span><small>AFRICA</small></div>
               {% endif %}
             </a>
-            <div class="enso-hero-bulletin__actions">
-              <a class="button is-primary" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}">{% translate "View bulletin" %}</a>
-              {% for product in latest_bulletin.products %}
-                {% if product.block_type == "document_product" and product.value.document %}
-                  <a class="button is-light" href="{{ product.value.document.url }}" download>{% translate "Download PDF" %}</a>
-                {% endif %}
-              {% endfor %}
-            </div>
+            <a class="button is-primary enso-hero-bulletin__button" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}">{% translate "View bulletin" %}</a>
           </div>
         {% else %}
           <p class="enso-hero-bulletin__empty">{% translate "The first monthly bulletin is being prepared." %}</p>
@@ -119,6 +112,19 @@
           </article>
         {% endfor %}
       </div>
+      {% if el_nino_updates.paginator.num_pages > 1 %}
+        <nav class="enso-events-pagination" aria-label="{% translate 'El Niño news and events pages' %}">
+          {% if el_nino_updates.has_previous %}
+            <a href="?updates_page={{ el_nino_updates.previous_page_number }}&{{ request.META.QUERY_STRING|remove_param:'updates_page' }}#el-nino-updates-heading">{% translate "Previous" %}</a>
+          {% endif %}
+          <span>
+            {% blocktranslate with current=el_nino_updates.number total=el_nino_updates.paginator.num_pages %}Page {{ current }} of {{ total }}{% endblocktranslate %}
+          </span>
+          {% if el_nino_updates.has_next %}
+            <a href="?updates_page={{ el_nino_updates.next_page_number }}&{{ request.META.QUERY_STRING|remove_param:'updates_page' }}#el-nino-updates-heading">{% translate "Next" %}</a>
+          {% endif %}
+        </nav>
+      {% endif %}
     </div>
   </section>
   {% endif %}

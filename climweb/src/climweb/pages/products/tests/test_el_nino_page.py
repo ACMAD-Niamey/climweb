@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.utils import timezone
 from wagtail.test.utils import WagtailPageTestCase
@@ -62,8 +62,9 @@ class ElNinoPageTests(WagtailPageTestCase):
         )
         self.assertContains(
             response,
-            f'class="button is-primary" href="{document_url}"',
+            f'class="button is-primary enso-hero-bulletin__button" href="{document_url}"',
         )
+        self.assertNotContains(response, "Download PDF")
         self.assertContains(response, older.title)
         self.assertContains(response, "Previous El Niño bulletins")
 
@@ -120,6 +121,29 @@ class ElNinoPageTests(WagtailPageTestCase):
         form = EventPage.get_edit_handler().get_form_class()
 
         self.assertIn("is_el_nino_related", form.base_fields)
+
+    def test_related_updates_are_paginated_three_per_page(self):
+        news_index = NewsIndexPageFactory(parent=self.home)
+        news_items = [
+            NewsPageFactory(
+                parent=news_index,
+                title=f"El Niño update {number}",
+                date=timezone.now() - timedelta(days=number),
+                is_el_nino_related=True,
+            )
+            for number in range(4)
+        ]
+
+        first_page = self.client.get(self.page.url)
+        second_page = self.client.get(self.page.url, {"updates_page": 2})
+
+        for item in news_items[:3]:
+            self.assertContains(first_page, item.title)
+        self.assertNotContains(first_page, news_items[3].title)
+        self.assertContains(first_page, "Page 1 of 2")
+        self.assertContains(first_page, "updates_page=2")
+        self.assertContains(second_page, news_items[3].title)
+        self.assertContains(second_page, "Page 2 of 2")
 
     def test_news_editor_exposes_el_nino_related_option(self):
         from climweb.pages.news.models import NewsPage
