@@ -115,7 +115,7 @@
 .enso-event-card__placeholder small { margin-top: .35rem; letter-spacing: .16em; text-transform: uppercase; }
 .enso-event-card__body { padding: 1.5rem; }
 .enso-event-card__meta { display: flex; flex-wrap: wrap; gap: .45rem 1rem; color: #b06c16; font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
-.enso-event-card h3 { margin: .75rem 0 1rem; font-size: 1.05rem; line-height: 1.4; }
+.enso-event-card h3 { display: -webkit-box; overflow: hidden; margin: .75rem 0 1rem; font-size: 1.05rem; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
 .enso-event-card h3 a { color: #123c36; }
 .enso-event-card__link { color: #08766c; font-size: .84rem; font-weight: 800; }
 .enso-events-pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 2rem; color: #526b66; font-size: .85rem; }
