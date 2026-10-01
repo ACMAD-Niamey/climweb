@@ -68,7 +68,6 @@
         </aside>
 
         <div class="enso-intro-copy">
-          <p class="enso-section-label">{% translate "A continental perspective" %}</p>
           <h2>{{ page.introduction_title }}</h2>
           <div class="enso-prose">{{ page.introduction_text|richtext }}</div>
         </div>
@@ -128,7 +127,6 @@
                 <span>{{ item.type_label }}</span>
               </div>
               <h3><a href="{{ item.page.url }}">{{ item.page.title }}</a></h3>
-              {% if item.summary %}<p>{{ item.summary }}</p>{% endif %}
               <a class="enso-event-card__link" href="{{ item.page.url }}">{{ item.cta_label }} <span aria-hidden="true">→</span></a>
             </div>
           </article>
