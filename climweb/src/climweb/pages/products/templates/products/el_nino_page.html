@@ -54,12 +54,6 @@
   <section class="enso-overview section">
     <div class="container">
       <div class="enso-intro-grid">
-        <div class="enso-intro-copy">
-          <p class="enso-section-label">{% translate "A continental perspective" %}</p>
-          <h2>{{ page.introduction_title }}</h2>
-          <div class="enso-prose">{{ page.introduction_text|richtext }}</div>
-        </div>
-
         <aside class="enso-explainer" aria-label="{% translate 'El Niño explainer image' %}">
           {% if page.explainer_image %}
             {% image page.explainer_image width-900 as explainer_image %}
@@ -72,6 +66,12 @@
             </div>
           {% endif %}
         </aside>
+
+        <div class="enso-intro-copy">
+          <p class="enso-section-label">{% translate "A continental perspective" %}</p>
+          <h2>{{ page.introduction_title }}</h2>
+          <div class="enso-prose">{{ page.introduction_text|richtext }}</div>
+        </div>
       </div>
 
       <div class="enso-context-grid">

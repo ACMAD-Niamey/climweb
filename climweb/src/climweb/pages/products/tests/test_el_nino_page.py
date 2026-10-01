@@ -28,6 +28,10 @@ class ElNinoPageTests(WagtailPageTestCase):
         self.assertContains(response, 'class="enso-hero-bulletin"')
         self.assertContains(response, 'class="enso-explainer"')
         self.assertNotContains(response, 'class="enso-intro-bulletin"')
+        self.assertLess(
+            response.content.index(b'class="enso-explainer"'),
+            response.content.index(b'class="enso-intro-copy"'),
+        )
         self.assertContains(response, "Latest Elnino Bulletin")
         self.assertNotContains(response, "Updated monthly")
         self.assertNotContains(response, "The monthly bulletin brings together")
