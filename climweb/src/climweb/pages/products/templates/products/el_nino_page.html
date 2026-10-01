@@ -16,10 +16,38 @@
       {% image page.introduction_image fill-1800x760 as hero_image %}
       <div class="enso-hero__image" style="background-image:url('{{ hero_image.url }}')"></div>
     {% endif %}
-    <div class="container enso-hero__content">
-      <p class="enso-kicker">{% translate "ACMAD climate intelligence" %}</p>
-      <h1>{{ page.title }}</h1>
-      <p>{% translate "El Niño monitoring, outlooks and impact information for Africa" %}</p>
+    <div class="container enso-hero__content enso-hero__layout">
+      <div class="enso-hero__copy">
+        <p class="enso-kicker">{% translate "ACMAD climate intelligence" %}</p>
+        <h1>{{ page.title }}</h1>
+        <p>{% translate "El Niño monitoring, outlooks and impact information for Africa" %}</p>
+      </div>
+
+      <aside class="enso-hero-bulletin" aria-labelledby="latest-bulletin-heading">
+        <h2 id="latest-bulletin-heading">{% translate "Latest Elnino Bulletin" %}</h2>
+        {% if latest_bulletin %}
+          <div class="enso-hero-bulletin__body">
+            <a class="enso-hero-bulletin__cover" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}" aria-label="{% translate 'View latest El Niño bulletin' %}">
+              {% if latest_bulletin.products_listing_image %}
+                {% image latest_bulletin.products_listing_image fill-180x220 as bulletin_cover %}
+                <img src="{{ bulletin_cover.url }}" alt="{% translate 'El Niño bulletin cover preview' %}">
+              {% else %}
+                <div class="enso-cover-placeholder" aria-hidden="true"><span>ENSO</span><small>AFRICA</small></div>
+              {% endif %}
+            </a>
+            <div class="enso-hero-bulletin__actions">
+              <a class="button is-primary" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}">{% translate "View bulletin" %}</a>
+              {% for product in latest_bulletin.products %}
+                {% if product.block_type == "document_product" and product.value.document %}
+                  <a class="button is-light" href="{{ product.value.document.url }}" download>{% translate "Download PDF" %}</a>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        {% else %}
+          <p class="enso-hero-bulletin__empty">{% translate "The first monthly bulletin is being prepared." %}</p>
+        {% endif %}
+      </aside>
     </div>
   </section>
 
@@ -32,33 +60,15 @@
           <div class="enso-prose">{{ page.introduction_text|richtext }}</div>
         </div>
 
-        <aside class="enso-intro-bulletin" aria-labelledby="latest-bulletin-heading">
-          <h2 id="latest-bulletin-heading">{% translate "Latest Elnino Bulletin" %}</h2>
-          {% if latest_bulletin %}
-            <div class="enso-intro-bulletin__file">
-              <a class="enso-intro-bulletin__cover" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}" aria-label="{% translate 'View latest El Niño bulletin' %}">
-                {% if latest_bulletin.products_listing_image %}
-                  {% image latest_bulletin.products_listing_image fill-320x400 as bulletin_cover %}
-                  <img src="{{ bulletin_cover.url }}" alt="{% translate 'El Niño bulletin cover preview' %}">
-                {% else %}
-                  <div class="enso-cover-placeholder" aria-hidden="true"><span>ENSO</span><small>AFRICA</small></div>
-                {% endif %}
-              </a>
-              <div class="enso-intro-bulletin__details">
-                <div class="enso-latest__actions">
-                  <a class="button is-primary" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}">{% translate "View bulletin" %}</a>
-                  {% for product in latest_bulletin.products %}
-                    {% if product.block_type == "document_product" and product.value.document %}
-                      <a class="button is-light" href="{{ product.value.document.url }}" download>{% translate "Download PDF" %}</a>
-                    {% endif %}
-                  {% endfor %}
-                </div>
-              </div>
-            </div>
+        <aside class="enso-explainer" aria-label="{% translate 'El Niño explainer image' %}">
+          {% if page.explainer_image %}
+            {% image page.explainer_image width-900 as explainer_image %}
+            <img src="{{ explainer_image.url }}" alt="{{ page.explainer_image.title }}">
           {% else %}
-            <div class="enso-empty enso-empty--compact">
-              <h3>{% translate "The first monthly bulletin is being prepared." %}</h3>
-              <p>{% translate "Please check back for ACMAD's latest El Niño assessment for Africa." %}</p>
+            <div class="enso-explainer__placeholder">
+              <div class="enso-explainer__mark" aria-hidden="true"><span></span><span></span><span></span></div>
+              <strong>{% translate "El Niño explained" %}</strong>
+              <p>{% translate "An explanatory image will be added here." %}</p>
             </div>
           {% endif %}
         </aside>

@@ -371,6 +371,15 @@ class ElNinoPage(ProductPage):
         ),
         verbose_name=_("Monthly bulletin introduction"),
     )
+    explainer_image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("El Niño explainer image"),
+        help_text=_("Upload the image or infographic that explains El Niño."),
+    )
 
     content_panels = ProductPage.content_panels + [
         MultiFieldPanel(
@@ -378,6 +387,7 @@ class ElNinoPage(ProductPage):
                 FieldPanel("africa_context"),
                 FieldPanel("acmad_response"),
                 FieldPanel("bulletin_intro"),
+                FieldPanel("explainer_image"),
             ],
             heading=_("El Niño page content"),
         ),

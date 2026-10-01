@@ -25,7 +25,9 @@ class ElNinoPageTests(WagtailPageTestCase):
         self.assertContains(response, "How ACMAD supports the continent")
         self.assertNotContains(response, "Read the latest bulletin")
         self.assertContains(response, 'class="enso-intro-copy"')
-        self.assertContains(response, 'class="enso-intro-bulletin"')
+        self.assertContains(response, 'class="enso-hero-bulletin"')
+        self.assertContains(response, 'class="enso-explainer"')
+        self.assertNotContains(response, 'class="enso-intro-bulletin"')
         self.assertContains(response, "Latest Elnino Bulletin")
         self.assertNotContains(response, "Updated monthly")
         self.assertNotContains(response, "The monthly bulletin brings together")
@@ -114,3 +116,8 @@ class ElNinoPageTests(WagtailPageTestCase):
         form = NewsPage.get_edit_handler().get_form_class()
 
         self.assertIn("is_el_nino_related", form.base_fields)
+
+    def test_el_nino_editor_exposes_explainer_image(self):
+        form = type(self.page).get_edit_handler().get_form_class()
+
+        self.assertIn("explainer_image", form.base_fields)
