@@ -92,33 +92,34 @@
     </div>
   </section>
 
-  {% if el_nino_events %}
-  <section class="enso-events section" aria-labelledby="el-nino-events-heading">
+  {% if el_nino_updates %}
+  <section class="enso-events section" aria-labelledby="el-nino-updates-heading">
     <div class="container">
-      <p class="enso-section-label">{% translate "Events and engagement" %}</p>
+      <p class="enso-section-label">{% translate "Latest updates and engagement" %}</p>
       <div class="enso-events__heading">
-        <h2 id="el-nino-events-heading">{% translate "El Niño related events" %}</h2>
-        <p>{% translate "Conferences, briefings and regional activities supporting preparedness and climate action across Africa." %}</p>
+        <h2 id="el-nino-updates-heading">{% translate "El Niño news and events" %}</h2>
+        <p>{% translate "News, briefings and regional activities supporting preparedness and climate action across Africa." %}</p>
       </div>
       <div class="enso-events__grid">
-        {% for event in el_nino_events %}
+        {% for item in el_nino_updates %}
           <article class="enso-event-card">
-            <a class="enso-event-card__image" href="{{ event.url }}">
-              {% if event.image %}
-                {% image event.image fill-640x360 as event_image %}
-                <img src="{{ event_image.url }}" alt="">
+            <a class="enso-event-card__image" href="{{ item.page.url }}">
+              {% if item.image %}
+                {% image item.image fill-640x360 as update_image %}
+                <img src="{{ update_image.url }}" alt="">
               {% else %}
-                <div class="enso-event-card__placeholder" aria-hidden="true"><span>{{ event.date_from|date:"d" }}</span><small>{{ event.date_from|date:"M" }}</small></div>
+                <div class="enso-event-card__placeholder" aria-hidden="true"><span>{{ item.date|date:"d" }}</span><small>{{ item.date|date:"M" }}</small></div>
               {% endif %}
             </a>
             <div class="enso-event-card__body">
               <div class="enso-event-card__meta">
-                <time datetime="{{ event.date_from|date:'c' }}">{{ event.date_from|date:"d M Y" }}</time>
-                <span>{{ event.event_type }}</span>
+                <time datetime="{{ item.date|date:'c' }}">{{ item.date|date:"d M Y" }}</time>
+                <span>{{ item.kind_label }}</span>
+                <span>{{ item.type_label }}</span>
               </div>
-              <h3><a href="{{ event.url }}">{{ event.title }}</a></h3>
-              {% if event.listing_summary %}<p>{{ event.listing_summary }}</p>{% endif %}
-              <a class="enso-event-card__link" href="{{ event.url }}">{% translate "View event" %} <span aria-hidden="true">→</span></a>
+              <h3><a href="{{ item.page.url }}">{{ item.page.title }}</a></h3>
+              {% if item.summary %}<p>{{ item.summary }}</p>{% endif %}
+              <a class="enso-event-card__link" href="{{ item.page.url }}">{{ item.cta_label }} <span aria-hidden="true">→</span></a>
             </div>
           </article>
         {% endfor %}

@@ -1,9 +1,11 @@
 from datetime import date
 
+from django.utils import timezone
 from wagtail.test.utils import WagtailPageTestCase
 
 from climweb.pages.events.tests.factories import EventIndexPageFactory, EventPageFactory
 from climweb.pages.home.tests.factories import get_or_create_homepage
+from climweb.pages.news.tests.factories import NewsIndexPageFactory, NewsPageFactory
 from .factories import ElNinoPageFactory, ProductIndexPageFactory, ProductItemPageFactory
 
 
@@ -58,7 +60,7 @@ class ElNinoPageTests(WagtailPageTestCase):
         self.assertContains(response, older.title)
         self.assertContains(response, "Previous El Niño bulletins")
 
-    def test_only_related_published_events_appear(self):
+    def test_only_related_published_news_and_events_appear(self):
         events_index = EventIndexPageFactory(parent=self.home)
         related = EventPageFactory(
             parent=events_index,
@@ -76,17 +78,39 @@ class ElNinoPageTests(WagtailPageTestCase):
             is_el_nino_related=True,
             is_hidden=True,
         )
+        news_index = NewsIndexPageFactory(parent=self.home)
+        related_news = NewsPageFactory(
+            parent=news_index,
+            title="ACMAD publishes new El Niño analysis",
+            date=timezone.now(),
+            is_el_nino_related=True,
+        )
+        unrelated_news = NewsPageFactory(
+            parent=news_index,
+            title="General ACMAD update",
+            date=timezone.now(),
+            is_el_nino_related=False,
+        )
 
         response = self.client.get(self.page.url)
 
-        self.assertContains(response, "El Niño related events")
+        self.assertContains(response, "El Niño news and events")
         self.assertContains(response, related.title)
+        self.assertContains(response, related_news.title)
         self.assertNotContains(response, unrelated.title)
         self.assertNotContains(response, hidden.title)
+        self.assertNotContains(response, unrelated_news.title)
 
     def test_event_editor_exposes_el_nino_related_option(self):
         from climweb.pages.events.models import EventPage
 
         form = EventPage.get_edit_handler().get_form_class()
+
+        self.assertIn("is_el_nino_related", form.base_fields)
+
+    def test_news_editor_exposes_el_nino_related_option(self):
+        from climweb.pages.news.models import NewsPage
+
+        form = NewsPage.get_edit_handler().get_form_class()
 
         self.assertIn("is_el_nino_related", form.base_fields)

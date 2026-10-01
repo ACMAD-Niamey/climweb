@@ -394,6 +394,7 @@ class ElNinoPage(ProductPage):
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
         from climweb.pages.events.models import EventPage
+        from climweb.pages.news.models import NewsPage
 
         latest_bulletin = self.latest_bulletin
         archive = self.all_products
@@ -417,11 +418,54 @@ class ElNinoPage(ProductPage):
             is_hidden=False,
         )
         upcoming_filter = models.Q(date_from__gte=now) | models.Q(date_to__gte=now)
-        context["el_nino_events"] = list(
-            events.filter(upcoming_filter).order_by("date_from", "pk")
-        ) + list(
-            events.exclude(upcoming_filter).order_by("-date_from", "-pk")
+        upcoming_events = list(events.filter(upcoming_filter).order_by("date_from", "pk"))
+        past_events = list(events.exclude(upcoming_filter).order_by("-date_from", "-pk"))
+        news_items = list(
+            NewsPage.objects.live().public().descendant_of(
+                self.get_site().root_page
+            ).filter(
+                locale_id=self.locale_id,
+                is_el_nino_related=True,
+            ).order_by("-date", "-pk")
         )
+
+        upcoming_updates = [
+            {
+                "page": event,
+                "date": event.date_from,
+                "image": event.image,
+                "summary": event.listing_summary,
+                "kind_label": _("Event"),
+                "type_label": event.event_type,
+                "cta_label": _("View event"),
+            }
+            for event in upcoming_events
+        ]
+        recent_updates = [
+            {
+                "page": event,
+                "date": event.date_from,
+                "image": event.image,
+                "summary": event.listing_summary,
+                "kind_label": _("Event"),
+                "type_label": event.event_type,
+                "cta_label": _("View event"),
+            }
+            for event in past_events
+        ] + [
+            {
+                "page": news_item,
+                "date": news_item.date,
+                "image": news_item.get_meta_image(),
+                "summary": news_item.listing_summary,
+                "kind_label": _("News"),
+                "type_label": news_item.news_type,
+                "cta_label": _("Read news"),
+            }
+            for news_item in news_items
+        ]
+        recent_updates.sort(key=lambda item: item["date"], reverse=True)
+        context["el_nino_updates"] = upcoming_updates + recent_updates
         context["products"] = paginate(archive, request.GET.get("page"), self.products_per_page)
         return context
 
