@@ -74,6 +74,7 @@
 .enso-overview { padding: 5rem 0 2.5rem; }
 .enso-intro-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(420px, .95fr); gap: 4rem; align-items: start; }
 .enso-intro-grid h2, .enso-actions h2, .enso-bulletin h2, .enso-archive h2 { color: #123c36; font-size: clamp(1.8rem, 4vw, 3rem); }
+.enso-intro-copy h2 { font-size: clamp(1.55rem, 3vw, 2.25rem); }
 .enso-intro-copy .enso-prose { margin-top: 1.5rem; }
 .enso-prose { color: #46635e; line-height: 1.75; }
 .enso-prose p:last-child { margin-bottom: 0; }
