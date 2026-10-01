@@ -393,6 +393,8 @@ class ElNinoPage(ProductPage):
 
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
+        from climweb.pages.events.models import EventPage
+
         latest_bulletin = self.latest_bulletin
         archive = self.all_products
         if latest_bulletin:
@@ -406,6 +408,20 @@ class ElNinoPage(ProductPage):
                     if document:
                         context["latest_bulletin_document_url"] = document.url
                         break
+        now = timezone.now()
+        events = EventPage.objects.live().public().descendant_of(
+            self.get_site().root_page
+        ).filter(
+            locale_id=self.locale_id,
+            is_el_nino_related=True,
+            is_hidden=False,
+        )
+        upcoming_filter = models.Q(date_from__gte=now) | models.Q(date_to__gte=now)
+        context["el_nino_events"] = list(
+            events.filter(upcoming_filter).order_by("date_from", "pk")
+        ) + list(
+            events.exclude(upcoming_filter).order_by("-date_from", "-pk")
+        )
         context["products"] = paginate(archive, request.GET.get("page"), self.products_per_page)
         return context
 

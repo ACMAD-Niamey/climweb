@@ -319,6 +319,12 @@ class EventPage(MetadataPageMixin, Page):
     is_visible_on_homepage = models.BooleanField(
         default=False,
         help_text=_("Show this event on the homepage ?"), verbose_name=_("Is visible on homepage"))
+
+    is_el_nino_related = models.BooleanField(
+        default=False,
+        help_text=_("Show this event in the related events section of the El Niño page."),
+        verbose_name=_("El Niño related event"),
+    )
     
     panelists = StreamField([
         ('panelist', PanelistBlock()),
@@ -376,6 +382,7 @@ class EventPage(MetadataPageMixin, Page):
         FieldPanel('featured'),
         FieldPanel('is_hidden'),
         FieldPanel('is_visible_on_homepage'),
+        FieldPanel('is_el_nino_related'),
         FieldPanel('sponsors'),
         # FieldPanel('youtube_video_id'),
     ]

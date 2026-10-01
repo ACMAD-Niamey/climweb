@@ -89,6 +89,24 @@
 .enso-action-grid strong { display: block; margin-bottom: 1rem; color: #e2a449; font-size: 1.1rem; }
 .enso-action-grid p { color: rgba(255,255,255,.78); line-height: 1.6; }
 
+.enso-events { padding-block: 4.5rem; background: #edf3ef; }
+.enso-events__heading { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-bottom: 2rem; }
+.enso-events__heading h2 { margin: 0; color: #123c36; font-size: clamp(1.8rem, 4vw, 3rem); }
+.enso-events__heading > p { max-width: 520px; margin: 0; color: #526b66; line-height: 1.65; }
+.enso-events__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; }
+.enso-event-card { overflow: hidden; border: 1px solid #d7e3dc; border-radius: 10px; background: #fff; box-shadow: 0 10px 26px rgba(15, 62, 54, .06); }
+.enso-event-card__image { display: block; height: 180px; background: #dce8e3; }
+.enso-event-card__image img { width: 100%; height: 100%; object-fit: cover; }
+.enso-event-card__placeholder { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(145deg, #07564f, #0c8378); color: #fff; }
+.enso-event-card__placeholder span { font-size: 2.3rem; font-weight: 800; line-height: 1; }
+.enso-event-card__placeholder small { margin-top: .35rem; letter-spacing: .16em; text-transform: uppercase; }
+.enso-event-card__body { padding: 1.5rem; }
+.enso-event-card__meta { display: flex; flex-wrap: wrap; gap: .45rem 1rem; color: #b06c16; font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.enso-event-card h3 { margin: .75rem 0; font-size: 1.25rem; line-height: 1.35; }
+.enso-event-card h3 a { color: #123c36; }
+.enso-event-card__body > p { margin-bottom: 1.2rem; color: #526b66; font-size: .9rem; line-height: 1.6; }
+.enso-event-card__link { color: #08766c; font-size: .84rem; font-weight: 800; }
+
 .enso-cover-placeholder { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(145deg, #07564f, #0c8378); color: #fff; }
 .enso-cover-placeholder span { font-size: 1.7rem; font-weight: 900; letter-spacing: .12em; }
 .enso-cover-placeholder small { letter-spacing: .42em; }
@@ -104,6 +122,7 @@
 @media (max-width: 850px) {
   .enso-intro-grid { grid-template-columns: 1fr; gap: 2rem; }
   .enso-action-grid { grid-template-columns: 1fr 1fr; }
+  .enso-events__grid { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 1024px) {
@@ -123,6 +142,10 @@
   .enso-context-grid, .enso-action-grid, .enso-intro-bulletin__file { grid-template-columns: 1fr; }
   .enso-intro-bulletin__cover { min-height: 340px; }
   .enso-intro-bulletin__details { padding: 1rem; }
+  .enso-events { padding-block: 3.5rem; }
+  .enso-events__heading { display: block; }
+  .enso-events__heading > p { margin-top: 1rem; }
+  .enso-events__grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 480px) {

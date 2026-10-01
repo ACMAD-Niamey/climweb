@@ -2,6 +2,7 @@ from datetime import date
 
 from wagtail.test.utils import WagtailPageTestCase
 
+from climweb.pages.events.tests.factories import EventIndexPageFactory, EventPageFactory
 from climweb.pages.home.tests.factories import get_or_create_homepage
 from .factories import ElNinoPageFactory, ProductIndexPageFactory, ProductItemPageFactory
 
@@ -9,8 +10,8 @@ from .factories import ElNinoPageFactory, ProductIndexPageFactory, ProductItemPa
 class ElNinoPageTests(WagtailPageTestCase):
     @classmethod
     def setUpTestData(cls):
-        home = get_or_create_homepage()
-        product_index = ProductIndexPageFactory(parent=home)
+        cls.home = get_or_create_homepage()
+        product_index = ProductIndexPageFactory(parent=cls.home)
         cls.page = ElNinoPageFactory(parent=product_index)
 
     def test_page_explains_african_context_and_acmad_action(self):
@@ -56,3 +57,36 @@ class ElNinoPageTests(WagtailPageTestCase):
         )
         self.assertContains(response, older.title)
         self.assertContains(response, "Previous El Niño bulletins")
+
+    def test_only_related_published_events_appear(self):
+        events_index = EventIndexPageFactory(parent=self.home)
+        related = EventPageFactory(
+            parent=events_index,
+            title="Africa El Niño Preparedness Forum",
+            is_el_nino_related=True,
+        )
+        unrelated = EventPageFactory(
+            parent=events_index,
+            title="General Climate Forum",
+            is_el_nino_related=False,
+        )
+        hidden = EventPageFactory(
+            parent=events_index,
+            title="Hidden El Niño Forum",
+            is_el_nino_related=True,
+            is_hidden=True,
+        )
+
+        response = self.client.get(self.page.url)
+
+        self.assertContains(response, "El Niño related events")
+        self.assertContains(response, related.title)
+        self.assertNotContains(response, unrelated.title)
+        self.assertNotContains(response, hidden.title)
+
+    def test_event_editor_exposes_el_nino_related_option(self):
+        from climweb.pages.events.models import EventPage
+
+        form = EventPage.get_edit_handler().get_form_class()
+
+        self.assertIn("is_el_nino_related", form.base_fields)
