@@ -6,7 +6,7 @@
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'products/css/product.css' %}">
   <link rel="stylesheet" href="{% static 'css/publication.css' %}">
-  <link rel="stylesheet" href="{% static 'products/css/el_nino.css' %}?v=3.2">
+  <link rel="stylesheet" href="{% static 'products/css/el_nino.css' %}?v=3.3">
 {% endblock %}
 
 {% block content %}
@@ -23,22 +23,25 @@
         <p>{% translate "ENSO monitoring, outlooks and impact information for Africa" %}</p>
       </div>
 
-      <aside class="enso-hero-bulletin" aria-labelledby="latest-bulletin-heading">
-        <h2 id="latest-bulletin-heading">{% translate "Latest El Niño Bulletin" %}</h2>
+      <aside class="enso-hero-bulletin{% if not latest_bulletin %} enso-hero-bulletin--empty{% endif %}" aria-labelledby="latest-bulletin-heading">
         {% if latest_bulletin %}
+          <a class="enso-hero-bulletin__cover" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}" aria-label="{% translate 'View latest El Niño bulletin' %}">
+            {% if latest_bulletin.products_listing_image %}
+              {% image latest_bulletin.products_listing_image fill-820x400 as bulletin_thumbnail %}
+              <img src="{{ bulletin_thumbnail.url }}" alt="{% translate 'El Niño bulletin thumbnail' %}">
+            {% else %}
+              <div class="enso-cover-placeholder" aria-hidden="true"><span>ENSO</span><small>AFRICA</small></div>
+            {% endif %}
+          </a>
           <div class="enso-hero-bulletin__body">
-            <a class="enso-hero-bulletin__cover" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}" aria-label="{% translate 'View latest El Niño bulletin' %}">
-              {% if latest_bulletin.products_listing_image %}
-                {% image latest_bulletin.products_listing_image fill-640x360 as bulletin_thumbnail %}
-                <img src="{{ bulletin_thumbnail.url }}" alt="{% translate 'El Niño bulletin thumbnail' %}">
-              {% else %}
-                <div class="enso-cover-placeholder" aria-hidden="true"><span>ENSO</span><small>AFRICA</small></div>
-              {% endif %}
-            </a>
+            <h2 id="latest-bulletin-heading">{% translate "Latest El Niño Bulletin" %}</h2>
             <a class="button is-primary enso-hero-bulletin__button" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}">{% translate "View bulletin" %}</a>
           </div>
         {% else %}
-          <p class="enso-hero-bulletin__empty">{% translate "The first monthly bulletin is being prepared." %}</p>
+          <div class="enso-hero-bulletin__body">
+            <h2 id="latest-bulletin-heading">{% translate "Latest El Niño Bulletin" %}</h2>
+            <p class="enso-hero-bulletin__empty">{% translate "The first monthly bulletin is being prepared." %}</p>
+          </div>
         {% endif %}
       </aside>
     </div>

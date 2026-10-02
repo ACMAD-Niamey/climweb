@@ -28,7 +28,7 @@ class ElNinoPageTests(WagtailPageTestCase):
         self.assertNotContains(response, "A continental perspective")
         self.assertNotContains(response, "Read the latest bulletin")
         self.assertContains(response, 'class="enso-intro-copy"')
-        self.assertContains(response, 'class="enso-hero-bulletin"')
+        self.assertContains(response, 'class="enso-hero-bulletin')
         self.assertContains(response, 'class="enso-explainer"')
         self.assertContains(response, 'class="enso-intro-details"')
         self.assertNotContains(response, 'class="enso-explanation"')
@@ -75,7 +75,7 @@ class ElNinoPageTests(WagtailPageTestCase):
         )
         self.assertContains(
             response,
-            bulletin_thumbnail.get_rendition("fill-640x360").url,
+            bulletin_thumbnail.get_rendition("fill-820x400").url,
         )
         self.assertNotContains(response, "Download PDF")
         self.assertContains(response, older.title)
