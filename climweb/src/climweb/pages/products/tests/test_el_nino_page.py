@@ -177,6 +177,40 @@ class ElNinoPageTests(WagtailPageTestCase):
         self.assertContains(second_page, news_items[3].title)
         self.assertContains(second_page, "Page 2 of 2")
 
+    def test_related_updates_are_sorted_newest_first_across_sources(self):
+        events_index = EventIndexPageFactory(parent=self.home)
+        older_event = EventPageFactory(
+            parent=events_index,
+            title="Older ENSO event",
+            date_from=timezone.now() - timedelta(days=3),
+            is_el_nino_related=True,
+        )
+        news_index = NewsIndexPageFactory(parent=self.home)
+        newest_news = NewsPageFactory(
+            parent=news_index,
+            title="Newest ENSO news",
+            date=timezone.now(),
+            is_el_nino_related=True,
+        )
+        partner_activity = ENSOPartnerActivity.objects.create(
+            page=self.page,
+            title="Middle ENSO partner activity",
+            date=timezone.localdate() - timedelta(days=1),
+            external_url="https://example.org/middle-enso-activity/",
+            image=self.page.introduction_image,
+        )
+
+        response = self.client.get(self.page.url)
+
+        self.assertLess(
+            response.content.index(newest_news.title.encode()),
+            response.content.index(partner_activity.title.encode()),
+        )
+        self.assertLess(
+            response.content.index(partner_activity.title.encode()),
+            response.content.index(older_event.title.encode()),
+        )
+
     def test_news_editor_exposes_el_nino_related_option(self):
         from climweb.pages.news.models import NewsPage
 
