@@ -194,6 +194,9 @@ class HeroUpdatesTests(WagtailPageTestCase):
     def test_enso_slide_button_links_directly_to_latest_bulletin(self):
         product_index = ProductIndexPageFactory(parent=self.home)
         el_nino_page = ElNinoPageFactory(parent=product_index)
+        enso_intro_image = wagtail_factories.ImageFactory(title="ENSO introduction image")
+        el_nino_page.explainer_image = enso_intro_image
+        el_nino_page.save(update_fields=["explainer_image"])
         older = ProductItemPageFactory(parent=el_nino_page, title="El Niño Bulletin — July")
         bulletin_thumbnail = wagtail_factories.ImageFactory(title="El Niño bulletin thumbnail")
         latest = ProductItemPageFactory(
@@ -218,7 +221,7 @@ class HeroUpdatesTests(WagtailPageTestCase):
         self.assertEqual(slides[0]["url"], el_nino_page.url)
         self.assertEqual(slides[0]["cta_url"], document_url)
         self.assertEqual(slides[0]["cta_label"], "View Bulletin")
-        self.assertEqual(slides[0]["image"], bulletin_thumbnail)
+        self.assertEqual(slides[0]["image"], enso_intro_image)
 
     def test_carousel_order_is_news_el_nino_then_summer_school(self):
         latest_news = self.news(-1)
@@ -255,6 +258,9 @@ class HeroUpdatesTests(WagtailPageTestCase):
     def test_homepage_renders_enso_feature_before_dg_message(self):
         product_index = ProductIndexPageFactory(parent=self.home)
         enso_page = ElNinoPageFactory(parent=product_index)
+        explainer_image = wagtail_factories.ImageFactory(title="ENSO introduction image")
+        enso_page.explainer_image = explainer_image
+        enso_page.save(update_fields=["explainer_image"])
         bulletin_thumbnail = wagtail_factories.ImageFactory(title="Homepage bulletin thumbnail")
         ProductItemPageFactory(
             parent=enso_page,
@@ -275,6 +281,10 @@ class HeroUpdatesTests(WagtailPageTestCase):
         self.assertContains(response, "Explore ENSO in Africa")
         self.assertContains(response, "View Bulletin")
         self.assertContains(
+            response,
+            explainer_image.get_rendition("fill-900x680").url,
+        )
+        self.assertNotContains(
             response,
             bulletin_thumbnail.get_rendition("fill-900x680").url,
         )
