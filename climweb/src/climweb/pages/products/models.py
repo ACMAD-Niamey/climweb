@@ -441,39 +441,62 @@ class ElNinoPage(ProductPage):
             ).order_by("-date", "-pk")
         )
 
-        upcoming_updates = [
-            {
-                "page": event,
-                "date": event.date_from,
-                "image": event.image,
-                "summary": event.listing_summary,
-                "kind_label": _("Event"),
-                "type_label": event.event_type,
-                "cta_label": _("View event"),
+        def activity_item(page, activity_date, image, kind_label, type_label, cta_label):
+            host_organisation = page.enso_host_organisation.strip()
+            external_url = page.enso_external_url.strip()
+            is_partner_activity = bool(host_organisation or external_url)
+            if is_partner_activity:
+                type_label = kind_label
+                kind_label = _("Partner activity")
+                if host_organisation:
+                    cta_label = _("View on %(host)s") % {"host": host_organisation}
+                else:
+                    cta_label = _("View external activity")
+
+            return {
+                "page": page,
+                "url": external_url or page.url,
+                "is_external": bool(external_url),
+                "is_partner_activity": is_partner_activity,
+                "host_organisation": host_organisation,
+                "date": activity_date,
+                "image": image,
+                "summary": page.listing_summary,
+                "kind_label": kind_label,
+                "type_label": type_label,
+                "cta_label": cta_label,
             }
+
+        upcoming_updates = [
+            activity_item(
+                event,
+                event.date_from,
+                event.image,
+                _("Event"),
+                event.event_type,
+                _("View event"),
+            )
             for event in upcoming_events
         ]
         recent_updates = [
-            {
-                "page": event,
-                "date": event.date_from,
-                "image": event.image,
-                "summary": event.listing_summary,
-                "kind_label": _("Event"),
-                "type_label": event.event_type,
-                "cta_label": _("View event"),
-            }
+            activity_item(
+                event,
+                event.date_from,
+                event.image,
+                _("Event"),
+                event.event_type,
+                _("View event"),
+            )
             for event in past_events
         ] + [
-            {
-                "page": news_item,
-                "date": news_item.date,
-                "image": news_item.get_meta_image(),
-                "summary": news_item.listing_summary,
-                "kind_label": _("News"),
-                "type_label": news_item.news_type,
-                "cta_label": _("Read news"),
-            }
+            activity_item(
+                news_item,
+                news_item.date,
+                news_item.get_meta_image(),
+                _("News"),
+                news_item.news_type,
+                _("Read news"),
+            )
             for news_item in news_items
         ]
         recent_updates.sort(key=lambda item: item["date"], reverse=True)

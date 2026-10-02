@@ -124,6 +124,41 @@ class ElNinoPageTests(WagtailPageTestCase):
         form = EventPage.get_edit_handler().get_form_class()
 
         self.assertIn("is_el_nino_related", form.base_fields)
+        self.assertIn("enso_host_organisation", form.base_fields)
+        self.assertIn("enso_external_url", form.base_fields)
+
+    def test_partner_news_and_events_link_to_the_external_host(self):
+        events_index = EventIndexPageFactory(parent=self.home)
+        partner_event = EventPageFactory(
+            parent=events_index,
+            title="PAFO ENSO preparedness workshop",
+            is_el_nino_related=True,
+            enso_host_organisation="PAFO",
+            enso_external_url="https://pafo-africa.org/enso-workshop/",
+        )
+        news_index = NewsIndexPageFactory(parent=self.home)
+        partner_news = NewsPageFactory(
+            parent=news_index,
+            title="ICPAC regional ENSO briefing",
+            date=timezone.now(),
+            is_el_nino_related=True,
+            enso_host_organisation="ICPAC",
+            enso_external_url="https://www.icpac.net/enso-briefing/",
+        )
+
+        response = self.client.get(self.page.url)
+
+        self.assertContains(response, "Partner activity", count=2)
+        self.assertContains(response, "Hosted by", count=2)
+        self.assertContains(response, "<strong>PAFO</strong>", html=True)
+        self.assertContains(response, "<strong>ICPAC</strong>", html=True)
+        self.assertContains(response, "In collaboration with ACMAD", count=2)
+        self.assertContains(response, "View on PAFO")
+        self.assertContains(response, "View on ICPAC")
+        self.assertContains(response, 'href="https://pafo-africa.org/enso-workshop/" target="_blank" rel="noopener noreferrer"')
+        self.assertContains(response, 'href="https://www.icpac.net/enso-briefing/" target="_blank" rel="noopener noreferrer"')
+        self.assertNotContains(response, f'href="{partner_event.url}"')
+        self.assertNotContains(response, f'href="{partner_news.url}"')
 
     def test_related_updates_are_paginated_three_per_page(self):
         news_index = NewsIndexPageFactory(parent=self.home)
@@ -154,6 +189,8 @@ class ElNinoPageTests(WagtailPageTestCase):
         form = NewsPage.get_edit_handler().get_form_class()
 
         self.assertIn("is_el_nino_related", form.base_fields)
+        self.assertIn("enso_host_organisation", form.base_fields)
+        self.assertIn("enso_external_url", form.base_fields)
 
     def test_el_nino_editor_exposes_explainer_image(self):
         form = type(self.page).get_edit_handler().get_form_class()

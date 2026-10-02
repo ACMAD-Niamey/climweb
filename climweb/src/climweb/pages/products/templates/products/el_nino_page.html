@@ -6,7 +6,7 @@
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'products/css/product.css' %}">
   <link rel="stylesheet" href="{% static 'css/publication.css' %}">
-  <link rel="stylesheet" href="{% static 'products/css/el_nino.css' %}?v=2.2">
+  <link rel="stylesheet" href="{% static 'products/css/el_nino.css' %}?v=2.3">
 {% endblock %}
 
 {% block content %}
@@ -86,7 +86,7 @@
       <div class="enso-events__grid">
         {% for item in el_nino_updates %}
           <article class="enso-event-card">
-            <a class="enso-event-card__image" href="{{ item.page.url }}">
+            <a class="enso-event-card__image" href="{{ item.url }}"{% if item.is_external %} target="_blank" rel="noopener noreferrer"{% endif %}>
               {% if item.image %}
                 {% image item.image fill-640x360 as update_image %}
                 <img src="{{ update_image.url }}" alt="">
@@ -100,8 +100,14 @@
                 <span>{{ item.kind_label }}</span>
                 <span>{{ item.type_label }}</span>
               </div>
-              <h3><a href="{{ item.page.url }}">{{ item.page.title }}</a></h3>
-              <a class="enso-event-card__link" href="{{ item.page.url }}">{{ item.cta_label }} <span aria-hidden="true">→</span></a>
+              <h3><a href="{{ item.url }}"{% if item.is_external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ item.page.title }}</a></h3>
+              {% if item.is_partner_activity and item.host_organisation %}
+                <p class="enso-event-card__host">
+                  {% blocktranslate with host=item.host_organisation %}Hosted by <strong>{{ host }}</strong>{% endblocktranslate %}
+                  <span>{% translate "In collaboration with ACMAD" %}</span>
+                </p>
+              {% endif %}
+              <a class="enso-event-card__link" href="{{ item.url }}"{% if item.is_external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ item.cta_label }} <span aria-hidden="true">{% if item.is_external %}↗{% else %}→{% endif %}</span></a>
             </div>
           </article>
         {% endfor %}
