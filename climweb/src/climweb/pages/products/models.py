@@ -537,10 +537,10 @@ class ElNinoPage(ProductPage):
             value = item["date"]
             return value.date() if isinstance(value, datetime) else value
 
-        upcoming_updates.sort(key=update_sort_date)
-        recent_updates.sort(key=update_sort_date, reverse=True)
+        dated_updates = upcoming_updates + recent_updates
+        dated_updates.sort(key=update_sort_date, reverse=True)
         context["el_nino_updates"] = paginate(
-            upcoming_updates + recent_updates,
+            dated_updates,
             request.GET.get("updates_page"),
             3,
         )
