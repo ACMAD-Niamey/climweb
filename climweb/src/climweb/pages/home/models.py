@@ -6,7 +6,6 @@ from django.conf import settings
 from django.contrib.gis.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.template.defaultfilters import truncatechars
-from django.utils.html import strip_tags
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
@@ -854,7 +853,11 @@ class HomePage(MetadataPageMixin, Page):
                         bulletin_url = document.url
                         break
 
-        summary = truncatechars(strip_tags(str(enso_page.introduction_text)), 300)
+        summary = _(
+            "ENSO is a recurring interaction between the tropical Pacific Ocean and the atmosphere. "
+            "Its El Niño, La Niña and neutral phases can shift rainfall and temperature patterns across "
+            "Africa, influencing water, agriculture, health, energy and disaster preparedness."
+        )
         return {
             "page": enso_page,
             "url": canonical_public_page_url(page_url),
