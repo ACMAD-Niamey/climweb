@@ -6,7 +6,7 @@
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'products/css/product.css' %}">
   <link rel="stylesheet" href="{% static 'css/publication.css' %}">
-  <link rel="stylesheet" href="{% static 'products/css/el_nino.css' %}?v=2.7">
+  <link rel="stylesheet" href="{% static 'products/css/el_nino.css' %}?v=2.8">
 {% endblock %}
 
 {% block content %}
@@ -66,13 +66,10 @@
         <div class="enso-intro-copy">
           <h2>{{ page.introduction_title }}</h2>
           <div class="enso-prose">{{ page.introduction_text|richtext }}</div>
-        </div>
-      </div>
-
-      <div class="enso-explanation" aria-label="{% translate 'More about ENSO' %}">
-        <div class="enso-explanation__copy">
-          <div class="enso-prose">{{ page.africa_context|richtext }}</div>
-          <div class="enso-prose">{{ page.acmad_response|richtext }}</div>
+          <div class="enso-intro-details">
+            <div class="enso-prose">{{ page.africa_context|richtext }}</div>
+            <div class="enso-prose">{{ page.acmad_response|richtext }}</div>
+          </div>
         </div>
       </div>
     </div>

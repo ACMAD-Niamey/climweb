@@ -75,6 +75,8 @@
 .enso-intro-grid h2, .enso-actions h2, .enso-bulletin h2, .enso-archive h2 { color: #123c36; font-size: clamp(1.8rem, 4vw, 3rem); }
 .enso-intro-copy h2 { font-size: clamp(1.55rem, 3vw, 2.25rem); }
 .enso-intro-copy .enso-prose { margin-top: 1.5rem; }
+.enso-intro-details { margin-top: 1.25rem; }
+.enso-intro-details .enso-prose { margin-top: .75rem; }
 .enso-prose { color: #46635e; line-height: 1.75; }
 .enso-prose p:last-child { margin-bottom: 0; }
 
@@ -89,9 +91,6 @@
 .enso-explainer__mark span:nth-child(1) { height: 42px; opacity: .45; }
 .enso-explainer__mark span:nth-child(2) { height: 70px; }
 .enso-explainer__mark span:nth-child(3) { height: 54px; background: #d89431; }
-
-.enso-explanation { margin-top: 1rem; }
-.enso-explanation__copy { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4rem; }
 
 .enso-actions { padding-block: 4.5rem; background: #073e3a; color: #fff; }
 .enso-actions h2 { margin-bottom: 2rem; color: #fff; }
@@ -135,7 +134,6 @@
 
 @media (max-width: 850px) {
   .enso-intro-grid { grid-template-columns: 1fr; gap: 2rem; }
-  .enso-explanation__copy { grid-template-columns: 1fr; gap: 1.25rem; }
   .enso-action-grid { grid-template-columns: 1fr 1fr; }
   .enso-events__grid { grid-template-columns: 1fr 1fr; }
 }
