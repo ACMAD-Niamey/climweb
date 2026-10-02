@@ -475,9 +475,9 @@ class ElNinoPage(ProductPage):
                 "date": activity.date,
                 "image": activity.image,
                 "summary": "",
-                "kind_label": _("Partner activity"),
+                "kind_label": "",
                 "type_label": activity.get_activity_type_display(),
-                "cta_label": _("View on %(host)s") % {"host": activity.host_organisation},
+                "cta_label": _("View activity"),
             }
 
         upcoming_updates = [
