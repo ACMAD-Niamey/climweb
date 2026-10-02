@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 
 from django.utils import timezone
+import wagtail_factories
 from wagtail.test.utils import WagtailPageTestCase
 
 from climweb.pages.events.tests.factories import EventIndexPageFactory, EventPageFactory
@@ -46,11 +47,14 @@ class ElNinoPageTests(WagtailPageTestCase):
 
     def test_latest_monthly_bulletin_is_featured(self):
         older = ProductItemPageFactory(parent=self.page, title="El Niño Bulletin — July 2026")
+        bulletin_thumbnail = wagtail_factories.ImageFactory(title="El Niño bulletin thumbnail")
         latest = ProductItemPageFactory(
             parent=self.page,
             title="El Niño Bulletin — August 2026",
             products__0__document_product__product_type="Monthly El Niño Bulletin",
             products__0__document_product__date=date(2026, 8, 1),
+            products__0__document_product__thumbnail=bulletin_thumbnail,
+            products__0__document_product__auto_generate_thumbnail=False,
         )
         type(older).objects.filter(pk=older.pk).update(date=date(2026, 7, 1))
         type(latest).objects.filter(pk=latest.pk).update(date=date(2026, 8, 1))
@@ -68,6 +72,10 @@ class ElNinoPageTests(WagtailPageTestCase):
         self.assertContains(
             response,
             f'class="button is-primary enso-hero-bulletin__button" href="{document_url}"',
+        )
+        self.assertContains(
+            response,
+            bulletin_thumbnail.get_rendition("fill-640x360").url,
         )
         self.assertNotContains(response, "Download PDF")
         self.assertContains(response, older.title)
