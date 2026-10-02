@@ -325,18 +325,6 @@ class EventPage(MetadataPageMixin, Page):
         help_text=_("Show this event in the ENSO related activities section."),
         verbose_name=_("ENSO related activity"),
     )
-    enso_host_organisation = models.CharField(
-        max_length=255,
-        blank=True,
-        help_text=_("For a partner activity, enter the organisation hosting it, such as PAFO or ICPAC."),
-        verbose_name=_("Hosting organisation"),
-    )
-    enso_external_url = models.URLField(
-        max_length=1000,
-        blank=True,
-        help_text=_("Optional link to the activity on the hosting organisation's website."),
-        verbose_name=_("External activity URL"),
-    )
     
     panelists = StreamField([
         ('panelist', PanelistBlock()),
@@ -394,11 +382,7 @@ class EventPage(MetadataPageMixin, Page):
         FieldPanel('featured'),
         FieldPanel('is_hidden'),
         FieldPanel('is_visible_on_homepage'),
-        MultiFieldPanel([
-            FieldPanel('is_el_nino_related'),
-            FieldPanel('enso_host_organisation'),
-            FieldPanel('enso_external_url'),
-        ], heading=_("ENSO activity")),
+        FieldPanel('is_el_nino_related'),
         FieldPanel('sponsors'),
         # FieldPanel('youtube_video_id'),
     ]

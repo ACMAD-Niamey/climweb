@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from adminboundarymanager.models import AdminBoundarySettings
 from django import forms
@@ -19,7 +20,7 @@ from wagtail.admin.forms import WagtailAdminPageForm
 from wagtail.admin.panels import (FieldPanel, MultiFieldPanel, FieldRowPanel, InlinePanel)
 from wagtail.api.v2.utils import get_full_url
 from wagtail.fields import StreamField, RichTextField
-from wagtail.models import Page
+from wagtail.models import Orderable, Page
 from wagtail.rich_text import RichText
 from wagtail.snippets.models import register_snippet
 from wagtail.contrib.forms.models import AbstractFormField
@@ -393,6 +394,12 @@ class ElNinoPage(ProductPage):
             ],
             heading=_("ENSO page content"),
         ),
+        InlinePanel(
+            "partner_activities",
+            heading=_("Partner activities"),
+            label=_("Partner activity"),
+            help_text=_("Add lightweight external ENSO activities hosted by partner organisations."),
+        ),
     ]
 
     class Meta:
@@ -442,29 +449,35 @@ class ElNinoPage(ProductPage):
         )
 
         def activity_item(page, activity_date, image, kind_label, type_label, cta_label):
-            host_organisation = page.enso_host_organisation.strip()
-            external_url = page.enso_external_url.strip()
-            is_partner_activity = bool(host_organisation or external_url)
-            if is_partner_activity:
-                type_label = kind_label
-                kind_label = _("Partner activity")
-                if host_organisation:
-                    cta_label = _("View on %(host)s") % {"host": host_organisation}
-                else:
-                    cta_label = _("View external activity")
-
             return {
                 "page": page,
-                "url": external_url or page.url,
-                "is_external": bool(external_url),
-                "is_partner_activity": is_partner_activity,
-                "host_organisation": host_organisation,
+                "title": page.title,
+                "url": page.url,
+                "is_external": False,
+                "is_partner_activity": False,
+                "host_organisation": "",
                 "date": activity_date,
                 "image": image,
                 "summary": page.listing_summary,
                 "kind_label": kind_label,
                 "type_label": type_label,
                 "cta_label": cta_label,
+            }
+
+        def partner_activity_item(activity):
+            return {
+                "page": activity,
+                "title": activity.title,
+                "url": activity.external_url,
+                "is_external": True,
+                "is_partner_activity": True,
+                "host_organisation": activity.host_organisation,
+                "date": activity.date,
+                "image": activity.image,
+                "summary": "",
+                "kind_label": _("Partner activity"),
+                "type_label": activity.get_activity_type_display(),
+                "cta_label": _("View on %(host)s") % {"host": activity.host_organisation},
             }
 
         upcoming_updates = [
@@ -499,7 +512,24 @@ class ElNinoPage(ProductPage):
             )
             for news_item in news_items
         ]
-        recent_updates.sort(key=lambda item: item["date"], reverse=True)
+        partner_activities = list(self.partner_activities.all())
+        upcoming_updates.extend(
+            partner_activity_item(activity)
+            for activity in partner_activities
+            if activity.date >= now.date()
+        )
+        recent_updates.extend(
+            partner_activity_item(activity)
+            for activity in partner_activities
+            if activity.date < now.date()
+        )
+
+        def update_sort_date(item):
+            value = item["date"]
+            return value.date() if isinstance(value, datetime) else value
+
+        upcoming_updates.sort(key=update_sort_date)
+        recent_updates.sort(key=update_sort_date, reverse=True)
         context["el_nino_updates"] = paginate(
             upcoming_updates + recent_updates,
             request.GET.get("updates_page"),
@@ -507,6 +537,64 @@ class ElNinoPage(ProductPage):
         )
         context["products"] = paginate(archive, request.GET.get("page"), self.products_per_page)
         return context
+
+
+class ENSOPartnerActivity(Orderable):
+    ACTIVITY_TYPE_CHOICES = (
+        ("event", _("Event")),
+        ("news", _("News")),
+        ("briefing", _("Briefing")),
+        ("workshop", _("Workshop")),
+        ("other", _("Other")),
+    )
+
+    page = ParentalKey(
+        ElNinoPage,
+        on_delete=models.CASCADE,
+        related_name="partner_activities",
+    )
+    title = models.CharField(max_length=255, verbose_name=_("Title"))
+    date = models.DateField(default=timezone.localdate, verbose_name=_("Date"))
+    activity_type = models.CharField(
+        max_length=20,
+        choices=ACTIVITY_TYPE_CHOICES,
+        default="event",
+        verbose_name=_("Activity type"),
+    )
+    host_organisation = models.CharField(
+        max_length=255,
+        verbose_name=_("Hosting organisation"),
+    )
+    external_url = models.URLField(
+        max_length=1000,
+        verbose_name=_("External activity URL"),
+    )
+    image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Image"),
+    )
+
+    panels = [
+        FieldPanel("title"),
+        FieldRowPanel([
+            FieldPanel("date"),
+            FieldPanel("activity_type"),
+        ]),
+        FieldPanel("host_organisation"),
+        FieldPanel("external_url"),
+        FieldPanel("image"),
+    ]
+
+    class Meta(Orderable.Meta):
+        verbose_name = _("ENSO partner activity")
+        verbose_name_plural = _("ENSO partner activities")
+
+    def __str__(self):
+        return self.title
 
 
 register_searchable_chooser(RasterFileLayer)

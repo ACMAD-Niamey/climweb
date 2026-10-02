@@ -100,7 +100,7 @@
                 <span>{{ item.kind_label }}</span>
                 <span>{{ item.type_label }}</span>
               </div>
-              <h3><a href="{{ item.url }}"{% if item.is_external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ item.page.title }}</a></h3>
+              <h3><a href="{{ item.url }}"{% if item.is_external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ item.title }}</a></h3>
               {% if item.is_partner_activity and item.host_organisation %}
                 <p class="enso-event-card__host">
                   {% blocktranslate with host=item.host_organisation %}Hosted by <strong>{{ host }}</strong>{% endblocktranslate %}

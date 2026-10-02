@@ -6,6 +6,7 @@ from wagtail.test.utils import WagtailPageTestCase
 from climweb.pages.events.tests.factories import EventIndexPageFactory, EventPageFactory
 from climweb.pages.home.tests.factories import get_or_create_homepage
 from climweb.pages.news.tests.factories import NewsIndexPageFactory, NewsPageFactory
+from climweb.pages.products.models import ENSOPartnerActivity
 from .factories import ElNinoPageFactory, ProductIndexPageFactory, ProductItemPageFactory
 
 
@@ -124,41 +125,28 @@ class ElNinoPageTests(WagtailPageTestCase):
         form = EventPage.get_edit_handler().get_form_class()
 
         self.assertIn("is_el_nino_related", form.base_fields)
-        self.assertIn("enso_host_organisation", form.base_fields)
-        self.assertIn("enso_external_url", form.base_fields)
 
-    def test_partner_news_and_events_link_to_the_external_host(self):
-        events_index = EventIndexPageFactory(parent=self.home)
-        partner_event = EventPageFactory(
-            parent=events_index,
+    def test_lightweight_partner_activity_links_to_the_external_host(self):
+        partner_activity = ENSOPartnerActivity.objects.create(
+            page=self.page,
             title="PAFO ENSO preparedness workshop",
-            is_el_nino_related=True,
-            enso_host_organisation="PAFO",
-            enso_external_url="https://pafo-africa.org/enso-workshop/",
-        )
-        news_index = NewsIndexPageFactory(parent=self.home)
-        partner_news = NewsPageFactory(
-            parent=news_index,
-            title="ICPAC regional ENSO briefing",
-            date=timezone.now(),
-            is_el_nino_related=True,
-            enso_host_organisation="ICPAC",
-            enso_external_url="https://www.icpac.net/enso-briefing/",
+            date=timezone.localdate(),
+            activity_type="workshop",
+            host_organisation="PAFO",
+            external_url="https://pafo-africa.org/enso-workshop/",
         )
 
         response = self.client.get(self.page.url)
 
-        self.assertContains(response, "Partner activity", count=2)
-        self.assertContains(response, "Hosted by", count=2)
+        self.assertContains(response, "Partner activity")
+        self.assertContains(response, "Workshop")
+        self.assertContains(response, "Hosted by")
         self.assertContains(response, "<strong>PAFO</strong>", html=True)
-        self.assertContains(response, "<strong>ICPAC</strong>", html=True)
-        self.assertContains(response, "In collaboration with ACMAD", count=2)
+        self.assertContains(response, "In collaboration with ACMAD")
         self.assertContains(response, "View on PAFO")
-        self.assertContains(response, "View on ICPAC")
         self.assertContains(response, 'href="https://pafo-africa.org/enso-workshop/" target="_blank" rel="noopener noreferrer"')
-        self.assertContains(response, 'href="https://www.icpac.net/enso-briefing/" target="_blank" rel="noopener noreferrer"')
-        self.assertNotContains(response, f'href="{partner_event.url}"')
-        self.assertNotContains(response, f'href="{partner_news.url}"')
+        self.assertTrue(ENSOPartnerActivity._meta.get_field("image").blank)
+        self.assertEqual(str(partner_activity), partner_activity.title)
 
     def test_related_updates_are_paginated_three_per_page(self):
         news_index = NewsIndexPageFactory(parent=self.home)
@@ -189,10 +177,9 @@ class ElNinoPageTests(WagtailPageTestCase):
         form = NewsPage.get_edit_handler().get_form_class()
 
         self.assertIn("is_el_nino_related", form.base_fields)
-        self.assertIn("enso_host_organisation", form.base_fields)
-        self.assertIn("enso_external_url", form.base_fields)
 
     def test_el_nino_editor_exposes_explainer_image(self):
         form = type(self.page).get_edit_handler().get_form_class()
 
         self.assertIn("explainer_image", form.base_fields)
+        self.assertIn("partner_activities", form.formsets)
