@@ -6,7 +6,7 @@
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'products/css/product.css' %}">
   <link rel="stylesheet" href="{% static 'css/publication.css' %}">
-  <link rel="stylesheet" href="{% static 'products/css/el_nino.css' %}?v=3.1">
+  <link rel="stylesheet" href="{% static 'products/css/el_nino.css' %}?v=3.2">
 {% endblock %}
 
 {% block content %}
@@ -24,13 +24,13 @@
       </div>
 
       <aside class="enso-hero-bulletin" aria-labelledby="latest-bulletin-heading">
-        <h2 id="latest-bulletin-heading">{% translate "Latest ENSO Bulletin" %}</h2>
+        <h2 id="latest-bulletin-heading">{% translate "Latest El Niño Bulletin" %}</h2>
         {% if latest_bulletin %}
           <div class="enso-hero-bulletin__body">
-            <a class="enso-hero-bulletin__cover" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}" aria-label="{% translate 'View latest ENSO bulletin' %}">
+            <a class="enso-hero-bulletin__cover" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}" aria-label="{% translate 'View latest El Niño bulletin' %}">
               {% if latest_bulletin.products_listing_image %}
                 {% image latest_bulletin.products_listing_image fill-180x220 as bulletin_cover %}
-                <img src="{{ bulletin_cover.url }}" alt="{% translate 'ENSO bulletin cover preview' %}">
+                <img src="{{ bulletin_cover.url }}" alt="{% translate 'El Niño bulletin cover preview' %}">
               {% else %}
                 <div class="enso-cover-placeholder" aria-hidden="true"><span>ENSO</span><small>AFRICA</small></div>
               {% endif %}
@@ -145,13 +145,13 @@
   <section class="enso-archive section" aria-labelledby="bulletin-archive-heading">
     <div class="container">
       <p class="enso-section-label">{% translate "Previous editions" %}</p>
-      <h2 id="bulletin-archive-heading">{% translate "Previous ENSO bulletins" %}</h2>
+      <h2 id="bulletin-archive-heading">{% translate "Previous El Niño bulletins" %}</h2>
       {% if products.paginator.count %}
         {% include "products/product_list_include.html" with products=products %}
       {% else %}
         <div class="enso-empty enso-archive-empty">
           <h3>{% translate "No previous editions yet" %}</h3>
-          <p>{% translate "Earlier monthly ENSO bulletins will appear here as new issues are published." %}</p>
+          <p>{% translate "Earlier monthly El Niño bulletins will appear here as new issues are published." %}</p>
         </div>
       {% endif %}
     </div>

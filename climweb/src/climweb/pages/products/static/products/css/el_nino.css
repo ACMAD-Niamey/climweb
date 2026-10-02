@@ -104,13 +104,13 @@
 .enso-events__heading { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-bottom: 2rem; }
 .enso-events__heading h2 { margin: 0; color: #123c36; font-size: clamp(1.55rem, 3vw, 2.25rem); }
 .enso-events__heading > p { max-width: 520px; margin: 0; color: #526b66; line-height: 1.65; }
-.enso-events__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; }
-.enso-event-card { overflow: hidden; border: 1px solid #d7e3dc; border-radius: 10px; background: #fff; box-shadow: 0 10px 26px rgba(15, 62, 54, .06); }
-.enso-event-card__image { display: block; height: 180px; background: #dce8e3; }
+.enso-events__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 390px; gap: 1.5rem; }
+.enso-event-card { display: flex; flex-direction: column; height: 100%; overflow: hidden; border: 1px solid #d7e3dc; border-radius: 10px; background: #fff; box-shadow: 0 10px 26px rgba(15, 62, 54, .06); }
+.enso-event-card__image { display: block; flex: 0 0 180px; height: 180px; overflow: hidden; background: #dce8e3; }
 .enso-event-card__image img { width: 100%; height: 100%; object-fit: cover; }
-.enso-event-card--partner { min-height: 300px; }
-.enso-event-card--partner .enso-event-card__image { width: 100%; height: 100%; }
-.enso-event-card--partner .enso-event-card__image img { object-fit: cover; }
+.enso-event-card--partner { min-height: 0; }
+.enso-event-card--partner .enso-event-card__image { width: 100%; height: 100%; flex-basis: 100%; }
+.enso-event-card--partner .enso-event-card__image img { object-fit: cover; object-position: top center; }
 .enso-event-card__placeholder { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(145deg, #07564f, #0c8378); color: #fff; }
 .enso-event-card__placeholder span { font-size: 2.3rem; font-weight: 800; line-height: 1; }
 .enso-event-card__placeholder small { margin-top: .35rem; letter-spacing: .16em; text-transform: uppercase; }
@@ -161,8 +161,8 @@
   .enso-events { padding-block: 3.5rem; }
   .enso-events__heading { display: block; }
   .enso-events__heading > p { margin-top: 1rem; }
-  .enso-events__grid { grid-template-columns: 1fr; }
-  .enso-event-card { display: grid; grid-template-columns: 112px minmax(0, 1fr); }
+  .enso-events__grid { grid-template-columns: 1fr; grid-auto-rows: auto; }
+  .enso-event-card { display: grid; grid-template-columns: 112px minmax(0, 1fr); height: auto; }
   .enso-event-card--partner { display: block; min-height: 0; aspect-ratio: 16 / 9; }
   .enso-event-card__image { height: 100%; min-height: 150px; }
   .enso-event-card--partner .enso-event-card__image { height: 100%; min-height: 0; }
