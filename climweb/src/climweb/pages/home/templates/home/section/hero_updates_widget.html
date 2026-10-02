@@ -18,7 +18,7 @@
           <div class="hero-product-body hero-update-body">
             {% if update.date %}<p class="hero-update-date"><time datetime="{{ update.date|date:'c' }}">{{ update.date|date:"d M Y" }}</time>{% if update.end_date %} – <time datetime="{{ update.end_date|date:'c' }}">{{ update.end_date|date:"d M Y" }}</time>{% endif %}</p>{% endif %}
             <h2><a href="{{ update.url }}">{{ update.title }}</a></h2>
-            <a class="hero-product-primary hero-update-link" href="{{ update.url }}">
+            <a class="hero-product-primary hero-update-link" href="{{ update.cta_url|default:update.url }}">
               {{ update.cta_label }}
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
             </a>

@@ -918,6 +918,14 @@ class HomePage(MetadataPageMixin, Page):
             ).first()
             page_url = el_nino_page.get_url(request=request)
             if page_url:
+                bulletin_url = latest_bulletin.get_url(request=request) if latest_bulletin else page_url
+                if latest_bulletin:
+                    for product_block in latest_bulletin.products:
+                        if product_block.block_type == "document_product":
+                            document = product_block.value.get("document")
+                            if document:
+                                bulletin_url = document.url
+                                break
                 slides_by_kind["el_nino"] = {
                     "id": f"el-nino-{el_nino_page.pk}",
                     "title": latest_bulletin.title if latest_bulletin else el_nino_page.title,
@@ -931,6 +939,7 @@ class HomePage(MetadataPageMixin, Page):
                     ) or el_nino_page.get_meta_image(),
                     "image_alt": _("ENSO bulletin for Africa"),
                     "url": canonical_public_page_url(page_url),
+                    "cta_url": canonical_public_page_url(bulletin_url),
                 }
 
         summer_school_index = None
@@ -959,6 +968,7 @@ class HomePage(MetadataPageMixin, Page):
                         featured_edition.featured_display_image if featured_edition else None
                     ) or summer_school_index.get_meta_image(),
                     "url": canonical_public_page_url(page_url),
+                    "cta_url": "https://summerschool.acmad.org/",
                 }
 
         if self.hero_updates_mode == "manual":

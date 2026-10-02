@@ -190,19 +190,29 @@ class HeroUpdatesTests(WagtailPageTestCase):
         html = render_to_string("home/section/hero_updates_widget.html", {"hero_updates": []})
         self.assertEqual(html.strip(), "")
 
-    def test_latest_el_nino_bulletin_links_to_landing_page(self):
+    def test_enso_slide_button_links_directly_to_latest_bulletin(self):
         product_index = ProductIndexPageFactory(parent=self.home)
         el_nino_page = ElNinoPageFactory(parent=product_index)
         older = ProductItemPageFactory(parent=el_nino_page, title="El Niño Bulletin — July")
-        latest = ProductItemPageFactory(parent=el_nino_page, title="El Niño Bulletin — August")
+        latest = ProductItemPageFactory(
+            parent=el_nino_page,
+            title="El Niño Bulletin — August",
+            products__0__document_product__date=timezone.localdate(),
+        )
         type(older).objects.filter(pk=older.pk).update(date=timezone.localdate() - timedelta(days=35))
         type(latest).objects.filter(pk=latest.pk).update(date=timezone.localdate())
+        document_url = next(
+            block.value.get("document").url
+            for block in latest.products
+            if block.block_type == "document_product"
+        )
 
         slides = self.home.get_hero_updates()
 
         self.assertEqual(slides[0]["kind"], "el_nino")
         self.assertEqual(slides[0]["title"], latest.title)
         self.assertEqual(slides[0]["url"], el_nino_page.url)
+        self.assertEqual(slides[0]["cta_url"], document_url)
 
     def test_carousel_order_is_news_el_nino_then_summer_school(self):
         latest_news = self.news(-1)
@@ -221,6 +231,7 @@ class HeroUpdatesTests(WagtailPageTestCase):
         self.assertEqual(slides[0]["id"], latest_news.pk)
         self.assertEqual(slides[1]["url"], el_nino_page.url)
         self.assertEqual(slides[2]["url"], summer_school_index.url)
+        self.assertEqual(slides[2]["cta_url"], "https://summerschool.acmad.org/")
         self.assertEqual(slides[2]["title"], summer_school.hero_heading)
 
     def test_programme_toggles_hide_el_nino_and_summer_school(self):
@@ -235,7 +246,7 @@ class HeroUpdatesTests(WagtailPageTestCase):
         self.assertEqual(slides, [])
 
     @override_settings(IS_METEOROLOGICAL=True)
-    def test_homepage_renders_enso_feature_before_summer_school(self):
+    def test_homepage_renders_enso_feature_before_dg_message(self):
         product_index = ProductIndexPageFactory(parent=self.home)
         enso_page = ElNinoPageFactory(parent=product_index)
         summer_school_index = SummerSchoolIndexPageFactory(parent=self.home)
@@ -253,7 +264,7 @@ class HeroUpdatesTests(WagtailPageTestCase):
         self.assertContains(response, enso_page.url)
         self.assertLess(
             response.content.index(b'id="home-enso-title"'),
-            response.content.index(b'<div class="home-summer-school-banner">'),
+            response.content.index(b'class="section dg-message-section"'),
         )
 
     @override_settings(IS_METEOROLOGICAL=True)
