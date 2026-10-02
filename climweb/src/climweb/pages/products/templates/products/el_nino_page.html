@@ -29,8 +29,8 @@
           <div class="enso-hero-bulletin__body">
             <a class="enso-hero-bulletin__cover" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}" aria-label="{% translate 'View latest El Niño bulletin' %}">
               {% if latest_bulletin.products_listing_image %}
-                {% image latest_bulletin.products_listing_image fill-180x220 as bulletin_cover %}
-                <img src="{{ bulletin_cover.url }}" alt="{% translate 'El Niño bulletin cover preview' %}">
+                {% image latest_bulletin.products_listing_image fill-640x360 as bulletin_thumbnail %}
+                <img src="{{ bulletin_thumbnail.url }}" alt="{% translate 'El Niño bulletin thumbnail' %}">
               {% else %}
                 <div class="enso-cover-placeholder" aria-hidden="true"><span>ENSO</span><small>AFRICA</small></div>
               {% endif %}
