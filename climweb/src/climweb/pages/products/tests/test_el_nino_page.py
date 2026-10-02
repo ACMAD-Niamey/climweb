@@ -20,14 +20,17 @@ class ElNinoPageTests(WagtailPageTestCase):
         response = self.client.get(self.page.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "ENSO in Africa")
-        self.assertContains(response, "What ACMAD is doing")
+        self.assertContains(response, "During El Niño")
+        self.assertContains(response, "does not produce the same outcome everywhere")
         self.assertContains(response, "How ACMAD supports the continent")
         self.assertNotContains(response, "A continental perspective")
         self.assertNotContains(response, "Read the latest bulletin")
         self.assertContains(response, 'class="enso-intro-copy"')
         self.assertContains(response, 'class="enso-hero-bulletin"')
         self.assertContains(response, 'class="enso-explainer"')
+        self.assertContains(response, 'class="enso-explanation"')
+        self.assertNotContains(response, 'class="enso-context-card')
+        self.assertNotContains(response, "What ACMAD is doing")
         self.assertNotContains(response, 'class="enso-intro-bulletin"')
         self.assertLess(
             response.content.index(b'class="enso-explainer"'),

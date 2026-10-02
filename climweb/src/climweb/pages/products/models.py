@@ -348,20 +348,22 @@ class ElNinoPage(ProductPage):
     africa_context = RichTextField(
         features=SUMMARY_RICHTEXT_FEATURES,
         default=(
-            "<p>ENSO can shift rainfall and temperature patterns across Africa through its El Niño, La Niña "
-            "and neutral phases. The effects vary by region and season and can influence water availability, "
-            "agriculture, food security, health, energy and disaster risk.</p>"
+            "<p>ENSO develops through interactions between the tropical Pacific Ocean and the atmosphere. "
+            "During El Niño, surface waters in the central and eastern Pacific become warmer than average and "
+            "trade winds often weaken. During La Niña, the same waters become cooler than average and trade winds "
+            "strengthen. Between these phases, conditions are described as neutral.</p>"
         ),
-        verbose_name=_("ENSO in Africa"),
+        verbose_name=_("ENSO explanation — phases"),
     )
     acmad_response = RichTextField(
         features=SUMMARY_RICHTEXT_FEATURES,
         default=(
-            "<p>ACMAD monitors ocean and atmosphere conditions, assesses likely impacts across African "
-            "regions, and works with Regional Climate Centres and National Meteorological and Hydrological "
-            "Services to turn the latest science into actionable climate information.</p>"
+            "<p>These ocean and atmosphere changes can reorganize tropical rainfall and influence circulation "
+            "far beyond the Pacific. Across Africa, the signal varies by region and season, so ENSO does not "
+            "produce the same outcome everywhere. Its effects are interpreted alongside other climate drivers "
+            "and local conditions when assessing possible changes in rainfall, temperature, drought and flood risk.</p>"
         ),
-        verbose_name=_("What ACMAD is doing"),
+        verbose_name=_("ENSO explanation — African impacts"),
     )
     bulletin_intro = models.TextField(
         max_length=500,

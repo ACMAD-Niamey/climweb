@@ -89,11 +89,9 @@
 .enso-explainer__mark span:nth-child(2) { height: 70px; }
 .enso-explainer__mark span:nth-child(3) { height: 54px; background: #d89431; }
 
-.enso-context-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 3.5rem; }
-.enso-context-card { position: relative; padding: 2.25rem; border: 1px solid #dce5e0; border-radius: 10px; background: #fff; }
-.enso-context-card--accent { background: #e7f0ea; }
-.enso-context-card h2 { margin-bottom: 1rem; color: #123c36; font-size: 1.45rem; }
-.enso-card-number { position: absolute; top: 1.5rem; right: 1.7rem; color: #d89431; font-size: .8rem; font-weight: 800; }
+.enso-explanation { display: grid; grid-template-columns: minmax(0, 1fr) minmax(420px, .95fr); gap: 4rem; margin-top: 2rem; }
+.enso-explanation__copy { grid-column: 2; padding-top: 1.75rem; border-top: 1px solid #dce5e0; }
+.enso-explanation__copy .enso-prose + .enso-prose { margin-top: 1.25rem; }
 
 .enso-actions { padding-block: 4.5rem; background: #073e3a; color: #fff; }
 .enso-actions h2 { margin-bottom: 2rem; color: #fff; }
@@ -134,6 +132,8 @@
 
 @media (max-width: 850px) {
   .enso-intro-grid { grid-template-columns: 1fr; gap: 2rem; }
+  .enso-explanation { grid-template-columns: 1fr; gap: 0; }
+  .enso-explanation__copy { grid-column: 1; }
   .enso-action-grid { grid-template-columns: 1fr 1fr; }
   .enso-events__grid { grid-template-columns: 1fr 1fr; }
 }
@@ -155,7 +155,7 @@
 @media (max-width: 640px) {
   .enso-overview { padding: 3.5rem 0 2rem; }
   .enso-archive { padding-block: 3.5rem; }
-  .enso-context-grid, .enso-action-grid { grid-template-columns: 1fr; }
+  .enso-action-grid { grid-template-columns: 1fr; }
   .enso-explainer { min-height: 300px; }
   .enso-events { padding-block: 3.5rem; }
   .enso-events__heading { display: block; }

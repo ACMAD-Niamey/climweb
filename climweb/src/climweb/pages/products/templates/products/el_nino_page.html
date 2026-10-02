@@ -66,17 +66,11 @@
         </div>
       </div>
 
-      <div class="enso-context-grid">
-        <article class="enso-context-card">
-          <span class="enso-card-number">01</span>
-          <h2>{% translate "ENSO in Africa" %}</h2>
+      <div class="enso-explanation" aria-label="{% translate 'More about ENSO' %}">
+        <div class="enso-explanation__copy">
           <div class="enso-prose">{{ page.africa_context|richtext }}</div>
-        </article>
-        <article class="enso-context-card enso-context-card--accent">
-          <span class="enso-card-number">02</span>
-          <h2>{% translate "What ACMAD is doing" %}</h2>
           <div class="enso-prose">{{ page.acmad_response|richtext }}</div>
-        </article>
+        </div>
       </div>
     </div>
   </section>
