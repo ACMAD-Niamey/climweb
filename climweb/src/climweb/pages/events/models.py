@@ -322,8 +322,8 @@ class EventPage(MetadataPageMixin, Page):
 
     is_el_nino_related = models.BooleanField(
         default=False,
-        help_text=_("Show this event in the related events section of the El Niño page."),
-        verbose_name=_("El Niño related event"),
+        help_text=_("Show this event in the ENSO related activities section."),
+        verbose_name=_("ENSO related activity"),
     )
     
     panelists = StreamField([

@@ -475,8 +475,8 @@ class HomePage(MetadataPageMixin, Page):
         help_text=_("Event page to show after the news slide when Update selection is Manual."),
     )
     hero_show_el_nino = models.BooleanField(
-        default=True, verbose_name=_("Show El Niño"),
-        help_text=_("Include the El Niño programme slide in the carousel."),
+        default=True, verbose_name=_("Show ENSO"),
+        help_text=_("Include the ENSO programme slide in the carousel."),
     )
     hero_show_summer_school = models.BooleanField(
         default=True, verbose_name=_("Show Summer School"),
@@ -485,7 +485,7 @@ class HomePage(MetadataPageMixin, Page):
     hero_carousel_order = StreamField([
         ('news', blocks.StaticBlock(label=_("News"), admin_text=_("News slide"))),
         ('event', blocks.StaticBlock(label=_("Event"), admin_text=_("Event slide"))),
-        ('el_nino', blocks.StaticBlock(label=_("El Niño"), admin_text=_("El Niño slide"))),
+        ('el_nino', blocks.StaticBlock(label=_("ENSO"), admin_text=_("ENSO slide"))),
         ('summer_school', blocks.StaticBlock(label=_("Summer School"), admin_text=_("Summer School slide"))),
     ], blank=True, use_json_field=True, default=default_hero_carousel_order, max_num=4,
         block_counts={
@@ -497,6 +497,12 @@ class HomePage(MetadataPageMixin, Page):
         verbose_name=_("Slide order"),
         help_text=_("In Manual mode, drag these items into the order they should appear. "
                     "Missing or disabled slides are skipped."))
+
+    show_enso_section = models.BooleanField(
+        default=True,
+        verbose_name=_("Show ENSO section"),
+        help_text=_("Show the ENSO feature section on the homepage when a live ENSO page is available."),
+    )
 
     services_strip = StreamField([
         ('item', blocks.StructBlock([
@@ -611,6 +617,9 @@ class HomePage(MetadataPageMixin, Page):
             FieldPanel('hero_show_summer_school'),
             FieldPanel('hero_carousel_order'),
         ], heading=_("Hero Carousel")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
+        MultiFieldPanel([
+            FieldPanel('show_enso_section'),
+        ], heading=_("ENSO Section")),
         MultiFieldPanel([
             FieldPanel('services_strip'),
         ], heading=_("Services Strip")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
@@ -814,7 +823,49 @@ class HomePage(MetadataPageMixin, Page):
         context["regional_climate_centres"] = RegionalClimateCentre.objects.filter(is_active=True)
         if settings.IS_METEOROLOGICAL:
             context["hero_updates"] = self.get_hero_updates(request)
+        context["enso_homepage"] = self.get_enso_homepage_feature(request)
         return context
+
+    def get_enso_homepage_feature(self, request=None):
+        """Build the homepage ENSO feature from the live ENSO landing page."""
+        if not self.show_enso_section:
+            return None
+
+        enso_page = ElNinoPage.objects.live().public().descendant_of(self).filter(
+            locale_id=self.locale_id,
+        ).first()
+        if not enso_page:
+            return None
+
+        page_url = enso_page.get_url(request=request)
+        if not page_url:
+            return None
+
+        latest_bulletin = ProductItemPage.objects.live().public().child_of(enso_page).order_by(
+            "-date", "-first_published_at",
+        ).first()
+        bulletin_url = latest_bulletin.get_url(request=request) if latest_bulletin else None
+        if latest_bulletin:
+            for product_block in latest_bulletin.products:
+                if product_block.block_type == "document_product":
+                    document = product_block.value.get("document")
+                    if document:
+                        bulletin_url = document.url
+                        break
+
+        summary = _(
+            "ENSO is a recurring interaction between the tropical Pacific Ocean and the atmosphere. "
+            "Its El Niño, La Niña and neutral phases can shift rainfall and temperature patterns across "
+            "Africa, influencing water, agriculture, health, energy and disaster preparedness."
+        )
+        return {
+            "page": enso_page,
+            "url": canonical_public_page_url(page_url),
+            "image": enso_page.explainer_image or enso_page.introduction_image or enso_page.get_meta_image(),
+            "summary": summary,
+            "latest_bulletin": latest_bulletin,
+            "bulletin_url": canonical_public_page_url(bulletin_url),
+        }
 
     def get_hero_updates(self, request=None):
         """Build the selected updates followed by the enabled programme slides."""
@@ -867,18 +918,28 @@ class HomePage(MetadataPageMixin, Page):
             ).first()
             page_url = el_nino_page.get_url(request=request)
             if page_url:
+                bulletin_url = latest_bulletin.get_url(request=request) if latest_bulletin else page_url
+                if latest_bulletin:
+                    for product_block in latest_bulletin.products:
+                        if product_block.block_type == "document_product":
+                            document = product_block.value.get("document")
+                            if document:
+                                bulletin_url = document.url
+                                break
                 slides_by_kind["el_nino"] = {
                     "id": f"el-nino-{el_nino_page.pk}",
                     "title": latest_bulletin.title if latest_bulletin else el_nino_page.title,
                     "kind": "el_nino",
-                    "badge": _("El Niño"),
-                    "cta_label": _("Visit El Niño page"),
+                    "badge": _("ENSO"),
+                    "cta_label": _("Visit ENSO page"),
                     "date": latest_bulletin.date if latest_bulletin else None,
                     "end_date": None,
                     "image": (
                         latest_bulletin.get_meta_image() if latest_bulletin else None
                     ) or el_nino_page.get_meta_image(),
+                    "image_alt": _("ENSO bulletin for Africa"),
                     "url": canonical_public_page_url(page_url),
+                    "cta_url": canonical_public_page_url(bulletin_url),
                 }
 
         summer_school_index = None
@@ -907,6 +968,7 @@ class HomePage(MetadataPageMixin, Page):
                         featured_edition.featured_display_image if featured_edition else None
                     ) or summer_school_index.get_meta_image(),
                     "url": canonical_public_page_url(page_url),
+                    "cta_url": "https://summerschool.acmad.org/",
                 }
 
         if self.hero_updates_mode == "manual":
