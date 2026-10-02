@@ -70,7 +70,7 @@
 .enso-hero-bulletin__button { width: 100%; min-height: 2.1rem; font-size: .75rem; }
 .enso-hero-bulletin__empty { margin: 0; color: #526b66; font-size: .85rem; }
 
-.enso-overview { padding: 5rem 0 2.5rem; }
+.enso-overview { padding: 3rem 0 2.5rem; }
 .enso-intro-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(420px, .95fr); gap: 4rem; align-items: start; }
 .enso-intro-grid h2, .enso-actions h2, .enso-bulletin h2, .enso-archive h2 { color: #123c36; font-size: clamp(1.8rem, 4vw, 3rem); }
 .enso-intro-copy h2 { font-size: clamp(1.55rem, 3vw, 2.25rem); }
@@ -154,7 +154,7 @@
 }
 
 @media (max-width: 640px) {
-  .enso-overview { padding: 3.5rem 0 2rem; }
+  .enso-overview { padding: 2.25rem 0 2rem; }
   .enso-archive { padding-block: 3.5rem; }
   .enso-action-grid { grid-template-columns: 1fr; }
   .enso-explainer { min-height: 300px; }
