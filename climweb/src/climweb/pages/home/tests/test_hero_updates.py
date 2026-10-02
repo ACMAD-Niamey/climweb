@@ -221,7 +221,8 @@ class HeroUpdatesTests(WagtailPageTestCase):
         self.assertEqual(slides[0]["url"], el_nino_page.url)
         self.assertEqual(slides[0]["cta_url"], document_url)
         self.assertEqual(slides[0]["cta_label"], "View Bulletin")
-        self.assertEqual(slides[0]["image"], enso_intro_image)
+        self.assertEqual(slides[0]["image"], bulletin_thumbnail)
+        self.assertNotEqual(slides[0]["image"], enso_intro_image)
 
     def test_carousel_order_is_news_el_nino_then_summer_school(self):
         latest_news = self.news(-1)

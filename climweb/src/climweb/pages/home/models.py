@@ -939,11 +939,13 @@ class HomePage(MetadataPageMixin, Page):
                     "date": latest_bulletin.date if latest_bulletin else None,
                     "end_date": None,
                     "image": (
+                        latest_bulletin.products_listing_image if latest_bulletin else None
+                    ) or (
                         el_nino_page.explainer_image
                         or el_nino_page.introduction_image
                         or el_nino_page.get_meta_image()
                     ),
-                    "image_alt": _("ENSO conditions and implications for Africa"),
+                    "image_alt": _("El Niño bulletin for Africa"),
                     "url": canonical_public_page_url(page_url),
                     "cta_url": canonical_public_page_url(bulletin_url),
                 }
