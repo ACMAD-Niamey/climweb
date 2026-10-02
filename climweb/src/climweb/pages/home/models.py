@@ -853,10 +853,6 @@ class HomePage(MetadataPageMixin, Page):
                         bulletin_url = document.url
                         break
 
-        bulletin_thumbnail = (
-            latest_bulletin.products_listing_image if latest_bulletin else None
-        )
-
         summary = _(
             "ENSO is a recurring interaction between the tropical Pacific Ocean and the atmosphere. "
             "Its El Niño, La Niña and neutral phases can shift rainfall and temperature patterns across "
@@ -866,8 +862,7 @@ class HomePage(MetadataPageMixin, Page):
             "page": enso_page,
             "url": canonical_public_page_url(page_url),
             "image": (
-                bulletin_thumbnail
-                or enso_page.explainer_image
+                enso_page.explainer_image
                 or enso_page.introduction_image
                 or enso_page.get_meta_image()
             ),
@@ -944,11 +939,11 @@ class HomePage(MetadataPageMixin, Page):
                     "date": latest_bulletin.date if latest_bulletin else None,
                     "end_date": None,
                     "image": (
-                        latest_bulletin.products_listing_image if latest_bulletin else None
-                    ) or (
-                        latest_bulletin.get_meta_image() if latest_bulletin else None
-                    ) or el_nino_page.get_meta_image(),
-                    "image_alt": _("El Niño bulletin for Africa"),
+                        el_nino_page.explainer_image
+                        or el_nino_page.introduction_image
+                        or el_nino_page.get_meta_image()
+                    ),
+                    "image_alt": _("ENSO conditions and implications for Africa"),
                     "url": canonical_public_page_url(page_url),
                     "cta_url": canonical_public_page_url(bulletin_url),
                 }
