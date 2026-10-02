@@ -937,7 +937,7 @@ class HomePage(MetadataPageMixin, Page):
                     "image": (
                         latest_bulletin.get_meta_image() if latest_bulletin else None
                     ) or el_nino_page.get_meta_image(),
-                    "image_alt": _("ENSO bulletin for Africa"),
+                    "image_alt": _("El Niño bulletin for Africa"),
                     "url": canonical_public_page_url(page_url),
                     "cta_url": canonical_public_page_url(bulletin_url),
                 }
