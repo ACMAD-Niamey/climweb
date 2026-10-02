@@ -20,7 +20,7 @@ class ElNinoPageTests(WagtailPageTestCase):
         response = self.client.get(self.page.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "El Niño in Africa")
+        self.assertContains(response, "ENSO in Africa")
         self.assertContains(response, "What ACMAD is doing")
         self.assertContains(response, "How ACMAD supports the continent")
         self.assertNotContains(response, "A continental perspective")
@@ -33,10 +33,10 @@ class ElNinoPageTests(WagtailPageTestCase):
             response.content.index(b'class="enso-explainer"'),
             response.content.index(b'class="enso-intro-copy"'),
         )
-        self.assertContains(response, "Latest Elnino Bulletin")
+        self.assertContains(response, "Latest ENSO Bulletin")
         self.assertNotContains(response, "Updated monthly")
         self.assertNotContains(response, "The monthly bulletin brings together")
-        self.assertContains(response, "Previous El Niño bulletins")
+        self.assertContains(response, "Previous ENSO bulletins")
         self.assertContains(response, "No previous editions yet")
 
     def test_latest_monthly_bulletin_is_featured(self):
@@ -66,7 +66,7 @@ class ElNinoPageTests(WagtailPageTestCase):
         )
         self.assertNotContains(response, "Download PDF")
         self.assertContains(response, older.title)
-        self.assertContains(response, "Previous El Niño bulletins")
+        self.assertContains(response, "Previous ENSO bulletins")
 
     def test_only_related_published_news_and_events_appear(self):
         events_index = EventIndexPageFactory(parent=self.home)
@@ -102,7 +102,7 @@ class ElNinoPageTests(WagtailPageTestCase):
 
         response = self.client.get(self.page.url)
 
-        self.assertContains(response, "El Niño news and events")
+        self.assertContains(response, "ENSO related activities")
         self.assertContains(response, related.title)
         self.assertContains(response, related_news.title)
         self.assertNotContains(response, related.listing_summary)

@@ -10,6 +10,7 @@
     <link href="{% static 'css/hero.css' %}" type="text/css" rel="stylesheet"/>
     <link rel="stylesheet" type="text/css" href="{% static 'css/partners.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'css/project_detail.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/enso_feature.css' %}">
     {% if IS_METEOROLOGICAL %}
         {# met homepage redesign — card row + services strip styles #}
         <link rel="stylesheet" href="{% static 'css/home_redesign.css' %}">
@@ -55,6 +56,8 @@
             {% include 'home/section/services_include.html' %}
             {% include 'home/section/updates_include.html' %}
         {% endif %}
+
+        {% include 'home/section/enso_feature.html' %}
 
         {% include 'home/section/summer_school_include.html' %}
 

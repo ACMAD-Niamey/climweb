@@ -9,7 +9,7 @@
           <div class="hero-update-image">
             {% if update.image %}
               {% image update.image fill-820x400 as update_image %}
-              <img src="{{ update_image.url }}" alt="{{ update.image.title }}" width="{{ update_image.width }}" height="{{ update_image.height }}" decoding="async">
+              <img src="{{ update_image.url }}" alt="{{ update.image_alt|default:update.image.title }}" width="{{ update_image.width }}" height="{{ update_image.height }}" decoding="async">
             {% else %}
               <div class="hero-update-placeholder" aria-hidden="true"><span>ACMAD</span><span>{% translate "Climate knowledge for Africa" %}</span></div>
             {% endif %}

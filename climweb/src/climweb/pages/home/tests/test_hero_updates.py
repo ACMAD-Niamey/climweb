@@ -99,6 +99,7 @@ class HeroUpdatesTests(WagtailPageTestCase):
         self.assertIn("hero_show_summer_school", form.base_fields)
         self.assertIn("hero_carousel_order", form.base_fields)
         self.assertIn("hero_featured_products", form.base_fields)
+        self.assertIn("show_enso_section", form.base_fields)
 
     def test_excludes_drafts_and_inherited_private_pages(self):
         self.news(-1, live=False)
@@ -232,3 +233,35 @@ class HeroUpdatesTests(WagtailPageTestCase):
         slides = self.home.get_hero_updates()
 
         self.assertEqual(slides, [])
+
+    @override_settings(IS_METEOROLOGICAL=True)
+    def test_homepage_renders_enso_feature_before_summer_school(self):
+        product_index = ProductIndexPageFactory(parent=self.home)
+        enso_page = ElNinoPageFactory(parent=product_index)
+        summer_school_index = SummerSchoolIndexPageFactory(parent=self.home)
+        SummerSchoolPageFactory(
+            parent=summer_school_index,
+            featured=True,
+            is_visible_on_homepage=True,
+        )
+
+        response = self.client.get(self.home.url)
+
+        self.assertContains(response, 'id="home-enso-title"')
+        self.assertContains(response, "ENSO in Africa")
+        self.assertContains(response, "Explore ENSO in Africa")
+        self.assertContains(response, enso_page.url)
+        self.assertLess(
+            response.content.index(b'id="home-enso-title"'),
+            response.content.index(b'<div class="home-summer-school-banner">'),
+        )
+
+    @override_settings(IS_METEOROLOGICAL=True)
+    def test_homepage_enso_feature_can_be_hidden(self):
+        product_index = ProductIndexPageFactory(parent=self.home)
+        ElNinoPageFactory(parent=product_index)
+        type(self.home).objects.filter(pk=self.home.pk).update(show_enso_section=False)
+
+        response = self.client.get(self.home.url)
+
+        self.assertNotContains(response, 'id="home-enso-title"')

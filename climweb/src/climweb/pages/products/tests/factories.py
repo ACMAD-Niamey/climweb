@@ -96,8 +96,8 @@ class ElNinoPageFactory(ProductPageFactory):
     class Meta:
         model = models.ElNinoPage
 
-    title = "El Niño in Africa"
-    introduction_title = "Understanding El Niño and its implications for Africa"
+    title = "ENSO in Africa"
+    introduction_title = "Understanding ENSO and its implications for Africa"
 
 
 class ProductItemImageContentBlockFactory(wagtail_factories.StructBlockFactory):

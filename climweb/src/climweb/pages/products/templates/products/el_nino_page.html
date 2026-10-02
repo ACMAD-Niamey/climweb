@@ -20,17 +20,17 @@
       <div class="enso-hero__copy">
         <p class="enso-kicker">{% translate "ACMAD climate intelligence" %}</p>
         <h1>{{ page.title }}</h1>
-        <p>{% translate "El Niño monitoring, outlooks and impact information for Africa" %}</p>
+        <p>{% translate "ENSO monitoring, outlooks and impact information for Africa" %}</p>
       </div>
 
       <aside class="enso-hero-bulletin" aria-labelledby="latest-bulletin-heading">
-        <h2 id="latest-bulletin-heading">{% translate "Latest Elnino Bulletin" %}</h2>
+        <h2 id="latest-bulletin-heading">{% translate "Latest ENSO Bulletin" %}</h2>
         {% if latest_bulletin %}
           <div class="enso-hero-bulletin__body">
-            <a class="enso-hero-bulletin__cover" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}" aria-label="{% translate 'View latest El Niño bulletin' %}">
+            <a class="enso-hero-bulletin__cover" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}" aria-label="{% translate 'View latest ENSO bulletin' %}">
               {% if latest_bulletin.products_listing_image %}
                 {% image latest_bulletin.products_listing_image fill-180x220 as bulletin_cover %}
-                <img src="{{ bulletin_cover.url }}" alt="{% translate 'El Niño bulletin cover preview' %}">
+                <img src="{{ bulletin_cover.url }}" alt="{% translate 'ENSO bulletin cover preview' %}">
               {% else %}
                 <div class="enso-cover-placeholder" aria-hidden="true"><span>ENSO</span><small>AFRICA</small></div>
               {% endif %}
@@ -47,14 +47,14 @@
   <section class="enso-overview section">
     <div class="container">
       <div class="enso-intro-grid">
-        <aside class="enso-explainer" aria-label="{% translate 'El Niño explainer image' %}">
+        <aside class="enso-explainer" aria-label="{% translate 'ENSO explainer image' %}">
           {% if page.explainer_image %}
             {% image page.explainer_image width-900 as explainer_image %}
-            <img src="{{ explainer_image.url }}" alt="{{ page.explainer_image.title }}">
+            <img src="{{ explainer_image.url }}" alt="{% translate 'ENSO conditions and implications for Africa' %}">
           {% else %}
             <div class="enso-explainer__placeholder">
               <div class="enso-explainer__mark" aria-hidden="true"><span></span><span></span><span></span></div>
-              <strong>{% translate "El Niño explained" %}</strong>
+              <strong>{% translate "ENSO explained" %}</strong>
               <p>{% translate "An explanatory image will be added here." %}</p>
             </div>
           {% endif %}
@@ -69,7 +69,7 @@
       <div class="enso-context-grid">
         <article class="enso-context-card">
           <span class="enso-card-number">01</span>
-          <h2>{% translate "El Niño in Africa" %}</h2>
+          <h2>{% translate "ENSO in Africa" %}</h2>
           <div class="enso-prose">{{ page.africa_context|richtext }}</div>
         </article>
         <article class="enso-context-card enso-context-card--accent">
@@ -86,7 +86,7 @@
     <div class="container">
       <p class="enso-section-label">{% translate "Latest updates and engagement" %}</p>
       <div class="enso-events__heading">
-        <h2 id="el-nino-updates-heading">{% translate "El Niño news and events" %}</h2>
+        <h2 id="el-nino-updates-heading">{% translate "ENSO related activities" %}</h2>
         <p>{% translate "News, briefings and regional activities supporting preparedness and climate action across Africa." %}</p>
       </div>
       <div class="enso-events__grid">
@@ -113,7 +113,7 @@
         {% endfor %}
       </div>
       {% if el_nino_updates.paginator.num_pages > 1 %}
-        <nav class="enso-events-pagination" aria-label="{% translate 'El Niño news and events pages' %}">
+        <nav class="enso-events-pagination" aria-label="{% translate 'ENSO related activities pages' %}">
           {% if el_nino_updates.has_previous %}
             <a href="?updates_page={{ el_nino_updates.previous_page_number }}&{{ request.META.QUERY_STRING|remove_param:'updates_page' }}#el-nino-updates-heading">{% translate "Previous" %}</a>
           {% endif %}
@@ -145,13 +145,13 @@
   <section class="enso-archive section" aria-labelledby="bulletin-archive-heading">
     <div class="container">
       <p class="enso-section-label">{% translate "Previous editions" %}</p>
-      <h2 id="bulletin-archive-heading">{% translate "Previous El Niño bulletins" %}</h2>
+      <h2 id="bulletin-archive-heading">{% translate "Previous ENSO bulletins" %}</h2>
       {% if products.paginator.count %}
         {% include "products/product_list_include.html" with products=products %}
       {% else %}
         <div class="enso-empty enso-archive-empty">
           <h3>{% translate "No previous editions yet" %}</h3>
-          <p>{% translate "Earlier monthly El Niño bulletins will appear here as new issues are published." %}</p>
+          <p>{% translate "Earlier monthly ENSO bulletins will appear here as new issues are published." %}</p>
         </div>
       {% endif %}
     </div>

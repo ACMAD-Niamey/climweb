@@ -338,7 +338,7 @@ class ProductPage(BaseProductPage):
 
 
 class ElNinoPage(ProductPage):
-    """Africa-focused El Nino information hub backed by monthly product issues."""
+    """Africa-focused ENSO information hub backed by monthly product issues."""
 
     template = "products/el_nino_page.html"
     parent_page_types = ["products.ProductIndexPage"]
@@ -348,11 +348,11 @@ class ElNinoPage(ProductPage):
     africa_context = RichTextField(
         features=SUMMARY_RICHTEXT_FEATURES,
         default=(
-            "<p>El Niño can shift rainfall and temperature patterns across Africa, with impacts that vary "
-            "by region and season. These changes can affect water availability, agriculture, food security, "
-            "health, energy and disaster risk.</p>"
+            "<p>ENSO can shift rainfall and temperature patterns across Africa through its El Niño, La Niña "
+            "and neutral phases. The effects vary by region and season and can influence water availability, "
+            "agriculture, food security, health, energy and disaster risk.</p>"
         ),
-        verbose_name=_("El Niño in Africa"),
+        verbose_name=_("ENSO in Africa"),
     )
     acmad_response = RichTextField(
         features=SUMMARY_RICHTEXT_FEATURES,
@@ -377,8 +377,8 @@ class ElNinoPage(ProductPage):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="+",
-        verbose_name=_("El Niño explainer image"),
-        help_text=_("Upload the image or infographic that explains El Niño."),
+        verbose_name=_("ENSO explainer image"),
+        help_text=_("Upload the image or infographic that explains ENSO and its phases."),
     )
 
     content_panels = ProductPage.content_panels + [
@@ -389,13 +389,13 @@ class ElNinoPage(ProductPage):
                 FieldPanel("bulletin_intro"),
                 FieldPanel("explainer_image"),
             ],
-            heading=_("El Niño page content"),
+            heading=_("ENSO page content"),
         ),
     ]
 
     class Meta:
-        verbose_name = _("El Niño Page")
-        verbose_name_plural = _("El Niño Pages")
+        verbose_name = _("ENSO Page")
+        verbose_name_plural = _("ENSO Pages")
 
     @cached_property
     def latest_bulletin(self):

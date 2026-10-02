@@ -166,8 +166,8 @@ class NewsPage(MetadataPageMixin, Page):
                                                  verbose_name=_("Is visible on homepage"))
     is_el_nino_related = models.BooleanField(
         default=False,
-        help_text=_("Show this news item in the news and events section of the El Niño page."),
-        verbose_name=_("El Niño related news"),
+        help_text=_("Show this news item in the ENSO related activities section."),
+        verbose_name=_("ENSO related activity"),
     )
     extra_links_heading = models.CharField(max_length=255, blank=True, null=True, verbose_name=_("Extra links heading"))
     
