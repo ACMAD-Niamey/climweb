@@ -78,8 +78,9 @@
 .enso-prose { color: #46635e; line-height: 1.75; }
 .enso-prose p:last-child { margin-bottom: 0; }
 
-.enso-explainer { display: flex; min-height: 380px; overflow: hidden; border: 1px solid #dce5e0; border-radius: 12px; background: #fff; box-shadow: 0 12px 32px rgba(15, 62, 54, .08); }
-.enso-explainer > img { width: 100%; max-height: 520px; object-fit: contain; }
+.enso-explainer { display: flex; flex-direction: column; min-height: 380px; overflow: hidden; margin: 0; border: 1px solid #dce5e0; border-radius: 12px; background: #fff; box-shadow: 0 12px 32px rgba(15, 62, 54, .08); }
+.enso-explainer > img { width: 100%; min-height: 0; max-height: 520px; object-fit: contain; }
+.enso-explainer figcaption { padding: .75rem 1rem .9rem; color: #526b66; font-size: .78rem; line-height: 1.5; }
 .enso-explainer__placeholder { width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; background: linear-gradient(145deg, #e8f2ed, #f8faf8); }
 .enso-explainer__placeholder strong { margin-top: 1.5rem; color: #123c36; font-size: 1.35rem; }
 .enso-explainer__placeholder p { margin: .5rem 0 0; color: #627b75; font-size: .9rem; }
@@ -89,8 +90,8 @@
 .enso-explainer__mark span:nth-child(2) { height: 70px; }
 .enso-explainer__mark span:nth-child(3) { height: 54px; background: #d89431; }
 
-.enso-explanation { margin-top: 2rem; }
-.enso-explanation__copy { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4rem; padding-top: 1.75rem; }
+.enso-explanation { margin-top: 1rem; }
+.enso-explanation__copy { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4rem; }
 
 .enso-actions { padding-block: 4.5rem; background: #073e3a; color: #fff; }
 .enso-actions h2 { margin-bottom: 2rem; color: #fff; }

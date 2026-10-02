@@ -6,7 +6,7 @@
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'products/css/product.css' %}">
   <link rel="stylesheet" href="{% static 'css/publication.css' %}">
-  <link rel="stylesheet" href="{% static 'products/css/el_nino.css' %}?v=2.6">
+  <link rel="stylesheet" href="{% static 'products/css/el_nino.css' %}?v=2.7">
 {% endblock %}
 
 {% block content %}
@@ -47,10 +47,13 @@
   <section class="enso-overview section">
     <div class="container">
       <div class="enso-intro-grid">
-        <aside class="enso-explainer" aria-label="{% translate 'ENSO explainer image' %}">
+        <figure class="enso-explainer" aria-label="{% translate 'ENSO explainer image' %}">
           {% if page.explainer_image %}
             {% image page.explainer_image width-900 as explainer_image %}
             <img src="{{ explainer_image.url }}" alt="{% translate 'ENSO conditions and implications for Africa' %}">
+            {% if page.explainer_image_caption %}
+              <figcaption>{{ page.explainer_image_caption }}</figcaption>
+            {% endif %}
           {% else %}
             <div class="enso-explainer__placeholder">
               <div class="enso-explainer__mark" aria-hidden="true"><span></span><span></span><span></span></div>
@@ -58,7 +61,7 @@
               <p>{% translate "An explanatory image will be added here." %}</p>
             </div>
           {% endif %}
-        </aside>
+        </figure>
 
         <div class="enso-intro-copy">
           <h2>{{ page.introduction_title }}</h2>

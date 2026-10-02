@@ -187,4 +187,15 @@ class ElNinoPageTests(WagtailPageTestCase):
         form = type(self.page).get_edit_handler().get_form_class()
 
         self.assertIn("explainer_image", form.base_fields)
+        self.assertIn("explainer_image_caption", form.base_fields)
         self.assertIn("partner_activities", form.formsets)
+
+    def test_explainer_image_caption_is_displayed(self):
+        caption = "Observed Pacific sea-surface temperature anomalies during an ENSO phase."
+        self.page.explainer_image = self.page.introduction_image
+        self.page.explainer_image_caption = caption
+        self.page.save()
+
+        response = self.client.get(self.page.url)
+
+        self.assertContains(response, f"<figcaption>{caption}</figcaption>", html=True)

@@ -383,6 +383,12 @@ class ElNinoPage(ProductPage):
         verbose_name=_("ENSO explainer image"),
         help_text=_("Upload the image or infographic that explains ENSO and its phases."),
     )
+    explainer_image_caption = models.CharField(
+        max_length=500,
+        blank=True,
+        verbose_name=_("ENSO explainer image caption"),
+        help_text=_("Optional caption displayed directly below the ENSO explainer image."),
+    )
 
     content_panels = ProductPage.content_panels + [
         MultiFieldPanel(
@@ -391,6 +397,7 @@ class ElNinoPage(ProductPage):
                 FieldPanel("acmad_response"),
                 FieldPanel("bulletin_intro"),
                 FieldPanel("explainer_image"),
+                FieldPanel("explainer_image_caption"),
             ],
             heading=_("ENSO page content"),
         ),
