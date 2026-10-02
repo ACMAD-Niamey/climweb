@@ -1,0 +1,33 @@
+{% load i18n wagtailimages_tags %}
+
+{% if enso_homepage %}
+<section class="home-enso section" aria-labelledby="home-enso-title">
+  <div class="container">
+    <div class="home-enso__panel">
+      <div class="home-enso__visual">
+        {% if enso_homepage.image %}
+          {% image enso_homepage.image fill-900x680 as enso_feature_image %}
+          <img src="{{ enso_feature_image.url }}" alt="{% translate 'ENSO conditions and implications for Africa' %}">
+        {% else %}
+          <div class="home-enso__placeholder" aria-hidden="true">
+            <strong>ENSO</strong>
+            <div><span>{% translate "El Niño" %}</span><span>{% translate "Neutral" %}</span><span>{% translate "La Niña" %}</span></div>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="home-enso__content">
+        <p class="home-enso__eyebrow">{% translate "Climate driver" %}</p>
+        <h2 id="home-enso-title">{% translate "ENSO in Africa" %}</h2>
+        <p class="home-enso__summary">{{ enso_homepage.summary }}</p>
+        <div class="home-enso__actions">
+          {% if enso_homepage.bulletin_url %}
+            <a class="button is-primary" href="{{ enso_homepage.bulletin_url }}">{% translate "View latest ENSO bulletin" %}</a>
+          {% endif %}
+          <a class="home-enso__link" href="{{ enso_homepage.url }}">{% translate "Explore ENSO in Africa" %} <span aria-hidden="true">→</span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}

@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from adminboundarymanager.models import AdminBoundarySettings
 from django import forms
@@ -19,7 +20,7 @@ from wagtail.admin.forms import WagtailAdminPageForm
 from wagtail.admin.panels import (FieldPanel, MultiFieldPanel, FieldRowPanel, InlinePanel)
 from wagtail.api.v2.utils import get_full_url
 from wagtail.fields import StreamField, RichTextField
-from wagtail.models import Page
+from wagtail.models import Orderable, Page
 from wagtail.rich_text import RichText
 from wagtail.snippets.models import register_snippet
 from wagtail.contrib.forms.models import AbstractFormField
@@ -338,7 +339,7 @@ class ProductPage(BaseProductPage):
 
 
 class ElNinoPage(ProductPage):
-    """Africa-focused El Nino information hub backed by monthly product issues."""
+    """Africa-focused ENSO information hub backed by monthly product issues."""
 
     template = "products/el_nino_page.html"
     parent_page_types = ["products.ProductIndexPage"]
@@ -348,20 +349,18 @@ class ElNinoPage(ProductPage):
     africa_context = RichTextField(
         features=SUMMARY_RICHTEXT_FEATURES,
         default=(
-            "<p>El Niño can shift rainfall and temperature patterns across Africa, with impacts that vary "
-            "by region and season. These changes can affect water availability, agriculture, food security, "
-            "health, energy and disaster risk.</p>"
+            "<p>ENSO links changes in the tropical Pacific Ocean with the atmosphere. El Niño is the warm phase, "
+            "La Niña the cool phase, and neutral conditions occur between them.</p>"
         ),
-        verbose_name=_("El Niño in Africa"),
+        verbose_name=_("ENSO explanation — phases"),
     )
     acmad_response = RichTextField(
         features=SUMMARY_RICHTEXT_FEATURES,
         default=(
-            "<p>ACMAD monitors ocean and atmosphere conditions, assesses likely impacts across African "
-            "regions, and works with Regional Climate Centres and National Meteorological and Hydrological "
-            "Services to turn the latest science into actionable climate information.</p>"
+            "<p>These phases can influence rainfall and temperature across Africa, but their effects vary by "
+            "region and season and must be considered alongside other climate drivers.</p>"
         ),
-        verbose_name=_("What ACMAD is doing"),
+        verbose_name=_("ENSO explanation — African impacts"),
     )
     bulletin_intro = models.TextField(
         max_length=500,
@@ -371,6 +370,21 @@ class ElNinoPage(ProductPage):
         ),
         verbose_name=_("Monthly bulletin introduction"),
     )
+    explainer_image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("ENSO explainer image"),
+        help_text=_("Upload the image or infographic that explains ENSO and its phases."),
+    )
+    explainer_image_caption = models.CharField(
+        max_length=500,
+        blank=True,
+        verbose_name=_("ENSO explainer image caption"),
+        help_text=_("Optional caption displayed directly below the ENSO explainer image."),
+    )
 
     content_panels = ProductPage.content_panels + [
         MultiFieldPanel(
@@ -378,14 +392,22 @@ class ElNinoPage(ProductPage):
                 FieldPanel("africa_context"),
                 FieldPanel("acmad_response"),
                 FieldPanel("bulletin_intro"),
+                FieldPanel("explainer_image"),
+                FieldPanel("explainer_image_caption"),
             ],
-            heading=_("El Niño page content"),
+            heading=_("ENSO page content"),
+        ),
+        InlinePanel(
+            "partner_activities",
+            heading=_("Partner activities"),
+            label=_("Partner activity"),
+            help_text=_("Add lightweight external ENSO activities hosted by partner organisations."),
         ),
     ]
 
     class Meta:
-        verbose_name = _("El Niño Page")
-        verbose_name_plural = _("El Niño Pages")
+        verbose_name = _("ENSO Page")
+        verbose_name_plural = _("ENSO Pages")
 
     @cached_property
     def latest_bulletin(self):
@@ -393,6 +415,9 @@ class ElNinoPage(ProductPage):
 
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
+        from climweb.pages.events.models import EventPage
+        from climweb.pages.news.models import NewsPage
+
         latest_bulletin = self.latest_bulletin
         archive = self.all_products
         if latest_bulletin:
@@ -406,8 +431,173 @@ class ElNinoPage(ProductPage):
                     if document:
                         context["latest_bulletin_document_url"] = document.url
                         break
+        now = timezone.now()
+        events = EventPage.objects.live().public().descendant_of(
+            self.get_site().root_page
+        ).filter(
+            locale_id=self.locale_id,
+            is_el_nino_related=True,
+            is_hidden=False,
+        )
+        upcoming_filter = models.Q(date_from__gte=now) | models.Q(date_to__gte=now)
+        upcoming_events = list(events.filter(upcoming_filter).order_by("date_from", "pk"))
+        past_events = list(events.exclude(upcoming_filter).order_by("-date_from", "-pk"))
+        news_items = list(
+            NewsPage.objects.live().public().descendant_of(
+                self.get_site().root_page
+            ).filter(
+                locale_id=self.locale_id,
+                is_el_nino_related=True,
+            ).order_by("-date", "-pk")
+        )
+
+        def activity_item(page, activity_date, image, kind_label, type_label, cta_label):
+            return {
+                "page": page,
+                "title": page.title,
+                "url": page.url,
+                "is_external": False,
+                "is_partner_activity": False,
+                "host_organisation": "",
+                "date": activity_date,
+                "image": image,
+                "summary": page.listing_summary,
+                "kind_label": kind_label,
+                "type_label": type_label,
+                "cta_label": cta_label,
+            }
+
+        def partner_activity_item(activity):
+            return {
+                "page": activity,
+                "title": activity.title,
+                "url": activity.external_url,
+                "is_external": True,
+                "is_partner_activity": True,
+                "host_organisation": activity.host_organisation,
+                "date": activity.date,
+                "image": activity.image,
+                "summary": "",
+                "kind_label": "",
+                "type_label": activity.get_activity_type_display(),
+                "cta_label": _("View activity"),
+            }
+
+        upcoming_updates = [
+            activity_item(
+                event,
+                event.date_from,
+                event.image,
+                _("Event"),
+                event.event_type,
+                _("View event"),
+            )
+            for event in upcoming_events
+        ]
+        recent_updates = [
+            activity_item(
+                event,
+                event.date_from,
+                event.image,
+                _("Event"),
+                event.event_type,
+                _("View event"),
+            )
+            for event in past_events
+        ] + [
+            activity_item(
+                news_item,
+                news_item.date,
+                news_item.get_meta_image(),
+                _("News"),
+                news_item.news_type,
+                _("Read news"),
+            )
+            for news_item in news_items
+        ]
+        partner_activities = list(self.partner_activities.all())
+        upcoming_updates.extend(
+            partner_activity_item(activity)
+            for activity in partner_activities
+            if activity.date >= now.date()
+        )
+        recent_updates.extend(
+            partner_activity_item(activity)
+            for activity in partner_activities
+            if activity.date < now.date()
+        )
+
+        def update_sort_date(item):
+            value = item["date"]
+            return value.date() if isinstance(value, datetime) else value
+
+        upcoming_updates.sort(key=update_sort_date)
+        recent_updates.sort(key=update_sort_date, reverse=True)
+        context["el_nino_updates"] = paginate(
+            upcoming_updates + recent_updates,
+            request.GET.get("updates_page"),
+            3,
+        )
         context["products"] = paginate(archive, request.GET.get("page"), self.products_per_page)
         return context
+
+
+class ENSOPartnerActivity(Orderable):
+    ACTIVITY_TYPE_CHOICES = (
+        ("event", _("Event")),
+        ("news", _("News")),
+        ("briefing", _("Briefing")),
+        ("workshop", _("Workshop")),
+        ("other", _("Other")),
+    )
+
+    page = ParentalKey(
+        ElNinoPage,
+        on_delete=models.CASCADE,
+        related_name="partner_activities",
+    )
+    title = models.CharField(max_length=255, verbose_name=_("Title"))
+    date = models.DateField(default=timezone.localdate, verbose_name=_("Date"))
+    activity_type = models.CharField(
+        max_length=20,
+        choices=ACTIVITY_TYPE_CHOICES,
+        default="event",
+        verbose_name=_("Activity type"),
+    )
+    host_organisation = models.CharField(
+        max_length=255,
+        verbose_name=_("Hosting organisation"),
+    )
+    external_url = models.URLField(
+        max_length=1000,
+        verbose_name=_("External activity URL"),
+    )
+    image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Image"),
+    )
+
+    panels = [
+        FieldPanel("title"),
+        FieldRowPanel([
+            FieldPanel("date"),
+            FieldPanel("activity_type"),
+        ]),
+        FieldPanel("host_organisation"),
+        FieldPanel("external_url"),
+        FieldPanel("image"),
+    ]
+
+    class Meta(Orderable.Meta):
+        verbose_name = _("ENSO partner activity")
+        verbose_name_plural = _("ENSO partner activities")
+
+    def __str__(self):
+        return self.title
 
 
 register_searchable_chooser(RasterFileLayer)
