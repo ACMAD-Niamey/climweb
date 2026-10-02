@@ -38,10 +38,10 @@ class ElNinoPageTests(WagtailPageTestCase):
             response.content.index(b'class="enso-explainer"'),
             response.content.index(b'class="enso-intro-copy"'),
         )
-        self.assertContains(response, "Latest ENSO Bulletin")
+        self.assertContains(response, "Latest El Niño Bulletin")
         self.assertNotContains(response, "Updated monthly")
         self.assertNotContains(response, "The monthly bulletin brings together")
-        self.assertContains(response, "Previous ENSO bulletins")
+        self.assertContains(response, "Previous El Niño bulletins")
         self.assertContains(response, "No previous editions yet")
 
     def test_latest_monthly_bulletin_is_featured(self):
@@ -71,7 +71,7 @@ class ElNinoPageTests(WagtailPageTestCase):
         )
         self.assertNotContains(response, "Download PDF")
         self.assertContains(response, older.title)
-        self.assertContains(response, "Previous ENSO bulletins")
+        self.assertContains(response, "Previous El Niño bulletins")
 
     def test_only_related_published_news_and_events_appear(self):
         events_index = EventIndexPageFactory(parent=self.home)
