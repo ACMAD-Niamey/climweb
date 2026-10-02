@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 
 from django.utils import timezone
+import wagtail_factories
 from wagtail.test.utils import WagtailPageTestCase
 
 from climweb.pages.events.tests.factories import EventIndexPageFactory, EventPageFactory
@@ -27,7 +28,7 @@ class ElNinoPageTests(WagtailPageTestCase):
         self.assertNotContains(response, "A continental perspective")
         self.assertNotContains(response, "Read the latest bulletin")
         self.assertContains(response, 'class="enso-intro-copy"')
-        self.assertContains(response, 'class="enso-hero-bulletin"')
+        self.assertContains(response, 'class="enso-hero-bulletin')
         self.assertContains(response, 'class="enso-explainer"')
         self.assertContains(response, 'class="enso-intro-details"')
         self.assertNotContains(response, 'class="enso-explanation"')
@@ -39,6 +40,7 @@ class ElNinoPageTests(WagtailPageTestCase):
             response.content.index(b'class="enso-intro-copy"'),
         )
         self.assertContains(response, "Latest El Niño Bulletin")
+        self.assertNotContains(response, 'id="latest-bulletin-heading"')
         self.assertNotContains(response, "Updated monthly")
         self.assertNotContains(response, "The monthly bulletin brings together")
         self.assertContains(response, "Previous El Niño bulletins")
@@ -46,11 +48,14 @@ class ElNinoPageTests(WagtailPageTestCase):
 
     def test_latest_monthly_bulletin_is_featured(self):
         older = ProductItemPageFactory(parent=self.page, title="El Niño Bulletin — July 2026")
+        bulletin_thumbnail = wagtail_factories.ImageFactory(title="El Niño bulletin thumbnail")
         latest = ProductItemPageFactory(
             parent=self.page,
             title="El Niño Bulletin — August 2026",
             products__0__document_product__product_type="Monthly El Niño Bulletin",
             products__0__document_product__date=date(2026, 8, 1),
+            products__0__document_product__thumbnail=bulletin_thumbnail,
+            products__0__document_product__auto_generate_thumbnail=False,
         )
         type(older).objects.filter(pk=older.pk).update(date=date(2026, 7, 1))
         type(latest).objects.filter(pk=latest.pk).update(date=date(2026, 8, 1))
@@ -68,6 +73,10 @@ class ElNinoPageTests(WagtailPageTestCase):
         self.assertContains(
             response,
             f'class="button is-primary enso-hero-bulletin__button" href="{document_url}"',
+        )
+        self.assertContains(
+            response,
+            bulletin_thumbnail.get_rendition("fill-820x400").url,
         )
         self.assertNotContains(response, "Download PDF")
         self.assertContains(response, older.title)
@@ -176,6 +185,40 @@ class ElNinoPageTests(WagtailPageTestCase):
         self.assertContains(first_page, "updates_page=2")
         self.assertContains(second_page, news_items[3].title)
         self.assertContains(second_page, "Page 2 of 2")
+
+    def test_related_updates_are_sorted_newest_first_across_sources(self):
+        events_index = EventIndexPageFactory(parent=self.home)
+        older_event = EventPageFactory(
+            parent=events_index,
+            title="Older ENSO event",
+            date_from=timezone.now() - timedelta(days=3),
+            is_el_nino_related=True,
+        )
+        news_index = NewsIndexPageFactory(parent=self.home)
+        newest_news = NewsPageFactory(
+            parent=news_index,
+            title="Newest ENSO news",
+            date=timezone.now(),
+            is_el_nino_related=True,
+        )
+        partner_activity = ENSOPartnerActivity.objects.create(
+            page=self.page,
+            title="Middle ENSO partner activity",
+            date=timezone.localdate() - timedelta(days=1),
+            external_url="https://example.org/middle-enso-activity/",
+            image=self.page.introduction_image,
+        )
+
+        response = self.client.get(self.page.url)
+
+        self.assertLess(
+            response.content.index(newest_news.title.encode()),
+            response.content.index(partner_activity.title.encode()),
+        )
+        self.assertLess(
+            response.content.index(partner_activity.title.encode()),
+            response.content.index(older_event.title.encode()),
+        )
 
     def test_news_editor_exposes_el_nino_related_option(self):
         from climweb.pages.news.models import NewsPage

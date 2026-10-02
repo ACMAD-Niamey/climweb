@@ -5,7 +5,7 @@
 
 .enso-hero {
   position: relative;
-  height: 240px;
+  height: 280px;
   display: flex;
   align-items: center;
   overflow: hidden;
@@ -34,7 +34,7 @@
   z-index: 1;
 }
 
-.enso-hero__layout { display: grid; grid-template-columns: minmax(0, 1fr) 270px; align-items: center; gap: 3rem; }
+.enso-hero__layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(350px, 410px); align-items: center; gap: clamp(2rem, 6vw, 6rem); }
 
 .enso-kicker,
 .enso-section-label {
@@ -62,12 +62,12 @@
   line-height: 1.7;
 }
 
-.enso-hero-bulletin { padding: .85rem; border: 1px solid rgba(255,255,255,.3); border-radius: 10px; background: rgba(255,255,255,.96); color: #17352f; box-shadow: 0 12px 30px rgba(0,0,0,.15); }
-.enso-hero-bulletin > h2 { margin: 0 0 .65rem; color: #123c36; font-size: 1rem; line-height: 1.2; }
-.enso-hero-bulletin__body { display: flex; flex-direction: column; gap: .55rem; }
-.enso-hero-bulletin__cover { display: block; height: 82px; overflow: hidden; border-radius: 5px; background: #dce8e3; }
+.enso-hero-bulletin { width: 100%; height: 240px; overflow: hidden; border: 1px solid #d7e3dc; border-radius: 10px; background: #fff; color: #17352f; box-shadow: 0 18px 42px rgba(0,0,0,.18); }
+.enso-hero-bulletin--empty { height: auto; }
+.enso-hero-bulletin__body { display: flex; min-height: 60px; flex-direction: column; justify-content: center; padding: .55rem 1.125rem; }
+.enso-hero-bulletin__cover { display: block; height: 180px; overflow: hidden; background: #0b342f; }
 .enso-hero-bulletin__cover img { width: 100%; height: 100%; object-fit: contain; }
-.enso-hero-bulletin__button { width: 100%; min-height: 2.1rem; font-size: .75rem; }
+.enso-hero-bulletin__button { width: 100%; min-height: 42px; font-size: .76rem; font-weight: 700; }
 .enso-hero-bulletin__empty { margin: 0; color: #526b66; font-size: .85rem; }
 
 .enso-overview { padding: 3rem 0 2.5rem; }
@@ -140,15 +140,15 @@
 }
 
 @media (max-width: 1024px) {
-  .enso-hero { height: 360px; }
-  .enso-hero__layout { grid-template-columns: minmax(0, 1fr) 250px; gap: 2rem; }
+  .enso-hero { height: 300px; }
+  .enso-hero__layout { grid-template-columns: minmax(0, 1fr) minmax(330px, 380px); gap: 2rem; }
   .enso-hero h1 { font-size: 32px; }
 }
 
 @media (max-width: 768px) {
   .enso-hero { height: auto; min-height: 320px; padding: 3rem 0; }
   .enso-hero__layout { grid-template-columns: 1fr; }
-  .enso-hero-bulletin { width: 100%; max-width: 300px; justify-self: start; }
+  .enso-hero-bulletin { width: 100%; max-width: 410px; justify-self: start; }
   .enso-hero h1 { max-width: 100%; font-size: 26px; }
   .enso-hero__copy > p:not(.enso-kicker) { max-width: 100%; font-size: 14px; }
 }
@@ -175,5 +175,7 @@
 @media (max-width: 480px) {
   .enso-hero { min-height: 280px; padding: 2.5rem 0; }
   .enso-hero h1 { font-size: 22px; }
+  .enso-hero-bulletin { height: 215px; }
+  .enso-hero-bulletin__cover { height: 155px; }
   .enso-event-card { grid-template-columns: 96px minmax(0, 1fr); }
 }
