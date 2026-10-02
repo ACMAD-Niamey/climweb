@@ -6,7 +6,7 @@
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'products/css/product.css' %}">
   <link rel="stylesheet" href="{% static 'css/publication.css' %}">
-  <link rel="stylesheet" href="{% static 'products/css/el_nino.css' %}?v=2.4">
+  <link rel="stylesheet" href="{% static 'products/css/el_nino.css' %}?v=2.6">
 {% endblock %}
 
 {% block content %}
@@ -86,7 +86,7 @@
       <div class="enso-events__grid">
         {% for item in el_nino_updates %}
           <article class="enso-event-card{% if item.is_partner_activity %} enso-event-card--partner{% endif %}">
-            <a class="enso-event-card__image" href="{{ item.url }}"{% if item.is_external %} target="_blank" rel="noopener noreferrer"{% endif %}>
+            <a class="enso-event-card__image" href="{{ item.url }}" aria-label="{{ item.title }}"{% if item.is_external %} target="_blank" rel="noopener noreferrer"{% endif %}>
               {% if item.image %}
                 {% if item.is_partner_activity %}
                   {% image item.image width-900 as update_image %}
@@ -98,15 +98,17 @@
                 <div class="enso-event-card__placeholder" aria-hidden="true"><span>{{ item.date|date:"d" }}</span><small>{{ item.date|date:"M" }}</small></div>
               {% endif %}
             </a>
-            <div class="enso-event-card__body">
-              <div class="enso-event-card__meta">
-                <time datetime="{{ item.date|date:'c' }}">{{ item.date|date:"d M Y" }}</time>
-                {% if item.kind_label %}<span>{{ item.kind_label }}</span>{% endif %}
-                <span>{{ item.type_label }}</span>
+            {% if not item.is_partner_activity %}
+              <div class="enso-event-card__body">
+                <div class="enso-event-card__meta">
+                  <time datetime="{{ item.date|date:'c' }}">{{ item.date|date:"d M Y" }}</time>
+                  {% if item.kind_label %}<span>{{ item.kind_label }}</span>{% endif %}
+                  <span>{{ item.type_label }}</span>
+                </div>
+                <h3><a href="{{ item.url }}">{{ item.title }}</a></h3>
+                <a class="enso-event-card__link" href="{{ item.url }}">{{ item.cta_label }} <span aria-hidden="true">→</span></a>
               </div>
-              <h3><a href="{{ item.url }}"{% if item.is_external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ item.title }}</a></h3>
-              <a class="enso-event-card__link" href="{{ item.url }}"{% if item.is_external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ item.cta_label }} <span aria-hidden="true">{% if item.is_external %}↗{% else %}→{% endif %}</span></a>
-            </div>
+            {% endif %}
           </article>
         {% endfor %}
       </div>

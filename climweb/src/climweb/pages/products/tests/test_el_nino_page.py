@@ -139,14 +139,17 @@ class ElNinoPageTests(WagtailPageTestCase):
 
         response = self.client.get(self.page.url)
 
-        self.assertContains(response, "Workshop")
-        self.assertContains(response, "View activity")
         self.assertContains(response, "enso-event-card--partner")
+        self.assertContains(response, 'aria-label="PAFO ENSO preparedness workshop"')
+        self.assertNotContains(response, "Workshop")
+        self.assertNotContains(response, "View activity")
+        self.assertNotContains(response, 'class="enso-event-card__body"')
         self.assertNotContains(response, "Partner activity")
         self.assertNotContains(response, "Hosted by")
         self.assertNotContains(response, "In collaboration with ACMAD")
         self.assertNotContains(response, "View on PAFO")
-        self.assertContains(response, 'href="https://pafo-africa.org/enso-workshop/" target="_blank" rel="noopener noreferrer"')
+        self.assertContains(response, 'href="https://pafo-africa.org/enso-workshop/"')
+        self.assertContains(response, 'target="_blank" rel="noopener noreferrer"')
         self.assertTrue(ENSOPartnerActivity._meta.get_field("image").blank)
         self.assertEqual(str(partner_activity), partner_activity.title)
 
