@@ -3,6 +3,6 @@
 # path lives in one place across every server block.
 #
 # ACMAD uses one SAN cert for all hostnames
-# (acmad.org + www + new + summerschool + nrcc):
+# (acmad.org + www + new + summerschool + nrcc + climsa):
 ssl_certificate     /etc/letsencrypt/live/acmad.org/fullchain.pem;
 ssl_certificate_key /etc/letsencrypt/live/acmad.org/privkey.pem;

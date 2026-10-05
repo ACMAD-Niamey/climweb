@@ -50,6 +50,7 @@ logger = logging.getLogger(__name__)
 CLIMWEB_ADDITIONAL_APPS = getattr(settings, "CLIMWEB_ADDITIONAL_APPS", [])
 
 HOME_SUBPAGE_TYPES = [
+    'climsa.ClimsaHomePage',
     'contact.ContactPage',
     'services.ServiceIndexPage',
     'products.ProductIndexPage',
