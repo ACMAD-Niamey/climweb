@@ -479,6 +479,14 @@ class NavigationSettings(BaseSiteSetting):
         verbose_name=_("RCC main menu"),
         help_text=_("Links shown in the main header while browsing RCC pages."),
     )
+    climsa_main_menu = StreamField(
+        [("navigation_item", NavigationItemBlock())],
+        use_json_field=True,
+        blank=True,
+        null=True,
+        verbose_name=_("CLIMSA main menu"),
+        help_text=_("Links shown in the main header while browsing CLIMSA pages."),
+    )
     header_utility_links = StreamField(
         [("utility_link", HeaderUtilityLinkBlock())],
         use_json_field=True,
@@ -494,6 +502,7 @@ class NavigationSettings(BaseSiteSetting):
     panels = [
         FieldPanel("main_menu"),
         FieldPanel("rcc_main_menu"),
+        FieldPanel("climsa_main_menu"),
         FieldPanel("header_utility_links"),
         FieldPanel("footer_menu"),
     ]
