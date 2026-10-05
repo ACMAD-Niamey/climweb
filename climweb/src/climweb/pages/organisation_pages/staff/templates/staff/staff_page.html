@@ -8,21 +8,38 @@
 
 {% block content %}
     <main class="is-index staff-page">
-        {% include 'hero.html' with page=page %}
+        {% include 'hero.html' with page=page show_fallback=True %}
 
-        {% if page.introduction_title and page.introduction_heading and page.introduction_text %}
-            <section class="nmhs-work is-desktop">
-                <div class="work container">
-                    <div class="columns is-centered has-text-centered intro-section-wrapper">
-                        <div class="column is-7 has-text-centered">
-                            <p class="subtitle">{{ page.introduction_heading }}</p>
-                            <h2 class="title is-3">{{ page.introduction_title }}</h2>
-                            <div class="intro-description format-text">{{ page.introduction_text|richtext }}</div>
-                        </div>
-                    </div>
+        <section class="values-section">
+            <div class="container">
+                <div class="values-heading has-text-centered">
+                    <p class="values-eyebrow">{% translate "What guides us" %}</p>
+                    <h2 class="title is-3">{% translate "Our Values" %}</h2>
                 </div>
-            </section>
-        {% endif %}
+                <div class="values-grid">
+                    <article class="value-card">
+                        <span class="value-number">01</span>
+                        <h3>{% translate "Transparency and Accountability" %}</h3>
+                        <p>{% translate "ACMAD is committed to building trust between stakeholders by enforcing transparency and accountability for service delivery." %}</p>
+                    </article>
+                    <article class="value-card">
+                        <span class="value-number">02</span>
+                        <h3>{% translate "Partnership and Cooperation" %}</h3>
+                        <p>{% translate "ACMAD believes in cooperation and partnership to ensure continental complementarity, subsidiarity and delivery." %}</p>
+                    </article>
+                    <article class="value-card">
+                        <span class="value-number">03</span>
+                        <h3>{% translate "Inclusiveness, Diversity and Gender" %}</h3>
+                        <p>{% translate "We value the diversity of African cultures, knowledge and experiences, ensuring that our services are accessible to all. Women and youth are at the heart of our recruitment, capacity building and opportunities." %}</p>
+                    </article>
+                    <article class="value-card">
+                        <span class="value-number">04</span>
+                        <h3>{% translate "Knowledge Management" %}</h3>
+                        <p>{% translate "We are committed to using the best available scientific data, methods and best practices to improve our services and inform our decisions." %}</p>
+                    </article>
+                </div>
+            </div>
+        </section>
 
         <section class="staff-section">
             <div class="container">

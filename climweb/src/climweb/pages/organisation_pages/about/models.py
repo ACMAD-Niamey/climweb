@@ -137,3 +137,17 @@ class AboutPage(AbstractIntroPage):
     @property
     def partners(self):
         return Partner.objects.filter(is_main=True)[:5]
+
+    @cached_property
+    def strategic_plan(self):
+        """Return the Strategic Plan document from the former materials section."""
+        first_document = None
+        for category_block in self.additional_materials or []:
+            category = str(category_block.value.get('category', ''))
+            for material in category_block.value.get('materials', []):
+                if material.get('document') and first_document is None:
+                    first_document = material
+                label = f"{category} {material.get('title', '')}".lower()
+                if material.get('document') and 'strategic' in label and 'plan' in label:
+                    return material
+        return first_document

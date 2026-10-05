@@ -1,4 +1,64 @@
 /* Match the Summer School trainer cards without loading its page-wide styles. */
+.values-section {
+    padding: 4rem 1.5rem;
+    background: #f8f9fb;
+}
+
+.values-heading {
+    margin-bottom: 2.25rem;
+}
+
+.values-eyebrow {
+    margin-bottom: 0.4rem;
+    color: var(--primary-color, #307461);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.values-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+}
+
+.value-card {
+    position: relative;
+    padding: 2rem;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid #e8ecef;
+    border-top: 4px solid var(--primary-color, #307461);
+    border-radius: 12px;
+}
+
+.value-card h3 {
+    position: relative;
+    margin-bottom: 0.75rem;
+    color: #1a1a1a;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.value-card p {
+    position: relative;
+    margin: 0;
+    color: #555;
+    font-size: 14px;
+    line-height: 1.75;
+}
+
+.value-number {
+    position: absolute;
+    top: 0.25rem;
+    right: 1rem;
+    color: rgba(48, 116, 97, 0.08);
+    font-size: 72px;
+    font-weight: 800;
+    line-height: 1;
+}
+
 .staff-section {
     padding: 2rem 1.5rem;
 }
@@ -66,7 +126,8 @@
 .staff-figure img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center top;
     display: block;
 }
 
@@ -178,6 +239,10 @@
 }
 
 @media (max-width: 1023px) {
+    .values-grid {
+        grid-template-columns: 1fr;
+    }
+
     .staff-modal-content .columns {
         display: block;
     }
@@ -185,6 +250,16 @@
     .staff-modal-content .staff-figure {
         max-width: 260px;
         margin-inline: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .values-section {
+        padding: 3rem 1rem;
+    }
+
+    .value-card {
+        padding: 1.5rem;
     }
 }
 

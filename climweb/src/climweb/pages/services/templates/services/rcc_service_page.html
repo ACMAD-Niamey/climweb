@@ -421,6 +421,7 @@
                                     data-progressive="{{ partner_logo.url }}" src="{% lazy_image_url partner_logo %}"
                                     alt="{{ partner.name }}">
                             </figure>
+                            <span class="partner-name">{{ partner.name }}</span>
                             {% if partner.link %}</a>{% else %}</div>{% endif %}
             </div>
             {% endfor %}

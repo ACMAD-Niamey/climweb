@@ -16,6 +16,7 @@
 
 {% block content %}
     <main class="is-index">
+        {% include 'hero.html' with page=page show_fallback=True %}
         <div class="container pt-6 pb-0 sections">
             <div class="about-nav-pills is-justify-content-center">
 
@@ -59,7 +60,49 @@
             </div>
         <section class="nmhs-work">
             <div class="work container">
-                {% include 'service_introduction.html' with page=page %}
+                <div class="intro-section">
+                    <div class="columns is-centered is-vcentered intro-section-wrapper">
+                        <div class="column is-6">
+                            <div class="intro-accent"></div>
+                            {% if page.introduction_title %}<h2 class="intro-title">{{ page.introduction_title }}</h2>{% endif %}
+                            {% if page.introduction_text %}
+                                <div class="intro-body format-text">{{ page.introduction_text|richtext }}</div>
+                            {% endif %}
+                            {% if page.introduction_button_text %}
+                                {% if page.introduction_button_link or page.introduction_button_link_external %}
+                                    <div class="intro-cta">
+                                        <a class="intro-btn button"
+                                           href="{% if page.introduction_button_link %}{{ page.introduction_button_link.url }}{% else %}{{ page.introduction_button_link_external }}{% endif %}"
+                                           {% if not page.introduction_button_link %}target="_blank" rel="noopener"{% endif %}>
+                                            <span>{{ page.introduction_button_text }}</span>
+                                            <span class="icon btn-icon">{% svg_icon name="arrow-right-full" %}</span>
+                                        </a>
+                                    </div>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        {% if page.strategic_plan %}
+                            <div class="column is-1 is-hidden-mobile"></div>
+                            <div class="column is-5">
+                                <a class="strategic-plan-card" href="{{ page.strategic_plan.document.url }}"
+                                   target="_blank" rel="noopener">
+                                    {% if page.strategic_plan.image %}
+                                        {% image page.strategic_plan.image width-600 as strategic_plan_cover %}
+                                        <figure class="strategic-plan-cover">
+                                            <img src="{{ strategic_plan_cover.url }}"
+                                                 alt="{{ page.strategic_plan.title }}" />
+                                        </figure>
+                                    {% endif %}
+                                    <span class="strategic-plan-details">
+                                        <span class="strategic-plan-label">{% translate "Strategic Plan" %}</span>
+                                        <span class="strategic-plan-title">{{ page.strategic_plan.title }}</span>
+                                        <span class="strategic-plan-action">{% translate "View document" %} &rarr;</span>
+                                    </span>
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
 
             </div>
         </section>
@@ -184,27 +227,6 @@
         {% endif %}
 
 
-        {% if page.additional_materials %}
-        <section class="mat-section">
-        <div class="container">
-
-            <div class="mat-header has-text-centered">
-            <p class="mat-eyebrow">{% translate "Resources" %}</p>
-            <h2 class="mat-title">{% translate "Additional Materials" %}</h2>
-            </div>
-
-            <div class="columns is-multiline is-centered">
-            {% for category in page.additional_materials %}
-                <div class="column is-half-desktop is-full-mobile">
-                {% include_block category %}
-                </div>
-            {% endfor %}
-            </div>
-
-        </div>
-        </section>
-        {% endif %}
-
         {% if page.partners %}
             <section class="section">
             <div class="container py-5">
@@ -236,6 +258,7 @@
                                 src="{% lazy_image_url p_logo %}"
                                 alt="{{ partner.name }}" />
                         </figure>
+                        <span class="partner-name">{{ partner.name }}</span>
                         </a>
                     </div>
                     {% endif %}
@@ -338,5 +361,3 @@
         });
     </script>
 {% endblock %}
-
-
