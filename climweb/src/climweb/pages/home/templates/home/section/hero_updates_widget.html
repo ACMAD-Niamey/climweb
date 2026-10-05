@@ -13,7 +13,6 @@
             {% else %}
               <div class="hero-update-placeholder" aria-hidden="true"><span>ACMAD</span><span>{% translate "Climate knowledge for Africa" %}</span></div>
             {% endif %}
-            <span class="hero-update-badge">{{ update.badge }}</span>
           </div>
           <div class="hero-product-body hero-update-body">
             {% if update.date %}<p class="hero-update-date"><time datetime="{{ update.date|date:'c' }}">{{ update.date|date:"d M Y" }}</time>{% if update.end_date %} – <time datetime="{{ update.end_date|date:'c' }}">{{ update.end_date|date:"d M Y" }}</time>{% endif %}</p>{% endif %}

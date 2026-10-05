@@ -15,21 +15,8 @@
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
-}
-
-.hero-update-badge {
-  position: absolute;
-  bottom: 14px;
-  left: 20px;
-  padding: 5px 12px;
-  border-radius: max(4px, var(--border-radius));
-  background: var(--theme-surface);
-  color: var(--theme-primary);
-  font-size: .65rem;
-  font-weight: 800;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  object-fit: cover;
+  object-position: center top;
 }
 
 .hero-update-placeholder {
