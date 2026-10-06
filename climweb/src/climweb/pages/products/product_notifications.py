@@ -172,6 +172,29 @@ def queue_latest_product_notification(product_family, requested_by):
     return event
 
 
+def send_subscription_confirmation_email(subscriber):
+    confirmation_url = _public_url(
+        reverse(
+            "product_subscription_confirm",
+            kwargs={"token": subscriber.confirmation_token},
+        )
+    )
+    context = _get_email_context()
+    context["confirmation_url"] = confirmation_url
+    text = (
+        "Verify your email address to activate ACMAD product notifications:\n\n"
+        f"{confirmation_url}\n\n"
+        "If you did not request this subscription, you can ignore this email."
+    )
+    html = render_to_string("products/email/subscription_confirm.html", context)
+    send_mail(
+        "Verify your ACMAD product notification subscription",
+        text,
+        [subscriber.email],
+        html_message=html,
+    )
+
+
 def send_welcome_email(subscriber):
     preferences_url = _public_url(
         reverse(
