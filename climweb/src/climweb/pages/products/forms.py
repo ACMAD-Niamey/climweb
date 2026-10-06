@@ -3,6 +3,7 @@ import re
 from datetime import datetime
 
 from django import forms
+from django_recaptcha.fields import ReCaptchaField
 from wagtail import blocks
 from wagtail.admin.forms import WagtailAdminModelForm
 
@@ -12,10 +13,13 @@ from climweb.pages.products.models import (
     ProductPage,
     ProductSubscriber,
 )
+from climweb.pages.products.subscription_security import validate_subscription_text
 
 
 class ProductSubscriptionForm(forms.Form):
-    name = forms.CharField(max_length=255, required=False)
+    name = forms.CharField(
+        max_length=255, required=False, validators=[validate_subscription_text]
+    )
     email = forms.EmailField()
     sector = forms.ChoiceField(
         choices=ProductSubscriber.Sector.choices,
@@ -32,6 +36,7 @@ class ProductSubscriptionForm(forms.Form):
         label="Name of Organisation",
         max_length=255,
         required=False,
+        validators=[validate_subscription_text],
     )
     product_families = forms.MultipleChoiceField(
         label="Products",
@@ -40,6 +45,12 @@ class ProductSubscriptionForm(forms.Form):
     )
     consent = forms.BooleanField(
         label="I agree to receive ACMAD product notifications by email."
+    )
+    wagtailcaptcha = ReCaptchaField(label="")
+    contact_url = forms.CharField(
+        required=False,
+        label="Leave this field empty",
+        widget=forms.HiddenInput,
     )
 
     def __init__(self, *args, **kwargs):
@@ -52,9 +63,15 @@ class ProductSubscriptionForm(forms.Form):
             if not definition.get("is_archived")
         ]
 
-def clean_email(self):
-    email = self.cleaned_data.get("email")
-    return email.strip().lower() if email else email
+    def clean_email(self):
+        email = self.cleaned_data.get("email")
+        return email.strip().lower() if email else email
+
+    def clean_contact_url(self):
+        value = self.cleaned_data.get("contact_url", "")
+        if value:
+            raise forms.ValidationError("Invalid submission.")
+        return value
 
 
 class ProductSubscriptionPreferencesForm(ProductSubscriptionForm):

@@ -45,6 +45,12 @@ from .blocks import (
     ProductItemGifContentBlock,
     ProductItemStreamContentBlock
 )
+from .subscription_security import (
+    get_client_ip,
+    subscription_rate_limited,
+    validate_honeypot,
+    validate_subscription_text,
+)
 
 from climweb.base.models.abstracts import AbstractBannerPage
 
@@ -338,6 +344,15 @@ class ProductPage(BaseProductPage):
         return super().serve(request, *args, **kwargs)
 
 
+class ElNinoPageForm(ProductPageForm):
+    """Allow the shared introduction fields to be blank on the ENSO page only."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["introduction_title"].required = False
+        self.fields["introduction_text"].required = False
+
+
 class ElNinoPage(ProductPage):
     """Africa-focused ENSO information hub backed by monthly product issues."""
 
@@ -345,30 +360,19 @@ class ElNinoPage(ProductPage):
     parent_page_types = ["products.ProductIndexPage"]
     subpage_types = ["products.ProductItemPage"]
     max_count = 1
+    base_form_class = ElNinoPageForm
 
-    africa_context = RichTextField(
+    enso_explanation = RichTextField(
         features=SUMMARY_RICHTEXT_FEATURES,
-        default=(
-            "<p>ENSO links changes in the tropical Pacific Ocean with the atmosphere. El Niño is the warm phase, "
-            "La Niña the cool phase, and neutral conditions occur between them.</p>"
-        ),
-        verbose_name=_("ENSO explanation — phases"),
-    )
-    acmad_response = RichTextField(
-        features=SUMMARY_RICHTEXT_FEATURES,
-        default=(
-            "<p>These phases can influence rainfall and temperature across Africa, but their effects vary by "
-            "region and season and must be considered alongside other climate drivers.</p>"
-        ),
-        verbose_name=_("ENSO explanation — African impacts"),
-    )
-    bulletin_intro = models.TextField(
-        max_length=500,
-        default=(
-            "The monthly bulletin brings together the latest ENSO status, the outlook for Africa and "
-            "region-specific considerations for preparedness and early action."
-        ),
-        verbose_name=_("Monthly bulletin introduction"),
+        blank=True,
+       default=(
+              "<p>ENSO links changes in the tropical Pacific Ocean with the atmosphere. El Niño is the warm phase, "
+              "La Niña the cool phase, and neutral conditions occur between them.</p>"
+              "<p>These phases can influence rainfall and temperature across Africa, but their effects vary by "
+              "region and season and must be considered alongside other climate drivers.</p>"
+          ),
+        verbose_name=_("ENSO explanation"),
+        help_text=_("Use this single section for ENSO phases, African impacts and bulletin context."),
     )
     explainer_image = models.ForeignKey(
         "wagtailimages.Image",
@@ -385,17 +389,49 @@ class ElNinoPage(ProductPage):
         verbose_name=_("ENSO explainer image caption"),
         help_text=_("Optional caption displayed directly below the ENSO explainer image."),
     )
+    secondary_section_title = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_("Additional section title"),
+    )
+    secondary_section_text = RichTextField(
+        features=SUMMARY_RICHTEXT_FEATURES,
+        blank=True,
+        verbose_name=_("Additional section text"),
+    )
+    secondary_section_image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Additional section image"),
+        help_text=_("Displayed on the right side of the additional ENSO content section."),
+    )
+    secondary_section_image_caption = models.CharField(
+        max_length=500,
+        blank=True,
+        verbose_name=_("Additional section image caption"),
+        help_text=_("Optional caption displayed directly below the image."),
+    )
 
     content_panels = ProductPage.content_panels + [
         MultiFieldPanel(
             [
-                FieldPanel("africa_context"),
-                FieldPanel("acmad_response"),
-                FieldPanel("bulletin_intro"),
+                FieldPanel("enso_explanation"),
                 FieldPanel("explainer_image"),
                 FieldPanel("explainer_image_caption"),
             ],
             heading=_("ENSO page content"),
+        ),
+        MultiFieldPanel(
+            [
+                FieldPanel("secondary_section_title"),
+                FieldPanel("secondary_section_text"),
+                FieldPanel("secondary_section_image"),
+                FieldPanel("secondary_section_image_caption"),
+            ],
+            heading=_("Additional ENSO content section"),
         ),
         InlinePanel(
             "partner_activities",
@@ -1653,6 +1689,15 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
             label=_("I agree to receive ACMAD product notifications by email."),
             required=True
         )
+        form.fields['contact_url'] = forms.CharField(
+            required=False,
+            label=_("Leave this field empty"),
+            widget=forms.HiddenInput,
+            validators=[validate_honeypot],
+        )
+        for field_name in ("name", "organization_name"):
+            if field_name in form.fields:
+                form.fields[field_name].validators.append(validate_subscription_text)
         return form
 
     def serve(self, request, *args, **kwargs):
@@ -1674,8 +1719,30 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
                 import logging
                 logger = logging.getLogger(__name__)
 
+                email = form.cleaned_data.get("email", "").strip().lower()
+                if subscription_rate_limited(request, email):
+                    return django.shortcuts.render(
+                        request,
+                        self.landing_page_template,
+                        {
+                            "status_title": _("Check your email"),
+                            "status_message": _(
+                                "We sent a verification link if the address can receive mail. "
+                                "Open it to activate product notifications."
+                            ),
+                        },
+                    )
+
                 try:
-                    duplicate_fields = get_duplicates(form.cleaned_data)
+                    duplicate_fields = get_duplicates(
+                        {
+                            key: value
+                            for key, value in form.cleaned_data.items()
+                            if isinstance(value, str)
+                            and value.strip()
+                            and key not in {"wagtailcaptcha", "contact_url"}
+                        }
+                    )
                 except Exception as e:
                     logger.warning("[PRODUCT_SUBSCRIPTION_PAGE] Error checking for duplicate fields: {}".format(e))
                     duplicate_fields = []
@@ -1687,8 +1754,11 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
                         request,
                         self.landing_page_template,
                         {
-                            "status_title": _("Subscription Successful"),
-                            "status_message": _("You will now receive notifications for your selected ACMAD products."),
+                            "status_title": _("Check your email"),
+                            "status_message": _(
+                                "We sent a verification link if the address can receive mail. "
+                                "Open it to activate product notifications."
+                            ),
                         },
                     )
                 else:
@@ -1697,8 +1767,11 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
                         request,
                         self.landing_page_template,
                         {
-                            "status_title": _("Subscription Successful"),
-                            "status_message": _("You will now receive notifications for your selected ACMAD products."),
+                            "status_title": _("Check your email"),
+                            "status_message": _(
+                                "We sent a verification link if the address can receive mail. "
+                                "Open it to activate product notifications."
+                            ),
                         },
                     )
         else:
@@ -1731,6 +1804,7 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
         product_families = cleaned_data.pop("product_families", [])
         cleaned_data.pop("consent", None)
         cleaned_data.pop("wagtailcaptcha", None)
+        cleaned_data.pop("contact_url", None)
 
         # Any other custom fields are saved into extra_data
         extra_data = cleaned_data
@@ -1743,12 +1817,12 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
                 "organization_type": organization_type,
                 "organization_name": organization_name,
                 "extra_data": extra_data,
-                "status": ProductSubscriber.STATUS_ACTIVE,
+                "status": ProductSubscriber.STATUS_PENDING,
                 "confirmation_token": uuid.uuid4(),
                 "consented_at": timezone.now(),
-                "confirmed_at": timezone.now(),
+                "confirmed_at": None,
                 "unsubscribed_at": None,
-                "consent_ip": request.META.get("REMOTE_ADDR") if request else None,
+                "consent_ip": get_client_ip(request) if request else None,
                 "consent_user_agent": request.META.get("HTTP_USER_AGENT", "")[:500] if request else "",
             },
         )

@@ -65,16 +65,42 @@
         </figure>
 
         <div class="enso-intro-copy">
-          <h2>{{ page.introduction_title }}</h2>
-          <div class="enso-prose">{{ page.introduction_text|richtext }}</div>
+          {% if page.introduction_title %}<h2>{{ page.introduction_title }}</h2>{% endif %}
+          {% if page.introduction_text %}<div class="enso-prose">{{ page.introduction_text|richtext }}</div>{% endif %}
           <div class="enso-intro-details">
-            <div class="enso-prose">{{ page.africa_context|richtext }}</div>
-            <div class="enso-prose">{{ page.acmad_response|richtext }}</div>
+            {% if page.enso_explanation %}<div class="enso-prose">{{ page.enso_explanation|richtext }}</div>{% endif %}
           </div>
         </div>
       </div>
     </div>
   </section>
+
+  {% if page.secondary_section_title or page.secondary_section_text or page.secondary_section_image %}
+  <section class="enso-secondary section"{% if page.secondary_section_title %} aria-labelledby="enso-secondary-heading"{% else %} aria-label="{% translate 'Additional ENSO information' %}"{% endif %}>
+    <div class="container">
+      <div class="enso-secondary__grid">
+        <div class="enso-secondary__copy">
+          {% if page.secondary_section_title %}
+            <h2 id="enso-secondary-heading">{{ page.secondary_section_title }}</h2>
+          {% endif %}
+          {% if page.secondary_section_text %}
+            <div class="enso-prose">{{ page.secondary_section_text|richtext }}</div>
+          {% endif %}
+        </div>
+
+        {% if page.secondary_section_image %}
+          <figure class="enso-secondary__visual">
+            {% image page.secondary_section_image width-900 as secondary_image %}
+            <img src="{{ secondary_image.url }}" alt="{{ page.secondary_section_title }}">
+            {% if page.secondary_section_image_caption %}
+              <figcaption>{{ page.secondary_section_image_caption }}</figcaption>
+            {% endif %}
+          </figure>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
 
   {% if el_nino_updates %}
   <section class="enso-events section" aria-labelledby="el-nino-updates-heading">
