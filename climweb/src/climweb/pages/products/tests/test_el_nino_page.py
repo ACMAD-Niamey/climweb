@@ -42,7 +42,7 @@ class ElNinoPageTests(WagtailPageTestCase):
         self.assertContains(response, "Latest El Niño Bulletin")
         self.assertNotContains(response, 'id="latest-bulletin-heading"')
         self.assertNotContains(response, "Updated monthly")
-        self.assertNotContains(response, "The monthly bulletin brings together")
+        self.assertContains(response, "The monthly bulletin brings together")
         self.assertContains(response, "Previous El Niño bulletins")
         self.assertContains(response, "No previous editions yet")
 
@@ -240,9 +240,11 @@ class ElNinoPageTests(WagtailPageTestCase):
         self.assertIn("partner_activities", form_class.formsets)
         self.assertFalse(form.fields["introduction_title"].required)
         self.assertFalse(form.fields["introduction_text"].required)
-        self.assertFalse(form.fields["africa_context"].required)
-        self.assertFalse(form.fields["acmad_response"].required)
-        self.assertFalse(form.fields["bulletin_intro"].required)
+        self.assertIn("enso_explanation", form.fields)
+        self.assertFalse(form.fields["enso_explanation"].required)
+        self.assertNotIn("africa_context", form.fields)
+        self.assertNotIn("acmad_response", form.fields)
+        self.assertNotIn("bulletin_intro", form.fields)
 
     def test_explainer_image_caption_is_displayed(self):
         caption = "Observed Pacific sea-surface temperature anomalies during an ENSO phase."

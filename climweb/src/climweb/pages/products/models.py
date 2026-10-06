@@ -362,32 +362,19 @@ class ElNinoPage(ProductPage):
     max_count = 1
     base_form_class = ElNinoPageForm
 
-    africa_context = RichTextField(
+    enso_explanation = RichTextField(
         features=SUMMARY_RICHTEXT_FEATURES,
         blank=True,
         default=(
             "<p>ENSO links changes in the tropical Pacific Ocean with the atmosphere. El Niño is the warm phase, "
             "La Niña the cool phase, and neutral conditions occur between them.</p>"
-        ),
-        verbose_name=_("ENSO explanation — phases"),
-    )
-    acmad_response = RichTextField(
-        features=SUMMARY_RICHTEXT_FEATURES,
-        blank=True,
-        default=(
             "<p>These phases can influence rainfall and temperature across Africa, but their effects vary by "
             "region and season and must be considered alongside other climate drivers.</p>"
+            "<p>The monthly bulletin brings together the latest ENSO status, the outlook for Africa and "
+            "region-specific considerations for preparedness and early action.</p>"
         ),
-        verbose_name=_("ENSO explanation — African impacts"),
-    )
-    bulletin_intro = models.TextField(
-        max_length=500,
-        blank=True,
-        default=(
-            "The monthly bulletin brings together the latest ENSO status, the outlook for Africa and "
-            "region-specific considerations for preparedness and early action."
-        ),
-        verbose_name=_("Monthly bulletin introduction"),
+        verbose_name=_("ENSO explanation"),
+        help_text=_("Use this single section for ENSO phases, African impacts and bulletin context."),
     )
     explainer_image = models.ForeignKey(
         "wagtailimages.Image",
@@ -433,9 +420,7 @@ class ElNinoPage(ProductPage):
     content_panels = ProductPage.content_panels + [
         MultiFieldPanel(
             [
-                FieldPanel("africa_context"),
-                FieldPanel("acmad_response"),
-                FieldPanel("bulletin_intro"),
+                FieldPanel("enso_explanation"),
                 FieldPanel("explainer_image"),
                 FieldPanel("explainer_image_caption"),
             ],
