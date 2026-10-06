@@ -606,6 +606,23 @@ class ServicePage(AbstractBannerWithIntroPage):
     
     projects_description = RichTextField(help_text=_("Projects description text"), blank=True, null=True,
                                          features=SUMMARY_RICHTEXT_FEATURES, verbose_name=_("Project Description"))
+
+    show_projects_section = models.BooleanField(
+        default=True,
+        verbose_name=_("Show projects section"),
+    )
+    show_events_section = models.BooleanField(
+        default=True,
+        verbose_name=_("Show events section"),
+    )
+    show_news_section = models.BooleanField(
+        default=True,
+        verbose_name=_("Show news section"),
+    )
+    show_publications_section = models.BooleanField(
+        default=True,
+        verbose_name=_("Show publications section"),
+    )
     
     feature_block_items = StreamField([
         ('feature_item', base_blocks.FeatureBlock()),
@@ -650,8 +667,12 @@ class ServicePage(AbstractBannerWithIntroPage):
         FieldPanel("extra_content"),
         MultiFieldPanel([
             FieldPanel('projects_description'),
+            FieldPanel('show_projects_section'),
+            FieldPanel('show_events_section'),
+            FieldPanel('show_news_section'),
+            FieldPanel('show_publications_section'),
         ],
-            heading=_("Projects Section"),
+            heading=_("Related content visibility"),
         ),
         FieldPanel('youtube_playlist'),
         InlinePanel('applications', heading=_("Applications"), label=_("Heading")),
@@ -749,12 +770,18 @@ class ServicePage(AbstractBannerWithIntroPage):
     @cached_property
     def latest_updates(self):
         updates = []
-        
-        news = NewsPage.objects.live().filter(services__in=[self.service]).order_by('-is_featured', '-date')[:2]
-        
-        publications = PublicationPage.objects.live().filter(categories__in=[self.service]).order_by(
-            '-featured',
-            '-publication_date')
+
+        news = NewsPage.objects.none()
+        if self.show_news_section:
+            news = NewsPage.objects.live().filter(
+                services__in=[self.service]
+            ).order_by('-is_featured', '-date')[:2]
+
+        publications = PublicationPage.objects.none()
+        if self.show_publications_section:
+            publications = PublicationPage.objects.live().filter(
+                categories__in=[self.service]
+            ).order_by('-featured', '-publication_date')
         
         if news.exists():
             if news.count() > 1:

@@ -9,7 +9,7 @@
 
 {% block content %}
     <main class="is-index">
-        {% include 'hero.html' with page=page %}
+        {% include 'hero.html' with page=page show_fallback=True %}
         {% if page.introduction_image %}
             <section class="nmhs-work intro-section">
                 <div class="work container">
@@ -46,6 +46,5 @@
         </section>
     </main>
 {% endblock content %}
-
 
 

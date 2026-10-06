@@ -243,6 +243,8 @@ class Command(BaseCommand):
                 sector_heading="Climate services for priority sectors",
                 sector_introduction="<p>Choose a sector to explore its risks, services, partners, products and supporting resources.</p>",
                 service_sectors=sector_content(products, documents),
+                show_projects_section=False,
+                show_events_section=False,
             )
             index.add_child(instance=page)
             page.save_revision().publish()
@@ -296,6 +298,16 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS("Added the audited TOR content and records to the existing CUIP page."))
             else:
                 self.stdout.write("CUIP page already contains TOR content; dashboard edits were preserved.")
+
+        visibility_changed = False
+        if page.show_projects_section:
+            page.show_projects_section = False
+            visibility_changed = True
+        if page.show_events_section:
+            page.show_events_section = False
+            visibility_changed = True
+        if visibility_changed:
+            page.save_revision().publish()
 
         linked = set()
         for sector_products in products.values():

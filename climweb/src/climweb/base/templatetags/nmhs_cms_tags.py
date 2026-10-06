@@ -76,7 +76,7 @@ def rcc_navigation(context):
             if monitoring_page
             else f"{home_url}#rcc-monitoring"
         ),
-        "show_events": rcc_page.events.exists(),
+        "show_events": rcc_page.show_events_section and rcc_page.events.exists(),
     }
 
 

@@ -2,9 +2,12 @@
 
 {% if page.banner_image %}
   {% image page.banner_image original as img %}
-  <section class="page-hero progressive__bg progressive--not-loaded"
-           data-progressive="{{ img.url }}"
-           style="background-image: url({% lazy_image_url img %});">
+{% endif %}
+
+{% if page.banner_image or show_fallback %}
+  <section class="page-hero{% if page.banner_image %} progressive__bg progressive--not-loaded{% else %} page-hero--simple{% endif %}"
+           {% if page.banner_image %}data-progressive="{{ img.url }}"
+           style="background-image: url({% lazy_image_url img %});"{% endif %}>
 
     <div class="page-hero-overlay"></div>
 
@@ -18,7 +21,7 @@
         <span class="page-hero-badge">{{ page.title }}</span>
 
         {% block banner_title %}
-          <h1 class="page-hero-title">{{ page.banner_title }}</h1>
+          <h1 class="page-hero-title">{{ page.banner_title|default:page.title }}</h1>
         {% endblock %}
 
         {% if page.banner_subtitle %}

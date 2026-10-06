@@ -3,7 +3,16 @@
         radial-gradient(circle at 8% 4%, color-mix(in srgb, var(--secondary-color, #f6c344) 12%, transparent), transparent 24rem),
         color-mix(in srgb, var(--primary-color) 4%, #fff);
     border-top: 1px solid color-mix(in srgb, var(--primary-color) 10%, transparent);
-    padding: 3.75rem 0 5rem;
+    padding: 2.5rem 0 5rem;
+}
+
+.sector-service-nav {
+    background: #fff;
+    border-bottom: 1px solid color-mix(in srgb, var(--primary-color) 12%, transparent);
+    padding: 0;
+    position: sticky;
+    top: 0;
+    z-index: 20;
 }
 
 .sector-service__heading {
@@ -33,12 +42,17 @@
     border: 1px solid color-mix(in srgb, var(--primary-color) 12%, transparent);
     border-radius: calc(var(--border-radius) * 1.5);
     box-shadow: 0 12px 34px rgb(21 47 58 / 8%);
-    gap: .35rem;
+    gap: .2rem;
     margin-bottom: 2.5rem;
-    padding: .45rem;
+    padding: .15rem;
     position: sticky;
     top: .75rem;
     z-index: 5;
+}
+
+.sector-service__nav--top {
+    margin: 0;
+    position: static;
 }
 
 .sector-service__nav a {
@@ -51,8 +65,8 @@
     font-weight: 700;
     gap: .65rem;
     font-size: .9rem;
-    min-height: 3.4rem;
-    padding: .75rem .85rem;
+    min-height: 2.5rem;
+    padding: .35rem .75rem;
     transition: background-color .2s ease, color .2s ease, transform .2s ease;
 }
 
@@ -164,6 +178,7 @@
 .sector-resource em { color: var(--primary-color); font-size: .82rem; font-style: normal; font-weight: 700; }
 
 @media (max-width: 768px) {
+    .sector-service-nav { padding: 0; }
     .sector-service { padding: 2.75rem 0 3.5rem; }
     .sector-service__nav { background: transparent; border: 0; box-shadow: none; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0; position: static; }
     .sector-service__nav a { background: #fff; border-color: color-mix(in srgb, var(--primary-color) 12%, transparent); box-shadow: 0 7px 20px rgb(21 47 58 / 7%); }
