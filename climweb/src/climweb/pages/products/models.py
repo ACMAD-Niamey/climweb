@@ -391,6 +391,31 @@ class ElNinoPage(ProductPage):
         verbose_name=_("ENSO explainer image caption"),
         help_text=_("Optional caption displayed directly below the ENSO explainer image."),
     )
+    secondary_section_title = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_("Additional section title"),
+    )
+    secondary_section_text = RichTextField(
+        features=SUMMARY_RICHTEXT_FEATURES,
+        blank=True,
+        verbose_name=_("Additional section text"),
+    )
+    secondary_section_image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Additional section image"),
+        help_text=_("Displayed on the right side of the additional ENSO content section."),
+    )
+    secondary_section_image_caption = models.CharField(
+        max_length=500,
+        blank=True,
+        verbose_name=_("Additional section image caption"),
+        help_text=_("Optional caption displayed directly below the image."),
+    )
 
     content_panels = ProductPage.content_panels + [
         MultiFieldPanel(
@@ -402,6 +427,15 @@ class ElNinoPage(ProductPage):
                 FieldPanel("explainer_image_caption"),
             ],
             heading=_("ENSO page content"),
+        ),
+        MultiFieldPanel(
+            [
+                FieldPanel("secondary_section_title"),
+                FieldPanel("secondary_section_text"),
+                FieldPanel("secondary_section_image"),
+                FieldPanel("secondary_section_image_caption"),
+            ],
+            heading=_("Additional ENSO content section"),
         ),
         InlinePanel(
             "partner_activities",

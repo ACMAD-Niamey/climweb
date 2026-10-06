@@ -6,7 +6,7 @@
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'products/css/product.css' %}">
   <link rel="stylesheet" href="{% static 'css/publication.css' %}">
-  <link rel="stylesheet" href="{% static 'products/css/el_nino.css' %}?v=3.4">
+  <link rel="stylesheet" href="{% static 'products/css/el_nino.css' %}?v=3.5">
 {% endblock %}
 
 {% block content %}
@@ -75,6 +75,33 @@
       </div>
     </div>
   </section>
+
+  {% if page.secondary_section_title or page.secondary_section_text or page.secondary_section_image %}
+  <section class="enso-secondary section"{% if page.secondary_section_title %} aria-labelledby="enso-secondary-heading"{% else %} aria-label="{% translate 'Additional ENSO information' %}"{% endif %}>
+    <div class="container">
+      <div class="enso-secondary__grid">
+        <div class="enso-secondary__copy">
+          {% if page.secondary_section_title %}
+            <h2 id="enso-secondary-heading">{{ page.secondary_section_title }}</h2>
+          {% endif %}
+          {% if page.secondary_section_text %}
+            <div class="enso-prose">{{ page.secondary_section_text|richtext }}</div>
+          {% endif %}
+        </div>
+
+        {% if page.secondary_section_image %}
+          <figure class="enso-secondary__visual">
+            {% image page.secondary_section_image width-900 as secondary_image %}
+            <img src="{{ secondary_image.url }}" alt="{{ page.secondary_section_title }}">
+            {% if page.secondary_section_image_caption %}
+              <figcaption>{{ page.secondary_section_image_caption }}</figcaption>
+            {% endif %}
+          </figure>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
 
   {% if el_nino_updates %}
   <section class="enso-events section" aria-labelledby="el-nino-updates-heading">
