@@ -35,7 +35,7 @@ from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin,
                                  FormPageClosingDateMixin, FormPageManualCloseMixin,
                                  FormFieldMaxLengthMixin, FormCleanNameFallbackMixin)
 from climweb.base.models import Product, ProductItemType
-from climweb.base.models import ServiceCategory, AbstractIntroPage
+from climweb.base.models import ServiceCategory, AbstractIntroPage, AbstractBannerWithOptionalIntroPage
 from climweb.base.utils import paginate, query_param_to_list, get_first_non_empty_p_string, get_duplicates
 from climweb.base.forms import CustomWagtailCaptchaFormBuilder
 from climweb.pages.publications.models import PageView
@@ -52,9 +52,7 @@ from .subscription_security import (
     validate_subscription_text,
 )
 
-from climweb.base.models.abstracts import AbstractBannerPage
-
-class ProductIndexPage(AbstractBannerPage):
+class ProductIndexPage(AbstractBannerWithOptionalIntroPage):
     parent_page_types = ['home.HomePage']
     subpage_types = [
         'products.ProductPage',
@@ -71,7 +69,7 @@ class ProductIndexPage(AbstractBannerPage):
                                        verbose_name=_("Products listing Heading"))
     group_menu_items_by_service = models.BooleanField(default=True, verbose_name=_("Group menu items by service"))
     
-    content_panels = AbstractBannerPage.content_panels + [
+    content_panels = AbstractBannerWithOptionalIntroPage.content_panels + [
         FieldPanel("listing_heading"),
         FieldPanel("group_menu_items_by_service")
     ]
@@ -84,7 +82,9 @@ class ProductIndexPage(AbstractBannerPage):
     def service_categories(self):
         product_service = set(ProductPage.objects.all().live().values_list('service', flat=True))
         
-        unique_services = ServiceCategory.objects.filter(id__in=list(product_service))
+        unique_services = ServiceCategory.objects.filter(
+            id__in=list(product_service)
+        ).order_by(models.F("order").asc(nulls_last=True), "name")
         
         return unique_services
     

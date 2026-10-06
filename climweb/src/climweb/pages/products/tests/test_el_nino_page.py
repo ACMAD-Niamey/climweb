@@ -42,7 +42,7 @@ class ElNinoPageTests(WagtailPageTestCase):
         self.assertContains(response, "Latest El Niño Bulletin")
         self.assertNotContains(response, 'id="latest-bulletin-heading"')
         self.assertNotContains(response, "Updated monthly")
-        self.assertNotContains(response, "The monthly bulletin brings together")
+        self.assertContains(response, "The monthly bulletin brings together")
         self.assertContains(response, "Previous El Niño bulletins")
         self.assertContains(response, "No previous editions yet")
 

@@ -98,6 +98,17 @@ class ElNinoPageFactory(ProductPageFactory):
 
     title = "ENSO in Africa"
     introduction_title = "Understanding ENSO and its implications for Africa"
+    
+    @factory.lazy_attribute
+    def enso_explanation(self):
+        return RichText(
+            "<p>ENSO links changes in the tropical Pacific Ocean with the atmosphere. El Niño is the warm phase, "
+            "La Niña the cool phase, and neutral conditions occur between them.</p>"
+            "<p>These phases can influence rainfall and temperature across Africa, but their effects vary by "
+            "region and season and must be considered alongside other climate drivers.</p>"
+            "<p>The monthly bulletin brings together the latest ENSO status, the outlook for Africa and "
+            "region-specific considerations for preparedness and early action.</p>"
+        )
 
 
 class ProductItemImageContentBlockFactory(wagtail_factories.StructBlockFactory):

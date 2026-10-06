@@ -58,6 +58,7 @@
 
             </div>
             </div>
+        {% if page.introduction_title or page.introduction_text or page.strategic_plan %}
         <section class="nmhs-work">
             <div class="work container">
                 <div class="intro-section">
@@ -106,6 +107,7 @@
 
             </div>
         </section>
+        {% endif %}
 
         {% if page.mission or page.vision %}
         <section class="mv-section" id="mission_vision_section">

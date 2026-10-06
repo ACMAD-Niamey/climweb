@@ -144,6 +144,26 @@ class AbstractIntroPage(MetadataPageMixin, Page):
         return meta_description
 
 
+class AbstractOptionalIntroPage(AbstractIntroPage):
+    introduction_title = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name=_("Introduction Title"),
+        help_text=_("Introduction section title"),
+    )
+    introduction_text = RichTextField(
+        blank=True,
+        null=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Introduction text"),
+        help_text=_("Introduction section description"),
+    )
+
+    class Meta:
+        abstract = True
+
+
 class AbstractBannerWithIntroPage(AbstractBannerPage, AbstractIntroPage):
     class Meta:
         abstract = True
@@ -151,4 +171,14 @@ class AbstractBannerWithIntroPage(AbstractBannerPage, AbstractIntroPage):
     content_panels = [
         *AbstractBannerPage.content_panels,
         *AbstractIntroPage.content_panels,
+    ]
+
+
+class AbstractBannerWithOptionalIntroPage(AbstractBannerPage, AbstractOptionalIntroPage):
+    class Meta:
+        abstract = True
+
+    content_panels = [
+        *AbstractBannerPage.content_panels,
+        *AbstractOptionalIntroPage.content_panels,
     ]
