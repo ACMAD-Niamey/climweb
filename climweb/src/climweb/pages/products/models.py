@@ -344,6 +344,15 @@ class ProductPage(BaseProductPage):
         return super().serve(request, *args, **kwargs)
 
 
+class ElNinoPageForm(ProductPageForm):
+    """Allow the shared introduction fields to be blank on the ENSO page only."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["introduction_title"].required = False
+        self.fields["introduction_text"].required = False
+
+
 class ElNinoPage(ProductPage):
     """Africa-focused ENSO information hub backed by monthly product issues."""
 
@@ -351,30 +360,21 @@ class ElNinoPage(ProductPage):
     parent_page_types = ["products.ProductIndexPage"]
     subpage_types = ["products.ProductItemPage"]
     max_count = 1
+    base_form_class = ElNinoPageForm
 
-    africa_context = RichTextField(
+    enso_explanation = RichTextField(
         features=SUMMARY_RICHTEXT_FEATURES,
+        blank=True,
         default=(
             "<p>ENSO links changes in the tropical Pacific Ocean with the atmosphere. El Niño is the warm phase, "
             "La Niña the cool phase, and neutral conditions occur between them.</p>"
-        ),
-        verbose_name=_("ENSO explanation — phases"),
-    )
-    acmad_response = RichTextField(
-        features=SUMMARY_RICHTEXT_FEATURES,
-        default=(
             "<p>These phases can influence rainfall and temperature across Africa, but their effects vary by "
             "region and season and must be considered alongside other climate drivers.</p>"
+            "<p>The monthly bulletin brings together the latest ENSO status, the outlook for Africa and "
+            "region-specific considerations for preparedness and early action.</p>"
         ),
-        verbose_name=_("ENSO explanation — African impacts"),
-    )
-    bulletin_intro = models.TextField(
-        max_length=500,
-        default=(
-            "The monthly bulletin brings together the latest ENSO status, the outlook for Africa and "
-            "region-specific considerations for preparedness and early action."
-        ),
-        verbose_name=_("Monthly bulletin introduction"),
+        verbose_name=_("ENSO explanation"),
+        help_text=_("Use this single section for ENSO phases, African impacts and bulletin context."),
     )
     explainer_image = models.ForeignKey(
         "wagtailimages.Image",
@@ -391,17 +391,49 @@ class ElNinoPage(ProductPage):
         verbose_name=_("ENSO explainer image caption"),
         help_text=_("Optional caption displayed directly below the ENSO explainer image."),
     )
+    secondary_section_title = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_("Additional section title"),
+    )
+    secondary_section_text = RichTextField(
+        features=SUMMARY_RICHTEXT_FEATURES,
+        blank=True,
+        verbose_name=_("Additional section text"),
+    )
+    secondary_section_image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Additional section image"),
+        help_text=_("Displayed on the right side of the additional ENSO content section."),
+    )
+    secondary_section_image_caption = models.CharField(
+        max_length=500,
+        blank=True,
+        verbose_name=_("Additional section image caption"),
+        help_text=_("Optional caption displayed directly below the image."),
+    )
 
     content_panels = ProductPage.content_panels + [
         MultiFieldPanel(
             [
-                FieldPanel("africa_context"),
-                FieldPanel("acmad_response"),
-                FieldPanel("bulletin_intro"),
+                FieldPanel("enso_explanation"),
                 FieldPanel("explainer_image"),
                 FieldPanel("explainer_image_caption"),
             ],
             heading=_("ENSO page content"),
+        ),
+        MultiFieldPanel(
+            [
+                FieldPanel("secondary_section_title"),
+                FieldPanel("secondary_section_text"),
+                FieldPanel("secondary_section_image"),
+                FieldPanel("secondary_section_image_caption"),
+            ],
+            heading=_("Additional ENSO content section"),
         ),
         InlinePanel(
             "partner_activities",
@@ -537,10 +569,10 @@ class ElNinoPage(ProductPage):
             value = item["date"]
             return value.date() if isinstance(value, datetime) else value
 
-        upcoming_updates.sort(key=update_sort_date)
-        recent_updates.sort(key=update_sort_date, reverse=True)
+        dated_updates = upcoming_updates + recent_updates
+        dated_updates.sort(key=update_sort_date, reverse=True)
         context["el_nino_updates"] = paginate(
-            upcoming_updates + recent_updates,
+            dated_updates,
             request.GET.get("updates_page"),
             3,
         )

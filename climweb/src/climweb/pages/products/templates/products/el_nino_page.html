@@ -6,7 +6,7 @@
 {% block extra_css %}
   <link rel="stylesheet" href="{% static 'products/css/product.css' %}">
   <link rel="stylesheet" href="{% static 'css/publication.css' %}">
-  <link rel="stylesheet" href="{% static 'products/css/el_nino.css' %}?v=3.1">
+  <link rel="stylesheet" href="{% static 'products/css/el_nino.css' %}?v=3.5">
 {% endblock %}
 
 {% block content %}
@@ -23,22 +23,23 @@
         <p>{% translate "ENSO monitoring, outlooks and impact information for Africa" %}</p>
       </div>
 
-      <aside class="enso-hero-bulletin" aria-labelledby="latest-bulletin-heading">
-        <h2 id="latest-bulletin-heading">{% translate "Latest ENSO Bulletin" %}</h2>
+      <aside class="enso-hero-bulletin{% if not latest_bulletin %} enso-hero-bulletin--empty{% endif %}" aria-label="{% translate 'Latest El Niño Bulletin' %}">
         {% if latest_bulletin %}
+          <a class="enso-hero-bulletin__cover" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}" aria-label="{% translate 'View latest El Niño bulletin' %}">
+            {% if latest_bulletin.products_listing_image %}
+              {% image latest_bulletin.products_listing_image fill-820x400 as bulletin_thumbnail %}
+              <img src="{{ bulletin_thumbnail.url }}" alt="{% translate 'El Niño bulletin thumbnail' %}">
+            {% else %}
+              <div class="enso-cover-placeholder" aria-hidden="true"><span>ENSO</span><small>AFRICA</small></div>
+            {% endif %}
+          </a>
           <div class="enso-hero-bulletin__body">
-            <a class="enso-hero-bulletin__cover" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}" aria-label="{% translate 'View latest ENSO bulletin' %}">
-              {% if latest_bulletin.products_listing_image %}
-                {% image latest_bulletin.products_listing_image fill-180x220 as bulletin_cover %}
-                <img src="{{ bulletin_cover.url }}" alt="{% translate 'ENSO bulletin cover preview' %}">
-              {% else %}
-                <div class="enso-cover-placeholder" aria-hidden="true"><span>ENSO</span><small>AFRICA</small></div>
-              {% endif %}
-            </a>
             <a class="button is-primary enso-hero-bulletin__button" href="{{ latest_bulletin_document_url|default:latest_bulletin.url }}">{% translate "View bulletin" %}</a>
           </div>
         {% else %}
-          <p class="enso-hero-bulletin__empty">{% translate "The first monthly bulletin is being prepared." %}</p>
+          <div class="enso-hero-bulletin__body">
+            <p class="enso-hero-bulletin__empty">{% translate "The first monthly bulletin is being prepared." %}</p>
+          </div>
         {% endif %}
       </aside>
     </div>
@@ -64,16 +65,42 @@
         </figure>
 
         <div class="enso-intro-copy">
-          <h2>{{ page.introduction_title }}</h2>
-          <div class="enso-prose">{{ page.introduction_text|richtext }}</div>
+          {% if page.introduction_title %}<h2>{{ page.introduction_title }}</h2>{% endif %}
+          {% if page.introduction_text %}<div class="enso-prose">{{ page.introduction_text|richtext }}</div>{% endif %}
           <div class="enso-intro-details">
-            <div class="enso-prose">{{ page.africa_context|richtext }}</div>
-            <div class="enso-prose">{{ page.acmad_response|richtext }}</div>
+            {% if page.enso_explanation %}<div class="enso-prose">{{ page.enso_explanation|richtext }}</div>{% endif %}
           </div>
         </div>
       </div>
     </div>
   </section>
+
+  {% if page.secondary_section_title or page.secondary_section_text or page.secondary_section_image %}
+  <section class="enso-secondary section"{% if page.secondary_section_title %} aria-labelledby="enso-secondary-heading"{% else %} aria-label="{% translate 'Additional ENSO information' %}"{% endif %}>
+    <div class="container">
+      <div class="enso-secondary__grid">
+        <div class="enso-secondary__copy">
+          {% if page.secondary_section_title %}
+            <h2 id="enso-secondary-heading">{{ page.secondary_section_title }}</h2>
+          {% endif %}
+          {% if page.secondary_section_text %}
+            <div class="enso-prose">{{ page.secondary_section_text|richtext }}</div>
+          {% endif %}
+        </div>
+
+        {% if page.secondary_section_image %}
+          <figure class="enso-secondary__visual">
+            {% image page.secondary_section_image width-900 as secondary_image %}
+            <img src="{{ secondary_image.url }}" alt="{{ page.secondary_section_title }}">
+            {% if page.secondary_section_image_caption %}
+              <figcaption>{{ page.secondary_section_image_caption }}</figcaption>
+            {% endif %}
+          </figure>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
 
   {% if el_nino_updates %}
   <section class="enso-events section" aria-labelledby="el-nino-updates-heading">
@@ -145,13 +172,13 @@
   <section class="enso-archive section" aria-labelledby="bulletin-archive-heading">
     <div class="container">
       <p class="enso-section-label">{% translate "Previous editions" %}</p>
-      <h2 id="bulletin-archive-heading">{% translate "Previous ENSO bulletins" %}</h2>
+      <h2 id="bulletin-archive-heading">{% translate "Previous El Niño bulletins" %}</h2>
       {% if products.paginator.count %}
         {% include "products/product_list_include.html" with products=products %}
       {% else %}
         <div class="enso-empty enso-archive-empty">
           <h3>{% translate "No previous editions yet" %}</h3>
-          <p>{% translate "Earlier monthly ENSO bulletins will appear here as new issues are published." %}</p>
+          <p>{% translate "Earlier monthly El Niño bulletins will appear here as new issues are published." %}</p>
         </div>
       {% endif %}
     </div>

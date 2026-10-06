@@ -861,7 +861,11 @@ class HomePage(MetadataPageMixin, Page):
         return {
             "page": enso_page,
             "url": canonical_public_page_url(page_url),
-            "image": enso_page.explainer_image or enso_page.introduction_image or enso_page.get_meta_image(),
+            "image": (
+                enso_page.explainer_image
+                or enso_page.introduction_image
+                or enso_page.get_meta_image()
+            ),
             "summary": summary,
             "latest_bulletin": latest_bulletin,
             "bulletin_url": canonical_public_page_url(bulletin_url),
@@ -931,13 +935,17 @@ class HomePage(MetadataPageMixin, Page):
                     "title": latest_bulletin.title if latest_bulletin else el_nino_page.title,
                     "kind": "el_nino",
                     "badge": _("ENSO"),
-                    "cta_label": _("Visit ENSO page"),
+                    "cta_label": _("View Bulletin"),
                     "date": latest_bulletin.date if latest_bulletin else None,
                     "end_date": None,
                     "image": (
-                        latest_bulletin.get_meta_image() if latest_bulletin else None
-                    ) or el_nino_page.get_meta_image(),
-                    "image_alt": _("ENSO bulletin for Africa"),
+                        latest_bulletin.products_listing_image if latest_bulletin else None
+                    ) or (
+                        el_nino_page.explainer_image
+                        or el_nino_page.introduction_image
+                        or el_nino_page.get_meta_image()
+                    ),
+                    "image_alt": _("El Niño bulletin for Africa"),
                     "url": canonical_public_page_url(page_url),
                     "cta_url": canonical_public_page_url(bulletin_url),
                 }
