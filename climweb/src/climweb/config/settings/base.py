@@ -526,6 +526,18 @@ RECAPTCHA_PRIVATE_KEY = env.str('RECAPTCHA_PRIVATE_KEY', '')
 # RECAPTCHA_DOMAIN = env.str('RECAPTCHA_DOMAIN', 'www.google.com')
 RECAPTCHA_VERIFY_REQUEST_TIMEOUT = env.str('RECAPTCHA_VERIFY_REQUEST_TIMEOUT', "60")
 
+# Public product-subscription abuse controls. Counts are shared through the
+# default Redis cache, so limits apply consistently across web workers.
+PRODUCT_SUBSCRIPTION_RATE_LIMIT_IP = env.int(
+    "PRODUCT_SUBSCRIPTION_RATE_LIMIT_IP", default=10
+)
+PRODUCT_SUBSCRIPTION_RATE_LIMIT_EMAIL = env.int(
+    "PRODUCT_SUBSCRIPTION_RATE_LIMIT_EMAIL", default=3
+)
+PRODUCT_SUBSCRIPTION_RATE_LIMIT_WINDOW = env.int(
+    "PRODUCT_SUBSCRIPTION_RATE_LIMIT_WINDOW", default=3600
+)
+
 # Google Calendar / Meet integration. This must point to a service-account JSON
 # key mounted as a deployment secret; credentials are never stored in Wagtail.
 GOOGLE_MEET_SERVICE_ACCOUNT_FILE = env.str(
