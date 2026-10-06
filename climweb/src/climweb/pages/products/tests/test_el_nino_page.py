@@ -232,6 +232,10 @@ class ElNinoPageTests(WagtailPageTestCase):
 
         self.assertIn("explainer_image", form.base_fields)
         self.assertIn("explainer_image_caption", form.base_fields)
+        self.assertIn("secondary_section_title", form.base_fields)
+        self.assertIn("secondary_section_text", form.base_fields)
+        self.assertIn("secondary_section_image", form.base_fields)
+        self.assertIn("secondary_section_image_caption", form.base_fields)
         self.assertIn("partner_activities", form.formsets)
 
     def test_explainer_image_caption_is_displayed(self):
@@ -243,3 +247,24 @@ class ElNinoPageTests(WagtailPageTestCase):
         response = self.client.get(self.page.url)
 
         self.assertContains(response, f"<figcaption>{caption}</figcaption>", html=True)
+
+    def test_optional_secondary_section_places_text_before_image(self):
+        title = "How ENSO shapes seasonal climate signals"
+        paragraph = "<p>Ocean and atmosphere signals can influence seasonal climate patterns.</p>"
+        caption = "An additional ENSO explanatory graphic."
+        self.page.secondary_section_title = title
+        self.page.secondary_section_text = paragraph
+        self.page.secondary_section_image = self.page.introduction_image
+        self.page.secondary_section_image_caption = caption
+        self.page.save()
+
+        response = self.client.get(self.page.url)
+
+        self.assertContains(response, 'class="enso-secondary section"')
+        self.assertContains(response, title)
+        self.assertContains(response, paragraph, html=True)
+        self.assertContains(response, f"<figcaption>{caption}</figcaption>", html=True)
+        self.assertLess(
+            response.content.index(b'class="enso-secondary__copy"'),
+            response.content.index(b'class="enso-secondary__visual"'),
+        )
