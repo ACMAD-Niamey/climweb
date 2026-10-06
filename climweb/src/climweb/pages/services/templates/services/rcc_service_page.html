@@ -296,13 +296,13 @@
     {% endfor %}
     {% endif %}
 
-    {% if page.projects.all %}
+    {% if page.show_projects_section and page.projects.all %}
     <section class="rcc-section rcc-projects">
         <div class="container">{% include 'projects_include.html' with page=page %}</div>
     </section>
     {% endif %}
 
-    {% if page.events %}
+    {% if page.show_events_section and page.events %}
     <section id="rcc-events" class="rcc-section rcc-events">
         <div class="container">
             <div class="rcc-section-heading">
@@ -365,7 +365,13 @@
             <div class="rcc-section-heading">
                 <div>
                     <p class="rcc-eyebrow">{% translate "Latest updates" %}</p>
+                    {% if page.show_news_section and page.show_publications_section %}
                     <h2>{% translate "News and publications" %}</h2>
+                    {% elif page.show_news_section %}
+                    <h2>{% translate "News" %}</h2>
+                    {% else %}
+                    <h2>{% translate "Publications" %}</h2>
+                    {% endif %}
                 </div>
             </div>
             <div class="columns is-multiline is-8">

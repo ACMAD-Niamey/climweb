@@ -20,6 +20,20 @@
 {% block content %}
     <main class="is-index">
         {% include 'hero.html' with page=page %}
+        {% if page.service_sectors %}
+            <section class="sector-service-nav" aria-label="{% translate 'Sector navigation' %}">
+                <div class="container">
+                    <nav class="sector-service__nav sector-service__nav--top">
+                        {% for block in page.service_sectors %}
+                            <a href="#{{ block.value.anchor }}">
+                                {% if block.value.icon %}<span class="sector-service__nav-icon">{% svg_icon name=block.value.icon %}</span>{% endif %}
+                                <span>{{ block.value.title }}</span>
+                            </a>
+                        {% endfor %}
+                    </nav>
+                </div>
+            </section>
+        {% endif %}
         {% if page.introduction_image %}
             <section class="service-introduction service-introduction--media nmhs-work is-desktop">
                 <div class="work container">
@@ -44,30 +58,8 @@
             </section>
         {% endif %}
         {% if page.service_sectors %}
-            <section class="sector-service" aria-labelledby="sector-service-heading">
+            <section class="sector-service">
                 <div class="container">
-                    <div class="sector-service__heading">
-                        <p class="sector-service__eyebrow">{% translate "Sector services" %}</p>
-                        {% translate "Explore services by sector" as default_sector_heading %}
-                        <h2 id="sector-service-heading" class="title is-3">
-                            {{ page.sector_heading|default:default_sector_heading }}
-                        </h2>
-                        {% if page.sector_introduction %}
-                            <div class="sector-service__introduction format-text">
-                                {{ page.sector_introduction|richtext }}
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <nav class="sector-service__nav" aria-label="{% translate 'Sector navigation' %}">
-                        {% for block in page.service_sectors %}
-                            <a href="#{{ block.value.anchor }}">
-                                {% if block.value.icon %}<span class="sector-service__nav-icon">{% svg_icon name=block.value.icon %}</span>{% endif %}
-                                <span>{{ block.value.title }}</span>
-                            </a>
-                        {% endfor %}
-                    </nav>
-
                     <div class="sector-service__sections">
                         {% for block in page.service_sectors %}
                             {% include_block block %}
@@ -172,7 +164,7 @@
             {% endfor %}
         {% endif %}
 
-        {% if page.projects.all %}
+        {% if page.show_projects_section and page.projects.all %}
             <section class="projects-inline">
                 <div class="container">
                     {% include 'projects_include.html' with page=page %}
@@ -180,7 +172,7 @@
             </section>
         {% endif %}
 
-        {% if page.events.all %}
+        {% if page.show_events_section and page.events.all %}
             <section class="events-inline">
                 <div class="container">
                     <h2 class="title is-3">
