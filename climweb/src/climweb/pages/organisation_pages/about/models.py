@@ -6,13 +6,13 @@ from wagtail.fields import RichTextField, StreamField
 from wagtail.models import Page
 
 from climweb.base import blocks
-from climweb.base.models import AbstractIntroPage
+from climweb.base.models import AbstractBannerWithOptionalIntroPage
 from climweb.config.settings.base import SUMMARY_RICHTEXT_FEATURES
 from climweb.pages.organisation_pages.partners.models import Partner
 from .blocks import TimelineBlock
 
 
-class AboutPage(AbstractIntroPage):
+class AboutPage(AbstractBannerWithOptionalIntroPage):
     template = 'about_page.html'
     parent_page_types = ['organisation.OrganisationIndexPage']
     subpage_types = ['flex_page.FlexPage', ]
@@ -80,7 +80,7 @@ class AboutPage(AbstractIntroPage):
     )
     
     content_panels = Page.content_panels + [
-        *AbstractIntroPage.content_panels,
+        *AbstractBannerWithOptionalIntroPage.content_panels,
         MultiFieldPanel(
             [
                 FieldPanel('mission'),

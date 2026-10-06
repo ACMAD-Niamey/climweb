@@ -5,8 +5,9 @@ if "capcomposer.cap" in settings.INSTALLED_APPS:
 from django.contrib import messages
 from django.contrib.auth.models import Permission
 from django.core.cache import cache
-from django.db.models import CharField, TextField
+from django.db.models import CharField, F, TextField
 from django.http import HttpResponseRedirect
+from django.middleware.csrf import get_token
 from django.templatetags.static import static
 from django.urls import path, reverse
 from django.utils.html import format_html, strip_tags
@@ -29,7 +30,7 @@ from .models import Theme, ServiceCategory, CAPGeomanagerSettings, CapacityBuild
 from .utils import get_latest_cms_release
 from .views import (cms_version_view, plugin_manager_view, cms_upgrade_status_view, submission_review_view,
                     submissions_ratings_view, compose_submission_email_view, request_submission_export_view,
-                    download_submission_export_view)
+                    download_submission_export_view, update_product_category_order)
 
 
 class ModelAdminGroupWithHiddenItems(ModelAdminGroup):
@@ -54,6 +55,7 @@ def urlconf_base():
         path('cms-version', cms_version_view, name='cms-version'),
         path('cms-upgrade-status', cms_upgrade_status_view, name='cms-upgrade-status'),
         path('plugins', plugin_manager_view, name='plugin-manager'),
+        path('product-category-order/', update_product_category_order, name='product-category-order'),
         path('forms/submissions/<int:page_id>/<int:submission_id>/review/',
              submission_review_view, name='form_submission_review'),
         path('forms/submissions/<int:page_id>/ratings/',
@@ -135,8 +137,12 @@ _EXTRA_TERMS = getattr(settings, "CLIMWEB_BLOCKED_TERMS", [
     "kill yourself", "go die", "you should die",
     "bomb threat", "death threat",
 ])
+_ALLOWED_TERMS = getattr(settings, "CLIMWEB_ALLOWED_TERMS", [
+    # Roman numeral used in official resolution references, e.g. 540 (XX).
+    "xx",
+])
 
-profanity.load_censor_words()
+profanity.load_censor_words(whitelist_words=_ALLOWED_TERMS)
 if _EXTRA_TERMS:
     profanity.add_censor_words(_EXTRA_TERMS)
 
@@ -273,8 +279,52 @@ class CMSUpgradeNotificationPanel(Component):
             return ""
 
 
+class OrganisationPageHeadersPanel(Component):
+    name = "organisation_page_headers"
+    template_name = "admin/organisation_page_headers.html"
+    order = 110
+
+    def get_context_data(self, parent_context):
+        from climweb.pages.organisation_pages.about.models import AboutPage
+        from climweb.pages.organisation_pages.partners.models import PartnersPage
+        from climweb.pages.organisation_pages.staff.models import StaffPage
+        from climweb.pages.organisation_pages.tenders.models import TendersPage
+
+        request = parent_context["request"]
+        pages = []
+        for label, model in (
+            (_("About"), AboutPage),
+            (_("Partners"), PartnersPage),
+            (_("Teams"), StaffPage),
+            (_("Tenders"), TendersPage),
+        ):
+            page = model.objects.first()
+            if page and page.permissions_for_user(request.user).can_edit():
+                pages.append({"label": label, "page": page})
+
+        return {"organisation_header_pages": pages}
+
+
+class ProductCategorySortingPanel(Component):
+    name = "product_category_sorting"
+    template_name = "admin/product_category_sorting.html"
+    order = 120
+
+    def get_context_data(self, parent_context):
+        request = parent_context["request"]
+        if not request.user.has_perm("base.change_servicecategory"):
+            return {"product_categories": []}
+        categories = ServiceCategory.objects.order_by(F("order").asc(nulls_last=True), "name")
+        return {
+            "product_categories": categories,
+            "category_order_csrf_token": get_token(request),
+        }
+
+
 @hooks.register('construct_homepage_panels')
 def add_another_welcome_panel(request, panels):
+    panels.insert(0, OrganisationPageHeadersPanel())
+    panels.insert(0, ProductCategorySortingPanel())
     panels.append(CMSUpgradeNotificationPanel())
 
 

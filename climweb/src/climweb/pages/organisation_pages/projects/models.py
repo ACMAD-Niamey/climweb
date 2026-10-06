@@ -14,7 +14,7 @@ from wagtail.fields import StreamField
 from wagtail.models import Page
 
 from climweb.base import blocks
-from climweb.base.models import ServiceCategory, AbstractBannerWithIntroPage
+from climweb.base.models import ServiceCategory, AbstractBannerWithOptionalIntroPage
 from climweb.base.utils import query_param_to_list, paginate, get_first_non_empty_p_string
 from climweb.pages.events.models import EventPage
 from climweb.pages.news.models import NewsPage
@@ -22,7 +22,7 @@ from climweb.pages.publications.models import PublicationPage
 from climweb.pages.videos.models import YoutubePlaylist
 
 
-class ProjectIndexPage(AbstractBannerWithIntroPage):
+class ProjectIndexPage(AbstractBannerWithOptionalIntroPage):
     template = 'project_index_page.html'
     parent_page_types = ['organisation.OrganisationIndexPage']
     subpage_types = ['projects.ProjectPage']
@@ -37,7 +37,7 @@ class ProjectIndexPage(AbstractBannerWithIntroPage):
     
     
     content_panels = Page.content_panels + [
-        *AbstractBannerWithIntroPage.content_panels,
+        *AbstractBannerWithOptionalIntroPage.content_panels,
         MultiFieldPanel(
             [
                 FieldPanel('items_per_page'),
@@ -101,7 +101,7 @@ class ProjectIndexPage(AbstractBannerWithIntroPage):
         verbose_name = _("Project Index Page")
 
 
-class ProjectPage(AbstractBannerWithIntroPage):
+class ProjectPage(AbstractBannerWithOptionalIntroPage):
     template = 'project_page.html'
     parent_page_types = ['projects.ProjectIndexPage']
     subpage_types = []
@@ -143,7 +143,7 @@ class ProjectPage(AbstractBannerWithIntroPage):
     
     content_panels = Page.content_panels + [
         FieldPanel('services', widget=CheckboxSelectMultiple),
-        *AbstractBannerWithIntroPage.content_panels,
+        *AbstractBannerWithOptionalIntroPage.content_panels,
         FieldPanel('full_name'),
         FieldPanel('short_name'),
         FieldPanel('begin_date'),
