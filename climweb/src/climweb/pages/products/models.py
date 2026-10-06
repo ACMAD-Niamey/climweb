@@ -365,14 +365,12 @@ class ElNinoPage(ProductPage):
     enso_explanation = RichTextField(
         features=SUMMARY_RICHTEXT_FEATURES,
         blank=True,
-        default=(
-            "<p>ENSO links changes in the tropical Pacific Ocean with the atmosphere. El Niño is the warm phase, "
-            "La Niña the cool phase, and neutral conditions occur between them.</p>"
-            "<p>These phases can influence rainfall and temperature across Africa, but their effects vary by "
-            "region and season and must be considered alongside other climate drivers.</p>"
-            "<p>The monthly bulletin brings together the latest ENSO status, the outlook for Africa and "
-            "region-specific considerations for preparedness and early action.</p>"
-        ),
+       default=(
+              "<p>ENSO links changes in the tropical Pacific Ocean with the atmosphere. El Niño is the warm phase, "
+              "La Niña the cool phase, and neutral conditions occur between them.</p>"
+              "<p>These phases can influence rainfall and temperature across Africa, but their effects vary by "
+              "region and season and must be considered alongside other climate drivers.</p>"
+          ),
         verbose_name=_("ENSO explanation"),
         help_text=_("Use this single section for ENSO phases, African impacts and bulletin context."),
     )
