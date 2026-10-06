@@ -3,6 +3,82 @@
     background-color: #fff;
 }
 
+.about-page .intro-body {
+  text-align: justify;
+  text-justify: inter-word;
+}
+
+.strategic-plan-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  color: #1a1a1a;
+  background: #f8f9fb;
+  border: 1px solid #e7ebef;
+  border-radius: var(--border-radius);
+  text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+
+.strategic-plan-card:hover,
+.strategic-plan-card:focus-visible {
+  color: #1a1a1a;
+  border-color: var(--primary-color);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+}
+
+.strategic-plan-cover {
+  width: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #fff;
+  border-radius: var(--border-radius);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+}
+
+.strategic-plan-cover img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 420px;
+  object-fit: contain;
+}
+
+.strategic-plan-details {
+  width: 100%;
+}
+
+.strategic-plan-label,
+.strategic-plan-title,
+.strategic-plan-action {
+  display: block;
+}
+
+.strategic-plan-label {
+  margin-bottom: 0.35rem;
+  color: var(--primary-color);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.strategic-plan-title {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.strategic-plan-action {
+  margin-top: 0.75rem;
+  color: var(--primary-color);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 
 .about-us-cta-section .section-title {
     padding-bottom: 20px;

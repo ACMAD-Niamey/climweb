@@ -77,7 +77,14 @@ class StaffProfileForm(forms.Form):
     linkedin = forms.URLField(required=False, label="LinkedIn profile")
     github = forms.URLField(required=False, max_length=200, label="GitHub profile")
     publications = forms.URLField(required=False, max_length=200, label="Publications URL", help_text="Link to Google Scholar, ORCID or your publications page.")
-    photo = forms.ImageField(required=False, help_text="JPEG, PNG or WebP, up to 5 MB and 4096 × 4096 pixels.")
+    photo = forms.ImageField(
+        required=False,
+        widget=forms.ClearableFileInput(attrs={
+            "accept": "image/jpeg,image/png,image/webp",
+            "data-photo-preview": "true",
+        }),
+        help_text="JPEG, PNG or WebP, up to 5 MB and 4096 × 4096 pixels. Check the circular preview before saving.",
+    )
     discard_photo = forms.BooleanField(required=False, label="Discard my draft photo and keep the current public photo")
 
     def clean_photo(self):

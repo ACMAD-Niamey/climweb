@@ -10,7 +10,7 @@
 
 {% block content %}
     <main>
-        {% include 'hero.html' with page=page %}
+        {% include 'hero.html' with page=page show_fallback=True %}
         {% if page.introduction_image %}
             <section class="nmhs-work introduction-section">
                 <div class="work container">
@@ -60,6 +60,7 @@
                                 src="{% lazy_image_url p_logo %}"
                                 alt="{{ partner.name }}" />
                         </figure>
+                        <span class="partner-name">{{ partner.name }}</span>
                         </a>
                     </div>
                     {% endif %}
