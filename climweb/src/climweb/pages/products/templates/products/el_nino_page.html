@@ -65,11 +65,11 @@
         </figure>
 
         <div class="enso-intro-copy">
-          <h2>{{ page.introduction_title }}</h2>
-          <div class="enso-prose">{{ page.introduction_text|richtext }}</div>
+          {% if page.introduction_title %}<h2>{{ page.introduction_title }}</h2>{% endif %}
+          {% if page.introduction_text %}<div class="enso-prose">{{ page.introduction_text|richtext }}</div>{% endif %}
           <div class="enso-intro-details">
-            <div class="enso-prose">{{ page.africa_context|richtext }}</div>
-            <div class="enso-prose">{{ page.acmad_response|richtext }}</div>
+            {% if page.africa_context %}<div class="enso-prose">{{ page.africa_context|richtext }}</div>{% endif %}
+            {% if page.acmad_response %}<div class="enso-prose">{{ page.acmad_response|richtext }}</div>{% endif %}
           </div>
         </div>
       </div>

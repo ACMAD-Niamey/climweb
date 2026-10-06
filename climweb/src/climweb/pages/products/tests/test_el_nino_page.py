@@ -228,15 +228,21 @@ class ElNinoPageTests(WagtailPageTestCase):
         self.assertIn("is_el_nino_related", form.base_fields)
 
     def test_el_nino_editor_exposes_explainer_image(self):
-        form = type(self.page).get_edit_handler().get_form_class()
+        form_class = type(self.page).get_edit_handler().get_form_class()
+        form = form_class(instance=self.page)
 
-        self.assertIn("explainer_image", form.base_fields)
-        self.assertIn("explainer_image_caption", form.base_fields)
-        self.assertIn("secondary_section_title", form.base_fields)
-        self.assertIn("secondary_section_text", form.base_fields)
-        self.assertIn("secondary_section_image", form.base_fields)
-        self.assertIn("secondary_section_image_caption", form.base_fields)
-        self.assertIn("partner_activities", form.formsets)
+        self.assertIn("explainer_image", form.fields)
+        self.assertIn("explainer_image_caption", form.fields)
+        self.assertIn("secondary_section_title", form.fields)
+        self.assertIn("secondary_section_text", form.fields)
+        self.assertIn("secondary_section_image", form.fields)
+        self.assertIn("secondary_section_image_caption", form.fields)
+        self.assertIn("partner_activities", form_class.formsets)
+        self.assertFalse(form.fields["introduction_title"].required)
+        self.assertFalse(form.fields["introduction_text"].required)
+        self.assertFalse(form.fields["africa_context"].required)
+        self.assertFalse(form.fields["acmad_response"].required)
+        self.assertFalse(form.fields["bulletin_intro"].required)
 
     def test_explainer_image_caption_is_displayed(self):
         caption = "Observed Pacific sea-surface temperature anomalies during an ENSO phase."

@@ -344,6 +344,15 @@ class ProductPage(BaseProductPage):
         return super().serve(request, *args, **kwargs)
 
 
+class ElNinoPageForm(ProductPageForm):
+    """Allow the shared introduction fields to be blank on the ENSO page only."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["introduction_title"].required = False
+        self.fields["introduction_text"].required = False
+
+
 class ElNinoPage(ProductPage):
     """Africa-focused ENSO information hub backed by monthly product issues."""
 
@@ -351,9 +360,11 @@ class ElNinoPage(ProductPage):
     parent_page_types = ["products.ProductIndexPage"]
     subpage_types = ["products.ProductItemPage"]
     max_count = 1
+    base_form_class = ElNinoPageForm
 
     africa_context = RichTextField(
         features=SUMMARY_RICHTEXT_FEATURES,
+        blank=True,
         default=(
             "<p>ENSO links changes in the tropical Pacific Ocean with the atmosphere. El Niño is the warm phase, "
             "La Niña the cool phase, and neutral conditions occur between them.</p>"
@@ -362,6 +373,7 @@ class ElNinoPage(ProductPage):
     )
     acmad_response = RichTextField(
         features=SUMMARY_RICHTEXT_FEATURES,
+        blank=True,
         default=(
             "<p>These phases can influence rainfall and temperature across Africa, but their effects vary by "
             "region and season and must be considered alongside other climate drivers.</p>"
@@ -370,6 +382,7 @@ class ElNinoPage(ProductPage):
     )
     bulletin_intro = models.TextField(
         max_length=500,
+        blank=True,
         default=(
             "The monthly bulletin brings together the latest ENSO status, the outlook for Africa and "
             "region-specific considerations for preparedness and early action."
