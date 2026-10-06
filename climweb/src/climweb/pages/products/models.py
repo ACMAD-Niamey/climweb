@@ -45,6 +45,12 @@ from .blocks import (
     ProductItemGifContentBlock,
     ProductItemStreamContentBlock
 )
+from .subscription_security import (
+    get_client_ip,
+    subscription_rate_limited,
+    validate_honeypot,
+    validate_subscription_text,
+)
 
 from climweb.base.models.abstracts import AbstractBannerPage
 
@@ -1653,6 +1659,15 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
             label=_("I agree to receive ACMAD product notifications by email."),
             required=True
         )
+        form.fields['contact_url'] = forms.CharField(
+            required=False,
+            label=_("Leave this field empty"),
+            widget=forms.HiddenInput,
+            validators=[validate_honeypot],
+        )
+        for field_name in ("name", "organization_name"):
+            if field_name in form.fields:
+                form.fields[field_name].validators.append(validate_subscription_text)
         return form
 
     def serve(self, request, *args, **kwargs):
@@ -1674,8 +1689,30 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
                 import logging
                 logger = logging.getLogger(__name__)
 
+                email = form.cleaned_data.get("email", "").strip().lower()
+                if subscription_rate_limited(request, email):
+                    return django.shortcuts.render(
+                        request,
+                        self.landing_page_template,
+                        {
+                            "status_title": _("Check your email"),
+                            "status_message": _(
+                                "We sent a verification link if the address can receive mail. "
+                                "Open it to activate product notifications."
+                            ),
+                        },
+                    )
+
                 try:
-                    duplicate_fields = get_duplicates(form.cleaned_data)
+                    duplicate_fields = get_duplicates(
+                        {
+                            key: value
+                            for key, value in form.cleaned_data.items()
+                            if isinstance(value, str)
+                            and value.strip()
+                            and key not in {"wagtailcaptcha", "contact_url"}
+                        }
+                    )
                 except Exception as e:
                     logger.warning("[PRODUCT_SUBSCRIPTION_PAGE] Error checking for duplicate fields: {}".format(e))
                     duplicate_fields = []
@@ -1687,8 +1724,11 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
                         request,
                         self.landing_page_template,
                         {
-                            "status_title": _("Subscription Successful"),
-                            "status_message": _("You will now receive notifications for your selected ACMAD products."),
+                            "status_title": _("Check your email"),
+                            "status_message": _(
+                                "We sent a verification link if the address can receive mail. "
+                                "Open it to activate product notifications."
+                            ),
                         },
                     )
                 else:
@@ -1697,8 +1737,11 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
                         request,
                         self.landing_page_template,
                         {
-                            "status_title": _("Subscription Successful"),
-                            "status_message": _("You will now receive notifications for your selected ACMAD products."),
+                            "status_title": _("Check your email"),
+                            "status_message": _(
+                                "We sent a verification link if the address can receive mail. "
+                                "Open it to activate product notifications."
+                            ),
                         },
                     )
         else:
@@ -1731,6 +1774,7 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
         product_families = cleaned_data.pop("product_families", [])
         cleaned_data.pop("consent", None)
         cleaned_data.pop("wagtailcaptcha", None)
+        cleaned_data.pop("contact_url", None)
 
         # Any other custom fields are saved into extra_data
         extra_data = cleaned_data
@@ -1743,12 +1787,12 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
                 "organization_type": organization_type,
                 "organization_name": organization_name,
                 "extra_data": extra_data,
-                "status": ProductSubscriber.STATUS_ACTIVE,
+                "status": ProductSubscriber.STATUS_PENDING,
                 "confirmation_token": uuid.uuid4(),
                 "consented_at": timezone.now(),
-                "confirmed_at": timezone.now(),
+                "confirmed_at": None,
                 "unsubscribed_at": None,
-                "consent_ip": request.META.get("REMOTE_ADDR") if request else None,
+                "consent_ip": get_client_ip(request) if request else None,
                 "consent_user_agent": request.META.get("HTTP_USER_AGENT", "")[:500] if request else "",
             },
         )
