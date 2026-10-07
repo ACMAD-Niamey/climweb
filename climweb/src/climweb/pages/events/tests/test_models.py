@@ -52,6 +52,51 @@ class TestEventPages(WagtailPageTestCase):
         test_page_meta_tags(self, self.event1_reg, meta_tags, request=resp.wsgi_request)
 
 
+class TestUpcomingEventSpotlight(WagtailPageTestCase):
+    @classmethod
+    def setUpTestData(cls):
+        home_page = get_or_create_homepage()
+        cls.page = EventIndexPageFactory(parent=home_page)
+        now = timezone.now()
+
+        cls.past = EventPageFactory(
+            parent=cls.page, title="Past event", date_from=now - timedelta(days=1),
+        )
+        cls.first = EventPageFactory(
+            parent=cls.page, title="First upcoming", date_from=now + timedelta(days=1),
+        )
+        cls.second = EventPageFactory(
+            parent=cls.page, title="Second upcoming", date_from=now + timedelta(days=2),
+        )
+        cls.third = EventPageFactory(
+            parent=cls.page, title="Third upcoming", date_from=now + timedelta(days=3),
+        )
+        cls.fourth = EventPageFactory(
+            parent=cls.page, title="Fourth upcoming", date_from=now + timedelta(days=4),
+        )
+        cls.hidden = EventPageFactory(
+            parent=cls.page,
+            title="Hidden upcoming",
+            date_from=now + timedelta(hours=12),
+            is_hidden=True,
+        )
+
+    def test_spotlight_uses_next_three_visible_events(self):
+        self.assertEqual(
+            [event.title for event in self.page.get_featured_events()],
+            ["First upcoming", "Second upcoming", "Third upcoming"],
+        )
+
+    def test_spotlight_renders_as_carousel(self):
+        response = self.client.get(self.page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="featured-events-carousel"')
+        self.assertContains(response, "First upcoming")
+        self.assertContains(response, "Second upcoming")
+        self.assertContains(response, "Third upcoming")
+
+
 class TestEventRegistrationClosingDate(WagtailPageTestCase):
     """
     submissions_closing_date (FormPageClosingDateMixin) used to only drive

@@ -57,9 +57,12 @@
     <!-- SPACER -->
     <div class="column is-1 is-hidden-mobile"></div>
 
-    <!-- RIGHT: image -->
+    <!-- RIGHT: featured product or image -->
     <div class="column is-6 intro-image-col">
-      <figure class="intro-figure">
+      {% if featured_product %}
+        {% include 'products/featured_product_card.html' with product=featured_product %}
+      {% else %}
+        <figure class="intro-figure">
         {% if page.introduction_image %}
           {% if page.introduction_image.url %}
             {% svg page.introduction_image.file.name %}
@@ -71,7 +74,8 @@
                  alt="{{ page.introduction_title }}" />
           {% endif %}
         {% endif %}
-      </figure>
+        </figure>
+      {% endif %}
     </div>
 
   </div>
