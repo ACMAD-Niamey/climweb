@@ -11,12 +11,12 @@ from wagtail.fields import RichTextField
 from wagtail.models import Page
 
 from climweb.base.mixins import MetadataPageMixin
-from climweb.base.models import AbstractBannerWithIntroPage
+from climweb.base.models import AbstractBannerWithOptionalIntroPage
 from climweb.base.utils import paginate, get_first_non_empty_p_string
 from climweb.config.settings.base import SUMMARY_RICHTEXT_FEATURES
 
 
-class VacanciesPage(AbstractBannerWithIntroPage):
+class VacanciesPage(AbstractBannerWithOptionalIntroPage):
     template = 'vacancies_index_page.html'
     parent_page_types = ['organisation.OrganisationIndexPage']
     subpage_types = ['vacancies.VacancyDetailPage']
@@ -51,7 +51,7 @@ class VacanciesPage(AbstractBannerWithIntroPage):
                                                      verbose_name=_("No vacancies description text"))
     
     content_panels = Page.content_panels + [
-        *AbstractBannerWithIntroPage.content_panels,
+        *AbstractBannerWithOptionalIntroPage.content_panels,
         MultiFieldPanel(
             [
                 FieldPanel('no_vacancies_header_text'),
@@ -85,10 +85,9 @@ class VacanciesPage(AbstractBannerWithIntroPage):
         
         filters = models.Q()
         
-        # By default get open tenders, i.e deadline still greater than today
-        filters &= models.Q(deadline__gt=timezone.now())
-        
-        if is_open and is_open == "False":
+        if is_open and is_open.lower() == "true":
+            filters &= models.Q(deadline__gt=timezone.now())
+        elif is_open and is_open.lower() == "false":
             filters &= models.Q(deadline__lt=timezone.now())
         
         return vacancies.filter(filters)
@@ -184,10 +183,7 @@ class VacancyDetailPage(MetadataPageMixin, Page):
     
     @property
     def is_closed(self):
-        difference = (timezone.now() - self.deadline).days
-        if difference >= 0:
-            return True
-        return False
+        return timezone.now() >= self.deadline
     
     @property
     def listing_summary(self):

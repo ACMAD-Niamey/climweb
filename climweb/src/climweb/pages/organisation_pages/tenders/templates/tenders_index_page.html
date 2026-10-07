@@ -10,7 +10,8 @@
 {% block content %}
     <main class="is-index">
         {% include 'hero.html' with page=page show_fallback=True %}
-        {% if page.introduction_image %}
+        {% if page.introduction_title or page.introduction_text or page.introduction_image %}
+          {% if page.introduction_image %}
             <section class="nmhs-work intro-section">
                 <div class="work container">
                     {% include 'service_introduction.html' with page=page %}
@@ -27,12 +28,13 @@
                     </div>
                 </div>
             </section>
+          {% endif %}
         {% endif %}
         <section class="all-tenders-section">
             <div class="container">
                 {% if tenders %}
                     <h2 id="results" class="section-title has-text-centered">
-                        {% translate "Open Tenders" %}
+                        {% translate "Tenders" %}
                     </h2>
                     <div class="columns is-centered">
                         <div class="column is-9 is-full-mobile">
@@ -46,5 +48,4 @@
         </section>
     </main>
 {% endblock content %}
-
 

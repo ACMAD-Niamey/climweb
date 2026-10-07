@@ -703,6 +703,11 @@ class StaffPortalTests(TestCase):
         response = self.client.post(reverse("staff_portal:login") + "?next=/cms-admin/", {"username": self.user.username, "password": "Staff-test-9274!"})
         self.assertRedirects(response, reverse("staff_portal:profile"))
 
+    def test_public_allauth_pages_are_not_exposed_but_staff_login_remains(self):
+        for url in ["/auth/login/", "/auth/signup/"]:
+            self.assertEqual(self.client.get(url).status_code, 404, url)
+        self.assertEqual(self.client.get(reverse("staff_portal:login")).status_code, 200)
+
     def test_nonstaff_and_disabled_users_cannot_use_portal_login(self):
         response = self.client.post(reverse("staff_portal:login"), {"username": self.admin.username, "password": "Admin-test-9274!"})
         self.assertEqual(response.status_code, 200)

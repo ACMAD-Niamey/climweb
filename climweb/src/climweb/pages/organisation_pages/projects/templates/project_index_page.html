@@ -10,7 +10,8 @@
 {% block content %}
     <main>
         {% include 'hero.html' with page=page %}
-        {% if page.introduction_image %}
+        {% if page.introduction_title or page.introduction_text or page.introduction_image %}
+          {% if page.introduction_image %}
             <section class="nmhs-work " style="background-color:#f8f9fb">
                 <div class="work container">
                     {% include 'service_introduction.html' with page=page %}
@@ -27,6 +28,7 @@
                     </div>
                 </div>
             </section>
+          {% endif %}
         {% endif %}
 
         <section class="all-projects-section" style="background-color:#fff">
@@ -98,6 +100,5 @@
     </script>
 
 {% endblock %}
-
 
 

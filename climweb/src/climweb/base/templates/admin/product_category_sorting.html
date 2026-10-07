@@ -1,0 +1,27 @@
+{% load i18n wagtailadmin_tags %}
+
+{% if product_categories %}
+    <section class="panel nice-padding">
+        <h2>{% translate "Products page category order" %}</h2>
+        <p>{% translate "Enter 1 for the first category, 2 for the second, and so on. Categories left blank appear after numbered categories, in alphabetical order." %}</p>
+        <form action="{% url 'product-category-order' %}" method="post">
+            <input type="hidden" name="csrfmiddlewaretoken" value="{{ category_order_csrf_token }}">
+            <ul class="listing">
+                {% for category in product_categories %}
+                    <li>
+                        <div class="row row-flush">
+                            <div class="title"><h3>{{ category.name }}</h3></div>
+                            <div style="width: 9rem;">
+                                <label for="category-order-{{ category.pk }}" class="w-sr-only">{% translate "Order" %}</label>
+                                <input id="category-order-{{ category.pk }}" class="w-field__input" type="number"
+                                       name="order-{{ category.pk }}" value="{{ category.order|default_if_none:'' }}"
+                                       placeholder="{% translate 'Order' %}">
+                            </div>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+            <button class="button button-longrunning" type="submit">{% translate "Save category order" %}</button>
+        </form>
+    </section>
+{% endif %}

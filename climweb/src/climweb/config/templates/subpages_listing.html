@@ -10,6 +10,18 @@
 {% block content %}
 <main class="is-index">
   {% include 'hero.html' with page=page %}
+  {% if page.introduction_title or page.introduction_text or page.introduction_image %}
+    <section class="nmhs-work intro-section">
+      <div class="work container">
+        {% if page.introduction_image %}
+          {% include 'service_introduction.html' with page=page %}
+        {% else %}
+          {% if page.introduction_title %}<h2 class="title is-3">{{ page.introduction_title }}</h2>{% endif %}
+          {% if page.introduction_text %}<div class="intro-description format-text">{{ page.introduction_text|richtext }}</div>{% endif %}
+        {% endif %}
+      </div>
+    </section>
+  {% endif %}
   <section class="spl-section">
     <div class="container">
 
