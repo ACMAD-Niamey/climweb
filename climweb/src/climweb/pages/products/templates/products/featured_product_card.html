@@ -1,0 +1,19 @@
+{% load i18n wagtailcore_tags wagtailimages_tags lazyimages_tags nmhs_cms_tags %}
+
+<article class="products-featured-card">
+  <a class="products-featured-card-image" href="{{ product.url|public_page_url }}">
+    {% if product.listing_image %}
+      {% image product.listing_image max-900x560 as featured_img %}
+      <img class="progressive__img progressive--not-loaded"
+           data-progressive="{{ featured_img.url }}"
+           src="{% lazy_image_url featured_img %}"
+           alt="{{ product.title }}">
+    {% else %}
+      <span class="products-featured-card-placeholder" aria-hidden="true"></span>
+    {% endif %}
+  </a>
+  <div class="products-featured-card-body">
+    <span class="products-featured-card-label">{% translate "Featured product" %}</span>
+    <h3><a href="{{ product.url|public_page_url }}">{{ product.title }}</a></h3>
+  </div>
+</article>

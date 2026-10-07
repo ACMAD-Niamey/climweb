@@ -242,3 +242,53 @@
         border-radius: 12px;
     }
 }
+/* Featured product displayed beside the Products page introduction. */
+.products-featured-card {
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 14px;
+    box-shadow: 0 14px 36px rgba(23, 42, 66, 0.12);
+}
+
+.products-featured-card-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: var(--primary-color-lightest, #edf6f2);
+}
+
+.products-featured-card-image img,
+.products-featured-card-placeholder {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.products-featured-card-body {
+    padding: 1.35rem 1.5rem 1.5rem;
+}
+
+.products-featured-card-label {
+    display: inline-block;
+    margin-bottom: 0.45rem;
+    color: var(--primary-color);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.products-featured-card h3 {
+    margin: 0 0 0.6rem;
+    font-size: 1.35rem;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.products-featured-card h3 a {
+    color: var(--text-color, #1a1a1a);
+}

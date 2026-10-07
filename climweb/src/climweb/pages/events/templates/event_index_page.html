@@ -2,6 +2,8 @@
 {% load wagtailcore_tags static i18n nmhs_cms_tags %}
 
 {% block extra_css %}
+  <link rel="stylesheet" type="text/css" href="{% static 'css/glide.core.min.css' %}">
+  <link rel="stylesheet" type="text/css" href="{% static 'css/glide.theme.min.css' %}">
   <link rel="stylesheet" type="text/css" href="{% static 'css/publication.css' %}">
   <link rel="stylesheet" type="text/css" href="{% static 'css/events.css' %}">
 {% endblock %}
@@ -13,14 +15,35 @@
   <main class="is-index">
 
     <!-- ── FEATURED EVENT ── -->
-    {% if featured_event %}
+    {% if featured_events %}
       <section class="ei-featured-section">
         <div class="container">
           <div class="ei-section-header">
             <p class="ei-eyebrow">{% translate "Spotlight" %}</p>
-            <h2 class="ei-section-title">{% translate "Featured Event" %}</h2>
+            <h2 class="ei-section-title">{% translate "Upcoming Events" %}</h2>
           </div>
-          {% include 'featured_item_include.html' with item_image=featured_event.image item_title=featured_event.title item_text=featured_event.listing_summary item_url=featured_event.url|public_page_url item_meta=featured_event.date_from %}
+          <div class="ei-featured-carousel glide" id="featured-events-carousel" aria-label="{% translate 'Upcoming events' %}" aria-roledescription="carousel">
+            <div class="glide__track" data-glide-el="track">
+              <ul class="glide__slides">
+                {% for event in featured_events %}
+                  <li class="glide__slide">
+                    {% include 'featured_item_include.html' with item_image=event.image item_title=event.title item_text=event.listing_summary item_url=event.url|public_page_url item_meta=event.date_from %}
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+            {% if featured_events|length > 1 %}
+              <div class="ei-featured-controls" data-glide-el="controls">
+                <button type="button" data-glide-dir="<" aria-label="{% translate 'Previous event' %}">‹</button>
+                <button type="button" data-glide-dir=">" aria-label="{% translate 'Next event' %}">›</button>
+              </div>
+              <div class="ei-featured-dots" data-glide-el="controls[nav]">
+                {% for event in featured_events %}
+                  <button type="button" data-glide-dir="={{ forloop.counter0 }}" aria-label="{% blocktranslate with number=forloop.counter %}Show event {{ number }}{% endblocktranslate %}"></button>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
         </div>
       </section>
     {% endif %}
@@ -47,8 +70,20 @@
 {% endblock content %}
 
 {% block extra_js %}
+<script src="{% static 'js/glide.min.js' %}"></script>
 <script>
   $(document).ready(function () {
+
+    const featuredCarousel = document.getElementById('featured-events-carousel');
+    if (featuredCarousel && typeof Glide !== 'undefined') {
+      new Glide(featuredCarousel, {
+        type: 'carousel',
+        perView: 1,
+        autoplay: 6500,
+        hoverpause: true,
+        animationDuration: 650
+      }).mount();
+    }
 
     if ($(window).width() <= 768) {
       $('.js-accordion-item').removeClass('active');

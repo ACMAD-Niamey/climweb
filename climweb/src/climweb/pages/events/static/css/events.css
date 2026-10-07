@@ -29,6 +29,65 @@
   margin: 0;
 }
 
+.ei-featured-carousel {
+  position: relative;
+}
+
+.ei-featured-carousel .glide__slides {
+  margin: 0;
+}
+
+.ei-featured-carousel .glide__slide {
+  height: auto;
+}
+
+.ei-featured-controls {
+  position: absolute;
+  top: 50%;
+  left: -1.25rem;
+  right: -1.25rem;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.ei-featured-controls button {
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: #fff;
+  cursor: pointer;
+  font-size: 1.75rem;
+  line-height: 1;
+  pointer-events: auto;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+}
+
+.ei-featured-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.ei-featured-dots button {
+  width: 0.65rem;
+  height: 0.65rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #b8c0c8;
+  cursor: pointer;
+}
+
+.ei-featured-dots button.glide__bullet--active {
+  background: var(--primary-color);
+}
+
 /* ── DATE BADGE IN FOOTER ── */
 .ev-list-date {
   display: flex;
@@ -69,4 +128,11 @@
   .ei-featured-section { padding: 2rem 0; }
   .ei-listing-section  { padding: 2rem 0 3rem; }
   .ei-section-title    { font-size: 18px; }
+  .ei-featured-controls {
+    position: static;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    transform: none;
+  }
 }

@@ -118,6 +118,18 @@ class FeatureBlock(blocks.StructBlock):
         label = _("Feature Block")
 
 
+class MediaFeatureBlock(FeatureBlock):
+    video_url = blocks.URLBlock(
+        required=False,
+        help_text=_("YouTube or Vimeo URL used when the figure type is Video."),
+    )
+
+    class Meta:
+        template = "streams/feature_block.html"
+        icon = "media"
+        label = _("Media Feature Block")
+
+
 class CollapsibleBlock(blocks.StructBlock):
     heading = blocks.CharBlock()
     description = blocks.RichTextBlock(features=SUMMARY_RICHTEXT_FEATURES)

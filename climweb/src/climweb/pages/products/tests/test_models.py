@@ -36,6 +36,23 @@ class TestProductPages(WagtailPageTestCase):
     
     def test_products_index_page_render(self):
         self.assertPageIsRenderable(self.index_page)
+
+    def test_products_index_renders_selected_featured_product(self):
+        self.index_page.featured_product = self.product2_page
+        self.index_page.save_revision().publish()
+
+        response = self.client.get(self.index_page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Featured product")
+        self.assertContains(response, self.product2_page.title)
+        self.assertContains(response, self.product2_page.url)
+
+    def test_products_index_feature_falls_back_to_first_live_product(self):
+        self.assertEqual(
+            self.index_page.featured_product_page.pk,
+            self.product1_page.pk,
+        )
     
     def test_products_index_page_meta_tags(self):
         resp = self.client.get(self.index_page.get_url())

@@ -13,6 +13,10 @@
 
 {% block body_class %}summer-school-page{% endblock %}
 
+{% block navbar %}
+    {% include 'navigation/navbar.html' with main_site_logo_url='https://acmad.org/' summer_school_home_url=page.get_parent.url %}
+{% endblock navbar %}
+
 {% block content %}
     <!-- {% include 'breadcrumbs_include.html' with page=page %} -->
 

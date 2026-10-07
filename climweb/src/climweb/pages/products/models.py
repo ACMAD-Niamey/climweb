@@ -17,7 +17,7 @@ from modelcluster.fields import ParentalKey, ParentalManyToManyField
 from taggit.models import TaggedItemBase
 from wagtail import blocks
 from wagtail.admin.forms import WagtailAdminPageForm
-from wagtail.admin.panels import (FieldPanel, MultiFieldPanel, FieldRowPanel, InlinePanel)
+from wagtail.admin.panels import (FieldPanel, MultiFieldPanel, FieldRowPanel, InlinePanel, PageChooserPanel)
 from wagtail.api.v2.utils import get_full_url
 from wagtail.fields import StreamField, RichTextField
 from wagtail.models import Orderable, Page
@@ -68,8 +68,18 @@ class ProductIndexPage(AbstractBannerWithOptionalIntroPage):
     listing_heading = models.CharField(max_length=255, default="Explore our Products",
                                        verbose_name=_("Products listing Heading"))
     group_menu_items_by_service = models.BooleanField(default=True, verbose_name=_("Group menu items by service"))
+    featured_product = models.ForeignKey(
+        'wagtailcore.Page',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        verbose_name=_("Featured product"),
+        help_text=_("Product shown beside the introduction on the Products page."),
+    )
     
     content_panels = AbstractBannerWithOptionalIntroPage.content_panels + [
+        PageChooserPanel("featured_product", "products.ProductPage"),
         FieldPanel("listing_heading"),
         FieldPanel("group_menu_items_by_service")
     ]
@@ -103,6 +113,13 @@ class ProductIndexPage(AbstractBannerWithOptionalIntroPage):
         subnational_products = SubNationalProductPage.objects.live().descendant_of(self).order_by('menu_order')
         
         return list(products) + list(subnational_products)
+
+    @cached_property
+    def featured_product_page(self):
+        if self.featured_product and self.featured_product.live:
+            return self.featured_product.specific
+
+        return ProductPage.objects.child_of(self).live().order_by('menu_order', 'path').first()
     
 
     

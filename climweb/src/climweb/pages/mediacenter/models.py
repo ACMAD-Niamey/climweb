@@ -1,5 +1,4 @@
 from django.db import models
-from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 from wagtail.admin.panels import FieldPanel
 from wagtail.fields import StreamField
@@ -7,7 +6,6 @@ from wagtail.models import Page
 
 from climweb.base import blocks
 from climweb.base.models import AbstractBannerWithIntroPage
-from climweb.pages.news.models import NewsPage
 from climweb.pages.videos.models import YoutubePlaylist
 
 
@@ -19,7 +17,7 @@ class MediaIndexPage(AbstractBannerWithIntroPage):
 
     feature_block_items = StreamField(
         [
-            ('feature_item', blocks.FeatureBlock()),
+            ('feature_item', blocks.MediaFeatureBlock()),
         ],
         null=True, blank=True, verbose_name=_("Items"), use_json_field=True)
 
@@ -32,18 +30,24 @@ class MediaIndexPage(AbstractBannerWithIntroPage):
         verbose_name=_("Youtube playlist")
     )
 
+    introduction_video_url = models.URLField(
+        blank=True,
+        verbose_name=_("Introduction video URL"),
+        help_text=_(
+            "Optional YouTube or Vimeo URL. When provided, the video replaces "
+            "the introduction image."
+        ),
+    )
+
     content_panels = Page.content_panels + [
         *AbstractBannerWithIntroPage.content_panels,
+        FieldPanel('introduction_video_url'),
         FieldPanel('feature_block_items'),
         FieldPanel('youtube_playlist'),
     ]
 
     class Meta:
         verbose_name = _("Media Page")
-
-    @cached_property
-    def latest_news(self):
-        return NewsPage.objects.live().order_by('-is_featured', '-date')[:4]
 
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)

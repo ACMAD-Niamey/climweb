@@ -71,7 +71,7 @@
 
       <!-- MOBILE BRAND -->
       <div class="site-nav-brand">
-        <a class="mobile-logo" data-main-site-logo href="{% if rcc_nav %}{{ rcc_nav.main_site_url }}{% else %}{{ current_site.root_url }}{% endif %}">
+        <a class="mobile-logo" data-main-site-logo href="{% if main_site_logo_url %}{{ main_site_logo_url }}{% elif rcc_nav %}{{ rcc_nav.main_site_url }}{% else %}{{ current_site.root_url }}{% endif %}">
           {% if settings.base.OrganisationSetting.country_flag %}
             {% image settings.base.OrganisationSetting.country_flag original as country_flag %}
             <img src="{{ country_flag.url }}" alt="Flag" style="height:32px;">
@@ -92,7 +92,7 @@
       </div>
 
       <!-- DESKTOP BRAND -->
-      <a class="site-logo site-logo--desktop" data-main-site-logo href="{% if rcc_nav %}{{ rcc_nav.main_site_url }}{% else %}{{ current_site.root_url }}{% endif %}"
+      <a class="site-logo site-logo--desktop" data-main-site-logo href="{% if main_site_logo_url %}{{ main_site_logo_url }}{% elif rcc_nav %}{{ rcc_nav.main_site_url }}{% else %}{{ current_site.root_url }}{% endif %}"
          aria-label="{{ settings.base.OrganisationSetting.name|default:'ACMAD' }}">
         {% if settings.base.OrganisationSetting.logo %}
           {% image settings.base.OrganisationSetting.logo original as logo %}
@@ -127,8 +127,14 @@
               {% include "navigation/rcc_main_menu.html" %}
             {% endif %}
           {% else %}
+            {% if summer_school_home_url %}
+              <a class="navbar-item nav-item-link" href="{{ summer_school_home_url }}">{% translate "Home" %}</a>
+            {% endif %}
             {% for block in settings.base.NavigationSettings.main_menu %}
-              {% include_block block %}
+              {% if summer_school_home_url and block.value.label|lower == "home" %}
+              {% else %}
+                {% include_block block %}
+              {% endif %}
             {% endfor %}
           {% endif %}
 
