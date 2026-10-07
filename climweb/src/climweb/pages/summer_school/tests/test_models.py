@@ -356,6 +356,18 @@ class TestSummerSchoolApplyButtonClosedState(WagtailPageTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Applications closed")
 
+    def test_summer_school_navigation_uses_acmad_logo_and_school_home(self):
+        for page in (self.index_page, self.edition, self.application_page):
+            with self.subTest(page=page):
+                response = self.client.get(page.url)
+
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, 'data-main-site-logo href="https://acmad.org/"')
+                self.assertContains(
+                    response,
+                    f'href="{self.index_page.url}">Home</a>',
+                )
+
 
 class TestFormCleanNameFallback(WagtailPageTestCase):
     """

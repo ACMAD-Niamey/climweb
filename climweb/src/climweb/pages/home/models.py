@@ -39,7 +39,6 @@ from climweb.pages.news.models import NewsPage
 from climweb.pages.organisation_pages.partners.models import Partner
 from climweb.pages.organisation_pages.staff.models import StaffMember
 from climweb.pages.products.models import ElNinoPage, ProductItemPage, ProductPage
-from climweb.pages.publications.models import PublicationPage
 from climweb.pages.services.models import ServicePage
 from climweb.pages.summer_school.models import SummerSchoolIndexPage, SummerSchoolPage
 from climweb.pages.videos.models import YoutubePlaylist
@@ -504,6 +503,51 @@ class HomePage(MetadataPageMixin, Page):
         help_text=_("Show the ENSO feature section on the homepage when a live ENSO page is available."),
     )
 
+    show_summer_school_section = models.BooleanField(
+        default=True,
+        verbose_name=_("Show Summer School section"),
+    )
+    homepage_summer_school = models.ForeignKey(
+        'summer_school.SummerSchoolPage',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        verbose_name=_("Summer School edition"),
+        help_text=_("Choose the edition featured on the homepage. Leave empty to use the latest featured edition."),
+    )
+    summer_school_section_label = models.CharField(
+        max_length=100,
+        blank=True,
+        default="Summer School",
+        verbose_name=_("Section label"),
+    )
+    summer_school_section_title = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_("Section title override"),
+        help_text=_("Leave empty to use the selected edition's heading."),
+    )
+    summer_school_section_description = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Section description"),
+    )
+    summer_school_section_image = models.ForeignKey(
+        'wagtailimages.Image',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        verbose_name=_("Section image override"),
+    )
+    summer_school_section_button_text = models.CharField(
+        max_length=60,
+        blank=True,
+        default="Learn more",
+        verbose_name=_("Button text"),
+    )
+
     services_strip = StreamField([
         ('item', blocks.StructBlock([
             ('icon', IconChooserBlock(default="layer-group")),
@@ -620,6 +664,15 @@ class HomePage(MetadataPageMixin, Page):
         MultiFieldPanel([
             FieldPanel('show_enso_section'),
         ], heading=_("ENSO Section")),
+        MultiFieldPanel([
+            FieldPanel('show_summer_school_section'),
+            PageChooserPanel('homepage_summer_school', 'summer_school.SummerSchoolPage'),
+            FieldPanel('summer_school_section_label'),
+            FieldPanel('summer_school_section_title'),
+            FieldPanel('summer_school_section_description'),
+            FieldPanel('summer_school_section_image'),
+            FieldPanel('summer_school_section_button_text'),
+        ], heading=_("Summer School Homepage Section")),
         MultiFieldPanel([
             FieldPanel('services_strip'),
         ], heading=_("Services Strip")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
@@ -996,35 +1049,20 @@ class HomePage(MetadataPageMixin, Page):
     
     @cached_property
     def latest_updates(self):
-        updates = []
-        
-        # get latest news, publication, crop monitor, seasonal forecast, food security statement,
-        news = NewsPage.objects.live().filter(is_visible_on_homepage=True).order_by('-date').first()
-        events = EventPage.objects.live().filter(is_visible_on_homepage=True).order_by('-date_from').first()
-        
-        if events is None:
-            events = EventPage.objects.live().order_by('-date_from').first()
-        
-        if news is None:
-            news = NewsPage.objects.live().order_by('-date').first()
-        
-        publications = PublicationPage.objects.live().filter(is_visible_on_homepage=True).order_by(
-            '-publication_date').first()
-        
-        if publications is None:
-            publications = PublicationPage.objects.live().order_by('-publication_date').first()
-        
-        # featured summer school edition takes priority over news/events/publications
-        if self.featured_summer_school:
-            updates.append(self.featured_summer_school)
-        if news:
-            updates.append(news)
-        if events:
-            updates.append(events)
-        if publications:
-            updates.append(publications)
-
-        return updates
+        news = list(
+            NewsPage.objects.live().public().descendant_of(self).order_by('-date', '-pk')[:6]
+        )
+        events = list(
+            EventPage.objects.live().public().descendant_of(self).filter(
+                is_hidden=False
+            ).order_by('-date_from', '-pk')[:6]
+        )
+        updates = news + events
+        updates.sort(
+            key=lambda item: item.date if isinstance(item, NewsPage) else item.date_from,
+            reverse=True,
+        )
+        return updates[:6]
     
     @cached_property
     def services(self):
@@ -1033,6 +1071,10 @@ class HomePage(MetadataPageMixin, Page):
 
     @cached_property
     def featured_summer_school(self):
+        if not self.show_summer_school_section:
+            return None
+        if self.homepage_summer_school_id and self.homepage_summer_school.live:
+            return self.homepage_summer_school
         # editors opt an edition into this via the "Featured" + "Is visible on
         # homepage" checkboxes on the SummerSchoolPage itself; most recent
         # edition wins if more than one is marked

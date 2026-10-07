@@ -12,6 +12,8 @@ from climweb.pages.products.tests.factories import (
     ProductItemPageFactory,
     ProductPageFactory,
 )
+from climweb.pages.events.tests.factories import EventIndexPageFactory, EventPageFactory
+from climweb.pages.news.tests.factories import NewsIndexPageFactory, NewsPageFactory
 from climweb.pages.summer_school.tests.factories import (
     SummerSchoolIndexPageFactory,
     SummerSchoolPageFactory,
@@ -326,3 +328,38 @@ class TestHomeFeaturedSummerSchool(WagtailPageTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Applications closed")
         self.assertNotContains(response, self.application_page.url)
+
+    def test_homepage_editor_overrides_summer_school_section(self):
+        self.page.homepage_summer_school = self.edition
+        self.page.summer_school_section_label = "Training programme"
+        self.page.summer_school_section_title = "Editable Summer School title"
+        self.page.summer_school_section_description = "Editable homepage description."
+        self.page.summer_school_section_button_text = "View programme"
+        self.page.save_revision().publish()
+
+        response = self.client.get(self.page.url)
+
+        self.assertContains(response, "Training programme")
+        self.assertContains(response, "Editable Summer School title")
+        self.assertContains(response, "Editable homepage description.")
+        self.assertContains(response, "View programme")
+
+
+class TestHomeLatestUpdates(WagtailPageTestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.page = get_or_create_homepage()
+        news_index = NewsIndexPageFactory(parent=cls.page)
+        events_index = EventIndexPageFactory(parent=cls.page)
+        now = timezone.now()
+
+        NewsPageFactory(parent=news_index, title="Older news", date=now - timedelta(days=3))
+        EventPageFactory(parent=events_index, title="Newest event", date_from=now + timedelta(days=2))
+        NewsPageFactory(parent=news_index, title="Recent news", date=now - timedelta(days=1))
+        EventPageFactory(parent=events_index, title="Hidden event", date_from=now + timedelta(days=5), is_hidden=True)
+
+    def test_news_and_events_are_merged_by_date(self):
+        self.assertEqual(
+            [item.title for item in self.page.latest_updates],
+            ["Newest event", "Recent news", "Older news"],
+        )
