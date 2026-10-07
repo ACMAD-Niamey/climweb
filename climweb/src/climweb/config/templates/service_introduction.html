@@ -1,4 +1,4 @@
-{% load wagtailcore_tags wagtailimages_tags lazyimages_tags nmhs_cms_tags wagtailiconchooser_tags i18n %}
+{% load wagtailcore_tags wagtailimages_tags wagtailembeds_tags lazyimages_tags nmhs_cms_tags wagtailiconchooser_tags i18n %}
 
 <div class="intro-section">
   <div class="columns is-centered is-vcentered intro-section-wrapper">
@@ -59,7 +59,11 @@
 
     <!-- RIGHT: featured product or image -->
     <div class="column is-6 intro-image-col">
-      {% if featured_product %}
+      {% if page.introduction_video_url %}
+        <div class="intro-video-embed">
+          {% embed page.introduction_video_url %}
+        </div>
+      {% elif featured_product %}
         {% include 'products/featured_product_card.html' with product=featured_product %}
       {% else %}
         <figure class="intro-figure">
