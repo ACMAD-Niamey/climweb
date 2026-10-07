@@ -321,9 +321,25 @@ class ProductCategorySortingPanel(Component):
         }
 
 
+class HomepageSummerSchoolPanel(Component):
+    name = "homepage_summer_school"
+    template_name = "admin/homepage_summer_school.html"
+    order = 115
+
+    def get_context_data(self, parent_context):
+        from climweb.pages.home.models import HomePage
+
+        request = parent_context["request"]
+        page = HomePage.objects.first()
+        if page and page.permissions_for_user(request.user).can_edit():
+            return {"homepage": page}
+        return {"homepage": None}
+
+
 @hooks.register('construct_homepage_panels')
 def add_another_welcome_panel(request, panels):
     panels.insert(0, OrganisationPageHeadersPanel())
+    panels.insert(0, HomepageSummerSchoolPanel())
     panels.insert(0, ProductCategorySortingPanel())
     panels.append(CMSUpgradeNotificationPanel())
 

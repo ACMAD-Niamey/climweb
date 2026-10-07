@@ -8,13 +8,7 @@
       <p class="is-uppercase has-text-weight-bold is-size-8 mb-1" style="color:var(--primary-color); letter-spacing:0.08em;">
         {% translate "Latest Updates" %}
       </p>
-      {% if page.show_news_section and page.show_publications_section %}
-        <h2 class="title is-3">{% translate "News and Publications" %}</h2>
-      {% elif page.show_news_section %}
-        <h2 class="title is-3">{% translate "News" %}</h2>
-      {% else %}
-        <h2 class="title is-3">{% translate "Publications" %}</h2>
-      {% endif %}
+      <h2 class="title is-3">{% translate "News and Events" %}</h2>
       <p class="subtitle is-6 has-text-grey">
         {% translate "Stay informed with the latest updates from this service." %}
       </p>
@@ -30,7 +24,7 @@
 
     <div class="columns is-vcentered mt-4" style="justify-content: space-between">
       <div class="column is-narrow">
-        {% if page.show_news_section and settings.base.ImportantPages.all_news_page %}
+        {% if settings.base.ImportantPages.all_news_page %}
          
           <a class="more-partners" href="{{ settings.base.ImportantPages.all_news_page.url }}">
             {% translate "All News" %}
@@ -39,10 +33,10 @@
         
       </div>
       <div class="column is-narrow">
-        {% if page.show_publications_section and settings.base.ImportantPages.all_publications_page %}
+        {% if settings.base.ImportantPages.all_events_page %}
          
-          <a class="more-partners" href="{{ settings.base.ImportantPages.all_publications_page.url }}">
-            {% translate "All Publications" %}
+          <a class="more-partners" href="{{ settings.base.ImportantPages.all_events_page.url }}">
+            {% translate "All Events" %}
             </a>
         {% endif %}
       </div>

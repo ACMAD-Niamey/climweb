@@ -1,4 +1,5 @@
-{% load wagtailimages_tags static lazyimages_tags wagtailcore_tags wagtailiconchooser_tags %}
+{% load wagtailimages_tags wagtailsettings_tags static lazyimages_tags wagtailcore_tags wagtailiconchooser_tags %}
+{% get_settings use_default_site=True %}
 
 {% if page.banner_image %}
   {% image page.banner_image original as img %}
@@ -63,6 +64,20 @@
         {% endif %}
 
         {% block hero_extra %}{% endblock %}
+
+        {% if show_social_icons and settings.base.OrganisationSetting.social_media_accounts %}
+          <nav class="page-hero-socials" aria-label="Social media">
+            {% for account in settings.base.OrganisationSetting.social_media_accounts %}
+              <a href="{{ account.value.full_url }}"
+                 title="{{ account.value.name }}"
+                 aria-label="{{ account.value.name }}"
+                 target="_blank"
+                 rel="noopener noreferrer">
+                <span class="icon">{% svg_icon name=account.value.icon %}</span>
+              </a>
+            {% endfor %}
+          </nav>
+        {% endif %}
 
       </div>
     </div>

@@ -4,7 +4,7 @@
 
 {% block extra_css %}
     {{ block.super }}
-    <link rel="stylesheet" type="text/css" href="{% static 'css/media.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/media.css' %}?v={% now 'U' %}">
     {% if page.youtube_playlist %}
         <link rel="stylesheet" type="text/css" href="{% static 'css/jquery.skeleton.css' %}">
         <link rel="stylesheet" type="text/css" href="{% static 'css/video_include.css' %}">
@@ -15,8 +15,8 @@
 
 {% block content %}
     <main class="is-index">
-        {% include 'hero.html' with page=page %}
-        {% if page.introduction_image %}
+        {% include 'hero.html' with page=page show_social_icons=True %}
+        {% if page.introduction_video_url or page.introduction_image %}
             <section class="nmhs-work">
                 <div class="work container">
                     {% include 'service_introduction.html' with page=page %}
@@ -93,18 +93,6 @@
             </section>
         {% endif %}
 
-        {% if page.latest_news %}
-            <section class="news-inline">
-                <div class="container">
-                    <h2 class="title is-3">
-                        {% translate "Latest News Updates" %}
-                    </h2>
-                    {% include 'news_include.html' with news=page.latest_news %}
-                </div>
-            </section>
-        {% endif %}
-
-
         {% if page.youtube_playlist %}
             <section class="has-text-centered videos" id="videoSection">
                 <div class="container is-align-content-center">
@@ -116,7 +104,9 @@
 
         {% if page.feature_block_items %}
             <section class="drm-feature-blocks-section">
-                {% include 'feature_block_section.html' with feature_blocks=page.feature_block_items %}
+                <div class="container media-feature-grid">
+                    {% include 'feature_block_section.html' with feature_blocks=page.feature_block_items %}
+                </div>
             </section>
         {% endif %}
     </main>
@@ -174,5 +164,3 @@
         <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
     {% endif %}
 {% endblock %}
-
-
