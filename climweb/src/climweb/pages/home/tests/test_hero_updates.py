@@ -95,7 +95,9 @@ class HeroUpdatesTests(WagtailPageTestCase):
         form = type(self.home).get_edit_handler().get_form_class()
         self.assertIn("hero_updates_mode", form.base_fields)
         self.assertIn("hero_featured_news", form.base_fields)
+        self.assertIn("hero_featured_news_2", form.base_fields)
         self.assertIn("hero_featured_event", form.base_fields)
+        self.assertIn("hero_featured_event_2", form.base_fields)
         self.assertIn("hero_show_el_nino", form.base_fields)
         self.assertIn("hero_show_summer_school", form.base_fields)
         self.assertIn("hero_carousel_order", form.base_fields)
@@ -116,6 +118,22 @@ class HeroUpdatesTests(WagtailPageTestCase):
         news = self.news(-1)
         self.manual(event, news)
         self.assertEqual(self.ids(), [news.pk, event.pk])
+
+    def test_manual_supports_two_news_and_two_events(self):
+        first_news = self.news(-2)
+        second_news = self.news(-1)
+        first_event = self.event(1)
+        second_event = self.event(2)
+        self.home.hero_updates_mode = "manual"
+        self.home.hero_featured_news = first_news
+        self.home.hero_featured_news_2 = second_news
+        self.home.hero_featured_event = first_event
+        self.home.hero_featured_event_2 = second_event
+
+        self.assertEqual(
+            self.ids(),
+            [first_news.pk, second_news.pk, first_event.pk, second_event.pk],
+        )
 
     def test_manual_uses_editor_defined_slide_order(self):
         news = self.news(-1)

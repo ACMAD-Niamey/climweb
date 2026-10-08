@@ -79,6 +79,19 @@
                     </a>
                   {% endif %}
 
+                  {% for item in page.additional_documents %}
+                    <a class="vd-dl-btn"
+                       href="{{ item.value.document.url }}"
+                       download="{{ item.value.title }}"
+                       data-ga-action="download"
+                       data-ga-event-category="Vacancy Additional Document Download"
+                       data-ga-event-label="{{ item.value.title }}"
+                       data-ga-value="{{ item.value.document.url }}">
+                      <span class="icon">{% svg_icon name="download" %}</span>
+                      <span>{{ item.value.title }}</span>
+                    </a>
+                  {% endfor %}
+
                   <div class="vd-share share-buttons">
                     {% share_buttons url=page.get_full_url text=page.title %}
                   </div>
