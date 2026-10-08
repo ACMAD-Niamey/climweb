@@ -104,8 +104,13 @@
 
         {% if page.feature_block_items %}
             <section class="drm-feature-blocks-section">
-                <div class="container media-feature-grid">
-                    {% include 'feature_block_section.html' with feature_blocks=page.feature_block_items %}
+                <div class="container">
+                    {% if page.more_media_title %}
+                        <h2 class="media-feature-title">{{ page.more_media_title }}</h2>
+                    {% endif %}
+                    <div class="media-feature-grid">
+                        {% include 'feature_block_section.html' with feature_blocks=page.feature_block_items %}
+                    </div>
                 </div>
             </section>
         {% endif %}
