@@ -93,7 +93,9 @@ SIGNIFICANT_PRODUCT_SPECS = (
 def default_hero_carousel_order():
     return [
         ("news", None),
+        ("news_2", None),
         ("event", None),
+        ("event_2", None),
         ("el_nino", None),
         ("summer_school", None),
     ]
@@ -468,10 +470,20 @@ class HomePage(MetadataPageMixin, Page):
         verbose_name=_("News slide"),
         help_text=_("News page to show first when Update selection is Manual."),
     )
+    hero_featured_news_2 = models.ForeignKey(
+        'news.NewsPage', null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+        verbose_name=_("Second news slide"),
+        help_text=_("Optional second news page for the carousel in Manual mode."),
+    )
     hero_featured_event = models.ForeignKey(
         'events.EventPage', null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
         verbose_name=_("Event slide"),
         help_text=_("Event page to show after the news slide when Update selection is Manual."),
+    )
+    hero_featured_event_2 = models.ForeignKey(
+        'events.EventPage', null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+        verbose_name=_("Second event slide"),
+        help_text=_("Optional second event page for the carousel in Manual mode."),
     )
     hero_show_el_nino = models.BooleanField(
         default=True, verbose_name=_("Show ENSO"),
@@ -483,13 +495,17 @@ class HomePage(MetadataPageMixin, Page):
     )
     hero_carousel_order = StreamField([
         ('news', blocks.StaticBlock(label=_("News"), admin_text=_("News slide"))),
+        ('news_2', blocks.StaticBlock(label=_("Second news"), admin_text=_("Second news slide"))),
         ('event', blocks.StaticBlock(label=_("Event"), admin_text=_("Event slide"))),
+        ('event_2', blocks.StaticBlock(label=_("Second event"), admin_text=_("Second event slide"))),
         ('el_nino', blocks.StaticBlock(label=_("ENSO"), admin_text=_("ENSO slide"))),
         ('summer_school', blocks.StaticBlock(label=_("Summer School"), admin_text=_("Summer School slide"))),
-    ], blank=True, use_json_field=True, default=default_hero_carousel_order, max_num=4,
+    ], blank=True, use_json_field=True, default=default_hero_carousel_order, max_num=6,
         block_counts={
             'news': {'max_num': 1},
+            'news_2': {'max_num': 1},
             'event': {'max_num': 1},
+            'event_2': {'max_num': 1},
             'el_nino': {'max_num': 1},
             'summer_school': {'max_num': 1},
         },
@@ -656,7 +672,9 @@ class HomePage(MetadataPageMixin, Page):
         MultiFieldPanel([
             FieldPanel('hero_updates_mode'),
             PageChooserPanel('hero_featured_news', 'news.NewsPage'),
+            PageChooserPanel('hero_featured_news_2', 'news.NewsPage'),
             PageChooserPanel('hero_featured_event', 'events.EventPage'),
+            PageChooserPanel('hero_featured_event_2', 'events.EventPage'),
             FieldPanel('hero_show_el_nino'),
             FieldPanel('hero_show_summer_school'),
             FieldPanel('hero_carousel_order'),
@@ -936,23 +954,31 @@ class HomePage(MetadataPageMixin, Page):
             if self.hero_featured_news_id:
                 selected_news = news.filter(pk=self.hero_featured_news_id).first()
                 if selected_news:
-                    pages.append(selected_news)
+                    pages.append(("news", selected_news))
+            if self.hero_featured_news_2_id:
+                selected_news_2 = news.filter(pk=self.hero_featured_news_2_id).first()
+                if selected_news_2:
+                    pages.append(("news_2", selected_news_2))
             if self.hero_featured_event_id:
                 selected_event = events.filter(pk=self.hero_featured_event_id).first()
                 if selected_event:
-                    pages.append(selected_event)
+                    pages.append(("event", selected_event))
+            if self.hero_featured_event_2_id:
+                selected_event_2 = events.filter(pk=self.hero_featured_event_2_id).first()
+                if selected_event_2:
+                    pages.append(("event_2", selected_event_2))
         else:
             latest_news = news.order_by("-date", "-pk").first()
-            pages = [latest_news] if latest_news else []
+            pages = [("news", latest_news)] if latest_news else []
 
         slides_by_kind = {}
-        for item in pages:
+        for slot, item in pages:
             is_event = isinstance(item, EventPage)
             url = item.get_url(request=request)
             if not url:
                 continue
             kind = "event" if is_event else "news"
-            slides_by_kind[kind] = {
+            slides_by_kind[slot] = {
                 "id": item.pk,
                 "title": item.title,
                 "kind": kind,
@@ -1036,6 +1062,10 @@ class HomePage(MetadataPageMixin, Page):
             order = [block.block_type for block in self.hero_carousel_order]
             if not order:
                 order = [kind for kind, _value in default_hero_carousel_order()]
+            for slot, after in (("news_2", "news"), ("event_2", "event")):
+                if slot in slides_by_kind and slot not in order:
+                    position = order.index(after) + 1 if after in order else len(order)
+                    order.insert(position, slot)
         else:
             order = ["news", "el_nino", "summer_school"]
 

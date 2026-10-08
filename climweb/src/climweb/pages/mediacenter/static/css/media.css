@@ -75,6 +75,13 @@
     background: #f7f8fa;
 }
 
+.media-page .media-feature-title {
+    margin: 0 0 1.5rem;
+    color: #1a1a1a;
+    font-size: 1.65rem;
+    font-weight: 800;
+}
+
 .media-page .drm-feature-blocks-section .media-feature-grid {
     display: grid !important;
     grid-template-columns: repeat(3, minmax(0, 1fr));

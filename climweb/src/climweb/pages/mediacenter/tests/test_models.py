@@ -27,6 +27,25 @@ class MediaIndexPage(WagtailPageTestCase):
 
         self.assertNotContains(response, "Latest News Updates")
 
+    def test_more_media_section_has_editable_title(self):
+        self.page.more_media_title = "More from ACMAD"
+        self.page.feature_block_items = [
+            (
+                "feature_item",
+                {
+                    "figure_type": "video",
+                    "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    "title": "Media item",
+                    "text": "Description",
+                },
+            )
+        ]
+        self.page.save_revision().publish()
+
+        response = self.client.get(self.page.url)
+
+        self.assertContains(response, "More from ACMAD")
+
     def test_introduction_video_replaces_image(self):
         self.page.introduction_video_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         self.page.save_revision().publish()

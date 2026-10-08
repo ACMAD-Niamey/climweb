@@ -38,10 +38,16 @@ class MediaIndexPage(AbstractBannerWithIntroPage):
             "the introduction image."
         ),
     )
+    more_media_title = models.CharField(
+        max_length=120,
+        default=_("More Media"),
+        verbose_name=_("More media section title"),
+    )
 
     content_panels = Page.content_panels + [
         *AbstractBannerWithIntroPage.content_panels,
         FieldPanel('introduction_video_url'),
+        FieldPanel('more_media_title'),
         FieldPanel('feature_block_items'),
         FieldPanel('youtube_playlist'),
     ]
