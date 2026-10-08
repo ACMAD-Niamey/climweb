@@ -1,6 +1,10 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator, RegexValidator
 from django.db import models
 from django.db.models import Q
+from django.shortcuts import redirect
+from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
@@ -28,6 +32,11 @@ from climweb.pages.products.models import ProductPage, SubNationalProductPage
 from climweb.pages.publications.models import PublicationPage
 from climweb.pages.videos.models import YoutubePlaylist
 from . import blocks as local_blocks
+
+
+def validate_training_proposal_file_size(value):
+    if value.size > 10 * 1024 * 1024:
+        raise ValidationError(_("Each uploaded file must be 10 MB or smaller."))
 
 
 @register_snippet
@@ -1608,6 +1617,7 @@ class OnTheJobTrainingPage(AbstractBannerWithIntroPage):
     parent_page_types = ["home.HomePage", "services.ServicePage"]
     subpage_types = []
     show_in_menus_default = True
+    cache_control = "no-cache"
 
     objectives = RichTextField(features=SUMMARY_RICHTEXT_FEATURES)
     eligibility = RichTextField(features=SUMMARY_RICHTEXT_FEATURES)
@@ -1630,6 +1640,20 @@ class OnTheJobTrainingPage(AbstractBannerWithIntroPage):
         use_json_field=True,
     )
     application_email = models.EmailField(default="secretariat@acmad.org")
+    show_training_proposal_form = models.BooleanField(
+        default=True,
+        verbose_name=_("Show online training proposal form"),
+    )
+    proposal_section_title = models.CharField(
+        max_length=160,
+        default="Submit a training proposal",
+        verbose_name=_("Proposal form title"),
+    )
+    proposal_section_introduction = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Proposal form introduction"),
+    )
     reports_introduction = RichTextField(
         blank=True,
         features=SUMMARY_RICHTEXT_FEATURES,
@@ -1725,6 +1749,9 @@ class OnTheJobTrainingPage(AbstractBannerWithIntroPage):
                 FieldPanel("application_introduction"),
                 FieldPanel("application_steps"),
                 FieldPanel("application_email"),
+                FieldPanel("show_training_proposal_form"),
+                FieldPanel("proposal_section_title"),
+                FieldPanel("proposal_section_introduction"),
             ],
             heading=_("How to apply"),
         ),
@@ -1779,6 +1806,214 @@ class OnTheJobTrainingPage(AbstractBannerWithIntroPage):
             ))
 
         return context
+
+    def serve(self, request, *args, **kwargs):
+        if not self.show_training_proposal_form:
+            return super().serve(request, *args, **kwargs)
+
+        from .forms import TrainingProposalForm
+
+        is_proposal_post = (
+            request.method == "POST"
+            and request.POST.get("form_id") == "training-proposal"
+        )
+        form = TrainingProposalForm(
+            request.POST if is_proposal_post else None,
+            request.FILES if is_proposal_post else None,
+        )
+        if is_proposal_post and form.is_valid():
+            proposal = form.save(commit=False)
+            proposal.page = self
+            proposal.save()
+            return redirect(f"{self.url}?proposal=submitted")
+
+        context = self.get_context(request, *args, **kwargs)
+        context["training_proposal_form"] = form
+        context["proposal_submitted"] = (
+            request.GET.get("proposal") == "submitted"
+        )
+        response = TemplateResponse(
+            request,
+            self.get_template(request),
+            context,
+        )
+        response["Cache-Control"] = self.cache_control
+        return response
+
+
+@register_snippet
+class TrainingTopic(models.Model):
+    name = models.CharField(max_length=255, unique=True, verbose_name=_("Title"))
+    description = models.TextField(blank=True, verbose_name=_("Description"))
+
+    panels = [
+        FieldPanel("name"),
+        FieldPanel("description"),
+    ]
+
+    class Meta:
+        ordering = ("name",)
+        verbose_name = _("Training Topic")
+        verbose_name_plural = _("Training Topics")
+
+    def __str__(self):
+        return self.name
+
+
+@register_snippet
+class TrainingProposal(models.Model):
+    PROGRAMME_OJT = "ojt"
+    PROGRAMME_SECONDMENT = "secondment"
+    PROGRAMME_CHOICES = (
+        (PROGRAMME_OJT, _("On-the-job training")),
+        (PROGRAMME_SECONDMENT, _("Secondment")),
+    )
+    STATUS_NEW = "new"
+    STATUS_REVIEWING = "reviewing"
+    STATUS_ACCEPTED = "accepted"
+    STATUS_DECLINED = "declined"
+    STATUS_CHOICES = (
+        (STATUS_NEW, _("New")),
+        (STATUS_REVIEWING, _("Under review")),
+        (STATUS_ACCEPTED, _("Accepted")),
+        (STATUS_DECLINED, _("Declined")),
+    )
+    DOCUMENT_VALIDATORS = (
+        FileExtensionValidator(("pdf", "doc", "docx")),
+        validate_training_proposal_file_size,
+    )
+
+    page = models.ForeignKey(
+        OnTheJobTrainingPage,
+        on_delete=models.CASCADE,
+        related_name="training_proposals",
+        verbose_name=_("Training page"),
+    )
+    full_name = models.CharField(max_length=255, verbose_name=_("Full name"))
+    email = models.EmailField(verbose_name=_("Email address"))
+    phone = models.CharField(
+        max_length=80,
+        validators=[
+            RegexValidator(
+                regex=r"^\+?[0-9 ()-]{7,25}$",
+                message=_("Enter a valid telephone or WhatsApp number."),
+            )
+        ],
+        verbose_name=_("Telephone / WhatsApp"),
+    )
+    country = models.CharField(max_length=120, verbose_name=_("Country"))
+    organisation = models.ForeignKey(
+        MeteorologicalService,
+        on_delete=models.PROTECT,
+        related_name="training_proposals",
+        verbose_name=_("Organisation / NMHS"),
+    )
+    job_title = models.CharField(max_length=180, verbose_name=_("Job title"))
+    programme_type = models.CharField(
+        max_length=20,
+        choices=PROGRAMME_CHOICES,
+        default=PROGRAMME_OJT,
+        verbose_name=_("Programme type"),
+    )
+    proposal_title = models.ForeignKey(
+        TrainingTopic,
+        on_delete=models.PROTECT,
+        related_name="training_proposals",
+        verbose_name=_("Proposed training title"),
+    )
+    professional_background = models.TextField(
+        verbose_name=_("Professional background and current responsibilities"),
+    )
+    objectives = models.TextField(verbose_name=_("Training objectives"))
+    expected_outcomes = models.TextField(verbose_name=_("Expected outcomes"))
+    preferred_start_date = models.DateField(
+        verbose_name=_("Preferred start date"),
+    )
+    preferred_end_date = models.DateField(
+        verbose_name=_("Preferred end date"),
+    )
+    nomination_letter = models.FileField(
+        upload_to="training_proposals/%Y/%m/",
+        validators=DOCUMENT_VALIDATORS,
+        verbose_name=_("Nomination letter"),
+        help_text=_("Required PDF, DOC or DOCX file, maximum 10 MB."),
+    )
+    cv = models.FileField(
+        upload_to="training_proposals/%Y/%m/",
+        validators=DOCUMENT_VALIDATORS,
+        verbose_name=_("Curriculum vitae"),
+        help_text=_("Required PDF, DOC or DOCX file, maximum 10 MB."),
+    )
+    supporting_document = models.FileField(
+        upload_to="training_proposals/%Y/%m/",
+        validators=DOCUMENT_VALIDATORS,
+        verbose_name=_("Motivation letter or supporting document"),
+        help_text=_("Required PDF, DOC or DOCX file, maximum 10 MB."),
+    )
+    consent = models.BooleanField(
+        verbose_name=_(
+            "I confirm that the information is accurate and consent to ACMAD "
+            "using it to assess this training proposal."
+        ),
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_NEW,
+        verbose_name=_("Review status"),
+    )
+    internal_notes = models.TextField(blank=True, verbose_name=_("Internal notes"))
+    submitted_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Submitted at"))
+
+    panels = [
+        FieldPanel("page"),
+        MultiFieldPanel(
+            [
+                FieldPanel("status"),
+                FieldPanel("internal_notes"),
+            ],
+            heading=_("Review"),
+        ),
+        MultiFieldPanel(
+            [
+                FieldPanel("full_name"),
+                FieldPanel("email"),
+                FieldPanel("phone"),
+                FieldPanel("country"),
+                FieldPanel("organisation"),
+                FieldPanel("job_title"),
+            ],
+            heading=_("Applicant"),
+        ),
+        MultiFieldPanel(
+            [
+                FieldPanel("programme_type"),
+                FieldPanel("proposal_title"),
+                FieldPanel("professional_background"),
+                FieldPanel("objectives"),
+                FieldPanel("expected_outcomes"),
+                FieldPanel("preferred_start_date"),
+                FieldPanel("preferred_end_date"),
+            ],
+            heading=_("Proposal"),
+        ),
+        MultiFieldPanel(
+            [
+                FieldPanel("nomination_letter"),
+                FieldPanel("cv"),
+                FieldPanel("supporting_document"),
+            ],
+            heading=_("Documents"),
+        ),
+    ]
+
+    class Meta:
+        ordering = ("-submitted_at",)
+        verbose_name = _("Training Proposal")
+        verbose_name_plural = _("Training Proposals")
+
+    def __str__(self):
+        return f"{self.full_name} — {self.proposal_title}"
 
 
 class ServiceApplication(Orderable):
