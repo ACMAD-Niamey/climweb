@@ -12,14 +12,33 @@ from positions import PositionField
 from wagtail.admin.panels import (FieldPanel, MultiFieldPanel)
 from wagtail.fields import StreamField
 from wagtail.models import Page
+from wagtail.snippets.models import register_snippet
 
 from climweb.base import blocks
 from climweb.base.models import ServiceCategory, AbstractBannerWithOptionalIntroPage
 from climweb.base.utils import query_param_to_list, paginate, get_first_non_empty_p_string
 from climweb.pages.events.models import EventPage
 from climweb.pages.news.models import NewsPage
+from climweb.pages.organisation_pages.partners.models import Partner
 from climweb.pages.publications.models import PublicationPage
 from climweb.pages.videos.models import YoutubePlaylist
+
+
+@register_snippet
+class ProjectSector(models.Model):
+    name = models.CharField(max_length=100, unique=True, verbose_name=_("Name"))
+
+    panels = [
+        FieldPanel("name"),
+    ]
+
+    class Meta:
+        ordering = ("name",)
+        verbose_name = _("Sector")
+        verbose_name_plural = _("Sectors")
+
+    def __str__(self):
+        return self.name
 
 
 class ProjectIndexPage(AbstractBannerWithOptionalIntroPage):
@@ -58,18 +77,33 @@ class ProjectIndexPage(AbstractBannerWithOptionalIntroPage):
     def filters(self):
         services = ServiceCategory.objects.all()
         years = ProjectPage.objects.dates("begin_date", "year")
-        return {'services': services, "year": years}
+        donors = Partner.objects.filter(projects__in=self.all_projects).distinct()
+        sectors = ProjectSector.objects.filter(projects__in=self.all_projects).distinct()
+        return {
+            'services': services,
+            'donors': donors,
+            'sectors': sectors,
+            "year": years,
+        }
     
     def filter_projects(self, request):
         projects = self.all_projects
         
         services = query_param_to_list(request.GET.get("service"), as_int=True)
+        donors = query_param_to_list(request.GET.get("donor"), as_int=True)
+        sectors = query_param_to_list(request.GET.get("sector"), as_int=True)
         years = query_param_to_list(request.GET.get("year"))
         
         filters = models.Q()
         
         if services:
             filters &= models.Q(services__in=services)
+
+        if donors:
+            filters &= models.Q(partners__in=donors)
+
+        if sectors:
+            filters &= models.Q(sectors__in=sectors)
         
         if years:
             filters &= models.Q(begin_date__year__in=years)
@@ -118,6 +152,12 @@ class ProjectPage(AbstractBannerWithOptionalIntroPage):
     
     partners = ParentalManyToManyField('partners.Partner', blank=True, related_name='projects',
                                        verbose_name=_("Partners"))
+    sectors = ParentalManyToManyField(
+        ProjectSector,
+        related_name='projects',
+        verbose_name=_("Sectors"),
+        help_text=_("Select at least one sector for this project."),
+    )
     
     goals_title = models.CharField(max_length=200, blank=True, null=True, default="Our Areas of Work",
                                    verbose_name=_("Goals/Activities section title"))
@@ -159,6 +199,7 @@ class ProjectPage(AbstractBannerWithOptionalIntroPage):
         FieldPanel('project_materials'),
         FieldPanel('youtube_playlist'),
         FieldPanel('partners', widget=CheckboxSelectMultiple),
+        FieldPanel('sectors', widget=CheckboxSelectMultiple),
     ]
     
     class Meta:
