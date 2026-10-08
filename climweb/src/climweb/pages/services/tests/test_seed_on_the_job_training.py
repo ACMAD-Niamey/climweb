@@ -52,6 +52,7 @@ class TestSeedOnTheJobTraining(WagtailPageTestCase):
         self.assertContains(response, "Submit a training proposal")
         self.assertContains(response, "Proposed training title")
         self.assertContains(response, 'data-proposal-open')
+        self.assertContains(response, 'href="#training-proposal-modal"')
         self.assertContains(response, 'id="training-proposal-modal"')
         self.assertNotContains(
             response,

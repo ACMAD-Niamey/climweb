@@ -87,7 +87,7 @@
                 {% endfor %}
             </div>
             {% if page.show_training_proposal_form %}
-                <button class="ojt-button" type="button" data-proposal-open aria-controls="training-proposal-modal">{% translate "Submit a training proposal" %}</button>
+                <a class="ojt-button" href="#training-proposal-modal" data-proposal-open aria-controls="training-proposal-modal" aria-expanded="false" role="button">{% translate "Submit a training proposal" %}</a>
             {% else %}
                 <a class="ojt-button" href="mailto:{{ page.application_email }}">{% translate "Contact the programme" %}</a>
             {% endif %}
@@ -193,14 +193,14 @@
          role="dialog"
          aria-modal="true"
          aria-labelledby="training-proposal-title">
-        <div class="modal-background" data-proposal-close></div>
+        <a class="modal-background" href="#apply" data-proposal-close aria-label="{% translate 'Close' %}"></a>
         <div class="modal-card ojt-proposal-modal__card">
             <header class="modal-card-head ojt-proposal-modal__header">
                 <div>
                     <p class="ojt-eyebrow">{% translate "Apply online" %}</p>
                     <h2 id="training-proposal-title">{{ page.proposal_section_title }}</h2>
                 </div>
-                <button class="delete" type="button" data-proposal-close aria-label="{% translate 'Close' %}"></button>
+                <a class="delete" href="#apply" data-proposal-close aria-label="{% translate 'Close' %}"></a>
             </header>
             <section class="modal-card-body ojt-proposal-modal__body">
                 {% if page.proposal_section_introduction %}
@@ -272,6 +272,6 @@
 {% block extra_js %}
     {{ block.super }}
     <script src="{% static 'base/js/bulma-file.js' %}"></script>
-    <script defer src="{% static 'js/on_the_job_training.js' %}?v=2"></script>
+    <script defer src="{% static 'js/on_the_job_training.js' %}?v=3"></script>
     {% if page.show_participant_map %}{% include "base/includes/participant_map_js.html" %}{% endif %}
 {% endblock %}

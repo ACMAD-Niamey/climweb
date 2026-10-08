@@ -305,6 +305,10 @@
     z-index: 10000;
 }
 
+.ojt-proposal-modal:target {
+    display: flex;
+}
+
 .ojt-proposal-modal__card {
     width: min(1100px, calc(100vw - 2rem));
     max-height: calc(100vh - 2rem);

@@ -17,6 +17,9 @@
     function openModal(trigger) {
       lastTrigger = trigger || null;
       modal.classList.add("is-active");
+      triggers.forEach(function (button) {
+        button.setAttribute("aria-expanded", "true");
+      });
       updatePageScrollLock();
 
       var firstControl = modal.querySelector("input:not([type='hidden']), select, textarea, button");
@@ -25,18 +28,25 @@
 
     function closeModal() {
       modal.classList.remove("is-active");
+      triggers.forEach(function (button) {
+        button.setAttribute("aria-expanded", "false");
+      });
       updatePageScrollLock();
       if (lastTrigger) lastTrigger.focus();
     }
 
     triggers.forEach(function (trigger) {
-      trigger.addEventListener("click", function () {
+      trigger.addEventListener("click", function (event) {
+        event.preventDefault();
         openModal(trigger);
       });
     });
 
     closeButtons.forEach(function (button) {
-      button.addEventListener("click", closeModal);
+      button.addEventListener("click", function (event) {
+        event.preventDefault();
+        closeModal();
+      });
     });
 
     document.addEventListener("keydown", function (event) {
