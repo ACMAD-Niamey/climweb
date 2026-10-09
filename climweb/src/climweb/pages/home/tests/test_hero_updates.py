@@ -42,12 +42,10 @@ class HeroUpdatesTests(WagtailPageTestCase):
 
     def manual(self, *pages):
         self.home.hero_updates_mode = "manual"
-        self.home.hero_featured_news = next(
-            (page for page in pages if isinstance(page, NewsPage)), None
-        )
-        self.home.hero_featured_event = next(
-            (page for page in pages if isinstance(page, EventPage)), None
-        )
+        self.home.hero_featured_updates = [
+            ("event" if isinstance(page, EventPage) else "news", page)
+            for page in pages
+        ]
 
     def test_automatic_uses_only_the_newest_news_as_the_lead_slide(self):
         self.event(20)
@@ -94,13 +92,9 @@ class HeroUpdatesTests(WagtailPageTestCase):
     def test_dashboard_panel_exposes_manual_selectors_and_programme_toggles(self):
         form = type(self.home).get_edit_handler().get_form_class()
         self.assertIn("hero_updates_mode", form.base_fields)
-        self.assertIn("hero_featured_news", form.base_fields)
-        self.assertIn("hero_featured_news_2", form.base_fields)
-        self.assertIn("hero_featured_event", form.base_fields)
-        self.assertIn("hero_featured_event_2", form.base_fields)
+        self.assertIn("hero_featured_updates", form.base_fields)
         self.assertIn("hero_show_el_nino", form.base_fields)
         self.assertIn("hero_show_summer_school", form.base_fields)
-        self.assertIn("hero_carousel_order", form.base_fields)
         self.assertIn("hero_featured_products", form.base_fields)
         self.assertIn("show_enso_section", form.base_fields)
 
@@ -113,26 +107,23 @@ class HeroUpdatesTests(WagtailPageTestCase):
         PageViewRestriction.objects.create(page=self.events_index, restriction_type="login")
         self.assertEqual(self.ids(), [])
 
-    def test_manual_orders_news_before_event(self):
+    def test_manual_uses_editor_defined_order(self):
         event = self.event(1)
         news = self.news(-1)
         self.manual(event, news)
-        self.assertEqual(self.ids(), [news.pk, event.pk])
+        self.assertEqual(self.ids(), [event.pk, news.pk])
 
-    def test_manual_supports_two_news_and_two_events(self):
+    def test_manual_supports_any_five_news_and_events(self):
         first_news = self.news(-2)
         second_news = self.news(-1)
         first_event = self.event(1)
         second_event = self.event(2)
-        self.home.hero_updates_mode = "manual"
-        self.home.hero_featured_news = first_news
-        self.home.hero_featured_news_2 = second_news
-        self.home.hero_featured_event = first_event
-        self.home.hero_featured_event_2 = second_event
+        third_news = self.news(-3)
+        self.manual(first_event, first_news, second_event, second_news, third_news)
 
         self.assertEqual(
             self.ids(),
-            [first_news.pk, second_news.pk, first_event.pk, second_event.pk],
+            [first_event.pk, first_news.pk, second_event.pk, second_news.pk, third_news.pk],
         )
 
     def test_manual_uses_editor_defined_slide_order(self):
@@ -141,21 +132,15 @@ class HeroUpdatesTests(WagtailPageTestCase):
         product_index = ProductIndexPageFactory(parent=self.home)
         el_nino_page = ElNinoPageFactory(parent=product_index)
         summer_school_index = SummerSchoolIndexPageFactory(parent=self.home)
-        self.manual(news, event)
-        self.home.hero_carousel_order = [
-            ("summer_school", None),
-            ("event", None),
-            ("el_nino", None),
-            ("news", None),
-        ]
+        self.manual(event, news)
 
         slides = self.home.get_hero_updates()
 
         self.assertEqual(
             [slide["kind"] for slide in slides],
-            ["summer_school", "event", "el_nino", "news"],
+            ["event", "news", "el_nino", "summer_school"],
         )
-        self.assertEqual(slides[0]["url"], summer_school_index.url)
+        self.assertEqual(slides[3]["url"], summer_school_index.url)
         self.assertEqual(slides[2]["url"], el_nino_page.url)
 
     def test_manual_skips_unpublished_or_private_selected_pages(self):
@@ -235,7 +220,7 @@ class HeroUpdatesTests(WagtailPageTestCase):
         slides = self.home.get_hero_updates()
 
         self.assertEqual(slides[0]["kind"], "el_nino")
-        self.assertEqual(slides[0]["title"], latest.title)
+        self.assertEqual(slides[0]["title"], "El-nino Special Bulletin")
         self.assertEqual(slides[0]["url"], el_nino_page.url)
         self.assertEqual(slides[0]["cta_url"], document_url)
         self.assertEqual(slides[0]["cta_label"], "View Bulletin")

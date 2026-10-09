@@ -111,7 +111,7 @@
                       {% image sub_page.specific.listing_image original as sub_img %}
                       <img class="progressive__img progressive--not-loaded pub-thumb-img"
                         data-progressive="{{ sub_img.url }}" src="{% lazy_image_url sub_img %}"
-                        alt="{{ sub_page.title }}" />
+                        alt="{{ sub_page.specific.display_title }}" />
                       {% else %}
                       <div class="pub-thumb-placeholder">
                         <span class="spl-card-ph-icon"
@@ -130,7 +130,7 @@
                         </span>
                         <span class="pub-tag">{{ category.name }}</span>
                       </div>
-                      <a href="{{ sub_page.url }}" class="pub-title">{{ sub_page.title }}</a>
+                      <a href="{{ sub_page.url }}" class="pub-title">{{ sub_page.specific.display_title }}</a>
                       {% if sub_page.specific.listing_summary %}
                       <p class="pub-snippet">{{ sub_page.specific.listing_summary }}</p>
                       {% endif %}
@@ -166,13 +166,13 @@
                     {% image sub_page.specific.listing_image original as sub_img %}
                     <img class="progressive__img progressive--not-loaded pub-thumb-img"
                       data-progressive="{{ sub_img.url }}" src="{% lazy_image_url sub_img %}"
-                      alt="{{ sub_page.title }}" />
+                      alt="{{ sub_page.specific.display_title }}" />
                     {% else %}
                     <div class="pub-thumb-placeholder"></div>
                     {% endif %}
                   </a>
                   <div class="pub-body">
-                    <a href="{{ sub_page.url }}" class="pub-title">{{ sub_page.title }}</a>
+                    <a href="{{ sub_page.url }}" class="pub-title">{{ sub_page.specific.display_title }}</a>
                     {% if sub_page.specific.listing_summary %}
                     <p class="pub-snippet">{{ sub_page.specific.listing_summary }}</p>
                     {% endif %}

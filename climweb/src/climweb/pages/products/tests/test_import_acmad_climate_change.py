@@ -97,3 +97,19 @@ class TestClimateChangeHierarchy(TestCase):
         self.assertEqual(
             ProductPage.objects.filter(service=rcc_service).live().count(), 1
         )
+
+    def test_existing_destination_keeps_editor_selected_service(self):
+        ServiceCategory.objects.create(
+            name="Regional Climate Center", icon="cloud-sun-rain"
+        )
+        product_page, _ = Command._get_or_create_destination()
+        editor_category = ServiceCategory.objects.create(
+            name="Climate Monitoring", icon="chart-line"
+        )
+        product_page.service = editor_category
+        product_page.save_revision().publish()
+
+        product_page, _ = Command._get_or_create_destination()
+
+        product_page.refresh_from_db()
+        self.assertEqual(product_page.service, editor_category)

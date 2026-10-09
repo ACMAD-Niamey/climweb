@@ -248,6 +248,15 @@ def _record_importer_audit(importer, action, actor, changes=None):
     )
 
 
+def _set_importer_product_category(product_page_id, category):
+    """Publish an editor-selected category on an importer's destination page."""
+    product_page = ProductPage.objects.select_for_update().get(pk=product_page_id)
+    if product_page.service_id == category.pk:
+        return
+    product_page.service = category
+    product_page.save_revision().publish()
+
+
 def _queue_product_import(request, run, label, *, retry=False):
     from .tasks import run_manual_product_import
 
@@ -527,6 +536,10 @@ def configured_product_importer_create_view(request):
                         importer.default_source_config = form.source_values
                         importer.created_by = request.user
                         importer.save()
+                        _set_importer_product_category(
+                            importer.product_page_id,
+                            form.cleaned_data["product_category"],
+                        )
                         _record_importer_audit(
                             importer,
                             ConfiguredProductImporterAuditEvent.ACTION_CREATED,
@@ -534,6 +547,9 @@ def configured_product_importer_create_view(request):
                             {
                                 "status": importer.status,
                                 "destination_product_page": importer.product_page.title,
+                                "product_category": form.cleaned_data[
+                                    "product_category"
+                                ].name,
                                 "destination_product_type": str(
                                     importer.product_item_type
                                 ),
@@ -657,6 +673,7 @@ def configured_product_importer_edit_view(request, family_key):
                     old_values = {
                         "label": original.label,
                         "product_page": original.product_page_id,
+                        "product_category": original.product_page.service_id,
                         "product_item_type": original.product_item_type_id,
                         "status": original.status,
                         "default_interval_hours": original.default_interval_hours,
@@ -666,6 +683,10 @@ def configured_product_importer_edit_view(request, family_key):
                         importer = form.save(commit=False)
                         importer.default_source_config = form.source_values
                         importer.save()
+                        _set_importer_product_category(
+                            importer.product_page_id,
+                            form.cleaned_data["product_category"],
+                        )
                         ProductImportSourceConfig.objects.update_or_create(
                             product_family=importer.key,
                             defaults={
@@ -687,6 +708,9 @@ def configured_product_importer_edit_view(request, family_key):
                         new_values = {
                             "label": importer.label,
                             "product_page": importer.product_page_id,
+                            "product_category": form.cleaned_data[
+                                "product_category"
+                            ].pk,
                             "product_item_type": importer.product_item_type_id,
                             "status": importer.status,
                             "default_interval_hours": importer.default_interval_hours,

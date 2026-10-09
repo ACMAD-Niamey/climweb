@@ -3,7 +3,7 @@
 
 {% block extra_css %}
     {{ block.super }}
-    <link rel="stylesheet" href="{% static 'staff/css/staff_page.css' %}">
+    <link rel="stylesheet" href="{% static 'staff/css/staff_page.css' %}?v=2">
 {% endblock extra_css %}
 
 {% block content %}
@@ -90,7 +90,17 @@
                                                             <p class="staff-position">{{ staffmember.role }}</p>
                                                             <span class="staff-badge">{{ staffmember.department.name }}</span>
                                                             {% if staffmember.bio %}
-                                                                <div class="staff-bio format-text">{{ staffmember.bio|richtext }}</div>
+                                                                <div class="staff-bio-wrapper">
+                                                                    <div id="staff-bio-{{ staffmember.pk }}" class="staff-bio format-text is-collapsed" data-staff-bio>{{ staffmember.bio|richtext }}</div>
+                                                                    <button type="button"
+                                                                            class="staff-bio-toggle"
+                                                                            data-staff-bio-toggle
+                                                                            data-read-more="{% translate 'Read more' %}"
+                                                                            data-read-less="{% translate 'Read less' %}"
+                                                                            aria-controls="staff-bio-{{ staffmember.pk }}"
+                                                                            aria-expanded="false"
+                                                                            hidden>{% translate "Read more" %}</button>
+                                                                </div>
                                                             {% endif %}
                                                             {% include "staff/includes/profile_links.html" with member=staffmember %}
                                                         </div>
@@ -112,5 +122,5 @@
 
 {% block extra_js %}
     {{ block.super }}
-    <script src="{% static 'staff/js/staff_page.js' %}" defer></script>
+    <script src="{% static 'staff/js/staff_page.js' %}?v=2" defer></script>
 {% endblock extra_js %}

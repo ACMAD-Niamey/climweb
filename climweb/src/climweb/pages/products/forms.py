@@ -7,6 +7,7 @@ from django_recaptcha.fields import ReCaptchaField
 from wagtail import blocks
 from wagtail.admin.forms import WagtailAdminModelForm
 
+from climweb.base.models import ServiceCategory
 from climweb.pages.products.models import (
     ConfiguredProductImporter,
     ProductImportSourceConfig,
@@ -266,6 +267,14 @@ class ProductImportSourceConfigForm(forms.ModelForm):
 
 
 class ConfiguredProductImporterForm(forms.ModelForm):
+    product_category = forms.ModelChoiceField(
+        queryset=ServiceCategory.objects.all(),
+        label="Product category",
+        help_text=(
+            "Primary category assigned to the destination product page. "
+            "Automatic imports will preserve this selection."
+        ),
+    )
     source_type = forms.ChoiceField(
         choices=ProductImportSourceConfig.SOURCE_TYPE_CHOICES,
         label="Source type",
@@ -316,12 +325,32 @@ class ConfiguredProductImporterForm(forms.ModelForm):
 
     def __init__(self, *args, source_config=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.order_fields(
+            (
+                "label",
+                "key",
+                "product_page",
+                "product_category",
+                "product_item_type",
+                "status",
+                "default_interval_hours",
+                "source_type",
+                "source_url",
+                "source_system",
+                "allowed_extensions",
+                "filename_pattern",
+                "date_format",
+                "history_url_pattern",
+                "request_headers",
+            )
+        )
         self.fields["status"].choices = [
             choice
             for choice in ConfiguredProductImporter.STATUS_CHOICES
             if choice[0] != ConfiguredProductImporter.STATUS_ARCHIVED
         ]
         if self.instance and self.instance.pk:
+            self.initial["product_category"] = self.instance.product_page.service_id
             self.fields["key"].disabled = True
             self.fields["key"].help_text = (
                 "The importer key is permanent because import history and schedules use it."

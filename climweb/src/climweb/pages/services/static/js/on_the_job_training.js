@@ -1,6 +1,65 @@
 (function () {
   "use strict";
 
+  function updatePageScrollLock() {
+    var hasOpenModal = document.querySelector(".modal.is-active");
+    document.documentElement.classList.toggle("is-clipped", Boolean(hasOpenModal));
+  }
+
+  function initProposalModal() {
+    var modal = document.querySelector("[data-proposal-modal]");
+    if (!modal) return;
+
+    var triggers = document.querySelectorAll("[data-proposal-open]");
+    var closeButtons = modal.querySelectorAll("[data-proposal-close]");
+    var lastTrigger = null;
+
+    function openModal(trigger) {
+      lastTrigger = trigger || null;
+      modal.classList.add("is-active");
+      triggers.forEach(function (button) {
+        button.setAttribute("aria-expanded", "true");
+      });
+      updatePageScrollLock();
+
+      var firstControl = modal.querySelector("input:not([type='hidden']), select, textarea, button");
+      if (firstControl) firstControl.focus();
+    }
+
+    function closeModal() {
+      modal.classList.remove("is-active");
+      triggers.forEach(function (button) {
+        button.setAttribute("aria-expanded", "false");
+      });
+      updatePageScrollLock();
+      if (lastTrigger) lastTrigger.focus();
+    }
+
+    triggers.forEach(function (trigger) {
+      trigger.addEventListener("click", function (event) {
+        event.preventDefault();
+        openModal(trigger);
+      });
+    });
+
+    closeButtons.forEach(function (button) {
+      button.addEventListener("click", function (event) {
+        event.preventDefault();
+        closeModal();
+      });
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (modal.classList.contains("is-active") && (event.key === "Escape" || event.keyCode === 27)) {
+        closeModal();
+      }
+    });
+
+    if (modal.getAttribute("data-open-on-load") === "true") {
+      openModal(null);
+    }
+  }
+
   function initGalleryModal() {
     var triggers = Array.from(document.querySelectorAll("[data-gallery-image]"));
     if (!triggers.length) return;
@@ -54,7 +113,7 @@
 
     function closeModal() {
       modal.classList.remove("is-active");
-      document.documentElement.classList.remove("is-clipped");
+      updatePageScrollLock();
       document.removeEventListener("keydown", handleKeyDown);
       if (modalImg) modalImg.src = "";
     }
@@ -101,9 +160,14 @@
     }
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initGalleryModal);
-  } else {
+  function initPageModals() {
+    initProposalModal();
     initGalleryModal();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initPageModals);
+  } else {
+    initPageModals();
   }
 })();

@@ -130,7 +130,7 @@
             <polyline points="22 4 12 14.01 9 11.01" />
           </svg> Decision support for climate-sensitive sectors</li>
       </ul>
-      <a href="https://new-rcc.acmad.org" class="button button-light"
+      <a href="{% if rcc_directory_page %}{{ rcc_directory_page.url }}{% else %}/regional-climate-centres/{% endif %}" class="button button-light"
         style="margin-top: 30px; display: inline-flex; align-items: center; gap: 8px; background: white; color: var(--navy-900, #0a192f); border: none; padding: 12px 24px; border-radius: 5px; font-weight: 700; font-size: 0.85rem;">
         Discover RCC Africa
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"

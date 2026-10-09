@@ -62,6 +62,12 @@ class TestUpcomingEventSpotlight(WagtailPageTestCase):
         cls.past = EventPageFactory(
             parent=cls.page, title="Past event", date_from=now - timedelta(days=1),
         )
+        cls.ongoing = EventPageFactory(
+            parent=cls.page,
+            title="Ongoing event",
+            date_from=now - timedelta(days=2),
+            date_to=now + timedelta(days=2),
+        )
         cls.first = EventPageFactory(
             parent=cls.page, title="First upcoming", date_from=now + timedelta(days=1),
         )
@@ -81,10 +87,10 @@ class TestUpcomingEventSpotlight(WagtailPageTestCase):
             is_hidden=True,
         )
 
-    def test_spotlight_uses_next_three_visible_events(self):
+    def test_spotlight_uses_three_visible_events_that_have_not_ended(self):
         self.assertEqual(
             [event.title for event in self.page.get_featured_events()],
-            ["First upcoming", "Second upcoming", "Third upcoming"],
+            ["Ongoing event", "First upcoming", "Second upcoming"],
         )
 
     def test_spotlight_renders_as_carousel(self):
@@ -92,9 +98,10 @@ class TestUpcomingEventSpotlight(WagtailPageTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="featured-events-carousel"')
+        self.assertContains(response, "Featured Events")
+        self.assertContains(response, "Ongoing event")
         self.assertContains(response, "First upcoming")
         self.assertContains(response, "Second upcoming")
-        self.assertContains(response, "Third upcoming")
 
 
 class TestEventRegistrationClosingDate(WagtailPageTestCase):

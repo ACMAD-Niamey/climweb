@@ -196,6 +196,28 @@
     color: #666;
 }
 
+.staff-bio.is-collapsed {
+    max-height: 16.5em;
+    overflow: hidden;
+}
+
+.staff-bio-toggle {
+    margin-top: .65rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--primary-color, #307461);
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.staff-bio-toggle:hover,
+.staff-bio-toggle:focus-visible {
+    text-decoration: underline;
+}
+
 .staff-bio img {
     max-width: 100%;
     height: auto;

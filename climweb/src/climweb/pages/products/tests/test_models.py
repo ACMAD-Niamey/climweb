@@ -8,6 +8,7 @@ from climweb.base.seo_utils import get_html_meta_tags
 from climweb.base.test_utils import test_page_meta_tags
 from climweb.pages.home.tests.factories import get_or_create_homepage
 from .factories import (
+    ElNinoPageFactory,
     ProductIndexPageFactory,
     ProductPageFactory,
     ProductItemPageFactory,
@@ -53,6 +54,14 @@ class TestProductPages(WagtailPageTestCase):
             self.index_page.featured_product_page.pk,
             self.product1_page.pk,
         )
+
+    def test_products_index_uses_special_enso_bulletin_title(self):
+        enso_page = ElNinoPageFactory(parent=self.index_page)
+
+        response = self.client.get(self.index_page.url)
+
+        self.assertContains(response, "El-nino Special Bulletin")
+        self.assertContains(response, enso_page.url)
     
     def test_products_index_page_meta_tags(self):
         resp = self.client.get(self.index_page.get_url())
