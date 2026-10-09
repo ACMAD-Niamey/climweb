@@ -7,13 +7,13 @@
       <img class="progressive__img progressive--not-loaded"
            data-progressive="{{ featured_img.url }}"
            src="{% lazy_image_url featured_img %}"
-           alt="{{ product.title }}">
+           alt="{{ product.display_title }}">
     {% else %}
       <span class="products-featured-card-placeholder" aria-hidden="true"></span>
     {% endif %}
   </a>
   <div class="products-featured-card-body">
     <span class="products-featured-card-label">{% translate "Featured product" %}</span>
-    <h3><a href="{{ product.url|public_page_url }}">{{ product.title }}</a></h3>
+    <h3><a href="{{ product.url|public_page_url }}">{{ product.display_title }}</a></h3>
   </div>
 </article>

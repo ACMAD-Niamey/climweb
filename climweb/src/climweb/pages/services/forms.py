@@ -23,7 +23,6 @@ class TrainingProposalForm(forms.ModelForm):
             "full_name",
             "email",
             "phone",
-            "country",
             "organisation",
             "job_title",
             "programme_type",
@@ -63,7 +62,6 @@ class TrainingProposalForm(forms.ModelForm):
         cleaned_data = super().clean()
         minimum_lengths = {
             "full_name": 2,
-            "country": 2,
             "job_title": 2,
             "professional_background": 20,
             "objectives": 20,
@@ -105,3 +103,13 @@ class TrainingProposalForm(forms.ModelForm):
                     "The requested period is longer than this programme allows.",
                 )
         return cleaned_data
+
+    def save(self, commit=True):
+        proposal = super().save(commit=False)
+        organisation = self.cleaned_data.get("organisation")
+        if organisation:
+            proposal.country = organisation.country
+        if commit:
+            proposal.save()
+            self.save_m2m()
+        return proposal

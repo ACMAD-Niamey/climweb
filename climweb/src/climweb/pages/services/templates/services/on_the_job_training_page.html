@@ -3,7 +3,7 @@
 
 {% block extra_css %}
     {{ block.super }}
-    <link rel="stylesheet" href="{% static 'css/on_the_job_training.css' %}?v=5">
+    <link rel="stylesheet" href="{% static 'css/on_the_job_training.css' %}?v=6">
     {% if page.show_participant_map %}{% include "base/includes/participant_map_css.html" %}{% endif %}
 {% endblock %}
 
@@ -204,9 +204,9 @@
             </header>
             <section class="modal-card-body ojt-proposal-modal__body">
                 {% if page.proposal_section_introduction %}
-                    <div class="format-text ojt-lead">{{ page.proposal_section_introduction|richtext }}</div>
+                    <div class="format-text ojt-lead ojt-proposal-introduction">{{ page.proposal_section_introduction|richtext }}</div>
                 {% else %}
-                    <p class="ojt-lead">{% translate "Complete the form below to submit your proposed training plan and supporting documents to ACMAD." %}</p>
+                    <p class="ojt-lead ojt-proposal-introduction">{% translate "Complete the form below to submit your proposed training plan and supporting documents to ACMAD." %}</p>
                 {% endif %}
                 {% if proposal_submitted %}
                     <div class="ojt-proposal-success" role="status">
@@ -223,7 +223,6 @@
                             {{ training_proposal_form.full_name|bulma }}
                             {{ training_proposal_form.email|bulma }}
                             {{ training_proposal_form.phone|bulma }}
-                            {{ training_proposal_form.country|bulma }}
                             {{ training_proposal_form.organisation|bulma }}
                             {{ training_proposal_form.job_title|bulma }}
                             {{ training_proposal_form.programme_type|bulma }}

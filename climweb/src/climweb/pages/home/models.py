@@ -16,14 +16,15 @@ if "forecastmanager" in settings.INSTALLED_APPS:
     from forecastmanager.forecast_settings import ForecastSetting
     from forecastmanager.models import City
 from geomanager.models import RasterFileLayer, WmsLayer, VectorTileLayer
+from modelcluster.fields import ParentalKey
 from modelcluster.models import ClusterableModel
 from wagtail import blocks
-from wagtail.admin.panels import MultiFieldPanel, FieldPanel, TabbedInterface, ObjectList, PageChooserPanel
+from wagtail.admin.panels import MultiFieldPanel, FieldPanel, InlinePanel, TabbedInterface, ObjectList, PageChooserPanel
 from wagtail.api.v2.utils import get_full_url
 from wagtail.contrib.settings.models import BaseSiteSetting
 from wagtail.contrib.settings.registry import register_setting
 from wagtail.fields import RichTextField, StreamField
-from wagtail.models import Page
+from wagtail.models import Orderable, Page
 from wagtail.snippets.models import register_snippet
 from wagtail_color_panel.fields import ColorField
 from wagtailiconchooser.blocks import IconChooserBlock
@@ -190,12 +191,21 @@ def get_significant_product_slides(product_pages=None):
 
 
 @register_snippet
-class RegionalClimateCentre(models.Model):
+class RegionalClimateCentre(ClusterableModel):
+    TYPE_CENTRE = "centre"
+    TYPE_NETWORK = "network"
+    TYPE_CHOICES = (
+        (TYPE_CENTRE, _("Regional Climate Centre")),
+        (TYPE_NETWORK, _("RCC Network")),
+    )
+
     STATUS_DESIGNATED = "designated"
     STATUS_DEMONSTRATION = "demonstration"
+    STATUS_INITIATED = "initiated"
     STATUS_CHOICES = (
         (STATUS_DESIGNATED, _("WMO designated")),
         (STATUS_DEMONSTRATION, _("In demonstration")),
+        (STATUS_INITIATED, _("Initiated")),
     )
 
     LABEL_UPPER_RIGHT = "upper_right"
@@ -216,12 +226,33 @@ class RegionalClimateCentre(models.Model):
         help_text=_("Short centre name displayed beside the map marker."),
     )
     full_name = models.CharField(max_length=255, verbose_name=_("Full name"))
-    city = models.CharField(max_length=100, verbose_name=_("City"))
-    country = models.CharField(max_length=100, verbose_name=_("Country"))
+    centre_type = models.CharField(
+        max_length=20,
+        choices=TYPE_CHOICES,
+        default=TYPE_CENTRE,
+        verbose_name=_("Entry type"),
+    )
+    city = models.CharField(max_length=100, blank=True, verbose_name=_("City"))
+    country = models.CharField(max_length=100, blank=True, verbose_name=_("Country"))
+    coverage = models.CharField(
+        max_length=180,
+        blank=True,
+        verbose_name=_("Geographical coverage"),
+        help_text=_("Especially useful for an RCC Network, for example Northern Africa."),
+    )
     website_url = models.URLField(
         max_length=500,
         verbose_name=_("Website URL"),
         help_text=_("Official website opened when the marker is selected."),
+    )
+    logo = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Logo"),
+        help_text=_("Optional official centre logo shown on the RCC directory page."),
     )
     status = models.CharField(
         max_length=20,
@@ -232,9 +263,9 @@ class RegionalClimateCentre(models.Model):
     map_x = models.DecimalField(
         max_digits=4,
         decimal_places=1,
-        validators=[MinValueValidator(0), MaxValueValidator(240)],
+        validators=[MinValueValidator(0), MaxValueValidator(280)],
         verbose_name=_("Horizontal map position"),
-        help_text=_("SVG horizontal coordinate from 0 (left) to 240 (right)."),
+        help_text=_("SVG horizontal coordinate from 0 (left) to 280 (right)."),
     )
     map_y = models.DecimalField(
         max_digits=4,
@@ -255,16 +286,22 @@ class RegionalClimateCentre(models.Model):
         help_text=_("Keep this centre's label visible when the map is not being hovered."),
     )
     order = models.PositiveIntegerField(default=0, verbose_name=_("Display order"))
-    is_active = models.BooleanField(default=True, verbose_name=_("Visible on homepage"))
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_("Visible on homepage and RCC directory"),
+    )
 
     panels = [
         MultiFieldPanel(
             [
                 FieldPanel("display_name"),
                 FieldPanel("full_name"),
+                FieldPanel("centre_type"),
                 FieldPanel("city"),
                 FieldPanel("country"),
+                FieldPanel("coverage"),
                 FieldPanel("website_url"),
+                FieldPanel("logo"),
                 FieldPanel("status"),
             ],
             heading=_("Centre information"),
@@ -274,6 +311,11 @@ class RegionalClimateCentre(models.Model):
                 FieldPanel("map_x"),
                 FieldPanel("map_y"),
                 FieldPanel("label_position"),
+                InlinePanel(
+                    "additional_map_nodes",
+                    label=_("Network node"),
+                    help_text=_("Add the other participating locations of an RCC Network."),
+                ),
             ],
             heading=_("Map placement"),
         ),
@@ -297,7 +339,8 @@ class RegionalClimateCentre(models.Model):
 
     @property
     def marker_title(self):
-        return f"{self.full_name} — {self.city}, {self.country}"
+        location = self.coverage or ", ".join(filter(None, (self.city, self.country)))
+        return f"{self.full_name} — {location}" if location else self.full_name
 
     @property
     def label_geometry(self):
@@ -332,6 +375,33 @@ class RegionalClimateCentre(models.Model):
             },
         }
         return geometries[self.label_position]
+
+
+class RegionalClimateCentreMapNode(Orderable):
+    centre = ParentalKey(
+        RegionalClimateCentre,
+        on_delete=models.CASCADE,
+        related_name="additional_map_nodes",
+    )
+    name = models.CharField(max_length=100, blank=True, verbose_name=_("Node name"))
+    map_x = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        validators=[MinValueValidator(0), MaxValueValidator(280)],
+        verbose_name=_("Horizontal map position"),
+    )
+    map_y = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        validators=[MinValueValidator(0), MaxValueValidator(270)],
+        verbose_name=_("Vertical map position"),
+    )
+
+    panels = [FieldPanel("name"), FieldPanel("map_x"), FieldPanel("map_y")]
+
+    @property
+    def marker_transform(self):
+        return f"translate({self.map_x} {self.map_y})"
 
 if "forecastmanager" in settings.INSTALLED_APPS:
     HOME_SUBPAGE_TYPES += ['weather.WeatherDetailPage', 'cityclimate.CityClimateDataPage']
@@ -465,26 +535,12 @@ class HomePage(MetadataPageMixin, Page):
         help_text=_("Automatic uses the newest news item as the lead slide. "
                     "Only public, published pages from this homepage are included."),
     )
-    hero_featured_news = models.ForeignKey(
-        'news.NewsPage', null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
-        verbose_name=_("News slide"),
-        help_text=_("News page to show first when Update selection is Manual."),
-    )
-    hero_featured_news_2 = models.ForeignKey(
-        'news.NewsPage', null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
-        verbose_name=_("Second news slide"),
-        help_text=_("Optional second news page for the carousel in Manual mode."),
-    )
-    hero_featured_event = models.ForeignKey(
-        'events.EventPage', null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
-        verbose_name=_("Event slide"),
-        help_text=_("Event page to show after the news slide when Update selection is Manual."),
-    )
-    hero_featured_event_2 = models.ForeignKey(
-        'events.EventPage', null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
-        verbose_name=_("Second event slide"),
-        help_text=_("Optional second event page for the carousel in Manual mode."),
-    )
+    hero_featured_updates = StreamField([
+        ('news', blocks.PageChooserBlock(page_type=['news.NewsPage'], label=_("News"))),
+        ('event', blocks.PageChooserBlock(page_type=['events.EventPage'], label=_("Event"))),
+    ], blank=True, use_json_field=True, max_num=5,
+        verbose_name=_("Featured news and events"),
+        help_text=_("Choose up to five news or event pages. Drag the items to set their carousel order."))
     hero_show_el_nino = models.BooleanField(
         default=True, verbose_name=_("Show ENSO"),
         help_text=_("Include the ENSO programme slide in the carousel."),
@@ -493,26 +549,6 @@ class HomePage(MetadataPageMixin, Page):
         default=True, verbose_name=_("Show Summer School"),
         help_text=_("Include the Summer School programme slide in the carousel."),
     )
-    hero_carousel_order = StreamField([
-        ('news', blocks.StaticBlock(label=_("News"), admin_text=_("News slide"))),
-        ('news_2', blocks.StaticBlock(label=_("Second news"), admin_text=_("Second news slide"))),
-        ('event', blocks.StaticBlock(label=_("Event"), admin_text=_("Event slide"))),
-        ('event_2', blocks.StaticBlock(label=_("Second event"), admin_text=_("Second event slide"))),
-        ('el_nino', blocks.StaticBlock(label=_("ENSO"), admin_text=_("ENSO slide"))),
-        ('summer_school', blocks.StaticBlock(label=_("Summer School"), admin_text=_("Summer School slide"))),
-    ], blank=True, use_json_field=True, default=default_hero_carousel_order, max_num=6,
-        block_counts={
-            'news': {'max_num': 1},
-            'news_2': {'max_num': 1},
-            'event': {'max_num': 1},
-            'event_2': {'max_num': 1},
-            'el_nino': {'max_num': 1},
-            'summer_school': {'max_num': 1},
-        },
-        verbose_name=_("Slide order"),
-        help_text=_("In Manual mode, drag these items into the order they should appear. "
-                    "Missing or disabled slides are skipped."))
-
     show_enso_section = models.BooleanField(
         default=True,
         verbose_name=_("Show ENSO section"),
@@ -671,13 +707,9 @@ class HomePage(MetadataPageMixin, Page):
         ], heading=_("Utility Navbar Products")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
         MultiFieldPanel([
             FieldPanel('hero_updates_mode'),
-            PageChooserPanel('hero_featured_news', 'news.NewsPage'),
-            PageChooserPanel('hero_featured_news_2', 'news.NewsPage'),
-            PageChooserPanel('hero_featured_event', 'events.EventPage'),
-            PageChooserPanel('hero_featured_event_2', 'events.EventPage'),
+            FieldPanel('hero_featured_updates'),
             FieldPanel('hero_show_el_nino'),
             FieldPanel('hero_show_summer_school'),
-            FieldPanel('hero_carousel_order'),
         ], heading=_("Hero Carousel")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
         MultiFieldPanel([
             FieldPanel('show_enso_section'),
@@ -891,7 +923,13 @@ class HomePage(MetadataPageMixin, Page):
             models.Q(role__icontains="Director General")
             | models.Q(name__icontains="Ousmane Ndiaye")
         ).select_related("photo").first()
-        context["regional_climate_centres"] = RegionalClimateCentre.objects.filter(is_active=True)
+        context["regional_climate_centres"] = RegionalClimateCentre.objects.filter(
+            is_active=True
+        ).prefetch_related("additional_map_nodes")
+        context["rcc_directory_page"] = Page.objects.live().descendant_of(self).filter(
+            title__iexact="Regional Climate Centres",
+            locale_id=self.locale_id,
+        ).first()
         if settings.IS_METEOROLOGICAL:
             context["hero_updates"] = self.get_hero_updates(request)
         context["enso_homepage"] = self.get_enso_homepage_feature(request)
@@ -951,22 +989,11 @@ class HomePage(MetadataPageMixin, Page):
         events = EventPage.objects.live().public().descendant_of(self).filter(locale_id=self.locale_id)
         if self.hero_updates_mode == "manual":
             pages = []
-            if self.hero_featured_news_id:
-                selected_news = news.filter(pk=self.hero_featured_news_id).first()
-                if selected_news:
-                    pages.append(("news", selected_news))
-            if self.hero_featured_news_2_id:
-                selected_news_2 = news.filter(pk=self.hero_featured_news_2_id).first()
-                if selected_news_2:
-                    pages.append(("news_2", selected_news_2))
-            if self.hero_featured_event_id:
-                selected_event = events.filter(pk=self.hero_featured_event_id).first()
-                if selected_event:
-                    pages.append(("event", selected_event))
-            if self.hero_featured_event_2_id:
-                selected_event_2 = events.filter(pk=self.hero_featured_event_2_id).first()
-                if selected_event_2:
-                    pages.append(("event_2", selected_event_2))
+            for index, block in enumerate(self.hero_featured_updates):
+                queryset = news if block.block_type == "news" else events
+                selected = queryset.filter(pk=block.value.pk).first()
+                if selected:
+                    pages.append((f"update_{index}", selected))
         else:
             latest_news = news.order_by("-date", "-pk").first()
             pages = [("news", latest_news)] if latest_news else []
@@ -1011,7 +1038,7 @@ class HomePage(MetadataPageMixin, Page):
                                 break
                 slides_by_kind["el_nino"] = {
                     "id": f"el-nino-{el_nino_page.pk}",
-                    "title": latest_bulletin.title if latest_bulletin else el_nino_page.title,
+                    "title": _("El-nino Special Bulletin"),
                     "kind": "el_nino",
                     "badge": _("ENSO"),
                     "cta_label": _("View Bulletin"),
@@ -1059,13 +1086,8 @@ class HomePage(MetadataPageMixin, Page):
                 }
 
         if self.hero_updates_mode == "manual":
-            order = [block.block_type for block in self.hero_carousel_order]
-            if not order:
-                order = [kind for kind, _value in default_hero_carousel_order()]
-            for slot, after in (("news_2", "news"), ("event_2", "event")):
-                if slot in slides_by_kind and slot not in order:
-                    position = order.index(after) + 1 if after in order else len(order)
-                    order.insert(position, slot)
+            order = [slot for slot, _item in pages]
+            order.extend(["el_nino", "summer_school"])
         else:
             order = ["news", "el_nino", "summer_school"]
 

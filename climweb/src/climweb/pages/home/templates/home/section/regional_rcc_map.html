@@ -10,7 +10,7 @@
 
 <div class="regional-map-canvas">
   <svg class="regional-africa-map"
-       viewBox="0 0 240 270"
+       viewBox="0 0 280 270"
        role="img"
        aria-labelledby="regional-rcc-map-title regional-rcc-map-description">
     <title id="regional-rcc-map-title">African Regional Climate Centres</title>
@@ -20,16 +20,29 @@
     <path class="regional-africa-island" d="M229.4,187.6L228.9,187.1L229.3,186.8ZM228.3,189.9L227.9,189.3L227.9,188.2L228.5,188.0L228.8,188.8L229.4,188.9L229.4,188.1L231.0,187.4L231.1,186.5L231.6,185.5L231.6,183.8L232.3,183.4L232.2,182.9L232.6,182.4L232.9,182.9L232.7,183.6L233.5,183.8L233.7,184.8L234.5,185.5L235.0,186.3L235.0,186.8L235.5,188.4L235.9,190.7L235.9,191.7L236.4,193.3L236.9,194.0L236.7,195.4L236.0,196.8L235.3,196.4L234.7,194.9L233.9,195.2L234.3,196.6L234.2,197.4L234.6,197.6L234.6,199.0L234.2,199.5L234.4,199.9L233.8,200.3L233.2,201.6L233.5,203.0L233.0,205.5L231.7,209.2L231.0,211.3L230.4,213.0L229.5,216.4L229.0,218.1L227.9,220.8L227.7,222.3L226.8,225.8L225.9,227.8L225.1,230.3L223.8,231.1L222.4,231.1L221.0,231.7L219.7,232.6L218.5,232.7L217.0,231.7L216.1,231.5L214.3,230.4L213.7,228.5L213.1,227.8L213.1,225.2L213.4,224.5L213.0,224.1L212.9,223.2L212.0,222.2L211.6,220.1L212.0,218.1L212.4,217.8L212.5,216.5L213.5,216.3L213.9,214.8L214.6,214.0L215.5,212.1L215.9,211.5L215.6,210.7L216.0,209.8L215.1,208.1L215.2,207.3L214.4,205.8L214.3,204.0L214.4,203.3L214.0,202.8L214.2,202.1L215.8,199.4L215.8,197.7L217.3,197.7L218.7,196.6L219.8,196.7L220.3,196.2L222.3,195.9L222.9,195.1L225.1,193.7L225.8,193.0L226.4,193.6L227.3,191.9L227.2,191.2L227.6,190.5L228.2,190.9Z"/>
 
     {% for centre in regional_climate_centres %}
-      <a class="rcc-map-link{% if centre.is_primary %} rcc-map-link--primary{% endif %}"
+      <a class="rcc-map-link rcc-map-link--{{ centre.centre_type }}{% if centre.is_primary %} rcc-map-link--primary{% endif %}"
          href="{{ centre.website_url }}"
          target="_blank"
          rel="noopener noreferrer"
          aria-label="{% blocktranslate with name=centre.display_name %}Visit the {{ name }} website{% endblocktranslate %}">
-        <g class="rcc-marker rcc-marker--{{ centre.status }}{% if centre.is_primary %} rcc-marker--primary{% endif %}"
+        {% if centre.centre_type == "network" %}
+          {% for node in centre.additional_map_nodes.all %}
+            <g class="rcc-network-node rcc-marker--{{ centre.status }}" transform="{{ node.marker_transform }}">
+              <title>{{ centre.display_name }}{% if node.name %} — {{ node.name }}{% endif %}</title>
+              <circle class="rcc-marker-pulse" r="6"></circle>
+              <circle class="rcc-marker-dot" r="3.5"></circle>
+            </g>
+          {% endfor %}
+        {% endif %}
+        <g class="rcc-marker rcc-marker--{{ centre.status }} rcc-marker--{{ centre.centre_type }}{% if centre.is_primary %} rcc-marker--primary{% endif %}"
            transform="{{ centre.marker_transform }}">
           <title>{{ centre.marker_title }}</title>
           <circle class="rcc-marker-pulse" r="{% if centre.is_primary %}8{% else %}7{% endif %}"></circle>
-          <circle class="rcc-marker-dot" r="{% if centre.is_primary %}4{% else %}3.5{% endif %}"></circle>
+          {% if centre.centre_type == "network" %}
+            <circle class="rcc-marker-dot" r="{% if centre.is_primary %}4{% else %}3.5{% endif %}"></circle>
+          {% else %}
+            <path class="rcc-marker-dot" d="M0 -4.6 L4.4 3.6 L-4.4 3.6 Z"></path>
+          {% endif %}
           <path class="rcc-marker-line" d="{{ centre.label_geometry.line_path }}"></path>
           <text class="rcc-marker-name"
                 x="{{ centre.label_geometry.text_x }}"
@@ -46,6 +59,8 @@
 </div>
 
 <div class="regional-map-legend" aria-label="{% translate 'RCC status legend' %}">
-  <span><i class="is-designated"></i>{% translate "WMO designated" %}</span>
-  <span><i class="is-demonstration"></i>{% translate "In demonstration" %}</span>
+  <span><i class="is-centre is-designated"></i>{% translate "Designated RCC" %}</span>
+  <span><i class="is-centre is-demonstration"></i>{% translate "RCC in demonstration" %}</span>
+  <span><i class="is-network is-designated"></i>{% translate "Designated RCC Network" %}</span>
+  <span><i class="is-network is-initiated"></i>{% translate "Initiated RCC Network" %}</span>
 </div>

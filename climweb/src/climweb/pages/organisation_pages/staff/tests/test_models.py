@@ -49,6 +49,9 @@ class TestStaffPage(WagtailPageTestCase):
         self.assertContains(response, f'data-staff-modal="staff-modal-{self.member.pk}"')
         self.assertContains(response, f'aria-labelledby="staff-modal-name-{self.member.pk}"')
         self.assertContains(response, 'aria-hidden="true" tabindex="-1"', count=2)
+        self.assertContains(response, 'data-staff-bio-toggle', count=1)
+        self.assertContains(response, 'aria-expanded="false"')
+        self.assertContains(response, "Read more", count=2)
         self.assertContains(response, "staff/css/staff_page.css")
         self.assertContains(response, "staff/js/staff_page.js")
 

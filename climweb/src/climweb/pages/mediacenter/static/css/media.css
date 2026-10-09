@@ -133,8 +133,12 @@
 }
 
 .media-page .media-feature-grid .fb-title {
+    display: -webkit-box;
+    overflow: hidden;
     font-size: 1.1rem;
     line-height: 1.35;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 }
 
 .media-page .media-feature-grid .fb-body {
@@ -144,7 +148,7 @@
     color: #66717d;
     line-height: 1.55;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 5;
 }
 
 .media-page .media-feature-grid .fb-link-wrap {

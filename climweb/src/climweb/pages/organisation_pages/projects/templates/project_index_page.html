@@ -2,10 +2,11 @@
 {% load static i18n wagtailcore_tags %}
 
 {% block extra_css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/publication.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'css/projects.css' %}">
 {% endblock %}
 
-{% block body_class %}projects-page"{% endblock %}
+{% block body_class %}projects-page{% endblock %}
 
 {% block content %}
     <main>
@@ -31,11 +32,12 @@
           {% endif %}
         {% endif %}
 
-        <section class="all-projects-section" style="background-color:#fff">
-            <h2 id="results" class="section-title center">
-                {% translate "All Projects" %}
-            </h2>
+        <section class="all-projects-section listing-section">
             <div class="container">
+                <div class="projects-section-header">
+                    <p class="projects-eyebrow">{% translate "Portfolio" %}</p>
+                    <h2 id="results" class="projects-section-title">{% translate "All Projects" %}</h2>
+                </div>
                 <div class="columns">
                     <div class="column is-3 is-full-mobile">
                         {% include 'projects_filter_include.html' with filters=page.filters %}
@@ -95,10 +97,23 @@
                 window.location.href = `${baseUrl}?${url_params}#results`;
             });
 
+            listButton.on('click', function () {
+                gridButton.removeClass("active");
+                listButton.addClass("active");
+                wrapper.removeClass("grid-view columns is-mobile is-multiline").addClass("list-view");
+                resultItem.removeClass("column is-one-third-desktop is-full-mobile");
+            });
+
+            gridButton.on('click', function () {
+                listButton.removeClass("active");
+                gridButton.addClass("active");
+                wrapper.removeClass("list-view").addClass("grid-view columns is-mobile is-multiline");
+                resultItem.addClass("column is-one-third-desktop is-full-mobile");
+            });
+
         });
 
     </script>
 
 {% endblock %}
-
 
