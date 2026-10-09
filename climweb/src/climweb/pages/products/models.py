@@ -239,6 +239,10 @@ class ProductPage(BaseProductPage):
     parent_page_types = ['products.ProductIndexPage']
     subpage_types = ['products.ProductItemPage']
     show_in_menus_default = True
+
+    @property
+    def display_title(self):
+        return self.title
     
     product = models.OneToOneField(Product, on_delete=models.PROTECT, verbose_name=_("Product"))
     other_services = ParentalManyToManyField(ServiceCategory, blank=True, verbose_name=_("Other relevant Services"),
@@ -378,6 +382,10 @@ class ElNinoPage(ProductPage):
     subpage_types = ["products.ProductItemPage"]
     max_count = 1
     base_form_class = ElNinoPageForm
+
+    @property
+    def display_title(self):
+        return _("El-nino Special Bulletin")
 
     enso_explanation = RichTextField(
         features=SUMMARY_RICHTEXT_FEATURES,
@@ -712,7 +720,7 @@ class ProductItemPage(MetadataPageMixin, Page):
     def __str__(self):
         parent_page = self.get_parent().specific
         return f"{parent_page.title} - {self.title}"
-    
+
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
 
