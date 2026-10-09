@@ -185,8 +185,9 @@ class EventIndexPage(MetadataPageMixin, Page):
     
     def get_featured_events(self):
         return self.all_events.filter(
+            models.Q(date_to__gte=timezone.now())
+            | models.Q(date_to__isnull=True, date_from__gte=timezone.now()),
             is_archived=False,
-            date_from__gte=timezone.now(),
         ).order_by('date_from')[:3]
     
     def filter_events(self, request):

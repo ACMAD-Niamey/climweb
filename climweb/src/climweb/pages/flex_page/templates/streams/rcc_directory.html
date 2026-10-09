@@ -1,0 +1,72 @@
+{% load i18n wagtailcore_tags wagtailimages_tags %}
+
+<div class="met-services-directory rcc-directory" data-met-services-directory>
+    <div class="container">
+        <div class="rcc-directory-heading">
+            <h2>{{ value.heading }}</h2>
+            {% if value.introduction %}<div class="format-text">{{ value.introduction|richtext }}</div>{% endif %}
+        </div>
+
+        <div class="rcc-directory-layout">
+            <div class="rcc-directory-list-panel">
+                {% if value.show_search %}
+                    <div class="met-services-tools">
+                        <label class="met-services-search">
+                            <span class="is-sr-only">{% translate "Search Regional Climate Centres" %}</span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+                            <input type="search" placeholder="{% translate 'Search by centre, city or country' %}" data-met-services-search>
+                        </label>
+                        <p class="met-services-count" aria-live="polite">
+                            <strong data-met-services-count>{{ regional_climate_centres|length }}</strong>
+                            {% translate "RCCs" %}
+                        </p>
+                    </div>
+                {% endif %}
+
+                <div class="rcc-directory-list" data-met-services-grid data-rcc-directory-list>
+                    {% for centre in regional_climate_centres %}
+                        <a class="rcc-directory-list-item"
+                           href="{{ centre.website_url }}"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           data-met-service-card
+                           data-search-text="{{ centre.display_name|lower }} {{ centre.full_name|lower }} {{ centre.city|lower }} {{ centre.country|lower }} {{ centre.coverage|lower }} {{ centre.get_centre_type_display|lower }} {{ centre.get_status_display|lower }}">
+                            <span class="rcc-directory-list-logo">
+                                {% if centre.logo %}
+                                    {% image centre.logo max-120x120 as centre_logo %}
+                                    <img src="{{ centre_logo.url }}" alt="">
+                                {% else %}
+                                    <span aria-hidden="true">{{ centre.display_name|slice:":2"|upper }}</span>
+                                {% endif %}
+                            </span>
+                            <span class="rcc-directory-list-content">
+                                <strong>{{ centre.full_name }}</strong>
+                                <span>{{ centre.display_name }} · {% if centre.coverage %}{{ centre.coverage }}{% else %}{{ centre.city }}{% if centre.city and centre.country %}, {% endif %}{{ centre.country }}{% endif %}</span>
+                                <small class="rcc-directory-status rcc-directory-status--{{ centre.status }}">
+                                    {{ centre.get_centre_type_display }} · {{ centre.get_status_display }}
+                                </small>
+                            </span>
+                            <span class="rcc-directory-list-link" aria-hidden="true">
+                                <svg viewBox="0 0 24 24"><path d="M7 17 17 7"></path><path d="M8 7h9v9"></path></svg>
+                            </span>
+                        </a>
+                    {% empty %}
+                        <div class="met-services-empty">
+                            <h3>{% translate "No Regional Climate Centres have been added yet." %}</h3>
+                            <p>{% translate "Add centres from Snippets → Regional Climate Centres in the dashboard." %}</p>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="met-services-no-results" data-met-services-empty hidden>
+                    <h3>{% translate "No matching Regional Climate Centres" %}</h3>
+                    <p>{% translate "Try another centre name, city or country." %}</p>
+                </div>
+            </div>
+
+            <div class="rcc-directory-map africa-panel">
+                {% include "home/section/regional_rcc_map.html" %}
+            </div>
+        </div>
+    </div>
+</div>

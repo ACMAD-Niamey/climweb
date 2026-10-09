@@ -54,6 +54,7 @@ class TestSeedOnTheJobTraining(WagtailPageTestCase):
         self.assertContains(response, 'data-proposal-open')
         self.assertContains(response, 'href="#training-proposal-modal"')
         self.assertContains(response, 'id="training-proposal-modal"')
+        self.assertNotContains(response, 'name="country"')
         self.assertNotContains(
             response,
             'href="mailto:secretariat@acmad.org">Contact the programme</a>',
@@ -77,7 +78,6 @@ class TestSeedOnTheJobTraining(WagtailPageTestCase):
                 "full_name": "Amina Issoufou",
                 "email": "amina@example.com",
                 "phone": "+227 90 00 00 00",
-                "country": "Niger",
                 "organisation": organisation.pk,
                 "job_title": "Meteorologist",
                 "programme_type": "ojt",
@@ -105,6 +105,7 @@ class TestSeedOnTheJobTraining(WagtailPageTestCase):
         self.assertEqual(proposal.page, page)
         self.assertEqual(proposal.full_name, "Amina Issoufou")
         self.assertEqual(proposal.organisation, organisation)
+        self.assertEqual(proposal.country, organisation.country)
         self.assertEqual(proposal.proposal_title, topic)
         self.assertEqual(proposal.status, TrainingProposal.STATUS_NEW)
 

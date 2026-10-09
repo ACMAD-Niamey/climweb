@@ -16,14 +16,15 @@ if "forecastmanager" in settings.INSTALLED_APPS:
     from forecastmanager.forecast_settings import ForecastSetting
     from forecastmanager.models import City
 from geomanager.models import RasterFileLayer, WmsLayer, VectorTileLayer
+from modelcluster.fields import ParentalKey
 from modelcluster.models import ClusterableModel
 from wagtail import blocks
-from wagtail.admin.panels import MultiFieldPanel, FieldPanel, TabbedInterface, ObjectList, PageChooserPanel
+from wagtail.admin.panels import MultiFieldPanel, FieldPanel, InlinePanel, TabbedInterface, ObjectList, PageChooserPanel
 from wagtail.api.v2.utils import get_full_url
 from wagtail.contrib.settings.models import BaseSiteSetting
 from wagtail.contrib.settings.registry import register_setting
 from wagtail.fields import RichTextField, StreamField
-from wagtail.models import Page
+from wagtail.models import Orderable, Page
 from wagtail.snippets.models import register_snippet
 from wagtail_color_panel.fields import ColorField
 from wagtailiconchooser.blocks import IconChooserBlock
@@ -190,12 +191,21 @@ def get_significant_product_slides(product_pages=None):
 
 
 @register_snippet
-class RegionalClimateCentre(models.Model):
+class RegionalClimateCentre(ClusterableModel):
+    TYPE_CENTRE = "centre"
+    TYPE_NETWORK = "network"
+    TYPE_CHOICES = (
+        (TYPE_CENTRE, _("Regional Climate Centre")),
+        (TYPE_NETWORK, _("RCC Network")),
+    )
+
     STATUS_DESIGNATED = "designated"
     STATUS_DEMONSTRATION = "demonstration"
+    STATUS_INITIATED = "initiated"
     STATUS_CHOICES = (
         (STATUS_DESIGNATED, _("WMO designated")),
         (STATUS_DEMONSTRATION, _("In demonstration")),
+        (STATUS_INITIATED, _("Initiated")),
     )
 
     LABEL_UPPER_RIGHT = "upper_right"
@@ -216,12 +226,33 @@ class RegionalClimateCentre(models.Model):
         help_text=_("Short centre name displayed beside the map marker."),
     )
     full_name = models.CharField(max_length=255, verbose_name=_("Full name"))
-    city = models.CharField(max_length=100, verbose_name=_("City"))
-    country = models.CharField(max_length=100, verbose_name=_("Country"))
+    centre_type = models.CharField(
+        max_length=20,
+        choices=TYPE_CHOICES,
+        default=TYPE_CENTRE,
+        verbose_name=_("Entry type"),
+    )
+    city = models.CharField(max_length=100, blank=True, verbose_name=_("City"))
+    country = models.CharField(max_length=100, blank=True, verbose_name=_("Country"))
+    coverage = models.CharField(
+        max_length=180,
+        blank=True,
+        verbose_name=_("Geographical coverage"),
+        help_text=_("Especially useful for an RCC Network, for example Northern Africa."),
+    )
     website_url = models.URLField(
         max_length=500,
         verbose_name=_("Website URL"),
         help_text=_("Official website opened when the marker is selected."),
+    )
+    logo = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Logo"),
+        help_text=_("Optional official centre logo shown on the RCC directory page."),
     )
     status = models.CharField(
         max_length=20,
@@ -232,9 +263,9 @@ class RegionalClimateCentre(models.Model):
     map_x = models.DecimalField(
         max_digits=4,
         decimal_places=1,
-        validators=[MinValueValidator(0), MaxValueValidator(240)],
+        validators=[MinValueValidator(0), MaxValueValidator(280)],
         verbose_name=_("Horizontal map position"),
-        help_text=_("SVG horizontal coordinate from 0 (left) to 240 (right)."),
+        help_text=_("SVG horizontal coordinate from 0 (left) to 280 (right)."),
     )
     map_y = models.DecimalField(
         max_digits=4,
@@ -255,16 +286,22 @@ class RegionalClimateCentre(models.Model):
         help_text=_("Keep this centre's label visible when the map is not being hovered."),
     )
     order = models.PositiveIntegerField(default=0, verbose_name=_("Display order"))
-    is_active = models.BooleanField(default=True, verbose_name=_("Visible on homepage"))
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_("Visible on homepage and RCC directory"),
+    )
 
     panels = [
         MultiFieldPanel(
             [
                 FieldPanel("display_name"),
                 FieldPanel("full_name"),
+                FieldPanel("centre_type"),
                 FieldPanel("city"),
                 FieldPanel("country"),
+                FieldPanel("coverage"),
                 FieldPanel("website_url"),
+                FieldPanel("logo"),
                 FieldPanel("status"),
             ],
             heading=_("Centre information"),
@@ -274,6 +311,11 @@ class RegionalClimateCentre(models.Model):
                 FieldPanel("map_x"),
                 FieldPanel("map_y"),
                 FieldPanel("label_position"),
+                InlinePanel(
+                    "additional_map_nodes",
+                    label=_("Network node"),
+                    help_text=_("Add the other participating locations of an RCC Network."),
+                ),
             ],
             heading=_("Map placement"),
         ),
@@ -297,7 +339,8 @@ class RegionalClimateCentre(models.Model):
 
     @property
     def marker_title(self):
-        return f"{self.full_name} — {self.city}, {self.country}"
+        location = self.coverage or ", ".join(filter(None, (self.city, self.country)))
+        return f"{self.full_name} — {location}" if location else self.full_name
 
     @property
     def label_geometry(self):
@@ -332,6 +375,33 @@ class RegionalClimateCentre(models.Model):
             },
         }
         return geometries[self.label_position]
+
+
+class RegionalClimateCentreMapNode(Orderable):
+    centre = ParentalKey(
+        RegionalClimateCentre,
+        on_delete=models.CASCADE,
+        related_name="additional_map_nodes",
+    )
+    name = models.CharField(max_length=100, blank=True, verbose_name=_("Node name"))
+    map_x = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        validators=[MinValueValidator(0), MaxValueValidator(280)],
+        verbose_name=_("Horizontal map position"),
+    )
+    map_y = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        validators=[MinValueValidator(0), MaxValueValidator(270)],
+        verbose_name=_("Vertical map position"),
+    )
+
+    panels = [FieldPanel("name"), FieldPanel("map_x"), FieldPanel("map_y")]
+
+    @property
+    def marker_transform(self):
+        return f"translate({self.map_x} {self.map_y})"
 
 if "forecastmanager" in settings.INSTALLED_APPS:
     HOME_SUBPAGE_TYPES += ['weather.WeatherDetailPage', 'cityclimate.CityClimateDataPage']
@@ -891,7 +961,13 @@ class HomePage(MetadataPageMixin, Page):
             models.Q(role__icontains="Director General")
             | models.Q(name__icontains="Ousmane Ndiaye")
         ).select_related("photo").first()
-        context["regional_climate_centres"] = RegionalClimateCentre.objects.filter(is_active=True)
+        context["regional_climate_centres"] = RegionalClimateCentre.objects.filter(
+            is_active=True
+        ).prefetch_related("additional_map_nodes")
+        context["rcc_directory_page"] = Page.objects.live().descendant_of(self).filter(
+            title__iexact="Regional Climate Centres",
+            locale_id=self.locale_id,
+        ).first()
         if settings.IS_METEOROLOGICAL:
             context["hero_updates"] = self.get_hero_updates(request)
         context["enso_homepage"] = self.get_enso_homepage_feature(request)

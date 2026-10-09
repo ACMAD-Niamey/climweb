@@ -312,6 +312,7 @@
 .ojt-proposal-modal__card {
     width: min(1100px, calc(100vw - 2rem));
     max-height: calc(100vh - 2rem);
+    background: #fff;
 }
 
 .ojt-proposal-modal__header {
@@ -335,7 +336,14 @@
 .ojt-proposal-modal__body {
     overflow-y: auto;
     padding: clamp(1.25rem, 4vw, 2.25rem);
-    background: linear-gradient(135deg, rgba(12, 68, 124, 0.04), rgba(18, 105, 81, 0.06));
+    background: #fff;
+}
+
+.ojt-proposal-introduction {
+    margin: 0;
+    padding: 1rem;
+    border-radius: var(--theme-border-radius, 5px);
+    background: #fff;
 }
 
 .ojt-proposal-form,
