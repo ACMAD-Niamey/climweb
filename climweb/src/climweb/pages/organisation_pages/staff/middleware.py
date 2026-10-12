@@ -24,5 +24,5 @@ class StaffPortalRestrictionMiddleware:
             if django_admin:
                 prefixes.append("/" + django_admin.strip("/") + "/")
             if any(path.rstrip("/") == prefix.rstrip("/") or path.startswith(prefix) for prefix in prefixes):
-                return HttpResponseForbidden("This account can access My Profile only. Use /staff/profile/.")
+                return HttpResponseForbidden("This account can access the staff workspace only. Use /staff/.")
         return self.get_response(request)

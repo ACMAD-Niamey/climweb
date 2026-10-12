@@ -1,0 +1,21 @@
+{% extends "staff/portal/base.html" %}
+{% block title %}Sign out · ACMAD Staff Workspace{% endblock %}
+{% block page_name %}Account{% endblock %}
+{% block content %}
+<section class="portal-panel portal-narrow">
+    <p class="portal-eyebrow">ACCOUNT</p>
+    <h1>Sign out?</h1>
+    <p>You will need to enter your work email address and password to return to the staff workspace.</p>
+    <form method="post">
+        {% csrf_token %}
+        <div class="portal-actions">
+            <button class="portal-button" type="submit">Sign out</button>
+            {% if user.is_authenticated and user.staff_profile_access %}
+                <a class="portal-secondary-button" href="{% url 'staff_portal:dashboard' %}">Cancel</a>
+            {% else %}
+                <a class="portal-secondary-button" href="{% url 'staff_portal:login' %}">Cancel</a>
+            {% endif %}
+        </div>
+    </form>
+</section>
+{% endblock %}

@@ -4,14 +4,15 @@ from functools import wraps
 
 from django.contrib import messages
 from django.conf import settings
-from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth import logout as auth_logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
 from django.contrib.auth.views import LoginView, PasswordResetView, PasswordResetConfirmView
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
-from django.http import HttpResponse
+from django.db.models import Q
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -19,8 +20,29 @@ from django.utils.html import strip_tags
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
-from .forms import StaffAuthenticationForm, StaffCreateForm, StaffEditForm, StaffInvitationForm, StaffLinkUserForm, StaffOffboardingForm, StaffReactivationForm, StaffPasswordResetForm, StaffProfileForm, StaffReviewForm
-from .models import StaffEmploymentEvent, StaffMember, StaffProfileAccess, StaffProfileUpdate
+from .forms import (
+    StaffAuthenticationForm,
+    StaffCreateForm,
+    StaffEditForm,
+    StaffInvitationForm,
+    StaffLinkUserForm,
+    StaffOffboardingForm,
+    StaffPasswordResetForm,
+    StaffProfileForm,
+    StaffReactivationForm,
+    StaffReviewForm,
+    StaffTrainingAssignmentForm,
+    StaffTrainingReportForm,
+    StaffTrainingReportReviewForm,
+)
+from .models import (
+    StaffEmploymentEvent,
+    StaffMember,
+    StaffProfileAccess,
+    StaffProfileUpdate,
+    StaffTrainingAssignment,
+    StaffTrainingReport,
+)
 from .services import change_staff_employment, create_staff_member, edit_staff_member, invitation_valid, invite_staff, link_existing_staff_user, member_fingerprint, review_update
 
 logger = logging.getLogger(__name__)
@@ -60,6 +82,16 @@ class StaffPasswordResetView(PasswordResetView):
             if count > 5:
                 return redirect(self.success_url)
         return super().form_valid(form)
+
+
+@never_cache
+@require_http_methods(["GET", "POST"])
+def staff_logout(request):
+    """Offer a safe direct logout URL while keeping session changes POST-only."""
+    if request.method == "POST":
+        auth_logout(request)
+        return redirect("staff_portal:login")
+    return render(request, "staff/portal/logout_confirm.html")
 
 
 class StaffPasswordResetConfirmView(PasswordResetConfirmView):
@@ -134,6 +166,82 @@ def profile_initial(member, update):
 
 
 @staff_required
+@require_http_methods(["GET"])
+def staff_dashboard(request):
+    assignments = StaffTrainingAssignment.objects.filter(member=request.staff_access.member).select_related("report")
+    open_assignments = assignments.exclude(status=StaffTrainingAssignment.Status.CANCELLED)
+    return render(request, "staff/portal/dashboard.html", {
+        "member": request.staff_access.member,
+        "assignments": assignments[:6],
+        "training_count": open_assignments.count(),
+        "reports_due": open_assignments.filter(
+            Q(report__isnull=True) | Q(report__status__in=[StaffTrainingReport.Status.DRAFT, StaffTrainingReport.Status.CHANGES_REQUESTED])
+        ).count(),
+        "approved_count": assignments.filter(report__status=StaffTrainingReport.Status.APPROVED).count(),
+        "drive_url": getattr(settings, "STAFF_GOOGLE_DRIVE_URL", ""),
+    })
+
+
+@staff_required
+@reviewer_required
+@require_http_methods(["GET"])
+def staff_hr_dashboard(request):
+    assignments = StaffTrainingAssignment.objects.select_related("member", "report", "assigned_by")
+    submitted_reports = StaffTrainingReport.objects.filter(
+        status=StaffTrainingReport.Status.SUBMITTED,
+    ).select_related("assignment__member")
+    return render(request, "staff/portal/hr_dashboard.html", {
+        "training_assignments": assignments[:50],
+        "submitted_reports": submitted_reports,
+        "assignment_count": assignments.count(),
+        "awaiting_review_count": submitted_reports.count(),
+        "approved_count": StaffTrainingReport.objects.filter(status=StaffTrainingReport.Status.APPROVED).count(),
+    })
+
+
+@staff_required
+@reviewer_required
+@require_http_methods(["GET", "POST"])
+def staff_hr_assign_training(request):
+    form = StaffTrainingAssignmentForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            assignments = form.save(request.user)
+        messages.success(request, f"{len(assignments)} staff member(s) were nominated for {assignments[0].title}.")
+        return redirect("staff_portal:hr_dashboard")
+    return render(request, "staff/portal/hr_assign_training.html", {"form": form})
+
+
+@staff_required
+@reviewer_required
+@require_http_methods(["GET", "POST"])
+def staff_hr_review_training_report(request, report_id):
+    report = get_object_or_404(StaffTrainingReport.objects.select_related("assignment__member"), pk=report_id)
+    form = StaffTrainingReportReviewForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        if report.status != StaffTrainingReport.Status.SUBMITTED:
+            form.add_error(None, "Only a submitted report can be reviewed.")
+        else:
+            report.reviewed_by = request.user
+            report.reviewed_at = timezone.now()
+            report.reviewer_comment = form.cleaned_data["comment"]
+            if form.cleaned_data["action"] == "approve":
+                report.status = StaffTrainingReport.Status.APPROVED
+                report.approved_at = timezone.now()
+                report.assignment.status = StaffTrainingAssignment.Status.COMPLETED
+                report.assignment.save(update_fields=["status", "updated_at"])
+                message = "Training report approved."
+            else:
+                report.status = StaffTrainingReport.Status.CHANGES_REQUESTED
+                report.approved_at = None
+                message = "Changes requested from the staff member."
+            report.save()
+            messages.success(request, message)
+            return redirect("staff_portal:hr_dashboard")
+    return render(request, "staff/portal/hr_review_training_report.html", {"report": report, "form": form})
+
+
+@staff_required
 @require_http_methods(["GET", "POST"])
 def profile(request):
     access = request.staff_access
@@ -193,6 +301,74 @@ def password_change(request):
     return render(request, "staff/portal/form.html", {"form": form, "title": "Change password", "button_label": "Change password"})
 
 
+@staff_required
+@require_http_methods(["GET", "POST"])
+def training_report(request, assignment_id):
+    assignment = get_object_or_404(
+        StaffTrainingAssignment.objects.select_related("member"),
+        pk=assignment_id,
+        member=request.staff_access.member,
+    )
+    if assignment.status == StaffTrainingAssignment.Status.CANCELLED:
+        raise PermissionDenied("A report cannot be submitted for a cancelled assignment.")
+    report = StaffTrainingReport.objects.filter(assignment=assignment).first()
+    locked = bool(report and report.status in [StaffTrainingReport.Status.SUBMITTED, StaffTrainingReport.Status.APPROVED])
+    form = StaffTrainingReportForm(request.POST or None, request.FILES or None, instance=report)
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if locked:
+            messages.error(request, "This report is locked while it is awaiting review or after publication.")
+            return redirect("staff_portal:training_report", assignment_id=assignment.pk)
+        if action not in {"save", "submit"}:
+            return HttpResponse("Unknown action", status=400)
+        if form.is_valid():
+            report = form.save(commit=False)
+            report.assignment = assignment
+            report.status = StaffTrainingReport.Status.SUBMITTED if action == "submit" else StaffTrainingReport.Status.DRAFT
+            report.submitted_at = timezone.now() if action == "submit" else None
+            report.reviewer_comment = "" if action == "submit" else report.reviewer_comment
+            report.save()
+            messages.success(request, "Report submitted to HR for publication." if action == "submit" else "Report draft saved.")
+            return redirect("staff_portal:training_report", assignment_id=assignment.pk)
+    return render(request, "staff/portal/training_report.html", {
+        "assignment": assignment,
+        "report": report,
+        "form": form,
+        "locked": locked,
+        "drive_url": getattr(settings, "STAFF_GOOGLE_DRIVE_URL", ""),
+    })
+
+
+@never_cache
+def training_report_download(request, report_id):
+    report = get_object_or_404(StaffTrainingReport.objects.select_related("assignment__member"), pk=report_id)
+    owns_report = (
+        request.user.is_authenticated
+        and hasattr(request.user, "staff_profile_access")
+        and request.user.staff_profile_access.member_id == report.assignment.member_id
+        and report.assignment.member.is_current_staff
+    )
+    if not owns_report and not (
+        request.user.is_authenticated
+        and request.user.is_active
+        and request.user.has_perm("staff.review_staff_profiles")
+    ):
+        raise PermissionDenied
+    if not report.document:
+        raise Http404
+    try:
+        response = FileResponse(
+            report.document.open("rb"),
+            as_attachment=True,
+            filename=report.document.name.rsplit("/", 1)[-1],
+            content_type="application/octet-stream",
+        )
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
+    except FileNotFoundError as exc:
+        raise Http404 from exc
+
+
 @never_cache
 def photo_preview(request, update_id):
     update = get_object_or_404(StaffProfileUpdate.objects.select_related("access"), pk=update_id)
@@ -236,7 +412,49 @@ def dashboard(request):
         "console_email": settings.EMAIL_BACKEND == "django.core.mail.backends.console.EmailBackend",
         "submissions": StaffProfileUpdate.objects.filter(status="submitted").select_related("access__member"),
         "recent": StaffProfileUpdate.objects.filter(status__in=["approved", "changes_requested", "withdrawn"]).select_related("access__member", "reviewed_by")[:20],
+        "training_assignments": StaffTrainingAssignment.objects.select_related("member", "report", "assigned_by")[:30],
+        "submitted_reports": StaffTrainingReport.objects.filter(status=StaffTrainingReport.Status.SUBMITTED).select_related("assignment__member"),
     })
+
+
+@reviewer_required
+@require_http_methods(["GET", "POST"])
+def assign_training(request):
+    form = StaffTrainingAssignmentForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            assignments = form.save(request.user)
+        messages.success(request, f"{len(assignments)} staff member(s) were nominated for {assignments[0].title}.")
+        return redirect("staff_profile_dashboard")
+    return render(request, "staff/admin/assign_training.html", {"form": form})
+
+
+@reviewer_required
+@require_http_methods(["GET", "POST"])
+def review_training_report(request, report_id):
+    report = get_object_or_404(StaffTrainingReport.objects.select_related("assignment__member"), pk=report_id)
+    form = StaffTrainingReportReviewForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        if report.status != StaffTrainingReport.Status.SUBMITTED:
+            form.add_error(None, "Only a submitted report can be reviewed.")
+        else:
+            report.reviewed_by = request.user
+            report.reviewed_at = timezone.now()
+            report.reviewer_comment = form.cleaned_data["comment"]
+            if form.cleaned_data["action"] == "approve":
+                report.status = StaffTrainingReport.Status.APPROVED
+                report.approved_at = timezone.now()
+                report.assignment.status = StaffTrainingAssignment.Status.COMPLETED
+                report.assignment.save(update_fields=["status", "updated_at"])
+                message = "Training report approved."
+            else:
+                report.status = StaffTrainingReport.Status.CHANGES_REQUESTED
+                report.approved_at = None
+                message = "Changes requested from the staff member."
+            report.save()
+            messages.success(request, message)
+            return redirect("staff_profile_dashboard")
+    return render(request, "staff/admin/review_training_report.html", {"report": report, "form": form})
 
 
 @reviewer_required

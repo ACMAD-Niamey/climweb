@@ -6,7 +6,14 @@ from django.contrib.auth.forms import AuthenticationForm, PasswordResetForm
 from django.utils import timezone
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from .models import Department, StaffEmployment, StaffMember, StaffPage
+from .models import (
+    Department,
+    StaffEmployment,
+    StaffMember,
+    StaffPage,
+    StaffTrainingAssignment,
+    StaffTrainingReport,
+)
 
 
 class StaffInvitationForm(forms.Form):
@@ -158,3 +165,91 @@ class StaffEditForm(StaffProfileForm):
     department = forms.ModelChoiceField(queryset=Department.objects.all())
     source_fingerprint = forms.CharField(widget=forms.HiddenInput)
     field_order = ["name", "role", "department", "biography", "photo", "website", "linkedin", "github", "publications", "source_fingerprint"]
+
+
+class StaffTrainingAssignmentForm(forms.Form):
+    member = forms.ModelMultipleChoiceField(
+        queryset=StaffMember.objects.none(),
+        label="Staff members",
+        help_text="Search for and select one or more staff members for this activity.",
+        widget=forms.SelectMultiple(
+            attrs={
+                "data-searchable-multiselect": "true",
+                "data-search-placeholder": "Search staff by name…",
+            }
+        ),
+    )
+    title = forms.CharField(max_length=200)
+    organizer = forms.CharField(max_length=200, required=False)
+    location = forms.CharField(max_length=200, required=False)
+    description = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 4}))
+    start_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+    end_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+    report_due_date = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
+    status = forms.ChoiceField(choices=StaffTrainingAssignment.Status.choices, initial=StaffTrainingAssignment.Status.NOMINATED)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["member"].queryset = StaffMember.objects.exclude(
+            employment__status__in=[StaffEmployment.Status.RETIRED, StaffEmployment.Status.LEFT]
+        ).select_related("department").order_by("name")
+
+    def clean(self):
+        data = super().clean()
+        if data.get("start_date") and data.get("end_date") and data["end_date"] < data["start_date"]:
+            self.add_error("end_date", "The end date cannot be before the start date.")
+        if data.get("report_due_date") and data.get("end_date") and data["report_due_date"] < data["end_date"]:
+            self.add_error("report_due_date", "The report due date cannot be before the training ends.")
+        return data
+
+    def save(self, assigned_by):
+        values = {
+            key: self.cleaned_data[key]
+            for key in ["title", "organizer", "location", "description", "start_date", "end_date", "report_due_date", "status"]
+        }
+        return [
+            StaffTrainingAssignment.objects.create(member=member, assigned_by=assigned_by, **values)
+            for member in self.cleaned_data["member"]
+        ]
+
+
+class StaffTrainingReportForm(forms.ModelForm):
+    class Meta:
+        model = StaffTrainingReport
+        fields = ["title", "summary", "outcomes", "document", "drive_file_url"]
+        labels = {"outcomes": "Key outcomes and follow-up actions"}
+        help_texts = {
+            "document": "Optional PDF, Word (DOC/DOCX), PowerPoint (PPT/PPTX) or OpenDocument file, up to 10 MB.",
+            "drive_file_url": "Optional link to the report in the organization's Google Drive.",
+        }
+        widgets = {"summary": forms.Textarea(attrs={"rows": 7}), "outcomes": forms.Textarea(attrs={"rows": 5})}
+
+    def clean_document(self):
+        upload = self.cleaned_data.get("document")
+        if not upload:
+            return upload
+        if upload.size > 10 * 1024 * 1024:
+            raise forms.ValidationError("The report document must be no larger than 10 MB.")
+        allowed = {
+            "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-powerpoint",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.oasis.opendocument.text",
+            "application/vnd.oasis.opendocument.presentation",
+        }
+        if getattr(upload, "content_type", "") not in allowed:
+            raise forms.ValidationError("Upload a PDF, Word, PowerPoint or OpenDocument file.")
+        return upload
+
+
+class StaffTrainingReportReviewForm(forms.Form):
+    action = forms.ChoiceField(choices=[("approve", "Approve report"), ("request_changes", "Request changes")])
+    comment = forms.CharField(required=False, max_length=5000, widget=forms.Textarea(attrs={"rows": 4}))
+
+    def clean(self):
+        data = super().clean()
+        if data.get("action") == "request_changes" and not data.get("comment"):
+            self.add_error("comment", "Explain the changes the staff member should make.")
+        return data

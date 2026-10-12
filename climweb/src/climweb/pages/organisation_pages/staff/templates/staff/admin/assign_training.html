@@ -1,0 +1,5 @@
+{% extends "wagtailadmin/base.html" %}
+{% load static %}
+{% block titletag %}Assign training{% endblock %}
+{% block extra_css %}{{ block.super }}<link rel="stylesheet" href="{% static 'staff/css/portal.css' %}"><link rel="stylesheet" href="{% static 'staff/css/admin.css' %}">{% endblock %}
+{% block content %}{% include "wagtailadmin/shared/header.html" with title="Assign training or workshop" icon="date" %}<div class="nice-padding staff-admin"><section class="portal-panel portal-narrow"><p>Nominate one or more staff members and set the expected report deadline. Each selected person receives the assignment in their staff workspace.</p><form method="post">{% csrf_token %}{{ form.as_p }}<button class="button" type="submit">Create assignments</button> <a href="{% url 'staff_profile_dashboard' %}">Cancel</a></form></section></div><script src="{% static 'staff/js/searchable_multiselect.js' %}" defer></script>{% endblock %}
