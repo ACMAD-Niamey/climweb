@@ -1,0 +1,8 @@
+{% extends "staff/portal/base.html" %}
+{% block title %}Assign Training · ACMAD Staff{% endblock %}
+{% block page_name %}HR Management{% endblock %}
+{% block content %}
+<a class="portal-back" href="{% url 'staff_portal:hr_dashboard' %}">← Back to HR Management</a>
+<div class="portal-page-heading"><div><p class="portal-eyebrow">NEW ASSIGNMENT</p><h1>Assign training or workshop</h1><p>Nominate a staff member and set the expected report deadline.</p></div></div>
+<section class="portal-panel portal-narrow"><form method="post" class="portal-form">{% csrf_token %}{{ form.as_p }}<div class="portal-actions"><button class="portal-button" type="submit">Create assignment</button><a class="portal-secondary-button" href="{% url 'staff_portal:hr_dashboard' %}">Cancel</a></div></form></section>
+{% endblock %}

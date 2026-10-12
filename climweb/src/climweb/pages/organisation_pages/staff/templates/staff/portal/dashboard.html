@@ -1,0 +1,19 @@
+{% extends "staff/portal/base.html" %}
+{% block title %}Dashboard · ACMAD Staff{% endblock %}
+{% block page_name %}Dashboard{% endblock %}
+{% block content %}
+<div class="portal-welcome"><div><p class="portal-eyebrow">STAFF PORTAL</p><h1>Welcome back, {{ member.name|truncatewords:2 }}</h1><p>Manage your professional profile, training nominations, reports and organization files.</p></div><a class="portal-button" href="{% url 'staff_portal:profile' %}">Update profile</a></div>
+<div class="portal-stats" aria-label="Training summary">
+    <article><span class="portal-stat-icon is-green">◇</span><div><small>Training nominations</small><strong>{{ training_count }}</strong><p>Active assignments</p></div></article>
+    <article><span class="portal-stat-icon is-amber">!</span><div><small>Reports to complete</small><strong>{{ reports_due }}</strong><p>Draft or not started</p></div></article>
+    <article><span class="portal-stat-icon is-blue">✓</span><div><small>Published reports</small><strong>{{ published_count }}</strong><p>Reviewed by HR</p></div></article>
+</div>
+<div class="portal-dashboard-grid">
+    <section class="portal-panel portal-training-panel" id="training"><div class="portal-panel-heading"><div><p class="portal-eyebrow">LEARNING & DEVELOPMENT</p><h2>Training and workshops</h2></div></div><div class="portal-assignment-list">
+        {% for assignment in assignments %}<article class="portal-assignment"><div class="portal-date"><strong>{{ assignment.start_date|date:"d" }}</strong><span>{{ assignment.start_date|date:"M" }}</span></div><div class="portal-assignment-copy"><div><span class="portal-badge is-{{ assignment.status }}">{{ assignment.get_status_display }}</span>{% if assignment.report %}<span class="portal-badge is-{{ assignment.report.status }}">Report: {{ assignment.report.get_status_display }}</span>{% endif %}</div><h3>{{ assignment.title }}</h3><p>{{ assignment.organizer|default:"Organizer to be confirmed" }}{% if assignment.location %} · {{ assignment.location }}{% endif %}</p>{% if assignment.report_due_date %}<small>Report due {{ assignment.report_due_date|date:"d M Y" }}</small>{% endif %}</div>{% if assignment.status != 'cancelled' %}<a class="portal-text-link" href="{% url 'staff_portal:training_report' assignment.pk %}">{% if assignment.report %}View report{% else %}Start report{% endif %} →</a>{% endif %}</article>
+        {% empty %}<div class="portal-empty"><span>◇</span><h3>No training nominations yet</h3><p>Assignments from HR will appear here.</p></div>{% endfor %}
+    </div></section>
+    <aside><section class="portal-panel portal-profile-card"><p class="portal-eyebrow">MY PROFILE</p><h2>Profile details</h2><dl><div><dt>Role</dt><dd>{{ member.role }}</dd></div><div><dt>Department</dt><dd>{{ member.department.name|default:"Not assigned" }}</dd></div><div><dt>Account</dt><dd>{{ user.email }}</dd></div></dl><a class="portal-secondary-button" href="{% url 'staff_portal:profile' %}">Manage profile</a></section>
+    <section class="portal-panel portal-drive-card" id="files"><span class="portal-drive-logo" aria-hidden="true">▲</span><p class="portal-eyebrow">ORGANIZATION FILES</p><h2>Google Drive</h2><p>Open your organization's shared workspace to create, organize and collaborate on files.</p>{% if drive_url %}<a class="portal-button portal-drive-button" href="{{ drive_url }}" target="_blank" rel="noopener noreferrer">Open Google Drive ↗</a>{% else %}<span class="portal-disabled-button">Not configured</span><small>Ask an administrator to set <code>STAFF_GOOGLE_DRIVE_URL</code>.</small>{% endif %}</section></aside>
+</div>
+{% endblock %}

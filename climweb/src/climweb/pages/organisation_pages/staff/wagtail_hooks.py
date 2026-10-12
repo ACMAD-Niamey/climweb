@@ -1,3 +1,4 @@
+from django.contrib.auth.models import Permission
 from django.urls import path, reverse
 from wagtail import hooks
 from wagtail.admin.menu import MenuItem
@@ -5,11 +6,22 @@ from wagtail.admin.menu import MenuItem
 from . import views
 
 
+@hooks.register("register_permissions")
+def staff_profile_permissions():
+    """Expose the HR reviewer permission on Wagtail's group edit screen."""
+    return Permission.objects.filter(
+        content_type__app_label="staff",
+        codename="review_staff_profiles",
+    )
+
+
 @hooks.register("register_admin_urls")
 def staff_admin_urls():
     return [
         path("staff-profiles/", views.dashboard, name="staff_profile_dashboard"),
         path("staff-profiles/add/", views.create_member, name="staff_profile_create"),
+        path("staff-profiles/training/assign/", views.assign_training, name="staff_training_assign"),
+        path("staff-profiles/training-report/<int:report_id>/", views.review_training_report, name="staff_training_report_review"),
         path("staff-profiles/member/<int:member_id>/link-user/", views.link_user, name="staff_profile_link_user"),
         path("staff-profiles/member/<int:member_id>/edit/", views.edit_member, name="staff_profile_edit"),
         path("staff-profiles/member/<int:member_id>/offboard/", views.employment_change, {"action": "offboard"}, name="staff_profile_offboard"),

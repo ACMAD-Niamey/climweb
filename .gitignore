@@ -185,6 +185,7 @@ dump.rdb
 docker/volumes
 climweb/src/climweb/static
 climweb/src/climweb/media
+climweb/src/climweb/private_staff_reports/
 .env.local
 .env.dev
 .claude/settings.local.json

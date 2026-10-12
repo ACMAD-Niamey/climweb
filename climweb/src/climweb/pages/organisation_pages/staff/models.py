@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.core.files.storage import FileSystemStorage
 from django.db.models import Count
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
@@ -229,3 +230,82 @@ class StaffProfileUpdate(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["access"], condition=models.Q(status__in=["draft", "submitted"]), name="staff_one_open_profile_update"),
         ]
+
+
+class StaffTrainingAssignment(models.Model):
+    """A training or workshop nomination made by HR for a staff member."""
+
+    class Status(models.TextChoices):
+        NOMINATED = "nominated", _("Nominated")
+        CONFIRMED = "confirmed", _("Confirmed")
+        COMPLETED = "completed", _("Completed")
+        CANCELLED = "cancelled", _("Cancelled")
+
+    member = models.ForeignKey(StaffMember, on_delete=models.PROTECT, related_name="training_assignments")
+    title = models.CharField(max_length=200)
+    organizer = models.CharField(max_length=200, blank=True)
+    location = models.CharField(max_length=200, blank=True)
+    description = models.TextField(blank=True)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    report_due_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.NOMINATED)
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="staff_training_assignments_created",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-start_date", "-pk"]
+
+    def __str__(self):
+        return f"{self.member.name} — {self.title}"
+
+
+def staff_report_upload_path(instance, filename):
+    # Files are never linked directly; the authenticated download view serves them.
+    return f"staff-training-reports/{instance.assignment.member_id}/{instance.assignment_id}/{filename}"
+
+
+def staff_report_storage():
+    # Use a dedicated root regardless of local/test STORAGES overrides.
+    return FileSystemStorage(location=settings.PRIVATE_STAFF_REPORTS_ROOT)
+
+
+class StaffTrainingReport(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = "draft", _("Draft")
+        SUBMITTED = "submitted", _("Awaiting review")
+        PUBLISHED = "published", _("Published")
+        CHANGES_REQUESTED = "changes_requested", _("Changes requested")
+
+    assignment = models.OneToOneField(StaffTrainingAssignment, on_delete=models.CASCADE, related_name="report")
+    title = models.CharField(max_length=220)
+    summary = models.TextField()
+    outcomes = models.TextField(blank=True)
+    document = models.FileField(upload_to=staff_report_upload_path, storage=staff_report_storage, blank=True)
+    drive_file_url = models.URLField(blank=True, verbose_name=_("Google Drive file link"))
+    status = models.CharField(max_length=24, choices=Status.choices, default=Status.DRAFT)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reviewed_staff_training_reports",
+    )
+    reviewer_comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at", "-pk"]
+
+    def __str__(self):
+        return self.title

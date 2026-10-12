@@ -20,8 +20,18 @@ from climweb.pages.home.tests.factories import HomePageFactory, get_or_create_ho
 from climweb.pages.organisation_pages.organisation.tests.factories import OrganisationIndexPageFactory
 from .factories import StaffPageFactory
 from ..forms import StaffProfileForm
-from ..models import Department, StaffEmployment, StaffMember, StaffPageSelection, StaffProfileAccess, StaffProfileUpdate
+from ..models import (
+    Department,
+    StaffEmployment,
+    StaffMember,
+    StaffPageSelection,
+    StaffProfileAccess,
+    StaffProfileUpdate,
+    StaffTrainingAssignment,
+    StaffTrainingReport,
+)
 from ..services import change_staff_employment, invite_staff, link_existing_staff_user, member_fingerprint, review_update
+from ..wagtail_hooks import staff_profile_permissions
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend", AXES_ENABLED=False)
@@ -50,6 +60,124 @@ class StaffPortalTests(TestCase):
 
     def login_staff(self):
         self.client.force_login(self.user)
+
+    def training_assignment(self, member=None, **kwargs):
+        today = timezone.localdate()
+        values = {
+            "member": member or self.member,
+            "title": "Regional climate workshop",
+            "organizer": "ACMAD",
+            "start_date": today,
+            "end_date": today + timedelta(days=2),
+            "report_due_date": today + timedelta(days=9),
+            "assigned_by": self.admin,
+        }
+        values.update(kwargs)
+        return StaffTrainingAssignment.objects.create(**values)
+
+    def test_hr_reviewer_permission_is_available_in_wagtail_groups(self):
+        permissions = staff_profile_permissions()
+        self.assertEqual(list(permissions.values_list("codename", flat=True)), ["review_staff_profiles"])
+
+    def test_staff_dashboard_shows_only_own_training_and_drive_state(self):
+        assignment = self.training_assignment()
+        self.training_assignment(member=self.other_member, title="Other staff workshop")
+        self.login_staff()
+        response = self.client.get(reverse("staff_portal:dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, assignment.title)
+        self.assertNotContains(response, "Other staff workshop")
+        self.assertContains(response, "Google Drive")
+        self.assertContains(response, "Not configured")
+        content = response.content.decode()
+        menu_labels = ["Dashboard", "Trainings and Reports", "File Management", "My Profile"]
+        menu_positions = [content.index(label) for label in menu_labels]
+        self.assertEqual(menu_positions, sorted(menu_positions))
+        self.assertContains(response, '<svg viewBox="0 0 24 24"', count=6)
+
+    def test_staff_can_save_and_submit_assigned_training_report(self):
+        assignment = self.training_assignment()
+        self.login_staff()
+        url = reverse("staff_portal:training_report", args=[assignment.pk])
+        response = self.client.post(url, {"action": "save", "title": "Workshop report", "summary": "Draft summary"})
+        self.assertRedirects(response, url)
+        report = StaffTrainingReport.objects.get(assignment=assignment)
+        self.assertEqual(report.status, StaffTrainingReport.Status.DRAFT)
+        response = self.client.post(url, {"action": "submit", "title": "Workshop report", "summary": "Final summary"})
+        self.assertRedirects(response, url)
+        report.refresh_from_db()
+        self.assertEqual(report.status, StaffTrainingReport.Status.SUBMITTED)
+        self.assertIsNotNone(report.submitted_at)
+
+    def test_staff_cannot_open_another_members_training_report(self):
+        assignment = self.training_assignment(member=self.other_member)
+        self.login_staff()
+        self.assertEqual(self.client.get(reverse("staff_portal:training_report", args=[assignment.pk])).status_code, 404)
+
+    def test_reviewer_can_assign_training_and_publish_submitted_report(self):
+        self.client.force_login(self.admin)
+        today = timezone.localdate()
+        response = self.client.post(reverse("staff_training_assign"), {
+            "member": self.member.pk,
+            "title": "Hydrology training",
+            "organizer": "WMO",
+            "start_date": today,
+            "end_date": today + timedelta(days=1),
+            "report_due_date": today + timedelta(days=5),
+            "status": StaffTrainingAssignment.Status.NOMINATED,
+        })
+        self.assertRedirects(response, reverse("staff_profile_dashboard"))
+        assignment = StaffTrainingAssignment.objects.get(title="Hydrology training")
+        report = StaffTrainingReport.objects.create(
+            assignment=assignment,
+            title="Hydrology report",
+            summary="Lessons learned",
+            status=StaffTrainingReport.Status.SUBMITTED,
+            submitted_at=timezone.now(),
+        )
+        response = self.client.post(reverse("staff_training_report_review", args=[report.pk]), {"action": "publish"})
+        self.assertRedirects(response, reverse("staff_profile_dashboard"))
+        report.refresh_from_db()
+        assignment.refresh_from_db()
+        self.assertEqual(report.status, StaffTrainingReport.Status.PUBLISHED)
+        self.assertEqual(assignment.status, StaffTrainingAssignment.Status.COMPLETED)
+
+    def test_linked_hr_user_can_manage_reports_from_staff_workspace(self):
+        self.user.user_permissions.add(Permission.objects.get(codename="review_staff_profiles"))
+        self.login_staff()
+        dashboard_url = reverse("staff_portal:hr_dashboard")
+        response = self.client.get(reverse("staff_portal:dashboard"))
+        self.assertContains(response, "HR Management")
+        self.assertEqual(self.client.get(dashboard_url).status_code, 200)
+
+        today = timezone.localdate()
+        response = self.client.post(reverse("staff_portal:hr_assign_training"), {
+            "member": self.other_member.pk,
+            "title": "Portal-managed workshop",
+            "organizer": "ACMAD",
+            "start_date": today,
+            "end_date": today + timedelta(days=1),
+            "report_due_date": today + timedelta(days=4),
+            "status": StaffTrainingAssignment.Status.NOMINATED,
+        })
+        self.assertRedirects(response, dashboard_url)
+        assignment = StaffTrainingAssignment.objects.get(title="Portal-managed workshop")
+        report = StaffTrainingReport.objects.create(
+            assignment=assignment,
+            title="Workshop report",
+            summary="Completed through the staff workspace.",
+            status=StaffTrainingReport.Status.SUBMITTED,
+            submitted_at=timezone.now(),
+        )
+        response = self.client.post(
+            reverse("staff_portal:hr_review_training_report", args=[report.pk]),
+            {"action": "publish", "comment": "Approved"},
+        )
+        self.assertRedirects(response, dashboard_url)
+        report.refresh_from_db()
+        assignment.refresh_from_db()
+        self.assertEqual(report.status, StaffTrainingReport.Status.PUBLISHED)
+        self.assertEqual(assignment.status, StaffTrainingAssignment.Status.COMPLETED)
 
     def unlinked_member(self):
         return StaffMember.objects.create(page=self.page, name="Existing Account Staff", role="Scientist", department=self.member.department)
@@ -895,8 +1023,23 @@ class StaffPortalTests(TestCase):
         self.assertRedirects(response, reverse("staff_portal:profile"))
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password("Another-safe-password-9874!"))
-        self.client.post(reverse("staff_portal:logout"))
+        logout_url = reverse("staff_portal:logout")
+        response = self.client.get(logout_url)
+        self.assertContains(response, "Sign out?")
+        self.assertIn("_auth_user_id", self.client.session)
+        self.client.post(logout_url)
         self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_logout_post_requires_csrf(self):
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.user)
+        logout_url = reverse("staff_portal:logout")
+        self.assertEqual(client.post(logout_url).status_code, 403)
+        response = client.get(logout_url)
+        token = re.search(r'name="csrfmiddlewaretoken" value="([^"]+)"', response.content.decode()).group(1)
+        response = client.post(logout_url, {"csrfmiddlewaretoken": token})
+        self.assertRedirects(response, reverse("staff_portal:login"))
+        self.assertNotIn("_auth_user_id", client.session)
 
     def test_forms_require_csrf(self):
         client = Client(enforce_csrf_checks=True)

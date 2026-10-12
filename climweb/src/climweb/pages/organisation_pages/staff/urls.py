@@ -7,8 +7,14 @@ app_name = "staff_portal"
 
 urlpatterns = [
     path("login/", views.StaffLoginView.as_view(), name="login"),
-    path("logout/", auth_views.LogoutView.as_view(next_page=reverse_lazy("staff_portal:login")), name="logout"),
+    path("logout/", views.staff_logout, name="logout"),
+    path("", views.staff_dashboard, name="dashboard"),
+    path("hr/", views.staff_hr_dashboard, name="hr_dashboard"),
+    path("hr/training/assign/", views.staff_hr_assign_training, name="hr_assign_training"),
+    path("hr/training-report/<int:report_id>/", views.staff_hr_review_training_report, name="hr_review_training_report"),
     path("profile/", views.profile, name="profile"),
+    path("training/<int:assignment_id>/report/", views.training_report, name="training_report"),
+    path("training-report/<int:report_id>/download/", views.training_report_download, name="training_report_download"),
     path("password/", views.password_change, name="password_change"),
     path("invite/<int:access_id>/<str:token>/", views.accept_invitation, name="accept"),
     path("photo/<int:update_id>/", views.photo_preview, name="photo"),
