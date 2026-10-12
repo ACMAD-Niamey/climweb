@@ -280,7 +280,7 @@ class StaffTrainingReport(models.Model):
     class Status(models.TextChoices):
         DRAFT = "draft", _("Draft")
         SUBMITTED = "submitted", _("Awaiting review")
-        PUBLISHED = "published", _("Published")
+        APPROVED = "approved", _("Approved")
         CHANGES_REQUESTED = "changes_requested", _("Changes requested")
 
     assignment = models.OneToOneField(StaffTrainingAssignment, on_delete=models.CASCADE, related_name="report")
@@ -291,7 +291,7 @@ class StaffTrainingReport(models.Model):
     drive_file_url = models.URLField(blank=True, verbose_name=_("Google Drive file link"))
     status = models.CharField(max_length=24, choices=Status.choices, default=Status.DRAFT)
     submitted_at = models.DateTimeField(null=True, blank=True)
-    published_at = models.DateTimeField(null=True, blank=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
     reviewed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

@@ -167,16 +167,26 @@ class StaffEditForm(StaffProfileForm):
     field_order = ["name", "role", "department", "biography", "photo", "website", "linkedin", "github", "publications", "source_fingerprint"]
 
 
-class StaffTrainingAssignmentForm(forms.ModelForm):
-    class Meta:
-        model = StaffTrainingAssignment
-        fields = ["member", "title", "organizer", "location", "description", "start_date", "end_date", "report_due_date", "status"]
-        widgets = {
-            "start_date": forms.DateInput(attrs={"type": "date"}),
-            "end_date": forms.DateInput(attrs={"type": "date"}),
-            "report_due_date": forms.DateInput(attrs={"type": "date"}),
-            "description": forms.Textarea(attrs={"rows": 4}),
-        }
+class StaffTrainingAssignmentForm(forms.Form):
+    member = forms.ModelMultipleChoiceField(
+        queryset=StaffMember.objects.none(),
+        label="Staff members",
+        help_text="Search for and select one or more staff members for this activity.",
+        widget=forms.SelectMultiple(
+            attrs={
+                "data-searchable-multiselect": "true",
+                "data-search-placeholder": "Search staff by name…",
+            }
+        ),
+    )
+    title = forms.CharField(max_length=200)
+    organizer = forms.CharField(max_length=200, required=False)
+    location = forms.CharField(max_length=200, required=False)
+    description = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 4}))
+    start_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+    end_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+    report_due_date = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
+    status = forms.ChoiceField(choices=StaffTrainingAssignment.Status.choices, initial=StaffTrainingAssignment.Status.NOMINATED)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -192,6 +202,16 @@ class StaffTrainingAssignmentForm(forms.ModelForm):
             self.add_error("report_due_date", "The report due date cannot be before the training ends.")
         return data
 
+    def save(self, assigned_by):
+        values = {
+            key: self.cleaned_data[key]
+            for key in ["title", "organizer", "location", "description", "start_date", "end_date", "report_due_date", "status"]
+        }
+        return [
+            StaffTrainingAssignment.objects.create(member=member, assigned_by=assigned_by, **values)
+            for member in self.cleaned_data["member"]
+        ]
+
 
 class StaffTrainingReportForm(forms.ModelForm):
     class Meta:
@@ -199,7 +219,7 @@ class StaffTrainingReportForm(forms.ModelForm):
         fields = ["title", "summary", "outcomes", "document", "drive_file_url"]
         labels = {"outcomes": "Key outcomes and follow-up actions"}
         help_texts = {
-            "document": "Optional PDF, Word document or OpenDocument file, up to 10 MB.",
+            "document": "Optional PDF, Word (DOC/DOCX), PowerPoint (PPT/PPTX) or OpenDocument file, up to 10 MB.",
             "drive_file_url": "Optional link to the report in the organization's Google Drive.",
         }
         widgets = {"summary": forms.Textarea(attrs={"rows": 7}), "outcomes": forms.Textarea(attrs={"rows": 5})}
@@ -214,15 +234,18 @@ class StaffTrainingReportForm(forms.ModelForm):
             "application/pdf",
             "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-powerpoint",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             "application/vnd.oasis.opendocument.text",
+            "application/vnd.oasis.opendocument.presentation",
         }
         if getattr(upload, "content_type", "") not in allowed:
-            raise forms.ValidationError("Upload a PDF, Word or OpenDocument file.")
+            raise forms.ValidationError("Upload a PDF, Word, PowerPoint or OpenDocument file.")
         return upload
 
 
 class StaffTrainingReportReviewForm(forms.Form):
-    action = forms.ChoiceField(choices=[("publish", "Publish report"), ("request_changes", "Request changes")])
+    action = forms.ChoiceField(choices=[("approve", "Approve report"), ("request_changes", "Request changes")])
     comment = forms.CharField(required=False, max_length=5000, widget=forms.Textarea(attrs={"rows": 4}))
 
     def clean(self):

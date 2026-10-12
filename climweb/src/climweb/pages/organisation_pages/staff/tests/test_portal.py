@@ -19,7 +19,7 @@ from wagtail.models import GroupPagePermission, Page, Site
 from climweb.pages.home.tests.factories import HomePageFactory, get_or_create_homepage
 from climweb.pages.organisation_pages.organisation.tests.factories import OrganisationIndexPageFactory
 from .factories import StaffPageFactory
-from ..forms import StaffProfileForm
+from ..forms import StaffProfileForm, StaffTrainingReportForm
 from ..models import (
     Department,
     StaffEmployment,
@@ -114,11 +114,15 @@ class StaffPortalTests(TestCase):
         self.login_staff()
         self.assertEqual(self.client.get(reverse("staff_portal:training_report", args=[assignment.pk])).status_code, 404)
 
-    def test_reviewer_can_assign_training_and_publish_submitted_report(self):
+    def test_reviewer_can_assign_multiple_staff_and_approve_submitted_report(self):
         self.client.force_login(self.admin)
+        assignment_url = reverse("staff_training_assign")
+        form_response = self.client.get(assignment_url)
+        self.assertContains(form_response, 'data-searchable-multiselect="true"')
+        self.assertContains(form_response, "staff/js/searchable_multiselect.js")
         today = timezone.localdate()
-        response = self.client.post(reverse("staff_training_assign"), {
-            "member": self.member.pk,
+        response = self.client.post(assignment_url, {
+            "member": [self.member.pk, self.other_member.pk],
             "title": "Hydrology training",
             "organizer": "WMO",
             "start_date": today,
@@ -127,7 +131,8 @@ class StaffPortalTests(TestCase):
             "status": StaffTrainingAssignment.Status.NOMINATED,
         })
         self.assertRedirects(response, reverse("staff_profile_dashboard"))
-        assignment = StaffTrainingAssignment.objects.get(title="Hydrology training")
+        self.assertEqual(StaffTrainingAssignment.objects.filter(title="Hydrology training").count(), 2)
+        assignment = StaffTrainingAssignment.objects.get(title="Hydrology training", member=self.member)
         report = StaffTrainingReport.objects.create(
             assignment=assignment,
             title="Hydrology report",
@@ -135,11 +140,12 @@ class StaffPortalTests(TestCase):
             status=StaffTrainingReport.Status.SUBMITTED,
             submitted_at=timezone.now(),
         )
-        response = self.client.post(reverse("staff_training_report_review", args=[report.pk]), {"action": "publish"})
+        response = self.client.post(reverse("staff_training_report_review", args=[report.pk]), {"action": "approve"})
         self.assertRedirects(response, reverse("staff_profile_dashboard"))
         report.refresh_from_db()
         assignment.refresh_from_db()
-        self.assertEqual(report.status, StaffTrainingReport.Status.PUBLISHED)
+        self.assertEqual(report.status, StaffTrainingReport.Status.APPROVED)
+        self.assertIsNotNone(report.approved_at)
         self.assertEqual(assignment.status, StaffTrainingAssignment.Status.COMPLETED)
 
     def test_linked_hr_user_can_manage_reports_from_staff_workspace(self):
@@ -149,9 +155,13 @@ class StaffPortalTests(TestCase):
         response = self.client.get(reverse("staff_portal:dashboard"))
         self.assertContains(response, "HR Management")
         self.assertEqual(self.client.get(dashboard_url).status_code, 200)
+        assignment_url = reverse("staff_portal:hr_assign_training")
+        assignment_form = self.client.get(assignment_url)
+        self.assertContains(assignment_form, 'data-searchable-multiselect="true"')
+        self.assertContains(assignment_form, "staff/js/searchable_multiselect.js")
 
         today = timezone.localdate()
-        response = self.client.post(reverse("staff_portal:hr_assign_training"), {
+        response = self.client.post(assignment_url, {
             "member": self.other_member.pk,
             "title": "Portal-managed workshop",
             "organizer": "ACMAD",
@@ -171,13 +181,26 @@ class StaffPortalTests(TestCase):
         )
         response = self.client.post(
             reverse("staff_portal:hr_review_training_report", args=[report.pk]),
-            {"action": "publish", "comment": "Approved"},
+            {"action": "approve", "comment": "Approved"},
         )
         self.assertRedirects(response, dashboard_url)
         report.refresh_from_db()
         assignment.refresh_from_db()
-        self.assertEqual(report.status, StaffTrainingReport.Status.PUBLISHED)
+        self.assertEqual(report.status, StaffTrainingReport.Status.APPROVED)
         self.assertEqual(assignment.status, StaffTrainingAssignment.Status.COMPLETED)
+
+    def test_training_reports_accept_docx_and_pptx_uploads(self):
+        supported_files = [
+            ("report.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+            ("slides.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"),
+        ]
+        for filename, content_type in supported_files:
+            with self.subTest(filename=filename):
+                form = StaffTrainingReportForm(
+                    {"title": "Training report", "summary": "Summary"},
+                    {"document": SimpleUploadedFile(filename, b"office-file", content_type=content_type)},
+                )
+                self.assertTrue(form.is_valid(), form.errors)
 
     def unlinked_member(self):
         return StaffMember.objects.create(page=self.page, name="Existing Account Staff", role="Scientist", department=self.member.department)

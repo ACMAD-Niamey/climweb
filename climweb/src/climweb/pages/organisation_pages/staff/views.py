@@ -177,7 +177,7 @@ def staff_dashboard(request):
         "reports_due": open_assignments.filter(
             Q(report__isnull=True) | Q(report__status__in=[StaffTrainingReport.Status.DRAFT, StaffTrainingReport.Status.CHANGES_REQUESTED])
         ).count(),
-        "published_count": assignments.filter(report__status=StaffTrainingReport.Status.PUBLISHED).count(),
+        "approved_count": assignments.filter(report__status=StaffTrainingReport.Status.APPROVED).count(),
         "drive_url": getattr(settings, "STAFF_GOOGLE_DRIVE_URL", ""),
     })
 
@@ -195,7 +195,7 @@ def staff_hr_dashboard(request):
         "submitted_reports": submitted_reports,
         "assignment_count": assignments.count(),
         "awaiting_review_count": submitted_reports.count(),
-        "published_count": StaffTrainingReport.objects.filter(status=StaffTrainingReport.Status.PUBLISHED).count(),
+        "approved_count": StaffTrainingReport.objects.filter(status=StaffTrainingReport.Status.APPROVED).count(),
     })
 
 
@@ -205,10 +205,9 @@ def staff_hr_dashboard(request):
 def staff_hr_assign_training(request):
     form = StaffTrainingAssignmentForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        assignment = form.save(commit=False)
-        assignment.assigned_by = request.user
-        assignment.save()
-        messages.success(request, f"{assignment.member.name} was nominated for {assignment.title}.")
+        with transaction.atomic():
+            assignments = form.save(request.user)
+        messages.success(request, f"{len(assignments)} staff member(s) were nominated for {assignments[0].title}.")
         return redirect("staff_portal:hr_dashboard")
     return render(request, "staff/portal/hr_assign_training.html", {"form": form})
 
@@ -226,15 +225,15 @@ def staff_hr_review_training_report(request, report_id):
             report.reviewed_by = request.user
             report.reviewed_at = timezone.now()
             report.reviewer_comment = form.cleaned_data["comment"]
-            if form.cleaned_data["action"] == "publish":
-                report.status = StaffTrainingReport.Status.PUBLISHED
-                report.published_at = timezone.now()
+            if form.cleaned_data["action"] == "approve":
+                report.status = StaffTrainingReport.Status.APPROVED
+                report.approved_at = timezone.now()
                 report.assignment.status = StaffTrainingAssignment.Status.COMPLETED
                 report.assignment.save(update_fields=["status", "updated_at"])
-                message = "Training report published."
+                message = "Training report approved."
             else:
                 report.status = StaffTrainingReport.Status.CHANGES_REQUESTED
-                report.published_at = None
+                report.approved_at = None
                 message = "Changes requested from the staff member."
             report.save()
             messages.success(request, message)
@@ -313,7 +312,7 @@ def training_report(request, assignment_id):
     if assignment.status == StaffTrainingAssignment.Status.CANCELLED:
         raise PermissionDenied("A report cannot be submitted for a cancelled assignment.")
     report = StaffTrainingReport.objects.filter(assignment=assignment).first()
-    locked = bool(report and report.status in [StaffTrainingReport.Status.SUBMITTED, StaffTrainingReport.Status.PUBLISHED])
+    locked = bool(report and report.status in [StaffTrainingReport.Status.SUBMITTED, StaffTrainingReport.Status.APPROVED])
     form = StaffTrainingReportForm(request.POST or None, request.FILES or None, instance=report)
     if request.method == "POST":
         action = request.POST.get("action")
@@ -423,10 +422,9 @@ def dashboard(request):
 def assign_training(request):
     form = StaffTrainingAssignmentForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        assignment = form.save(commit=False)
-        assignment.assigned_by = request.user
-        assignment.save()
-        messages.success(request, f"{assignment.member.name} was nominated for {assignment.title}.")
+        with transaction.atomic():
+            assignments = form.save(request.user)
+        messages.success(request, f"{len(assignments)} staff member(s) were nominated for {assignments[0].title}.")
         return redirect("staff_profile_dashboard")
     return render(request, "staff/admin/assign_training.html", {"form": form})
 
@@ -443,15 +441,15 @@ def review_training_report(request, report_id):
             report.reviewed_by = request.user
             report.reviewed_at = timezone.now()
             report.reviewer_comment = form.cleaned_data["comment"]
-            if form.cleaned_data["action"] == "publish":
-                report.status = StaffTrainingReport.Status.PUBLISHED
-                report.published_at = timezone.now()
+            if form.cleaned_data["action"] == "approve":
+                report.status = StaffTrainingReport.Status.APPROVED
+                report.approved_at = timezone.now()
                 report.assignment.status = StaffTrainingAssignment.Status.COMPLETED
                 report.assignment.save(update_fields=["status", "updated_at"])
-                message = "Training report published."
+                message = "Training report approved."
             else:
                 report.status = StaffTrainingReport.Status.CHANGES_REQUESTED
-                report.published_at = None
+                report.approved_at = None
                 message = "Changes requested from the staff member."
             report.save()
             messages.success(request, message)
