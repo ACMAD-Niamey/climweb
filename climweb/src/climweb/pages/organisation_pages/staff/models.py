@@ -41,7 +41,7 @@ class Department(models.Model):
 class StaffPage(AbstractBannerPage):
     template = 'staff/staff_page.html'
     parent_page_types = ['organisation.OrganisationIndexPage']
-    subpage_types = []
+    subpage_types = ['board.DirectorGeneralPage']
     show_in_menus_default = True
 
     max_count = 1
@@ -85,6 +85,12 @@ class StaffPage(AbstractBannerPage):
         departments_with_staff = departments_with_staff_count.filter(staffmembers_count__gt=0)
 
         return departments_with_staff
+
+    @cached_property
+    def director_general_page(self):
+        from climweb.pages.organisation_pages.board.models import DirectorGeneralPage
+
+        return DirectorGeneralPage.objects.child_of(self).live().first()
 
     class Meta:
         verbose_name = _("Staff Page")
@@ -144,6 +150,11 @@ class StaffMember(Orderable):
     def registered_email(self):
         access = getattr(self, "profile_access", None)
         return access.user.email if access else ""
+
+    @property
+    def is_director_general(self):
+        normalized_role = " ".join(self.role.casefold().replace("-", " ").split())
+        return "director general" in normalized_role or normalized_role == "dg"
 
 
 class StaffPageSelection(Orderable):

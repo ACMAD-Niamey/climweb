@@ -103,6 +103,11 @@
                                                                 </div>
                                                             {% endif %}
                                                             {% include "staff/includes/profile_links.html" with member=staffmember %}
+                                                            {% if staffmember.is_director_general and page.director_general_page %}
+                                                                <a class="button is-primary staff-dg-profile-link" href="{{ page.director_general_page.url }}">
+                                                                    {% translate "View Director General's page" %}
+                                                                </a>
+                                                            {% endif %}
                                                         </div>
                                                     </div>
                                                 </div>

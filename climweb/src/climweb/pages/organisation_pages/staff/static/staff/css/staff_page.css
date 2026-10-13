@@ -244,6 +244,11 @@
     font-weight: 600;
 }
 
+.staff-dg-profile-link {
+    margin-top: 1rem;
+    font-weight: 700;
+}
+
 .staff-card .staff-profile-links {
     justify-content: center;
 }
