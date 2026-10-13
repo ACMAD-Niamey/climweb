@@ -263,6 +263,40 @@
     font-size: .82rem;
 }
 
+.dg-profile-figure {
+    float: left;
+    width: min(42%, 440px);
+    margin: 0 3rem 1.5rem 0;
+}
+
+.dg-profile-figure .president-profile-portrait {
+    float: none;
+    width: 100%;
+    margin: 0;
+}
+
+.dg-photo-caption {
+    padding: .7rem .85rem;
+    background: var(--primary-color-lightest, #f3f7f5);
+    color: var(--ojt-muted, #66717d);
+    font-size: .78rem;
+    line-height: 1.45;
+}
+
+.dg-inaugural-heading {
+    margin: 1.25rem 0 .75rem;
+    color: var(--ojt-heading, #0a192f);
+    font-size: clamp(1.25rem, 2vw, 1.6rem);
+}
+
+.director-general-page .president-biography {
+    text-align: justify;
+}
+
+.dg-speech-document {
+    margin-top: 1.25rem;
+}
+
 @media (max-width: 1023px) {
     .board-modal-content .columns {
         display: block;
@@ -293,6 +327,17 @@
         width: 100%;
         max-width: 440px;
         margin: 0 auto 2rem;
+    }
+
+    .dg-profile-figure {
+        float: none;
+        width: 100%;
+        max-width: 440px;
+        margin: 0 auto 2rem;
+    }
+
+    .dg-profile-figure .president-profile-portrait {
+        margin: 0;
     }
 }
 

@@ -730,7 +730,6 @@ class HomePage(MetadataPageMixin, Page):
             FieldPanel('show_dg_message'),
             FieldPanel('dg_message_heading'),
             FieldPanel('dg_message'),
-            FieldPanel('dg_message_closing'),
             FieldPanel('dg_message_staff_member'),
         ], heading=_("DG/CEO Message")),
         MultiFieldPanel([
@@ -923,6 +922,11 @@ class HomePage(MetadataPageMixin, Page):
             models.Q(role__icontains="Director General")
             | models.Q(name__icontains="Ousmane Ndiaye")
         ).select_related("photo").first()
+        from climweb.pages.organisation_pages.board.models import DirectorGeneralPage
+
+        context["director_general_page"] = DirectorGeneralPage.objects.live().public().descendant_of(
+            self
+        ).filter(locale_id=self.locale_id).first()
         context["regional_climate_centres"] = RegionalClimateCentre.objects.filter(
             is_active=True
         ).prefetch_related("additional_map_nodes")

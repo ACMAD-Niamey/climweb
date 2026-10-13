@@ -1152,6 +1152,30 @@
   letter-spacing: 0.09em;
 }
 
+.dg-profile-page-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 15px;
+  width: fit-content;
+  border: 1px solid var(--primary-color, #0c447c);
+  border-radius: var(--theme-border-radius, 5px);
+  background: var(--primary-color, #0c447c);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 800;
+  transition: background-color .2s ease, color .2s ease;
+}
+
+.dg-profile-page-link:hover,
+.dg-profile-page-link:focus-visible {
+  border-color: var(--theme-header-dark, #0a365f);
+  background: var(--theme-header-dark, #0a365f);
+  color: white;
+}
+
 .dg-message-copy {
   position: relative;
   display: flex;
@@ -1180,20 +1204,7 @@
 }
 
 .dg-message-copy footer {
-  display: flex;
-  align-items: center;
-  gap: 12px;
   margin-top: 22px;
-  color: var(--muted, #666);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.025em;
-}
-
-.dg-message-copy footer span {
-  flex: 0 0 42px;
-  height: 2px;
-  background: var(--primary-color, #0c447c);
 }
 
 @media (max-width: 900px) {
@@ -1211,7 +1222,6 @@
   .dg-message-copy { padding: 26px 22px; }
   .dg-profile-photo { width: min(90%, 240px); margin-bottom: 14px; }
   .dg-message-copy p { font-size: 1.08rem; line-height: 1.58; }
-  .dg-message-copy footer { align-items: flex-start; }
 }
 
 /* Regional section */
