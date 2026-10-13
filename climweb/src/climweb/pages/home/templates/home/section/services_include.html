@@ -66,10 +66,12 @@
         </div>
         <span class="dg-message-quote-mark" aria-hidden="true">“</span>
         <div class="dg-message-body">{{ page.dg_message|richtext }}</div>
-        {% if page.dg_message_closing %}
-        <footer>
-          <span aria-hidden="true"></span>
-          {{ page.dg_message_closing }}
+        {% if director_general_page %}
+        <footer class="dg-message-action">
+          <a class="dg-profile-page-link" href="{{ director_general_page.url }}">
+            {% translate "Read the Inaugural Speech of the DG" %}
+            <span aria-hidden="true">&#8594;</span>
+          </a>
         </footer>
         {% endif %}
       </blockquote>

@@ -14,6 +14,9 @@ from climweb.pages.products.tests.factories import (
 )
 from climweb.pages.events.tests.factories import EventIndexPageFactory, EventPageFactory
 from climweb.pages.news.tests.factories import NewsIndexPageFactory, NewsPageFactory
+from climweb.pages.organisation_pages.board.tests.factories import DirectorGeneralPageFactory
+from climweb.pages.organisation_pages.organisation.tests.factories import OrganisationIndexPageFactory
+from climweb.pages.organisation_pages.staff.tests.factories import StaffPageFactory
 from climweb.pages.summer_school.tests.factories import (
     SummerSchoolIndexPageFactory,
     SummerSchoolPageFactory,
@@ -45,7 +48,7 @@ class TestHomePage(WagtailPageTestCase):
 
         self.assertContains(response, "A message from leadership")
         self.assertContains(response, "Custom dashboard-managed DG message.")
-        self.assertContains(response, "A custom closing statement.")
+        self.assertNotContains(response, "A custom closing statement.")
 
     def test_dg_message_section_can_be_hidden(self):
         self.page.show_dg_message = False
@@ -54,6 +57,16 @@ class TestHomePage(WagtailPageTestCase):
         response = self.client.get(self.page.url)
 
         self.assertNotContains(response, 'class="section dg-message-section"')
+
+    def test_dg_message_card_links_to_director_general_page(self):
+        organisation_page = OrganisationIndexPageFactory(parent=self.page)
+        staff_page = StaffPageFactory(parent=organisation_page)
+        director_general_page = DirectorGeneralPageFactory(parent=staff_page)
+
+        response = self.client.get(self.page.url)
+
+        self.assertContains(response, "Read the Inaugural Speech of the DG")
+        self.assertContains(response, f'href="{director_general_page.url}"')
 
     def test_regional_climate_centres_are_managed_by_snippets(self):
         RegionalClimateCentre.objects.all().delete()
