@@ -276,7 +276,8 @@ class StaffTrainingAssignment(models.Model):
 
 def staff_report_upload_path(instance, filename):
     # Files are never linked directly; the authenticated download view serves them.
-    return f"staff-training-reports/{instance.assignment.member_id}/{instance.assignment_id}/{filename}"
+    report = instance.report
+    return f"staff-training-reports/{report.assignment.member_id}/{report.assignment_id}/{filename}"
 
 
 def staff_report_storage():
@@ -295,7 +296,6 @@ class StaffTrainingReport(models.Model):
     title = models.CharField(max_length=220)
     summary = models.TextField()
     outcomes = models.TextField(blank=True)
-    document = models.FileField(upload_to=staff_report_upload_path, storage=staff_report_storage, blank=True)
     drive_file_url = models.URLField(blank=True, verbose_name=_("Google Drive file link"))
     status = models.CharField(max_length=24, choices=Status.choices, default=Status.DRAFT)
     submitted_at = models.DateTimeField(null=True, blank=True)
@@ -317,6 +317,19 @@ class StaffTrainingReport(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class StaffTrainingReportDocument(models.Model):
+    report = models.ForeignKey(StaffTrainingReport, on_delete=models.CASCADE, related_name="documents")
+    file = models.FileField(upload_to=staff_report_upload_path, storage=staff_report_storage)
+    original_name = models.CharField(max_length=255)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["uploaded_at", "pk"]
+
+    def __str__(self):
+        return self.original_name
 
 
 class StaffNotificationDelivery(models.Model):

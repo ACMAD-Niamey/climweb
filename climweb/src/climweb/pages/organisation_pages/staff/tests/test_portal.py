@@ -1,4 +1,5 @@
 import re
+import tempfile
 from datetime import timedelta
 from io import BytesIO
 from unittest.mock import patch
@@ -9,8 +10,10 @@ from django.core import mail
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.files.storage import FileSystemStorage
 from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import reverse
+from django.utils.datastructures import MultiValueDict
 from django.utils import timezone
 from PIL import Image
 from wagtail.images import get_image_model
@@ -30,6 +33,7 @@ from ..models import (
     StaffNotificationDelivery,
     StaffTrainingAssignment,
     StaffTrainingReport,
+    StaffTrainingReportDocument,
 )
 from ..notifications import queue_deadline_notifications, queue_training_assigned_notifications, send_staff_notification
 from ..services import change_staff_employment, invite_staff, link_existing_staff_user, member_fingerprint, review_update
@@ -272,10 +276,93 @@ class StaffPortalTests(TestCase):
         for filename, content_type in supported_files:
             with self.subTest(filename=filename):
                 form = StaffTrainingReportForm(
-                    {"title": "Training report", "summary": "Summary"},
-                    {"document": SimpleUploadedFile(filename, b"office-file", content_type=content_type)},
+                    {"title": "Activity report", "summary": "Summary"},
+                    MultiValueDict({"documents": [SimpleUploadedFile(filename, b"office-file", content_type=content_type)]}),
                 )
                 self.assertTrue(form.is_valid(), form.errors)
+
+    def test_training_report_accepts_at_most_three_documents(self):
+        def uploads(count):
+            return MultiValueDict({
+                "documents": [
+                    SimpleUploadedFile(f"document-{index}.pdf", b"pdf", content_type="application/pdf")
+                    for index in range(count)
+                ]
+            })
+
+        form = StaffTrainingReportForm({"title": "Activity report", "summary": "Summary"}, uploads(3))
+        self.assertTrue(form.is_valid(), form.errors)
+        form = StaffTrainingReportForm({"title": "Activity report", "summary": "Summary"}, uploads(4))
+        self.assertFalse(form.is_valid())
+        self.assertIn("no more than 3 documents", form.errors["documents"][0])
+
+    def test_staff_can_upload_and_download_three_report_documents(self):
+        assignment = self.training_assignment()
+        self.login_staff()
+        uploads = [
+            SimpleUploadedFile(f"supporting-{index}.pdf", f"file-{index}".encode(), content_type="application/pdf")
+            for index in range(1, 4)
+        ]
+        file_field = StaffTrainingReportDocument._meta.get_field("file")
+        with tempfile.TemporaryDirectory() as upload_root, patch.object(
+            file_field,
+            "storage",
+            FileSystemStorage(location=upload_root),
+        ):
+            response = self.client.post(
+                reverse("staff_portal:training_report", args=[assignment.pk]),
+                {
+                    "action": "save",
+                    "title": "Activity report",
+                    "summary": "Summary",
+                    "documents": uploads,
+                },
+            )
+            self.assertRedirects(response, reverse("staff_portal:training_report", args=[assignment.pk]))
+            report = StaffTrainingReport.objects.get(assignment=assignment)
+            self.assertEqual(report.documents.count(), 3)
+            document = report.documents.first()
+            response = self.client.get(reverse("staff_portal:training_report_download", args=[document.pk]))
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(b"".join(response.streaming_content), b"file-1")
+            self.assertIn(document.original_name, response["Content-Disposition"])
+
+    def test_existing_documents_count_toward_limit_and_can_be_removed(self):
+        report = StaffTrainingReport.objects.create(
+            assignment=self.training_assignment(),
+            title="Activity report",
+            summary="Summary",
+        )
+        existing = [
+            StaffTrainingReportDocument.objects.create(
+                report=report,
+                file=f"staff-training-reports/existing-{index}.pdf",
+                original_name=f"existing-{index}.pdf",
+            )
+            for index in range(2)
+        ]
+        new_files = MultiValueDict({
+            "documents": [
+                SimpleUploadedFile("new-1.pdf", b"pdf", content_type="application/pdf"),
+                SimpleUploadedFile("new-2.pdf", b"pdf", content_type="application/pdf"),
+            ]
+        })
+        form = StaffTrainingReportForm(
+            {"title": report.title, "summary": report.summary},
+            new_files,
+            instance=report,
+        )
+        self.assertFalse(form.is_valid())
+        form = StaffTrainingReportForm(
+            {
+                "title": report.title,
+                "summary": report.summary,
+                "remove_documents": [existing[0].pk],
+            },
+            new_files,
+            instance=report,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
 
     def unlinked_member(self):
         return StaffMember.objects.create(page=self.page, name="Existing Account Staff", role="Scientist", department=self.member.department)

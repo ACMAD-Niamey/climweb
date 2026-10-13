@@ -42,6 +42,7 @@ from .models import (
     StaffProfileUpdate,
     StaffTrainingAssignment,
     StaffTrainingReport,
+    StaffTrainingReportDocument,
 )
 from .notifications import queue_report_submitted_notifications, queue_training_assigned_notifications
 from .services import (
@@ -327,14 +328,16 @@ def training_report(request, assignment_id):
         if action not in {"save", "submit"}:
             return HttpResponse("Unknown action", status=400)
         if form.is_valid():
-            report = form.save(commit=False)
-            report.assignment = assignment
-            report.status = StaffTrainingReport.Status.SUBMITTED if action == "submit" else StaffTrainingReport.Status.DRAFT
-            report.submitted_at = timezone.now() if action == "submit" else None
-            report.reviewer_comment = "" if action == "submit" else report.reviewer_comment
-            report.save()
-            if action == "submit":
-                queue_report_submitted_notifications(report)
+            with transaction.atomic():
+                report = form.save(commit=False)
+                report.assignment = assignment
+                report.status = StaffTrainingReport.Status.SUBMITTED if action == "submit" else StaffTrainingReport.Status.DRAFT
+                report.submitted_at = timezone.now() if action == "submit" else None
+                report.reviewer_comment = "" if action == "submit" else report.reviewer_comment
+                report.save()
+                form.save_documents(report)
+                if action == "submit":
+                    queue_report_submitted_notifications(report)
             messages.success(request, "Report submitted to HR for approval." if action == "submit" else "Report draft saved.")
             return redirect("staff_portal:training_report", assignment_id=assignment.pk)
     return render(request, "staff/portal/training_report.html", {
@@ -347,8 +350,12 @@ def training_report(request, assignment_id):
 
 
 @never_cache
-def training_report_download(request, report_id):
-    report = get_object_or_404(StaffTrainingReport.objects.select_related("assignment__member"), pk=report_id)
+def training_report_download(request, document_id):
+    document = get_object_or_404(
+        StaffTrainingReportDocument.objects.select_related("report__assignment__member"),
+        pk=document_id,
+    )
+    report = document.report
     owns_report = (
         request.user.is_authenticated
         and hasattr(request.user, "staff_profile_access")
@@ -361,13 +368,11 @@ def training_report_download(request, report_id):
         and request.user.has_perm("staff.review_staff_profiles")
     ):
         raise PermissionDenied
-    if not report.document:
-        raise Http404
     try:
         response = FileResponse(
-            report.document.open("rb"),
+            document.file.open("rb"),
             as_attachment=True,
-            filename=report.document.name.rsplit("/", 1)[-1],
+            filename=document.original_name,
             content_type="application/octet-stream",
         )
         response["X-Content-Type-Options"] = "nosniff"
