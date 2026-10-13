@@ -27,9 +27,11 @@ from ..models import (
     StaffPageSelection,
     StaffProfileAccess,
     StaffProfileUpdate,
+    StaffNotificationDelivery,
     StaffTrainingAssignment,
     StaffTrainingReport,
 )
+from ..notifications import queue_deadline_notifications, queue_training_assigned_notifications, send_staff_notification
 from ..services import change_staff_employment, invite_staff, link_existing_staff_user, member_fingerprint, review_update
 from ..wagtail_hooks import staff_profile_permissions
 
@@ -90,7 +92,7 @@ class StaffPortalTests(TestCase):
         self.assertContains(response, "Google Drive")
         self.assertContains(response, "Not configured")
         content = response.content.decode()
-        menu_labels = ["Dashboard", "Trainings and Reports", "File Management", "My Profile"]
+        menu_labels = ["Dashboard", "Activities &amp; Reports", "File Management", "My Profile"]
         menu_positions = [content.index(label) for label in menu_labels]
         self.assertEqual(menu_positions, sorted(menu_positions))
         self.assertContains(response, '<svg viewBox="0 0 24 24"', count=6)
@@ -108,6 +110,46 @@ class StaffPortalTests(TestCase):
         report.refresh_from_db()
         self.assertEqual(report.status, StaffTrainingReport.Status.SUBMITTED)
         self.assertIsNotNone(report.submitted_at)
+        delivery = StaffNotificationDelivery.objects.get(
+            event=StaffNotificationDelivery.Event.REPORT_SUBMITTED,
+            report=report,
+            recipient=self.admin.email,
+        )
+        with patch(
+            "climweb.pages.organisation_pages.staff.notifications._email_logo_url",
+            return_value="https://example.test/media/acmad-logo.png",
+        ):
+            send_staff_notification(delivery.pk)
+        self.assertEqual(mail.outbox[-1].to, [self.admin.email])
+        self.assertIn("awaiting review", mail.outbox[-1].subject)
+        self.assertIn(reverse("staff_portal:hr_review_training_report", args=[report.pk]), mail.outbox[-1].body)
+        self.assertNotIn(reverse("staff_training_report_review", args=[report.pk]), mail.outbox[-1].body)
+        self.assertNotIn("This is an automated message", mail.outbox[-1].body)
+        html = mail.outbox[-1].alternatives[0][0]
+        self.assertIn('src="https://example.test/media/acmad-logo.png"', html)
+        self.assertNotIn("This is an automated message", html)
+
+    def test_training_nomination_email_uses_staff_account_and_authenticated_link(self):
+        assignment = self.training_assignment()
+        deliveries = queue_training_assigned_notifications([assignment])
+        self.assertEqual(len(deliveries), 1)
+        self.assertEqual(deliveries[0].recipient, self.user.email)
+        self.assertTrue(send_staff_notification(deliveries[0].pk))
+        self.assertEqual(mail.outbox[-1].to, [self.user.email])
+        self.assertIn("Activity assignment", mail.outbox[-1].subject)
+        self.assertIn(reverse("staff_portal:training_report", args=[assignment.pk]), mail.outbox[-1].body)
+
+    def test_deadline_reminders_are_deduplicated(self):
+        today = timezone.localdate()
+        assignment = self.training_assignment(report_due_date=today + timedelta(days=7))
+        self.assertEqual(queue_deadline_notifications(today), 1)
+        self.assertEqual(queue_deadline_notifications(today), 0)
+        delivery = StaffNotificationDelivery.objects.get(
+            assignment=assignment,
+            event=StaffNotificationDelivery.Event.REPORT_DUE_7_DAYS,
+        )
+        send_staff_notification(delivery.pk)
+        self.assertIn("due in 7 days", mail.outbox[-1].subject)
 
     def test_staff_cannot_open_another_members_training_report(self):
         assignment = self.training_assignment(member=self.other_member)
@@ -123,6 +165,7 @@ class StaffPortalTests(TestCase):
         today = timezone.localdate()
         response = self.client.post(assignment_url, {
             "member": [self.member.pk, self.other_member.pk],
+            "activity_type": StaffTrainingAssignment.ActivityType.WORKSHOP,
             "title": "Hydrology training",
             "organizer": "WMO",
             "start_date": today,
@@ -133,6 +176,7 @@ class StaffPortalTests(TestCase):
         self.assertRedirects(response, reverse("staff_profile_dashboard"))
         self.assertEqual(StaffTrainingAssignment.objects.filter(title="Hydrology training").count(), 2)
         assignment = StaffTrainingAssignment.objects.get(title="Hydrology training", member=self.member)
+        self.assertEqual(assignment.activity_type, StaffTrainingAssignment.ActivityType.WORKSHOP)
         report = StaffTrainingReport.objects.create(
             assignment=assignment,
             title="Hydrology report",
@@ -147,6 +191,36 @@ class StaffPortalTests(TestCase):
         self.assertEqual(report.status, StaffTrainingReport.Status.APPROVED)
         self.assertIsNotNone(report.approved_at)
         self.assertEqual(assignment.status, StaffTrainingAssignment.Status.COMPLETED)
+        delivery = StaffNotificationDelivery.objects.get(
+            report=report,
+            event=StaffNotificationDelivery.Event.REPORT_APPROVED,
+        )
+        send_staff_notification(delivery.pk)
+        self.assertEqual(mail.outbox[-1].to, [self.user.email])
+        self.assertIn("approved", mail.outbox[-1].subject)
+
+    def test_changes_requested_email_contains_hr_comment(self):
+        assignment = self.training_assignment()
+        report = StaffTrainingReport.objects.create(
+            assignment=assignment,
+            title="Workshop report",
+            summary="Initial submission",
+            status=StaffTrainingReport.Status.SUBMITTED,
+            submitted_at=timezone.now(),
+        )
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("staff_training_report_review", args=[report.pk]),
+            {"action": "request_changes", "comment": "Please add the agreed follow-up actions."},
+        )
+        self.assertRedirects(response, reverse("staff_profile_dashboard"))
+        delivery = StaffNotificationDelivery.objects.get(
+            report=report,
+            event=StaffNotificationDelivery.Event.REPORT_CHANGES_REQUESTED,
+        )
+        send_staff_notification(delivery.pk)
+        self.assertEqual(mail.outbox[-1].to, [self.user.email])
+        self.assertIn("Please add the agreed follow-up actions.", mail.outbox[-1].body)
 
     def test_linked_hr_user_can_manage_reports_from_staff_workspace(self):
         self.user.user_permissions.add(Permission.objects.get(codename="review_staff_profiles"))
@@ -163,6 +237,7 @@ class StaffPortalTests(TestCase):
         today = timezone.localdate()
         response = self.client.post(assignment_url, {
             "member": self.other_member.pk,
+            "activity_type": StaffTrainingAssignment.ActivityType.WORKSHOP,
             "title": "Portal-managed workshop",
             "organizer": "ACMAD",
             "start_date": today,

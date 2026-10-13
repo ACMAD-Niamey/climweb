@@ -179,6 +179,7 @@ class StaffTrainingAssignmentForm(forms.Form):
             }
         ),
     )
+    activity_type = forms.ChoiceField(label="Activity type", choices=StaffTrainingAssignment.ActivityType.choices)
     title = forms.CharField(max_length=200)
     organizer = forms.CharField(max_length=200, required=False)
     location = forms.CharField(max_length=200, required=False)
@@ -199,13 +200,13 @@ class StaffTrainingAssignmentForm(forms.Form):
         if data.get("start_date") and data.get("end_date") and data["end_date"] < data["start_date"]:
             self.add_error("end_date", "The end date cannot be before the start date.")
         if data.get("report_due_date") and data.get("end_date") and data["report_due_date"] < data["end_date"]:
-            self.add_error("report_due_date", "The report due date cannot be before the training ends.")
+            self.add_error("report_due_date", "The report due date cannot be before the activity ends.")
         return data
 
     def save(self, assigned_by):
         values = {
             key: self.cleaned_data[key]
-            for key in ["title", "organizer", "location", "description", "start_date", "end_date", "report_due_date", "status"]
+            for key in ["activity_type", "title", "organizer", "location", "description", "start_date", "end_date", "report_due_date", "status"]
         }
         return [
             StaffTrainingAssignment.objects.create(member=member, assigned_by=assigned_by, **values)

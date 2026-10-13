@@ -43,7 +43,18 @@ from .models import (
     StaffTrainingAssignment,
     StaffTrainingReport,
 )
-from .services import change_staff_employment, create_staff_member, edit_staff_member, invitation_valid, invite_staff, link_existing_staff_user, member_fingerprint, review_update
+from .notifications import queue_report_submitted_notifications, queue_training_assigned_notifications
+from .services import (
+    change_staff_employment,
+    create_staff_member,
+    edit_staff_member,
+    invitation_valid,
+    invite_staff,
+    link_existing_staff_user,
+    member_fingerprint,
+    review_training_report_submission,
+    review_update,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -207,7 +218,8 @@ def staff_hr_assign_training(request):
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             assignments = form.save(request.user)
-        messages.success(request, f"{len(assignments)} staff member(s) were nominated for {assignments[0].title}.")
+            queue_training_assigned_notifications(assignments)
+        messages.success(request, f"{len(assignments)} staff member(s) were assigned to {assignments[0].title}.")
         return redirect("staff_portal:hr_dashboard")
     return render(request, "staff/portal/hr_assign_training.html", {"form": form})
 
@@ -219,23 +231,16 @@ def staff_hr_review_training_report(request, report_id):
     report = get_object_or_404(StaffTrainingReport.objects.select_related("assignment__member"), pk=report_id)
     form = StaffTrainingReportReviewForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        if report.status != StaffTrainingReport.Status.SUBMITTED:
-            form.add_error(None, "Only a submitted report can be reviewed.")
+        try:
+            report, message = review_training_report_submission(
+                report.pk,
+                request.user,
+                form.cleaned_data["action"],
+                form.cleaned_data["comment"],
+            )
+        except ValidationError as exc:
+            form.add_error(None, exc)
         else:
-            report.reviewed_by = request.user
-            report.reviewed_at = timezone.now()
-            report.reviewer_comment = form.cleaned_data["comment"]
-            if form.cleaned_data["action"] == "approve":
-                report.status = StaffTrainingReport.Status.APPROVED
-                report.approved_at = timezone.now()
-                report.assignment.status = StaffTrainingAssignment.Status.COMPLETED
-                report.assignment.save(update_fields=["status", "updated_at"])
-                message = "Training report approved."
-            else:
-                report.status = StaffTrainingReport.Status.CHANGES_REQUESTED
-                report.approved_at = None
-                message = "Changes requested from the staff member."
-            report.save()
             messages.success(request, message)
             return redirect("staff_portal:hr_dashboard")
     return render(request, "staff/portal/hr_review_training_report.html", {"report": report, "form": form})
@@ -317,7 +322,7 @@ def training_report(request, assignment_id):
     if request.method == "POST":
         action = request.POST.get("action")
         if locked:
-            messages.error(request, "This report is locked while it is awaiting review or after publication.")
+            messages.error(request, "This report is locked while it is awaiting review or after approval.")
             return redirect("staff_portal:training_report", assignment_id=assignment.pk)
         if action not in {"save", "submit"}:
             return HttpResponse("Unknown action", status=400)
@@ -328,7 +333,9 @@ def training_report(request, assignment_id):
             report.submitted_at = timezone.now() if action == "submit" else None
             report.reviewer_comment = "" if action == "submit" else report.reviewer_comment
             report.save()
-            messages.success(request, "Report submitted to HR for publication." if action == "submit" else "Report draft saved.")
+            if action == "submit":
+                queue_report_submitted_notifications(report)
+            messages.success(request, "Report submitted to HR for approval." if action == "submit" else "Report draft saved.")
             return redirect("staff_portal:training_report", assignment_id=assignment.pk)
     return render(request, "staff/portal/training_report.html", {
         "assignment": assignment,
@@ -424,7 +431,8 @@ def assign_training(request):
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             assignments = form.save(request.user)
-        messages.success(request, f"{len(assignments)} staff member(s) were nominated for {assignments[0].title}.")
+            queue_training_assigned_notifications(assignments)
+        messages.success(request, f"{len(assignments)} staff member(s) were assigned to {assignments[0].title}.")
         return redirect("staff_profile_dashboard")
     return render(request, "staff/admin/assign_training.html", {"form": form})
 
@@ -435,23 +443,16 @@ def review_training_report(request, report_id):
     report = get_object_or_404(StaffTrainingReport.objects.select_related("assignment__member"), pk=report_id)
     form = StaffTrainingReportReviewForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        if report.status != StaffTrainingReport.Status.SUBMITTED:
-            form.add_error(None, "Only a submitted report can be reviewed.")
+        try:
+            report, message = review_training_report_submission(
+                report.pk,
+                request.user,
+                form.cleaned_data["action"],
+                form.cleaned_data["comment"],
+            )
+        except ValidationError as exc:
+            form.add_error(None, exc)
         else:
-            report.reviewed_by = request.user
-            report.reviewed_at = timezone.now()
-            report.reviewer_comment = form.cleaned_data["comment"]
-            if form.cleaned_data["action"] == "approve":
-                report.status = StaffTrainingReport.Status.APPROVED
-                report.approved_at = timezone.now()
-                report.assignment.status = StaffTrainingAssignment.Status.COMPLETED
-                report.assignment.save(update_fields=["status", "updated_at"])
-                message = "Training report approved."
-            else:
-                report.status = StaffTrainingReport.Status.CHANGES_REQUESTED
-                report.approved_at = None
-                message = "Changes requested from the staff member."
-            report.save()
             messages.success(request, message)
             return redirect("staff_profile_dashboard")
     return render(request, "staff/admin/review_training_report.html", {"report": report, "form": form})

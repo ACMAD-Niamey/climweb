@@ -9,7 +9,7 @@
 {% block content %}
 {% include "wagtailadmin/shared/header.html" with title="Staff Profiles" icon="user" %}
 <div class="nice-padding staff-admin">
-    <p><a href="{% url 'staff_training_assign' %}" class="button button-secondary">Assign training / workshop</a>{% if user.is_superuser %} <a href="{% url 'staff_profile_create' %}" class="button">Add staff member</a>{% endif %}</p>
+    <p><a href="{% url 'staff_training_assign' %}" class="button button-secondary">Assign activity</a>{% if user.is_superuser %} <a href="{% url 'staff_profile_create' %}" class="button">Add staff member</a>{% endif %}</p>
     <p>Invite staff to their portal, assign learning activities, track reports and review profile changes.</p>
     {% if console_email %}<div class="portal-notice">Local console email mode is enabled. Invitations are printed in the application terminal, not delivered to an inbox. Configure the SMTP email backend before inviting real staff.</div>{% endif %}
     {% if user.is_superuser %}
@@ -22,17 +22,17 @@
     {% endif %}
     <div class="portal-grid">
     <section class="portal-panel">
-        <h2>Training reports awaiting review</h2>
-        <div class="portal-table"><table class="listing"><thead><tr><th>Staff member</th><th>Training / workshop</th><th>Submitted</th><th>Action</th></tr></thead><tbody>
+        <h2>Activity reports awaiting review</h2>
+        <div class="portal-table"><table class="listing"><thead><tr><th>Staff member</th><th>Activity</th><th>Submitted</th><th>Action</th></tr></thead><tbody>
         {% for report in submitted_reports %}<tr><td>{{ report.assignment.member.name }}</td><td>{{ report.assignment.title }}</td><td>{{ report.submitted_at }}</td><td><a href="{% url 'staff_training_report_review' report.pk %}">Review report</a></td></tr>
         {% empty %}<tr><td colspan="4">No reports awaiting review.</td></tr>{% endfor %}
         </tbody></table></div>
     </section>
     <section class="portal-panel">
-        <h2>Recent training assignments</h2>
-        <div class="portal-table"><table class="listing"><thead><tr><th>Staff member</th><th>Activity</th><th>Status</th><th>Report</th></tr></thead><tbody>
-        {% for assignment in training_assignments %}<tr><td>{{ assignment.member.name }}</td><td>{{ assignment.title }}<br><small>{{ assignment.start_date }} – {{ assignment.end_date }}</small></td><td>{{ assignment.get_status_display }}</td><td>{% if assignment.report %}<a href="{% url 'staff_training_report_review' assignment.report.pk %}">{{ assignment.report.get_status_display }}</a>{% else %}Not started{% endif %}</td></tr>
-        {% empty %}<tr><td colspan="4">No training assignments yet.</td></tr>{% endfor %}
+        <h2>Recent activity assignments</h2>
+        <div class="portal-table"><table class="listing"><thead><tr><th>Staff member</th><th>Activity</th><th>Type</th><th>Status</th><th>Report</th></tr></thead><tbody>
+        {% for assignment in training_assignments %}<tr><td>{{ assignment.member.name }}</td><td>{{ assignment.title }}<br><small>{{ assignment.start_date }} – {{ assignment.end_date }}</small></td><td>{{ assignment.get_activity_type_display }}</td><td>{{ assignment.get_status_display }}</td><td>{% if assignment.report %}<a href="{% url 'staff_training_report_review' assignment.report.pk %}">{{ assignment.report.get_status_display }}</a>{% else %}Not started{% endif %}</td></tr>
+        {% empty %}<tr><td colspan="5">No activity assignments yet.</td></tr>{% endfor %}
         </tbody></table></div>
     </section>
     </div>
