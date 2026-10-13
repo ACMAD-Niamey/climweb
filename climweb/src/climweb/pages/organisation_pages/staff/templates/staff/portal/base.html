@@ -1,4 +1,5 @@
-{% load static i18n %}
+{% load static i18n wagtailimages_tags wagtailsettings_tags %}
+{% get_settings use_default_site=True %}
 <!doctype html>
 <html lang="en">
 <head>
@@ -6,25 +7,82 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="referrer" content="same-origin">
     <meta name="robots" content="noindex, nofollow">
-    <title>{% block title %}ACMAD · Staff Profile{% endblock %}</title>
+    <title>{% block title %}ACMAD · Staff Workspace{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=Noto+Sans+Arabic:wght@400;600;700&family=Open+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --portal-navy: {{ theme_tokens.navy_950|default:'#071f2e' }};
+            --portal-heading: {{ theme_tokens.navy_900|default:'#0a2a37' }};
+            --portal-primary: {{ theme_tokens.green_700|default:'#087a5a' }};
+            --portal-primary-hover: {{ theme_tokens.green_600|default:'#0a8f69' }};
+            --portal-primary-soft: {{ theme_tokens.green_100|default:'#dff3ec' }};
+            --portal-accent-color: {{ theme_tokens.yellow_400|default:'#f4c84a' }};
+            --portal-page-bg: {{ theme_tokens.sand_50|default:'#f7f6f1' }};
+            --portal-surface: {{ theme_tokens.white|default:'#ffffff' }};
+            --portal-text: {{ theme_tokens.ink|default:'#17303a' }};
+            --portal-subtle: {{ theme_tokens.muted|default:'#60727a' }};
+            --portal-border: {{ theme_tokens.line|default:'#dce4e5' }};
+            --portal-danger: {{ theme_tokens.danger|default:'#b93535' }};
+            --portal-shadow: {{ theme_tokens.shadow_sm|default:'0 8px 28px rgba(9, 42, 55, 0.08)' }};
+            --portal-font-body: {{ theme_tokens.body_font|default:'"DM Sans", sans-serif'|safe }};
+            --portal-font-heading: {{ theme_tokens.heading_font|default:'"Manrope", sans-serif'|safe }};
+        }
+    </style>
     <link rel="stylesheet" href="{% static 'staff/css/portal.css' %}">
 </head>
 <body>
-<header class="portal-header">
-    <a href="{% url 'staff_portal:profile' %}">ACMAD <span>Staff Profile</span></a>
-    {% if user.is_authenticated %}
-    <nav aria-label="Staff navigation">
-        <a href="{% url 'staff_portal:profile' %}">My Profile</a>
-        {% if user.staff_profile_access and not user.staff_profile_access.profile_only and perms.wagtailadmin.access_admin %}<a href="{% url 'wagtailadmin_home' %}">CMS dashboard</a>{% endif %}
-        <a href="{% url 'staff_portal:password_change' %}">Change password</a>
-        <form method="post" action="{% url 'staff_portal:logout' %}">{% csrf_token %}<button type="submit">Sign out</button></form>
-    </nav>
-    {% endif %}
-</header>
-<main class="portal-main">
+{% if user.is_authenticated and user.staff_profile_access %}
+<div class="portal-shell">
+    <aside class="portal-sidebar" id="portal-sidebar">
+        <a class="portal-brand" href="{% url 'staff_portal:dashboard' %}" aria-label="ACMAD staff dashboard">
+            <span class="portal-brand-mark">
+                {% if settings.base.OrganisationSetting.cms_logo %}
+                    {% image settings.base.OrganisationSetting.cms_logo max-160x72 alt="ACMAD" %}
+                {% elif settings.base.OrganisationSetting.logo %}
+                    {% image settings.base.OrganisationSetting.logo max-160x72 alt="ACMAD" %}
+                {% else %}
+                    <span class="portal-brand-fallback" aria-hidden="true">A</span>
+                {% endif %}
+            </span>
+            <span>Staff workspace</span>
+        </a>
+        <nav class="portal-nav" aria-label="Staff navigation">
+            <a data-section="dashboard" class="{% if request.resolver_match.url_name == 'dashboard' %}is-active{% endif %}" href="{% url 'staff_portal:dashboard' %}"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>Dashboard</a>
+            {% if perms.staff.review_staff_profiles %}<a class="{% if request.resolver_match.url_name == 'hr_dashboard' or request.resolver_match.url_name == 'hr_assign_training' or request.resolver_match.url_name == 'hr_review_training_report' %}is-active{% endif %}" href="{% url 'staff_portal:hr_dashboard' %}"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2"/></svg></span>HR Management</a>{% endif %}
+            <a data-section="training" class="{% if request.resolver_match.url_name == 'training_report' %}is-active{% endif %}" href="{% url 'staff_portal:dashboard' %}#training"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5 12 3l9 4.5-9 4.5-9-4.5Z"/><path d="M6.5 9.5v5.2c0 1.5 2.5 3.3 5.5 3.3s5.5-1.8 5.5-3.3V9.5M21 8v6"/></svg></span>Trainings and Reports</a>
+            <a data-section="files" href="{% url 'staff_portal:dashboard' %}#files"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H10l2 2h7.5A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-11Z"/></svg></span>File Management</a>
+            <a class="{% if request.resolver_match.url_name == 'profile' %}is-active{% endif %}" href="{% url 'staff_portal:profile' %}"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></svg></span>My Profile</a>
+            {% if not user.staff_profile_access.profile_only and perms.wagtailadmin.access_admin %}<a href="{% url 'wagtailadmin_home' %}"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM4 9h16M9 9v11"/></svg></span>CMS dashboard</a>{% endif %}
+        </nav>
+        <div class="portal-sidebar-footer">
+            <a href="{% url 'staff_portal:password_change' %}"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.1A1.7 1.7 0 0 0 8.55 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.1A1.7 1.7 0 0 0 4.6 8.55a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1A1.7 1.7 0 0 0 15.45 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.12.4.34.75.65 1 .3.25.7.39 1.1.4H21v4h-.1A1.7 1.7 0 0 0 19.4 15Z"/></svg></span>Account settings</a>
+            <form method="post" action="{% url 'staff_portal:logout' %}">{% csrf_token %}<button type="submit"><span class="portal-nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5M14 8l4 4-4 4M18 12H9"/></svg></span>Sign out</button></form>
+        </div>
+    </aside>
+    <div class="portal-workspace">
+        <header class="portal-topbar">
+            <button class="portal-menu-toggle" type="button" aria-label="Toggle navigation" aria-controls="portal-sidebar" aria-expanded="false">☰</button>
+            <div class="portal-topbar-copy"><strong>{% block page_name %}Staff workspace{% endblock %}</strong><span>{% now "l, d F Y" %}</span></div>
+            <div class="portal-user"><span>{% if user.staff_profile_access.member.photo %}{% image user.staff_profile_access.member.photo fill-80x80 %}{% else %}{{ user.staff_profile_access.member.name|slice:':1' }}{% endif %}</span><div><strong>{{ user.staff_profile_access.member.name }}</strong><small>{{ user.staff_profile_access.member.role }}</small></div></div>
+        </header>
+        <main class="portal-main">
+            {% for message in messages %}<div role="status" class="portal-notice">{{ message }}</div>{% endfor %}
+{% else %}
+<header class="portal-auth-header"><a href="/">ACMAD <span>Staff workspace</span></a></header>
+<main class="portal-main portal-auth-main">
     {% for message in messages %}<div role="status" class="portal-notice">{{ message }}</div>{% endfor %}
-    {% block content %}{% endblock %}
+{% endif %}
+{% block content %}{% endblock %}
+{% if user.is_authenticated and user.staff_profile_access %}
+        </main>
+    </div>
+</div>
+{% else %}
 </main>
+{% endif %}
 <script src="{% static 'staff/js/photo_preview.js' %}" defer></script>
+<script src="{% static 'staff/js/searchable_multiselect.js' %}" defer></script>
+<script src="{% static 'staff/js/portal.js' %}" defer></script>
 </body>
 </html>

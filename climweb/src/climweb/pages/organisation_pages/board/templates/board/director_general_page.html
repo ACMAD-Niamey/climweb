@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load static i18n wagtailcore_tags wagtailimages_tags wagtailembeds_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/on_the_job_training.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'board/css/board.css' %}">
+{% endblock extra_css %}
+
+{% block body_class %}ojt-page board-president-page director-general-page{% endblock %}
+
+{% block content %}
+    {% translate "Director General" as director_general_label %}
+    {% with director_general=page.director_general %}
+    <main class="president-page">
+        {% if page.banner_image %}
+            {% include "hero.html" with page=page %}
+        {% else %}
+            <section class="page-hero ojt-simple-hero">
+                <div class="page-hero-overlay"></div>
+                <div class="page-hero-body">
+                    <div class="container">
+                        <span class="page-hero-badge">{% translate "Leadership" %}</span>
+                        <h1 class="page-hero-title">{{ page.banner_title }}</h1>
+                        {% if page.banner_subtitle %}<p class="page-hero-subtitle">{{ page.banner_subtitle }}</p>{% endif %}
+                    </div>
+                </div>
+            </section>
+        {% endif %}
+
+        <section id="biography" class="ojt-section president-profile-section">
+            <div class="container">
+                <div class="ojt-intro president-profile">
+                    <figure class="dg-profile-figure">
+                        {% if director_general.photo %}
+                            {% image director_general.photo fill-760x820 as portrait %}
+                            <img class="ojt-intro-image president-profile-portrait" src="{{ portrait.url }}" alt="{{ director_general.name }}" width="{{ portrait.width }}" height="{{ portrait.height }}">
+                        {% else %}
+                            <img class="ojt-intro-image president-profile-portrait" src="{% static 'images/person.svg' %}" alt="" width="760" height="820">
+                        {% endif %}
+                        {% if page.photo_caption %}<figcaption class="dg-photo-caption">{{ page.photo_caption }}</figcaption>{% endif %}
+                    </figure>
+                    <div class="president-profile-copy">
+                        <p class="ojt-eyebrow">{{ director_general.role|default:director_general_label }}</p>
+                        <h2>{{ director_general.name|default:director_general_label }}</h2>
+                    </div>
+                    {% if page.inaugural_speech_title %}<h3 class="dg-inaugural-heading">{{ page.inaugural_speech_title }}</h3>{% endif %}
+                    {% if page.inaugural_speech %}<div class="president-biography format-text">{{ page.inaugural_speech|richtext }}</div>{% endif %}
+                    {% if page.inaugural_speech_document %}
+                        <a class="button is-primary dg-speech-document" href="{{ page.inaugural_speech_document.url }}" target="_blank" rel="noopener">
+                            {% translate "Download inaugural speech" %}
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        {% if page.video_url %}
+            <section id="message" class="ojt-section ojt-apply president-video-section">
+                <div class="container">
+                    <p class="ojt-eyebrow">{% translate "In their own words" %}</p>
+                    {% if page.video_title %}<h2>{{ page.video_title }}</h2>{% endif %}
+                    <article class="president-video-card">
+                        <div class="president-video-embed">
+                            {% embed page.video_url max_width=1200 %}
+                        </div>
+                        {% if page.video_caption %}<p class="president-video-caption">{{ page.video_caption }}</p>{% endif %}
+                    </article>
+                </div>
+            </section>
+        {% endif %}
+    </main>
+    {% endwith %}
+{% endblock content %}

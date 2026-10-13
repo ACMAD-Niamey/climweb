@@ -22,3 +22,13 @@ class BoardPresidentPageFactory(wagtail_factories.PageFactory):
     name = "Dr. Board President"
     biography = "<p>A leader committed to climate resilience.</p>"
     vision = "<p>A safer, climate-resilient Africa.</p>"
+
+
+class DirectorGeneralPageFactory(wagtail_factories.PageFactory):
+    class Meta:
+        model = models.DirectorGeneralPage
+
+    title = "Director General"
+    banner_title = "Director General"
+    photo_caption = "Director General of ACMAD"
+    inaugural_speech = "<p>Together, we will strengthen ACMAD.</p>"
