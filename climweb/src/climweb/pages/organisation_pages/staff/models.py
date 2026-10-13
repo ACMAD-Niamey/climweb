@@ -244,7 +244,14 @@ class StaffProfileUpdate(models.Model):
 
 
 class StaffTrainingAssignment(models.Model):
-    """A training or workshop nomination made by HR for a staff member."""
+    """A professional activity assignment made by HR for a staff member."""
+
+    class ActivityType(models.TextChoices):
+        TRAINING = "training", _("Training")
+        WORKSHOP = "workshop", _("Workshop")
+        EVENT = "event", _("Conference or event")
+        MEETING = "meeting", _("Meeting")
+        OTHER = "other", _("Other")
 
     class Status(models.TextChoices):
         NOMINATED = "nominated", _("Nominated")
@@ -253,6 +260,7 @@ class StaffTrainingAssignment(models.Model):
         CANCELLED = "cancelled", _("Cancelled")
 
     member = models.ForeignKey(StaffMember, on_delete=models.PROTECT, related_name="training_assignments")
+    activity_type = models.CharField(max_length=16, choices=ActivityType.choices, default=ActivityType.TRAINING)
     title = models.CharField(max_length=200)
     organizer = models.CharField(max_length=200, blank=True)
     location = models.CharField(max_length=200, blank=True)
@@ -279,7 +287,8 @@ class StaffTrainingAssignment(models.Model):
 
 def staff_report_upload_path(instance, filename):
     # Files are never linked directly; the authenticated download view serves them.
-    return f"staff-training-reports/{instance.assignment.member_id}/{instance.assignment_id}/{filename}"
+    report = instance.report
+    return f"staff-training-reports/{report.assignment.member_id}/{report.assignment_id}/{filename}"
 
 
 def staff_report_storage():
@@ -298,7 +307,6 @@ class StaffTrainingReport(models.Model):
     title = models.CharField(max_length=220)
     summary = models.TextField()
     outcomes = models.TextField(blank=True)
-    document = models.FileField(upload_to=staff_report_upload_path, storage=staff_report_storage, blank=True)
     drive_file_url = models.URLField(blank=True, verbose_name=_("Google Drive file link"))
     status = models.CharField(max_length=24, choices=Status.choices, default=Status.DRAFT)
     submitted_at = models.DateTimeField(null=True, blank=True)
@@ -320,3 +328,63 @@ class StaffTrainingReport(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class StaffTrainingReportDocument(models.Model):
+    report = models.ForeignKey(StaffTrainingReport, on_delete=models.CASCADE, related_name="documents")
+    file = models.FileField(upload_to=staff_report_upload_path, storage=staff_report_storage)
+    original_name = models.CharField(max_length=255)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["uploaded_at", "pk"]
+
+    def __str__(self):
+        return self.original_name
+
+
+class StaffNotificationDelivery(models.Model):
+    """Auditable, de-duplicated delivery record for staff workflow email."""
+
+    class Event(models.TextChoices):
+        TRAINING_ASSIGNED = "training_assigned", _("Activity assigned")
+        REPORT_SUBMITTED = "report_submitted", _("Report submitted")
+        REPORT_APPROVED = "report_approved", _("Report approved")
+        REPORT_CHANGES_REQUESTED = "report_changes_requested", _("Report changes requested")
+        REPORT_DUE_7_DAYS = "report_due_7_days", _("Report due in 7 days")
+        REPORT_DUE_3_DAYS = "report_due_3_days", _("Report due in 3 days")
+        REPORT_DUE_1_DAY = "report_due_1_day", _("Report due in 1 day")
+        REPORT_OVERDUE = "report_overdue", _("Report overdue")
+
+    class Status(models.TextChoices):
+        PENDING = "pending", _("Pending")
+        SENT = "sent", _("Sent")
+        FAILED = "failed", _("Failed")
+
+    event = models.CharField(max_length=40, choices=Event.choices)
+    assignment = models.ForeignKey(
+        StaffTrainingAssignment,
+        on_delete=models.CASCADE,
+        related_name="notification_deliveries",
+    )
+    report = models.ForeignKey(
+        StaffTrainingReport,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="notification_deliveries",
+    )
+    recipient = models.EmailField()
+    dedupe_key = models.CharField(max_length=64, unique=True)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    last_error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        indexes = [models.Index(fields=["status", "created_at"], name="staff_notif_status_created")]
+
+    def __str__(self):
+        return f"{self.get_event_display()} → {self.recipient}"

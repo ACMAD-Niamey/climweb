@@ -19,7 +19,18 @@ from wagtail.images import get_image_model
 from wagtailcache.cache import clear_cache
 from PIL import Image
 
-from .models import StaffEmployment, StaffEmploymentEvent, StaffMember, StaffPage, StaffPageSelection, StaffProfileAccess, StaffProfileUpdate
+from .models import (
+    StaffEmployment,
+    StaffEmploymentEvent,
+    StaffMember,
+    StaffPage,
+    StaffPageSelection,
+    StaffProfileAccess,
+    StaffProfileUpdate,
+    StaffTrainingAssignment,
+    StaffTrainingReport,
+)
+from .notifications import queue_report_reviewed_notification
 
 
 INVITATION_LIFETIME = timedelta(hours=48)
@@ -274,3 +285,37 @@ def review_update(update_id, reviewer, action, comment):
     update.reviewed_at = timezone.now()
     update.save()
     return update
+
+
+@transaction.atomic
+def review_training_report_submission(report_id, reviewer, action, comment):
+    if not reviewer.is_active or not reviewer.has_perm("staff.review_staff_profiles"):
+        raise ValidationError("You do not have permission to review activity reports.")
+    if action not in {"approve", "request_changes"}:
+        raise ValidationError("Unknown review action.")
+    report = (
+        StaffTrainingReport.objects.select_for_update(of=("self",))
+        .select_related("assignment__member__profile_access__user")
+        .get(pk=report_id)
+    )
+    if report.status != StaffTrainingReport.Status.SUBMITTED:
+        raise ValidationError("Only a submitted report can be reviewed.")
+
+    report.reviewed_by = reviewer
+    report.reviewed_at = timezone.now()
+    report.reviewer_comment = comment
+    if action == "approve":
+        report.status = StaffTrainingReport.Status.APPROVED
+        report.approved_at = timezone.now()
+        report.assignment.status = StaffTrainingAssignment.Status.COMPLETED
+        report.assignment.save(update_fields=["status", "updated_at"])
+        message = "Activity report approved."
+    else:
+        if not comment.strip():
+            raise ValidationError("Please explain the requested changes.")
+        report.status = StaffTrainingReport.Status.CHANGES_REQUESTED
+        report.approved_at = None
+        message = "Changes requested from the staff member."
+    report.save()
+    queue_report_reviewed_notification(report)
+    return report, message

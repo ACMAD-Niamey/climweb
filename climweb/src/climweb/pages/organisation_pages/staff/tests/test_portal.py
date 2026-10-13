@@ -1,4 +1,5 @@
 import re
+import tempfile
 from datetime import timedelta
 from io import BytesIO
 from unittest.mock import patch
@@ -9,8 +10,10 @@ from django.core import mail
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.files.storage import FileSystemStorage
 from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import reverse
+from django.utils.datastructures import MultiValueDict
 from django.utils import timezone
 from PIL import Image
 from wagtail.images import get_image_model
@@ -27,9 +30,12 @@ from ..models import (
     StaffPageSelection,
     StaffProfileAccess,
     StaffProfileUpdate,
+    StaffNotificationDelivery,
     StaffTrainingAssignment,
     StaffTrainingReport,
+    StaffTrainingReportDocument,
 )
+from ..notifications import queue_deadline_notifications, queue_training_assigned_notifications, send_staff_notification
 from ..services import change_staff_employment, invite_staff, link_existing_staff_user, member_fingerprint, review_update
 from ..wagtail_hooks import staff_profile_permissions
 
@@ -90,7 +96,7 @@ class StaffPortalTests(TestCase):
         self.assertContains(response, "Google Drive")
         self.assertContains(response, "Not configured")
         content = response.content.decode()
-        menu_labels = ["Dashboard", "Trainings and Reports", "File Management", "My Profile"]
+        menu_labels = ["Dashboard", "Activities &amp; Reports", "File Management", "My Profile"]
         menu_positions = [content.index(label) for label in menu_labels]
         self.assertEqual(menu_positions, sorted(menu_positions))
         self.assertContains(response, '<svg viewBox="0 0 24 24"', count=6)
@@ -108,6 +114,46 @@ class StaffPortalTests(TestCase):
         report.refresh_from_db()
         self.assertEqual(report.status, StaffTrainingReport.Status.SUBMITTED)
         self.assertIsNotNone(report.submitted_at)
+        delivery = StaffNotificationDelivery.objects.get(
+            event=StaffNotificationDelivery.Event.REPORT_SUBMITTED,
+            report=report,
+            recipient=self.admin.email,
+        )
+        with patch(
+            "climweb.pages.organisation_pages.staff.notifications._email_logo_url",
+            return_value="https://example.test/media/acmad-logo.png",
+        ):
+            send_staff_notification(delivery.pk)
+        self.assertEqual(mail.outbox[-1].to, [self.admin.email])
+        self.assertIn("awaiting review", mail.outbox[-1].subject)
+        self.assertIn(reverse("staff_portal:hr_review_training_report", args=[report.pk]), mail.outbox[-1].body)
+        self.assertNotIn(reverse("staff_training_report_review", args=[report.pk]), mail.outbox[-1].body)
+        self.assertNotIn("This is an automated message", mail.outbox[-1].body)
+        html = mail.outbox[-1].alternatives[0][0]
+        self.assertIn('src="https://example.test/media/acmad-logo.png"', html)
+        self.assertNotIn("This is an automated message", html)
+
+    def test_training_nomination_email_uses_staff_account_and_authenticated_link(self):
+        assignment = self.training_assignment()
+        deliveries = queue_training_assigned_notifications([assignment])
+        self.assertEqual(len(deliveries), 1)
+        self.assertEqual(deliveries[0].recipient, self.user.email)
+        self.assertTrue(send_staff_notification(deliveries[0].pk))
+        self.assertEqual(mail.outbox[-1].to, [self.user.email])
+        self.assertIn("Activity assignment", mail.outbox[-1].subject)
+        self.assertIn(reverse("staff_portal:training_report", args=[assignment.pk]), mail.outbox[-1].body)
+
+    def test_deadline_reminders_are_deduplicated(self):
+        today = timezone.localdate()
+        assignment = self.training_assignment(report_due_date=today + timedelta(days=7))
+        self.assertEqual(queue_deadline_notifications(today), 1)
+        self.assertEqual(queue_deadline_notifications(today), 0)
+        delivery = StaffNotificationDelivery.objects.get(
+            assignment=assignment,
+            event=StaffNotificationDelivery.Event.REPORT_DUE_7_DAYS,
+        )
+        send_staff_notification(delivery.pk)
+        self.assertIn("due in 7 days", mail.outbox[-1].subject)
 
     def test_staff_cannot_open_another_members_training_report(self):
         assignment = self.training_assignment(member=self.other_member)
@@ -123,6 +169,7 @@ class StaffPortalTests(TestCase):
         today = timezone.localdate()
         response = self.client.post(assignment_url, {
             "member": [self.member.pk, self.other_member.pk],
+            "activity_type": StaffTrainingAssignment.ActivityType.WORKSHOP,
             "title": "Hydrology training",
             "organizer": "WMO",
             "start_date": today,
@@ -133,6 +180,7 @@ class StaffPortalTests(TestCase):
         self.assertRedirects(response, reverse("staff_profile_dashboard"))
         self.assertEqual(StaffTrainingAssignment.objects.filter(title="Hydrology training").count(), 2)
         assignment = StaffTrainingAssignment.objects.get(title="Hydrology training", member=self.member)
+        self.assertEqual(assignment.activity_type, StaffTrainingAssignment.ActivityType.WORKSHOP)
         report = StaffTrainingReport.objects.create(
             assignment=assignment,
             title="Hydrology report",
@@ -147,6 +195,36 @@ class StaffPortalTests(TestCase):
         self.assertEqual(report.status, StaffTrainingReport.Status.APPROVED)
         self.assertIsNotNone(report.approved_at)
         self.assertEqual(assignment.status, StaffTrainingAssignment.Status.COMPLETED)
+        delivery = StaffNotificationDelivery.objects.get(
+            report=report,
+            event=StaffNotificationDelivery.Event.REPORT_APPROVED,
+        )
+        send_staff_notification(delivery.pk)
+        self.assertEqual(mail.outbox[-1].to, [self.user.email])
+        self.assertIn("approved", mail.outbox[-1].subject)
+
+    def test_changes_requested_email_contains_hr_comment(self):
+        assignment = self.training_assignment()
+        report = StaffTrainingReport.objects.create(
+            assignment=assignment,
+            title="Workshop report",
+            summary="Initial submission",
+            status=StaffTrainingReport.Status.SUBMITTED,
+            submitted_at=timezone.now(),
+        )
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("staff_training_report_review", args=[report.pk]),
+            {"action": "request_changes", "comment": "Please add the agreed follow-up actions."},
+        )
+        self.assertRedirects(response, reverse("staff_profile_dashboard"))
+        delivery = StaffNotificationDelivery.objects.get(
+            report=report,
+            event=StaffNotificationDelivery.Event.REPORT_CHANGES_REQUESTED,
+        )
+        send_staff_notification(delivery.pk)
+        self.assertEqual(mail.outbox[-1].to, [self.user.email])
+        self.assertIn("Please add the agreed follow-up actions.", mail.outbox[-1].body)
 
     def test_linked_hr_user_can_manage_reports_from_staff_workspace(self):
         self.user.user_permissions.add(Permission.objects.get(codename="review_staff_profiles"))
@@ -163,6 +241,7 @@ class StaffPortalTests(TestCase):
         today = timezone.localdate()
         response = self.client.post(assignment_url, {
             "member": self.other_member.pk,
+            "activity_type": StaffTrainingAssignment.ActivityType.WORKSHOP,
             "title": "Portal-managed workshop",
             "organizer": "ACMAD",
             "start_date": today,
@@ -197,10 +276,93 @@ class StaffPortalTests(TestCase):
         for filename, content_type in supported_files:
             with self.subTest(filename=filename):
                 form = StaffTrainingReportForm(
-                    {"title": "Training report", "summary": "Summary"},
-                    {"document": SimpleUploadedFile(filename, b"office-file", content_type=content_type)},
+                    {"title": "Activity report", "summary": "Summary"},
+                    MultiValueDict({"documents": [SimpleUploadedFile(filename, b"office-file", content_type=content_type)]}),
                 )
                 self.assertTrue(form.is_valid(), form.errors)
+
+    def test_training_report_accepts_at_most_three_documents(self):
+        def uploads(count):
+            return MultiValueDict({
+                "documents": [
+                    SimpleUploadedFile(f"document-{index}.pdf", b"pdf", content_type="application/pdf")
+                    for index in range(count)
+                ]
+            })
+
+        form = StaffTrainingReportForm({"title": "Activity report", "summary": "Summary"}, uploads(3))
+        self.assertTrue(form.is_valid(), form.errors)
+        form = StaffTrainingReportForm({"title": "Activity report", "summary": "Summary"}, uploads(4))
+        self.assertFalse(form.is_valid())
+        self.assertIn("no more than 3 documents", form.errors["documents"][0])
+
+    def test_staff_can_upload_and_download_three_report_documents(self):
+        assignment = self.training_assignment()
+        self.login_staff()
+        uploads = [
+            SimpleUploadedFile(f"supporting-{index}.pdf", f"file-{index}".encode(), content_type="application/pdf")
+            for index in range(1, 4)
+        ]
+        file_field = StaffTrainingReportDocument._meta.get_field("file")
+        with tempfile.TemporaryDirectory() as upload_root, patch.object(
+            file_field,
+            "storage",
+            FileSystemStorage(location=upload_root),
+        ):
+            response = self.client.post(
+                reverse("staff_portal:training_report", args=[assignment.pk]),
+                {
+                    "action": "save",
+                    "title": "Activity report",
+                    "summary": "Summary",
+                    "documents": uploads,
+                },
+            )
+            self.assertRedirects(response, reverse("staff_portal:training_report", args=[assignment.pk]))
+            report = StaffTrainingReport.objects.get(assignment=assignment)
+            self.assertEqual(report.documents.count(), 3)
+            document = report.documents.first()
+            response = self.client.get(reverse("staff_portal:training_report_download", args=[document.pk]))
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(b"".join(response.streaming_content), b"file-1")
+            self.assertIn(document.original_name, response["Content-Disposition"])
+
+    def test_existing_documents_count_toward_limit_and_can_be_removed(self):
+        report = StaffTrainingReport.objects.create(
+            assignment=self.training_assignment(),
+            title="Activity report",
+            summary="Summary",
+        )
+        existing = [
+            StaffTrainingReportDocument.objects.create(
+                report=report,
+                file=f"staff-training-reports/existing-{index}.pdf",
+                original_name=f"existing-{index}.pdf",
+            )
+            for index in range(2)
+        ]
+        new_files = MultiValueDict({
+            "documents": [
+                SimpleUploadedFile("new-1.pdf", b"pdf", content_type="application/pdf"),
+                SimpleUploadedFile("new-2.pdf", b"pdf", content_type="application/pdf"),
+            ]
+        })
+        form = StaffTrainingReportForm(
+            {"title": report.title, "summary": report.summary},
+            new_files,
+            instance=report,
+        )
+        self.assertFalse(form.is_valid())
+        form = StaffTrainingReportForm(
+            {
+                "title": report.title,
+                "summary": report.summary,
+                "remove_documents": [existing[0].pk],
+            },
+            new_files,
+            instance=report,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
 
     def unlinked_member(self):
         return StaffMember.objects.create(page=self.page, name="Existing Account Staff", role="Scientist", department=self.member.department)
