@@ -1,25 +1,35 @@
 {% extends "staff/portal/base.html" %}
-{% block title %}HR Management · ACMAD Staff{% endblock %}
-{% block page_name %}HR Management{% endblock %}
+{% block title %}HR Dashboard · ACMAD Staff{% endblock %}
+{% block page_name %}HR Dashboard{% endblock %}
 {% block content %}
-<div class="portal-page-heading"><div><p class="portal-eyebrow">HR MANAGEMENT</p><h1>Training and report management</h1><p>Nominate staff, track their assigned activities and review submitted reports.</p></div><a class="portal-button" href="{% url 'staff_portal:hr_assign_training' %}">Assign training or workshop</a></div>
+<div class="portal-page-heading"><div><p class="portal-eyebrow">HR DASHBOARD</p><h1>Activity and report management</h1><p>Assign professional activities, track staff participation and review submitted reports.</p></div><a class="portal-button" href="{% url 'staff_portal:hr_assign_training' %}">Assign activity</a></div>
 <div class="portal-stats" aria-label="HR report summary">
-    <article><span class="portal-stat-icon is-green">◇</span><div><small>Total assignments</small><strong>{{ assignment_count }}</strong><p>Training and workshops</p></div></article>
+    <article><span class="portal-stat-icon is-green">◇</span><div><small>Total assignments</small><strong>{{ assignment_count }}</strong><p>Professional activities</p></div></article>
     <article><span class="portal-stat-icon is-amber">!</span><div><small>Awaiting review</small><strong>{{ awaiting_review_count }}</strong><p>Submitted reports</p></div></article>
     <article><span class="portal-stat-icon is-blue">✓</span><div><small>Approved reports</small><strong>{{ approved_count }}</strong><p>Completed reviews</p></div></article>
 </div>
-<section class="portal-panel">
-    <h2>Reports awaiting review</h2>
-    <div class="portal-table"><table><thead><tr><th>Staff member</th><th>Training or workshop</th><th>Submitted</th><th>Action</th></tr></thead><tbody>
-    {% for report in submitted_reports %}<tr><td>{{ report.assignment.member.name }}</td><td>{{ report.assignment.title }}</td><td>{{ report.submitted_at|date:"d M Y, H:i" }}</td><td><a class="portal-text-link" href="{% url 'staff_portal:hr_review_training_report' report.pk %}">Review report →</a></td></tr>
+<section class="portal-panel" id="reports">
+    <div class="portal-panel-heading"><div><p class="portal-eyebrow">REPORTS</p><h2>Awaiting review</h2></div></div>
+    <div class="portal-table"><table><thead><tr><th>Staff member</th><th>Activity</th><th>Submitted</th><th>Action</th></tr></thead><tbody>
+    {% for report in submitted_reports %}<tr class="portal-clickable-row" data-href="{% url 'staff_portal:hr_review_training_report' report.pk %}" tabindex="0" role="link"><td>{{ report.assignment.member.name }}</td><td>{{ report.assignment.title }}</td><td>{{ report.submitted_at|date:"d M Y, H:i" }}</td><td><a class="portal-text-link" href="{% url 'staff_portal:hr_review_training_report' report.pk %}">Review report →</a></td></tr>
     {% empty %}<tr><td colspan="4">No reports are awaiting review.</td></tr>{% endfor %}
     </tbody></table></div>
+    {% if submitted_reports.paginator.num_pages > 1 %}<nav class="portal-pagination" aria-label="Reports pagination">
+        {% if submitted_reports.has_previous %}<a href="?reports_page={{ submitted_reports.previous_page_number }}&amp;assignments_page={{ training_assignments.number }}#reports">← Previous</a>{% else %}<span></span>{% endif %}
+        <span>Page {{ submitted_reports.number }} of {{ submitted_reports.paginator.num_pages }}</span>
+        {% if submitted_reports.has_next %}<a href="?reports_page={{ submitted_reports.next_page_number }}&amp;assignments_page={{ training_assignments.number }}#reports">Next →</a>{% else %}<span></span>{% endif %}
+    </nav>{% endif %}
 </section>
-<section class="portal-panel">
-    <h2>Training assignments</h2>
-    <div class="portal-table"><table><thead><tr><th>Staff member</th><th>Activity</th><th>Dates</th><th>Status</th><th>Report</th></tr></thead><tbody>
-    {% for assignment in training_assignments %}<tr><td>{{ assignment.member.name }}</td><td>{{ assignment.title }}</td><td>{{ assignment.start_date|date:"d M Y" }} – {{ assignment.end_date|date:"d M Y" }}</td><td><span class="portal-badge is-{{ assignment.status }}">{{ assignment.get_status_display }}</span></td><td>{% if assignment.report %}<a class="portal-text-link" href="{% url 'staff_portal:hr_review_training_report' assignment.report.pk %}">{{ assignment.report.get_status_display }} →</a>{% else %}Not started{% endif %}</td></tr>
-    {% empty %}<tr><td colspan="5">No training assignments yet.</td></tr>{% endfor %}
+<section class="portal-panel" id="activities">
+    <div class="portal-panel-heading"><div><p class="portal-eyebrow">NOMINATIONS</p><h2>Activity assignments</h2></div></div>
+    <div class="portal-table"><table><thead><tr><th>Staff member</th><th>Activity</th><th>Type</th><th>Dates</th><th>Status</th><th>Report</th></tr></thead><tbody>
+    {% for assignment in training_assignments %}<tr class="portal-clickable-row" data-href="{% url 'staff_portal:hr_training_assignment' assignment.pk %}" tabindex="0" role="link"><td>{{ assignment.member.name }}</td><td><a class="portal-row-primary-link" href="{% url 'staff_portal:hr_training_assignment' assignment.pk %}">{{ assignment.title }}</a></td><td>{{ assignment.get_activity_type_display }}</td><td>{{ assignment.start_date|date:"d M Y" }} – {{ assignment.end_date|date:"d M Y" }}</td><td><span class="portal-badge is-{{ assignment.status }}">{{ assignment.get_status_display }}</span></td><td>{% if assignment.report %}<a class="portal-text-link" href="{% url 'staff_portal:hr_review_training_report' assignment.report.pk %}">{{ assignment.report.get_status_display }} →</a>{% else %}Not started{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="6">No activity assignments yet.</td></tr>{% endfor %}
     </tbody></table></div>
+    {% if training_assignments.paginator.num_pages > 1 %}<nav class="portal-pagination" aria-label="Activity assignments pagination">
+        {% if training_assignments.has_previous %}<a href="?reports_page={{ submitted_reports.number }}&amp;assignments_page={{ training_assignments.previous_page_number }}#activities">← Previous</a>{% else %}<span></span>{% endif %}
+        <span>Page {{ training_assignments.number }} of {{ training_assignments.paginator.num_pages }}</span>
+        {% if training_assignments.has_next %}<a href="?reports_page={{ submitted_reports.number }}&amp;assignments_page={{ training_assignments.next_page_number }}#activities">Next →</a>{% else %}<span></span>{% endif %}
+    </nav>{% endif %}
 </section>
 {% endblock %}

@@ -1,4 +1,5 @@
 import re
+import tempfile
 from datetime import timedelta
 from io import BytesIO
 from unittest.mock import patch
@@ -9,8 +10,10 @@ from django.core import mail
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.files.storage import FileSystemStorage
 from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import reverse
+from django.utils.datastructures import MultiValueDict
 from django.utils import timezone
 from PIL import Image
 from wagtail.images import get_image_model
@@ -27,9 +30,12 @@ from ..models import (
     StaffPageSelection,
     StaffProfileAccess,
     StaffProfileUpdate,
+    StaffNotificationDelivery,
     StaffTrainingAssignment,
     StaffTrainingReport,
+    StaffTrainingReportDocument,
 )
+from ..notifications import queue_deadline_notifications, queue_training_assigned_notifications, send_staff_notification
 from ..services import change_staff_employment, invite_staff, link_existing_staff_user, member_fingerprint, review_update
 from ..wagtail_hooks import staff_profile_permissions
 
@@ -61,6 +67,14 @@ class StaffPortalTests(TestCase):
     def login_staff(self):
         self.client.force_login(self.user)
 
+    def test_staff_login_uses_dashboard_branding_and_copyright(self):
+        response = self.client.get(reverse("staff_portal:login"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="portal-auth-brand-mark"')
+        self.assertContains(response, "Staff workspace")
+        self.assertContains(response, f"© {timezone.localdate().year} ACMAD. All rights reserved.")
+        self.assertContains(response, "Sign in to your workspace")
+
     def training_assignment(self, member=None, **kwargs):
         today = timezone.localdate()
         values = {
@@ -90,7 +104,7 @@ class StaffPortalTests(TestCase):
         self.assertContains(response, "Google Drive")
         self.assertContains(response, "Not configured")
         content = response.content.decode()
-        menu_labels = ["Dashboard", "Trainings and Reports", "File Management", "My Profile"]
+        menu_labels = ["Dashboard", "Activities &amp; Reports", "File Management", "My Profile"]
         menu_positions = [content.index(label) for label in menu_labels]
         self.assertEqual(menu_positions, sorted(menu_positions))
         self.assertContains(response, '<svg viewBox="0 0 24 24"', count=6)
@@ -108,6 +122,46 @@ class StaffPortalTests(TestCase):
         report.refresh_from_db()
         self.assertEqual(report.status, StaffTrainingReport.Status.SUBMITTED)
         self.assertIsNotNone(report.submitted_at)
+        delivery = StaffNotificationDelivery.objects.get(
+            event=StaffNotificationDelivery.Event.REPORT_SUBMITTED,
+            report=report,
+            recipient=self.admin.email,
+        )
+        with patch(
+            "climweb.pages.organisation_pages.staff.notifications._email_logo_url",
+            return_value="https://example.test/media/acmad-logo.png",
+        ):
+            send_staff_notification(delivery.pk)
+        self.assertEqual(mail.outbox[-1].to, [self.admin.email])
+        self.assertIn("awaiting review", mail.outbox[-1].subject)
+        self.assertIn(reverse("staff_portal:hr_review_training_report", args=[report.pk]), mail.outbox[-1].body)
+        self.assertNotIn(reverse("staff_training_report_review", args=[report.pk]), mail.outbox[-1].body)
+        self.assertNotIn("This is an automated message", mail.outbox[-1].body)
+        html = mail.outbox[-1].alternatives[0][0]
+        self.assertIn('src="https://example.test/media/acmad-logo.png"', html)
+        self.assertNotIn("This is an automated message", html)
+
+    def test_training_nomination_email_uses_staff_account_and_authenticated_link(self):
+        assignment = self.training_assignment()
+        deliveries = queue_training_assigned_notifications([assignment])
+        self.assertEqual(len(deliveries), 1)
+        self.assertEqual(deliveries[0].recipient, self.user.email)
+        self.assertTrue(send_staff_notification(deliveries[0].pk))
+        self.assertEqual(mail.outbox[-1].to, [self.user.email])
+        self.assertIn("Activity assignment", mail.outbox[-1].subject)
+        self.assertIn(reverse("staff_portal:training_report", args=[assignment.pk]), mail.outbox[-1].body)
+
+    def test_deadline_reminders_are_deduplicated(self):
+        today = timezone.localdate()
+        assignment = self.training_assignment(report_due_date=today + timedelta(days=7))
+        self.assertEqual(queue_deadline_notifications(today), 1)
+        self.assertEqual(queue_deadline_notifications(today), 0)
+        delivery = StaffNotificationDelivery.objects.get(
+            assignment=assignment,
+            event=StaffNotificationDelivery.Event.REPORT_DUE_7_DAYS,
+        )
+        send_staff_notification(delivery.pk)
+        self.assertIn("due in 7 days", mail.outbox[-1].subject)
 
     def test_staff_cannot_open_another_members_training_report(self):
         assignment = self.training_assignment(member=self.other_member)
@@ -120,9 +174,11 @@ class StaffPortalTests(TestCase):
         form_response = self.client.get(assignment_url)
         self.assertContains(form_response, 'data-searchable-multiselect="true"')
         self.assertContains(form_response, "staff/js/searchable_multiselect.js")
+        self.assertNotIn("status", form_response.context["form"].fields)
         today = timezone.localdate()
         response = self.client.post(assignment_url, {
             "member": [self.member.pk, self.other_member.pk],
+            "activity_type": StaffTrainingAssignment.ActivityType.WORKSHOP,
             "title": "Hydrology training",
             "organizer": "WMO",
             "start_date": today,
@@ -133,6 +189,7 @@ class StaffPortalTests(TestCase):
         self.assertRedirects(response, reverse("staff_profile_dashboard"))
         self.assertEqual(StaffTrainingAssignment.objects.filter(title="Hydrology training").count(), 2)
         assignment = StaffTrainingAssignment.objects.get(title="Hydrology training", member=self.member)
+        self.assertEqual(assignment.activity_type, StaffTrainingAssignment.ActivityType.WORKSHOP)
         report = StaffTrainingReport.objects.create(
             assignment=assignment,
             title="Hydrology report",
@@ -147,31 +204,66 @@ class StaffPortalTests(TestCase):
         self.assertEqual(report.status, StaffTrainingReport.Status.APPROVED)
         self.assertIsNotNone(report.approved_at)
         self.assertEqual(assignment.status, StaffTrainingAssignment.Status.COMPLETED)
+        delivery = StaffNotificationDelivery.objects.get(
+            report=report,
+            event=StaffNotificationDelivery.Event.REPORT_APPROVED,
+        )
+        send_staff_notification(delivery.pk)
+        self.assertEqual(mail.outbox[-1].to, [self.user.email])
+        self.assertIn("approved", mail.outbox[-1].subject)
+
+    def test_changes_requested_email_contains_hr_comment(self):
+        assignment = self.training_assignment()
+        report = StaffTrainingReport.objects.create(
+            assignment=assignment,
+            title="Workshop report",
+            summary="Initial submission",
+            status=StaffTrainingReport.Status.SUBMITTED,
+            submitted_at=timezone.now(),
+        )
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("staff_training_report_review", args=[report.pk]),
+            {"action": "request_changes", "comment": "Please add the agreed follow-up actions."},
+        )
+        self.assertRedirects(response, reverse("staff_profile_dashboard"))
+        delivery = StaffNotificationDelivery.objects.get(
+            report=report,
+            event=StaffNotificationDelivery.Event.REPORT_CHANGES_REQUESTED,
+        )
+        send_staff_notification(delivery.pk)
+        self.assertEqual(mail.outbox[-1].to, [self.user.email])
+        self.assertIn("Please add the agreed follow-up actions.", mail.outbox[-1].body)
 
     def test_linked_hr_user_can_manage_reports_from_staff_workspace(self):
         self.user.user_permissions.add(Permission.objects.get(codename="review_staff_profiles"))
         self.login_staff()
         dashboard_url = reverse("staff_portal:hr_dashboard")
         response = self.client.get(reverse("staff_portal:dashboard"))
-        self.assertContains(response, "HR Management")
-        self.assertEqual(self.client.get(dashboard_url).status_code, 200)
+        self.assertNotContains(response, "HR Management")
+        hr_dashboard = self.client.get(dashboard_url)
+        self.assertContains(hr_dashboard, "HR Dashboard")
+        self.assertNotContains(hr_dashboard, "CMS dashboard")
         assignment_url = reverse("staff_portal:hr_assign_training")
         assignment_form = self.client.get(assignment_url)
         self.assertContains(assignment_form, 'data-searchable-multiselect="true"')
         self.assertContains(assignment_form, "staff/js/searchable_multiselect.js")
+        self.assertNotIn("status", assignment_form.context["form"].fields)
 
         today = timezone.localdate()
         response = self.client.post(assignment_url, {
             "member": self.other_member.pk,
+            "activity_type": StaffTrainingAssignment.ActivityType.WORKSHOP,
             "title": "Portal-managed workshop",
             "organizer": "ACMAD",
             "start_date": today,
             "end_date": today + timedelta(days=1),
             "report_due_date": today + timedelta(days=4),
-            "status": StaffTrainingAssignment.Status.NOMINATED,
+            "status": StaffTrainingAssignment.Status.CANCELLED,
         })
         self.assertRedirects(response, dashboard_url)
         assignment = StaffTrainingAssignment.objects.get(title="Portal-managed workshop")
+        self.assertEqual(assignment.status, StaffTrainingAssignment.Status.NOMINATED)
         report = StaffTrainingReport.objects.create(
             assignment=assignment,
             title="Workshop report",
@@ -189,6 +281,70 @@ class StaffPortalTests(TestCase):
         self.assertEqual(report.status, StaffTrainingReport.Status.APPROVED)
         self.assertEqual(assignment.status, StaffTrainingAssignment.Status.COMPLETED)
 
+    def test_hr_dashboard_paginates_clickable_lists_by_five(self):
+        self.user.user_permissions.add(Permission.objects.get(codename="review_staff_profiles"))
+        self.login_staff()
+        today = timezone.localdate()
+        for index in range(7):
+            assignment = self.training_assignment(
+                title=f"Paginated activity {index}",
+                start_date=today + timedelta(days=index + 1),
+                end_date=today + timedelta(days=index + 2),
+            )
+            StaffTrainingReport.objects.create(
+                assignment=assignment,
+                title=f"Paginated report {index}",
+                summary="Ready for review",
+                status=StaffTrainingReport.Status.SUBMITTED,
+                submitted_at=timezone.now() + timedelta(minutes=index),
+            )
+
+        response = self.client.get(reverse("staff_portal:hr_dashboard"))
+        self.assertEqual(len(response.context["training_assignments"]), 5)
+        self.assertEqual(len(response.context["submitted_reports"]), 5)
+        self.assertContains(response, 'class="portal-clickable-row"', count=10)
+        self.assertContains(response, "Page 1 of 2", count=2)
+
+        response = self.client.get(reverse("staff_portal:hr_dashboard"), {
+            "assignments_page": 2,
+            "reports_page": 2,
+        })
+        self.assertEqual(len(response.context["training_assignments"]), 2)
+        self.assertEqual(len(response.context["submitted_reports"]), 2)
+
+    def test_hr_can_remove_nomination_only_before_activity_starts(self):
+        self.user.user_permissions.add(Permission.objects.get(codename="review_staff_profiles"))
+        self.login_staff()
+        today = timezone.localdate()
+        future = self.training_assignment(
+            title="Future activity",
+            start_date=today + timedelta(days=1),
+            end_date=today + timedelta(days=2),
+        )
+        detail_url = reverse("staff_portal:hr_training_assignment", args=[future.pk])
+        remove_url = reverse("staff_portal:hr_remove_nomination", args=[future.pk])
+        self.assertContains(self.client.get(detail_url), "Remove nomination")
+        response = self.client.post(remove_url)
+        self.assertRedirects(response, detail_url)
+        future.refresh_from_db()
+        self.assertEqual(future.status, StaffTrainingAssignment.Status.CANCELLED)
+        delivery = StaffNotificationDelivery.objects.get(
+            assignment=future,
+            event=StaffNotificationDelivery.Event.ACTIVITY_NOMINATION_REMOVED,
+        )
+        self.assertEqual(delivery.recipient, self.user.email)
+        self.assertTrue(send_staff_notification(delivery.pk))
+        self.assertIn("nomination removed", mail.outbox[-1].subject.lower())
+        self.assertIn("no longer expected to attend", mail.outbox[-1].body)
+        self.assertIn(reverse("staff_portal:dashboard"), mail.outbox[-1].body)
+        self.assertEqual(self.client.get(remove_url).status_code, 405)
+
+        started = self.training_assignment(title="Started activity")
+        started_remove_url = reverse("staff_portal:hr_remove_nomination", args=[started.pk])
+        self.client.post(started_remove_url)
+        started.refresh_from_db()
+        self.assertEqual(started.status, StaffTrainingAssignment.Status.NOMINATED)
+
     def test_training_reports_accept_docx_and_pptx_uploads(self):
         supported_files = [
             ("report.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
@@ -197,10 +353,93 @@ class StaffPortalTests(TestCase):
         for filename, content_type in supported_files:
             with self.subTest(filename=filename):
                 form = StaffTrainingReportForm(
-                    {"title": "Training report", "summary": "Summary"},
-                    {"document": SimpleUploadedFile(filename, b"office-file", content_type=content_type)},
+                    {"title": "Activity report", "summary": "Summary"},
+                    MultiValueDict({"documents": [SimpleUploadedFile(filename, b"office-file", content_type=content_type)]}),
                 )
                 self.assertTrue(form.is_valid(), form.errors)
+
+    def test_training_report_accepts_at_most_three_documents(self):
+        def uploads(count):
+            return MultiValueDict({
+                "documents": [
+                    SimpleUploadedFile(f"document-{index}.pdf", b"pdf", content_type="application/pdf")
+                    for index in range(count)
+                ]
+            })
+
+        form = StaffTrainingReportForm({"title": "Activity report", "summary": "Summary"}, uploads(3))
+        self.assertTrue(form.is_valid(), form.errors)
+        form = StaffTrainingReportForm({"title": "Activity report", "summary": "Summary"}, uploads(4))
+        self.assertFalse(form.is_valid())
+        self.assertIn("no more than 3 documents", form.errors["documents"][0])
+
+    def test_staff_can_upload_and_download_three_report_documents(self):
+        assignment = self.training_assignment()
+        self.login_staff()
+        uploads = [
+            SimpleUploadedFile(f"supporting-{index}.pdf", f"file-{index}".encode(), content_type="application/pdf")
+            for index in range(1, 4)
+        ]
+        file_field = StaffTrainingReportDocument._meta.get_field("file")
+        with tempfile.TemporaryDirectory() as upload_root, patch.object(
+            file_field,
+            "storage",
+            FileSystemStorage(location=upload_root),
+        ):
+            response = self.client.post(
+                reverse("staff_portal:training_report", args=[assignment.pk]),
+                {
+                    "action": "save",
+                    "title": "Activity report",
+                    "summary": "Summary",
+                    "documents": uploads,
+                },
+            )
+            self.assertRedirects(response, reverse("staff_portal:training_report", args=[assignment.pk]))
+            report = StaffTrainingReport.objects.get(assignment=assignment)
+            self.assertEqual(report.documents.count(), 3)
+            document = report.documents.first()
+            response = self.client.get(reverse("staff_portal:training_report_download", args=[document.pk]))
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(b"".join(response.streaming_content), b"file-1")
+            self.assertIn(document.original_name, response["Content-Disposition"])
+
+    def test_existing_documents_count_toward_limit_and_can_be_removed(self):
+        report = StaffTrainingReport.objects.create(
+            assignment=self.training_assignment(),
+            title="Activity report",
+            summary="Summary",
+        )
+        existing = [
+            StaffTrainingReportDocument.objects.create(
+                report=report,
+                file=f"staff-training-reports/existing-{index}.pdf",
+                original_name=f"existing-{index}.pdf",
+            )
+            for index in range(2)
+        ]
+        new_files = MultiValueDict({
+            "documents": [
+                SimpleUploadedFile("new-1.pdf", b"pdf", content_type="application/pdf"),
+                SimpleUploadedFile("new-2.pdf", b"pdf", content_type="application/pdf"),
+            ]
+        })
+        form = StaffTrainingReportForm(
+            {"title": report.title, "summary": report.summary},
+            new_files,
+            instance=report,
+        )
+        self.assertFalse(form.is_valid())
+        form = StaffTrainingReportForm(
+            {
+                "title": report.title,
+                "summary": report.summary,
+                "remove_documents": [existing[0].pk],
+            },
+            new_files,
+            instance=report,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
 
     def unlinked_member(self):
         return StaffMember.objects.create(page=self.page, name="Existing Account Staff", role="Scientist", department=self.member.department)
@@ -224,7 +463,7 @@ class StaffPortalTests(TestCase):
         self.client.force_login(self.admin)
         self.assertEqual(self.client.get("/cms-admin/").status_code, 200)
         self.assertContains(self.client.get(reverse("staff_portal:profile")), member.name)
-        self.assertContains(self.client.get(reverse("staff_portal:profile")), "CMS dashboard")
+        self.assertNotContains(self.client.get(reverse("staff_portal:profile")), "CMS dashboard")
 
     def test_link_existing_editor_retains_permissions_and_can_login_by_email(self):
         member = self.unlinked_member()
@@ -995,6 +1234,59 @@ class StaffPortalTests(TestCase):
         self.assertContains(self.client.get(reverse("staff_profile_review", args=[update.pk])), "Submitted changes")
         self.login_staff()
         self.assertEqual(self.client.post(reverse("staff_profile_review", args=[update.pk]), {"action": "approve"}).status_code, 403)
+
+    def test_bulk_profile_invite_resends_pending_invites_and_reminds_active_accounts(self):
+        StaffProfileUpdate.objects.create(
+            access=self.other_access,
+            biography="Already updated",
+            status=StaffProfileUpdate.Status.APPROVED,
+            source_fingerprint=member_fingerprint(self.other_member),
+        )
+        pending_member = StaffMember.objects.create(
+            page=self.page,
+            name="Pending Profile Staff",
+            role="Scientist",
+            department=self.member.department,
+        )
+        request = RequestFactory().get("/", HTTP_HOST="localhost")
+        pending_access = invite_staff(pending_member, "pending-profile@example.test", request)
+        first_invited_at = pending_access.invited_at
+        mail.outbox.clear()
+
+        self.client.force_login(self.admin)
+        dashboard = self.client.get(reverse("staff_profile_dashboard"))
+        self.assertContains(dashboard, "Bulk profile invitations")
+        self.assertContains(dashboard, "Pilot Staff — pilot@example.test")
+        self.assertContains(dashboard, "Pending Profile Staff — pending-profile@example.test")
+        self.assertNotContains(dashboard, "Other Staff — other@example.test")
+        response = self.client.post(reverse("staff_profile_bulk_invite"), {"confirm": "yes"}, follow=True)
+        self.assertContains(response, "Sent 1 invitation(s) and 1 profile reminder(s).")
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertEqual(
+            {message.subject for message in mail.outbox},
+            {"Set up your ACMAD staff profile account", "Complete your ACMAD staff profile"},
+        )
+        pending_access.refresh_from_db()
+        self.assertGreater(pending_access.invited_at, first_invited_at)
+
+    def test_bulk_profile_invite_requires_confirmation_and_superuser(self):
+        url = reverse("staff_profile_bulk_invite")
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.get(url).status_code, 405)
+        response = self.client.post(url, {}, follow=True)
+        self.assertContains(response, "Confirm that you want to email all eligible staff members.")
+        self.assertEqual(len(mail.outbox), 0)
+
+        reviewer = get_user_model().objects.create_user(username="bulk-reviewer", password="Reviewer-password-9284!")
+        reviewer.user_permissions.add(
+            Permission.objects.get(codename="review_staff_profiles"),
+            Permission.objects.get(codename="access_admin"),
+        )
+        self.client.force_login(reviewer)
+        denied = self.client.post(url, {"confirm": "yes"})
+        self.assertEqual(denied.status_code, 302)
+        self.assertEqual(denied["Location"], reverse("wagtailadmin_home"))
+        self.assertEqual(len(mail.outbox), 0)
 
     def test_admin_theme_styles_are_scoped_to_admin_screens(self):
         update = self.draft()

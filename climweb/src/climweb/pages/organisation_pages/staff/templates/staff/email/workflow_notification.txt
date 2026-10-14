@@ -1,0 +1,13 @@
+{{ greeting }}
+
+{{ headline }}
+
+{{ message }}
+
+{% for detail in details %}{{ detail.label }}: {{ detail.value }}
+{% endfor %}{% if comment %}
+HR comment:
+{{ comment }}
+{% endif %}
+{{ action_label }}:
+{{ action_url }}

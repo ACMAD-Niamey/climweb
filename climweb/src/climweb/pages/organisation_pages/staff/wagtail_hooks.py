@@ -19,6 +19,7 @@ def staff_profile_permissions():
 def staff_admin_urls():
     return [
         path("staff-profiles/", views.dashboard, name="staff_profile_dashboard"),
+        path("staff-profiles/bulk-invite/", views.bulk_invite_profile_updates, name="staff_profile_bulk_invite"),
         path("staff-profiles/add/", views.create_member, name="staff_profile_create"),
         path("staff-profiles/training/assign/", views.assign_training, name="staff_training_assign"),
         path("staff-profiles/training-report/<int:report_id>/", views.review_training_report, name="staff_training_report_review"),

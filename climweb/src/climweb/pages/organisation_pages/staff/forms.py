@@ -13,6 +13,7 @@ from .models import (
     StaffPage,
     StaffTrainingAssignment,
     StaffTrainingReport,
+    StaffTrainingReportDocument,
 )
 
 
@@ -179,6 +180,7 @@ class StaffTrainingAssignmentForm(forms.Form):
             }
         ),
     )
+    activity_type = forms.ChoiceField(label="Activity type", choices=StaffTrainingAssignment.ActivityType.choices)
     title = forms.CharField(max_length=200)
     organizer = forms.CharField(max_length=200, required=False)
     location = forms.CharField(max_length=200, required=False)
@@ -186,7 +188,6 @@ class StaffTrainingAssignmentForm(forms.Form):
     start_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
     end_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
     report_due_date = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
-    status = forms.ChoiceField(choices=StaffTrainingAssignment.Status.choices, initial=StaffTrainingAssignment.Status.NOMINATED)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -199,37 +200,71 @@ class StaffTrainingAssignmentForm(forms.Form):
         if data.get("start_date") and data.get("end_date") and data["end_date"] < data["start_date"]:
             self.add_error("end_date", "The end date cannot be before the start date.")
         if data.get("report_due_date") and data.get("end_date") and data["report_due_date"] < data["end_date"]:
-            self.add_error("report_due_date", "The report due date cannot be before the training ends.")
+            self.add_error("report_due_date", "The report due date cannot be before the activity ends.")
         return data
 
     def save(self, assigned_by):
         values = {
             key: self.cleaned_data[key]
-            for key in ["title", "organizer", "location", "description", "start_date", "end_date", "report_due_date", "status"]
+            for key in ["activity_type", "title", "organizer", "location", "description", "start_date", "end_date", "report_due_date"]
         }
         return [
-            StaffTrainingAssignment.objects.create(member=member, assigned_by=assigned_by, **values)
+            StaffTrainingAssignment.objects.create(
+                member=member,
+                assigned_by=assigned_by,
+                status=StaffTrainingAssignment.Status.NOMINATED,
+                **values,
+            )
             for member in self.cleaned_data["member"]
         ]
 
 
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class MultipleFileField(forms.FileField):
+    def clean(self, data, initial=None):
+        if not data:
+            return []
+        files = data if isinstance(data, (list, tuple)) else [data]
+        clean_file = super().clean
+        return [clean_file(upload, initial) for upload in files]
+
+
 class StaffTrainingReportForm(forms.ModelForm):
+    documents = MultipleFileField(
+        required=False,
+        label="Documents",
+        widget=MultipleFileInput(attrs={"accept": ".pdf,.doc,.docx,.ppt,.pptx,.odt,.odp"}),
+        help_text="Upload up to 3 PDF, Word, PowerPoint or OpenDocument files. Each file may be up to 10 MB.",
+    )
+    remove_documents = forms.ModelMultipleChoiceField(
+        queryset=StaffTrainingReportDocument.objects.none(),
+        required=False,
+        label="Remove existing documents",
+        widget=forms.CheckboxSelectMultiple,
+    )
+
     class Meta:
         model = StaffTrainingReport
-        fields = ["title", "summary", "outcomes", "document", "drive_file_url"]
+        fields = ["title", "summary", "outcomes", "drive_file_url"]
         labels = {"outcomes": "Key outcomes and follow-up actions"}
         help_texts = {
-            "document": "Optional PDF, Word (DOC/DOCX), PowerPoint (PPT/PPTX) or OpenDocument file, up to 10 MB.",
             "drive_file_url": "Optional link to the report in the organization's Google Drive.",
         }
         widgets = {"summary": forms.Textarea(attrs={"rows": 7}), "outcomes": forms.Textarea(attrs={"rows": 5})}
 
-    def clean_document(self):
-        upload = self.cleaned_data.get("document")
-        if not upload:
-            return upload
-        if upload.size > 10 * 1024 * 1024:
-            raise forms.ValidationError("The report document must be no larger than 10 MB.")
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields["remove_documents"].queryset = self.instance.documents.all()
+        else:
+            self.fields["remove_documents"].widget = forms.HiddenInput()
+        self.order_fields(["title", "summary", "outcomes", "documents", "remove_documents", "drive_file_url"])
+
+    def clean_documents(self):
+        uploads = self.cleaned_data.get("documents", [])
         allowed = {
             "application/pdf",
             "application/msword",
@@ -239,9 +274,33 @@ class StaffTrainingReportForm(forms.ModelForm):
             "application/vnd.oasis.opendocument.text",
             "application/vnd.oasis.opendocument.presentation",
         }
-        if getattr(upload, "content_type", "") not in allowed:
-            raise forms.ValidationError("Upload a PDF, Word, PowerPoint or OpenDocument file.")
-        return upload
+        for upload in uploads:
+            if upload.size > 10 * 1024 * 1024:
+                raise forms.ValidationError(f"{upload.name} must be no larger than 10 MB.")
+            if getattr(upload, "content_type", "") not in allowed:
+                raise forms.ValidationError(f"{upload.name} is not a supported PDF, Word, PowerPoint or OpenDocument file.")
+        return uploads
+
+    def clean(self):
+        data = super().clean()
+        current_count = self.instance.documents.count() if self.instance and self.instance.pk else 0
+        removed_count = data.get("remove_documents").count() if data.get("remove_documents") is not None else 0
+        if current_count - removed_count + len(data.get("documents", [])) > 3:
+            self.add_error("documents", "A report can have no more than 3 documents.")
+        return data
+
+    def save_documents(self, report):
+        for document in self.cleaned_data.get("remove_documents", []):
+            document.file.delete(save=False)
+            document.delete()
+        return [
+            StaffTrainingReportDocument.objects.create(
+                report=report,
+                file=upload,
+                original_name=upload.name,
+            )
+            for upload in self.cleaned_data.get("documents", [])
+        ]
 
 
 class StaffTrainingReportReviewForm(forms.Form):
