@@ -67,6 +67,14 @@ class StaffPortalTests(TestCase):
     def login_staff(self):
         self.client.force_login(self.user)
 
+    def test_staff_login_uses_dashboard_branding_and_copyright(self):
+        response = self.client.get(reverse("staff_portal:login"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="portal-auth-brand-mark"')
+        self.assertContains(response, "Staff workspace")
+        self.assertContains(response, f"© {timezone.localdate().year} ACMAD. All rights reserved.")
+        self.assertContains(response, "Sign in to your workspace")
+
     def training_assignment(self, member=None, **kwargs):
         today = timezone.localdate()
         values = {
@@ -1152,6 +1160,59 @@ class StaffPortalTests(TestCase):
         self.assertContains(self.client.get(reverse("staff_profile_review", args=[update.pk])), "Submitted changes")
         self.login_staff()
         self.assertEqual(self.client.post(reverse("staff_profile_review", args=[update.pk]), {"action": "approve"}).status_code, 403)
+
+    def test_bulk_profile_invite_resends_pending_invites_and_reminds_active_accounts(self):
+        StaffProfileUpdate.objects.create(
+            access=self.other_access,
+            biography="Already updated",
+            status=StaffProfileUpdate.Status.APPROVED,
+            source_fingerprint=member_fingerprint(self.other_member),
+        )
+        pending_member = StaffMember.objects.create(
+            page=self.page,
+            name="Pending Profile Staff",
+            role="Scientist",
+            department=self.member.department,
+        )
+        request = RequestFactory().get("/", HTTP_HOST="localhost")
+        pending_access = invite_staff(pending_member, "pending-profile@example.test", request)
+        first_invited_at = pending_access.invited_at
+        mail.outbox.clear()
+
+        self.client.force_login(self.admin)
+        dashboard = self.client.get(reverse("staff_profile_dashboard"))
+        self.assertContains(dashboard, "Bulk profile invitations")
+        self.assertContains(dashboard, "Pilot Staff — pilot@example.test")
+        self.assertContains(dashboard, "Pending Profile Staff — pending-profile@example.test")
+        self.assertNotContains(dashboard, "Other Staff — other@example.test")
+        response = self.client.post(reverse("staff_profile_bulk_invite"), {"confirm": "yes"}, follow=True)
+        self.assertContains(response, "Sent 1 invitation(s) and 1 profile reminder(s).")
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertEqual(
+            {message.subject for message in mail.outbox},
+            {"Set up your ACMAD staff profile account", "Complete your ACMAD staff profile"},
+        )
+        pending_access.refresh_from_db()
+        self.assertGreater(pending_access.invited_at, first_invited_at)
+
+    def test_bulk_profile_invite_requires_confirmation_and_superuser(self):
+        url = reverse("staff_profile_bulk_invite")
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.get(url).status_code, 405)
+        response = self.client.post(url, {}, follow=True)
+        self.assertContains(response, "Confirm that you want to email all eligible staff members.")
+        self.assertEqual(len(mail.outbox), 0)
+
+        reviewer = get_user_model().objects.create_user(username="bulk-reviewer", password="Reviewer-password-9284!")
+        reviewer.user_permissions.add(
+            Permission.objects.get(codename="review_staff_profiles"),
+            Permission.objects.get(codename="access_admin"),
+        )
+        self.client.force_login(reviewer)
+        denied = self.client.post(url, {"confirm": "yes"})
+        self.assertEqual(denied.status_code, 302)
+        self.assertEqual(denied["Location"], reverse("wagtailadmin_home"))
+        self.assertEqual(len(mail.outbox), 0)
 
     def test_admin_theme_styles_are_scoped_to_admin_screens(self):
         update = self.draft()

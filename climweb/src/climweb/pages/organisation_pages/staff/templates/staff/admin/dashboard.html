@@ -3,8 +3,8 @@
 {% block titletag %}Staff Profiles{% endblock %}
 {% block extra_css %}
     {{ block.super }}
-    <link rel="stylesheet" href="{% static 'staff/css/portal.css' %}">
-    <link rel="stylesheet" href="{% static 'staff/css/admin.css' %}">
+    <link rel="stylesheet" href="{% static 'staff/css/portal.css' %}?v=20261014">
+    <link rel="stylesheet" href="{% static 'staff/css/admin.css' %}?v=20261014">
 {% endblock %}
 {% block content %}
 {% include "wagtailadmin/shared/header.html" with title="Staff Profiles" icon="user" %}
@@ -13,6 +13,25 @@
     <p>Invite staff to their portal, assign learning activities, track reports and review profile changes.</p>
     {% if console_email %}<div class="portal-notice">Local console email mode is enabled. Invitations are printed in the application terminal, not delivered to an inbox. Configure the SMTP email backend before inviting real staff.</div>{% endif %}
     {% if user.is_superuser %}
+    <section class="portal-panel" id="bulk-profile-invitations">
+        <h2>Bulk profile invitations</h2>
+        {% if bulk_invite_candidates %}
+        <p><strong>{{ bulk_invite_candidates|length }} staff member{{ bulk_invite_candidates|length|pluralize }}</strong> with active work-email accounts have not submitted or completed a profile update.</p>
+        <p>Pending accounts receive a fresh 48-hour invitation. Activated or linked accounts receive a reminder to sign in and complete their profile.</p>
+        <details>
+            <summary>Review recipients</summary>
+            <ul>{% for access in bulk_invite_candidates %}<li>{{ access.member.name }} — {{ access.user.email }}</li>{% endfor %}</ul>
+        </details>
+        <form method="post" action="{% url 'staff_profile_bulk_invite' %}" class="portal-bulk-form">
+            {% csrf_token %}
+            <label for="bulk-invite-confirm"><input id="bulk-invite-confirm" name="confirm" value="yes" type="checkbox" required> I confirm that all listed staff should receive an email now.</label>
+            <button class="button" type="submit">Send {{ bulk_invite_candidates|length }} invitation{{ bulk_invite_candidates|length|pluralize }} / reminder{{ bulk_invite_candidates|length|pluralize }}</button>
+        </form>
+        {% else %}
+        <p>Everyone with an active staff portal account has submitted or completed a profile update.</p>
+        {% endif %}
+        {% if unlinked_current_staff_count %}<p class="portal-help">{{ unlinked_current_staff_count }} current staff member{{ unlinked_current_staff_count|pluralize }} cannot be included because they do not yet have a linked work-email account. Invite or link them individually below first.</p>{% endif %}
+    </section>
     <section class="portal-panel" id="staff-invitation">
         <h2>Invite a staff member / resend a pending invitation</h2>
         <p>The account uses their work email as the login. They choose their own password through a single-use link valid for 48 hours. Resending invalidates the previous invitation.</p>

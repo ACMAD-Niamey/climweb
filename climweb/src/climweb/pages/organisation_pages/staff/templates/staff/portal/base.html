@@ -29,9 +29,9 @@
             --portal-font-heading: {{ theme_tokens.heading_font|default:'"Manrope", sans-serif'|safe }};
         }
     </style>
-    <link rel="stylesheet" href="{% static 'staff/css/portal.css' %}">
+    <link rel="stylesheet" href="{% static 'staff/css/portal.css' %}?v=20261014e">
 </head>
-<body>
+<body class="{% if user.is_authenticated and user.staff_profile_access %}portal-authenticated{% else %}portal-anonymous{% endif %}">
 {% if user.is_authenticated and user.staff_profile_access %}
 <div class="portal-shell">
     <aside class="portal-sidebar" id="portal-sidebar">
@@ -69,7 +69,20 @@
         <main class="portal-main">
             {% for message in messages %}<div role="status" class="portal-notice">{{ message }}</div>{% endfor %}
 {% else %}
-<header class="portal-auth-header"><a href="/">ACMAD <span>Staff workspace</span></a></header>
+<header class="portal-auth-header">
+    <a href="/" aria-label="ACMAD home">
+        <span class="portal-auth-brand-mark">
+            {% if settings.base.OrganisationSetting.cms_logo %}
+                {% image settings.base.OrganisationSetting.cms_logo max-160x72 alt="ACMAD" %}
+            {% elif settings.base.OrganisationSetting.logo %}
+                {% image settings.base.OrganisationSetting.logo max-160x72 alt="ACMAD" %}
+            {% else %}
+                <span class="portal-brand-fallback" aria-hidden="true">A</span>
+            {% endif %}
+        </span>
+        <span class="portal-auth-brand-copy"><strong>ACMAD</strong><small>Staff workspace</small></span>
+    </a>
+</header>
 <main class="portal-main portal-auth-main">
     {% for message in messages %}<div role="status" class="portal-notice">{{ message }}</div>{% endfor %}
 {% endif %}
