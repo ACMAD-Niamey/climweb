@@ -332,6 +332,60 @@ class StaffTrainingReportDocument(models.Model):
         return self.original_name
 
 
+class StaffDriveFolder(models.Model):
+    """The app-managed Shared Drive folder assigned to one staff member."""
+
+    member = models.OneToOneField(
+        StaffMember,
+        on_delete=models.PROTECT,
+        related_name="drive_folder",
+    )
+    folder_id = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.member.name} — {self.folder_id}"
+
+
+class StaffDriveAudit(models.Model):
+    class Action(models.TextChoices):
+        STAFF_FOLDER_CREATED = "staff_folder_created", _("Staff folder created")
+        FOLDER_CREATED = "folder_created", _("Folder created")
+        FILE_UPLOADED = "file_uploaded", _("File uploaded")
+        FILE_DOWNLOADED = "file_downloaded", _("File downloaded")
+        ITEM_RENAMED = "item_renamed", _("Item renamed")
+        ITEM_MOVED = "item_moved", _("Item moved")
+        ITEM_TRASHED = "item_trashed", _("Item moved to trash")
+
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="staff_drive_actions",
+    )
+    member = models.ForeignKey(
+        StaffMember,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="drive_actions",
+    )
+    action = models.CharField(max_length=32, choices=Action.choices)
+    file_id = models.CharField(max_length=255)
+    file_name = models.CharField(max_length=255, blank=True)
+    details = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        indexes = [models.Index(fields=["member", "created_at"], name="staff_drive_member_created")]
+
+    def __str__(self):
+        return f"{self.get_action_display()}: {self.file_name or self.file_id}"
+
+
 class StaffNotificationDelivery(models.Model):
     """Auditable, de-duplicated delivery record for staff workflow email."""
 

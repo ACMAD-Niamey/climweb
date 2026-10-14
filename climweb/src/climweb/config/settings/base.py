@@ -980,9 +980,14 @@ WAGTAIL_NEWSLETTER_MAILCHIMP_API_KEY = env("WAGTAIL_NEWSLETTER_MAILCHIMP_API_KEY
 WAGTAIL_NEWSLETTER_FROM_NAME = env("WAGTAIL_NEWSLETTER_FROM_NAME", default="")
 WAGTAIL_NEWSLETTER_REPLY_TO = env("WAGTAIL_NEWSLETTER_REPLY_TO", default="")
 
-# Optional link to the organization's shared Google Drive. Access control stays
-# in Google Workspace; the staff portal never stores OAuth tokens or credentials.
-STAFF_GOOGLE_DRIVE_URL = env("STAFF_GOOGLE_DRIVE_URL", default="")
+# ACMAD staff Shared Drive integration. The service-account key must be mounted
+# as a read-only deployment secret and must never be committed to source control.
+GOOGLE_DRIVE_ENABLED = env.bool("GOOGLE_DRIVE_ENABLED", default=False)
+GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE = env.str(
+    "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", default=""
+)
+GOOGLE_DRIVE_SHARED_DRIVE_ID = env.str("GOOGLE_DRIVE_SHARED_DRIVE_ID", default="")
+GOOGLE_DRIVE_ROOT_FOLDER_ID = env.str("GOOGLE_DRIVE_ROOT_FOLDER_ID", default="")
 
 MARKDOWNIFY = {
     "default": {

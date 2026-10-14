@@ -1,0 +1,48 @@
+{% extends "staff/portal/base.html" %}
+{% block title %}File Management · ACMAD Staff{% endblock %}
+{% block page_name %}File Management{% endblock %}
+{% block content %}
+<div class="portal-page-heading">
+    <div><p class="portal-eyebrow">GOOGLE SHARED DRIVE</p><h1>File Management</h1><p>{% if is_drive_manager %}Manage the organization workspace and staff folders.{% else %}Create, organize and securely manage your work files.{% endif %}</p></div>
+</div>
+{% if integration_error %}
+<section class="portal-panel portal-narrow"><div class="portal-status-banner"><strong>Google Drive is unavailable</strong><span>{{ integration_error }}</span></div><p>Ask an administrator to verify the Shared Drive settings and service-account access.</p></section>
+{% else %}
+<nav class="portal-drive-breadcrumbs" aria-label="Folder path">
+    {% for crumb in breadcrumbs %}{% if not forloop.first %}<span>/</span>{% endif %}<a href="{% url 'staff_portal:drive_files' %}?folder={{ crumb.id|urlencode }}">{{ crumb.name }}</a>{% endfor %}
+</nav>
+<div class="portal-drive-tools">
+    <section class="portal-panel">
+        <p class="portal-eyebrow">UPLOAD</p><h2>Add files</h2>
+        <form method="post" enctype="multipart/form-data" action="{% url 'staff_portal:drive_upload' %}" class="portal-form">{% csrf_token %}{{ upload_form.as_p }}<button class="portal-button" type="submit">Upload files</button></form>
+    </section>
+    <section class="portal-panel">
+        <p class="portal-eyebrow">ORGANIZE</p><h2>New folder</h2>
+        <form method="post" action="{% url 'staff_portal:drive_create_folder' %}" class="portal-form">{% csrf_token %}{{ folder_form.as_p }}<button class="portal-secondary-button" type="submit">Create folder</button></form>
+    </section>
+</div>
+<section class="portal-panel">
+    <div class="portal-drive-list-heading"><div><p class="portal-eyebrow">CURRENT FOLDER</p><h2>{{ folder.name }}</h2></div><form method="get" class="portal-drive-search"><input type="hidden" name="folder" value="{{ folder_id }}"><label class="sr-only" for="drive-search">Search this folder</label><input id="drive-search" name="q" value="{{ search }}" placeholder="Search this folder"><button class="portal-secondary-button" type="submit">Search</button></form></div>
+    <div class="portal-table">
+        <table><thead><tr><th>Name</th><th>Type</th><th>Modified</th><th>Size</th><th>Actions</th></tr></thead><tbody>
+        {% for item in items %}
+        <tr>
+            <td>{% if item.mimeType == 'application/vnd.google-apps.folder' %}<a class="portal-row-primary-link" href="{% url 'staff_portal:drive_files' %}?folder={{ item.id|urlencode }}">📁 {{ item.name }}</a>{% else %}<a class="portal-row-primary-link" href="{% url 'staff_portal:drive_download' item.id %}">📄 {{ item.name }}</a>{% endif %}</td>
+            <td>{% if item.mimeType == 'application/vnd.google-apps.folder' %}Folder{% elif 'application/vnd.google-apps' in item.mimeType %}Google file{% else %}File{% endif %}</td>
+            <td>{{ item.modifiedTime|date:"d M Y, H:i"|default:"—" }}</td>
+            <td>{% if item.size %}{{ item.size|filesizeformat }}{% else %}—{% endif %}</td>
+            <td><div class="portal-drive-actions">
+                {% if item.mimeType != 'application/vnd.google-apps.folder' %}<a href="{% url 'staff_portal:drive_download' item.id %}">Download</a>{% endif %}
+                {% if item.webViewLink %}<a href="{{ item.webViewLink }}" target="_blank" rel="noopener noreferrer">Open ↗</a>{% endif %}
+                <a href="{% url 'staff_portal:drive_move' item.id %}?folder={{ folder_id|urlencode }}">Move</a>
+                <details><summary>Rename</summary><form method="post" action="{% url 'staff_portal:drive_rename' item.id %}">{% csrf_token %}<input type="hidden" name="folder_id" value="{{ folder_id }}"><input name="name" value="{{ item.name }}" maxlength="255" aria-label="New name" required><button class="portal-secondary-button" type="submit">Save</button></form></details>
+                <form method="post" action="{% url 'staff_portal:drive_trash' item.id %}" onsubmit="return confirm('Move this item to the Shared Drive trash?')">{% csrf_token %}<input type="hidden" name="folder_id" value="{{ folder_id }}"><button class="portal-link-button is-danger" type="submit">Trash</button></form>
+            </div></td>
+        </tr>
+        {% empty %}<tr><td colspan="5"><div class="portal-empty"><span>◇</span><h3>No files here</h3><p>{% if search %}No items match your search.{% else %}Upload a file or create a folder to get started.{% endif %}</p></div></td></tr>{% endfor %}
+        </tbody></table>
+    </div>
+    {% if next_page_token %}<div class="portal-pagination"><span></span><span>More files are available</span><a href="{% url 'staff_portal:drive_files' %}?folder={{ folder_id|urlencode }}&amp;q={{ search|urlencode }}&amp;page_token={{ next_page_token|urlencode }}">Next →</a></div>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

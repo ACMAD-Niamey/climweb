@@ -8,12 +8,11 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.core import mail
 from django.core.cache import cache
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.files.storage import FileSystemStorage
 from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import reverse
-from django.utils.datastructures import MultiValueDict
 from django.utils import timezone
 from PIL import Image
 from wagtail.images import get_image_model
@@ -22,7 +21,7 @@ from wagtail.models import GroupPagePermission, Page, Site
 from climweb.pages.home.tests.factories import HomePageFactory, get_or_create_homepage
 from climweb.pages.organisation_pages.organisation.tests.factories import OrganisationIndexPageFactory
 from .factories import StaffPageFactory
-from ..forms import StaffProfileForm, StaffTrainingReportForm
+from ..forms import StaffDriveUploadForm, StaffProfileForm, StaffTrainingReportForm
 from ..models import (
     Department,
     StaffEmployment,
@@ -93,6 +92,7 @@ class StaffPortalTests(TestCase):
         permissions = staff_profile_permissions()
         self.assertEqual(list(permissions.values_list("codename", flat=True)), ["review_staff_profiles"])
 
+    @override_settings(GOOGLE_DRIVE_ENABLED=False)
     def test_staff_dashboard_shows_only_own_training_and_drive_state(self):
         assignment = self.training_assignment()
         self.training_assignment(member=self.other_member, title="Other staff workshop")
@@ -108,6 +108,56 @@ class StaffPortalTests(TestCase):
         menu_positions = [content.index(label) for label in menu_labels]
         self.assertEqual(menu_positions, sorted(menu_positions))
         self.assertContains(response, '<svg viewBox="0 0 24 24"', count=6)
+
+    @override_settings(
+        GOOGLE_DRIVE_ENABLED=True,
+        GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE="/run/secrets/test.json",
+        GOOGLE_DRIVE_SHARED_DRIVE_ID="sharedDrive123",
+        GOOGLE_DRIVE_ROOT_FOLDER_ID="rootFolder123",
+    )
+    @patch("climweb.pages.organisation_pages.staff.views.breadcrumbs")
+    @patch("climweb.pages.organisation_pages.staff.views.list_items")
+    @patch("climweb.pages.organisation_pages.staff.views.assert_within_root")
+    @patch("climweb.pages.organisation_pages.staff.views._drive_access")
+    def test_staff_can_browse_scoped_drive_folder(self, access, within_root, items, crumbs):
+        service = object()
+        access.return_value = (service, "staffRoot123", self.member)
+        within_root.return_value = {
+            "id": "staffRoot123",
+            "name": "Pilot Staff",
+            "mimeType": "application/vnd.google-apps.folder",
+        }
+        items.return_value = ([{
+            "id": "document123",
+            "name": "Workshop notes.docx",
+            "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        }], "")
+        crumbs.return_value = [{"id": "staffRoot123", "name": "Pilot Staff"}]
+        self.login_staff()
+        response = self.client.get(reverse("staff_portal:drive_files"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Workshop notes.docx")
+        self.assertContains(response, reverse("staff_portal:drive_download", args=["document123"]))
+        within_root.assert_called_once_with(service, "staffRoot123", "staffRoot123")
+
+    @override_settings(
+        GOOGLE_DRIVE_ENABLED=True,
+        GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE="/run/secrets/test.json",
+        GOOGLE_DRIVE_SHARED_DRIVE_ID="sharedDrive123",
+        GOOGLE_DRIVE_ROOT_FOLDER_ID="rootFolder123",
+    )
+    @patch("climweb.pages.organisation_pages.staff.views.assert_within_root", side_effect=PermissionDenied)
+    @patch("climweb.pages.organisation_pages.staff.views._drive_access", return_value=(object(), "staffRoot123", None))
+    def test_staff_cannot_browse_outside_scoped_drive_folder(self, access, within_root):
+        self.login_staff()
+        response = self.client.get(reverse("staff_portal:drive_files") + "?folder=anotherFolder123")
+        self.assertEqual(response.status_code, 403)
+
+    def test_drive_upload_form_limits_file_count_and_size(self):
+        files = [SimpleUploadedFile(f"file-{index}.txt", b"content") for index in range(11)]
+        form = StaffDriveUploadForm({"folder_id": "staffRoot123"}, {"files": files})
+        self.assertFalse(form.is_valid())
+        self.assertIn("no more than 10", str(form.errors["files"]))
 
     def test_staff_can_save_and_submit_assigned_training_report(self):
         assignment = self.training_assignment()
@@ -354,24 +404,35 @@ class StaffPortalTests(TestCase):
             with self.subTest(filename=filename):
                 form = StaffTrainingReportForm(
                     {"title": "Activity report", "summary": "Summary"},
-                    MultiValueDict({"documents": [SimpleUploadedFile(filename, b"office-file", content_type=content_type)]}),
+                    {"document_1": SimpleUploadedFile(filename, b"office-file", content_type=content_type)},
                 )
                 self.assertTrue(form.is_valid(), form.errors)
 
-    def test_training_report_accepts_at_most_three_documents(self):
-        def uploads(count):
-            return MultiValueDict({
-                "documents": [
-                    SimpleUploadedFile(f"document-{index}.pdf", b"pdf", content_type="application/pdf")
-                    for index in range(count)
-                ]
-            })
-
-        form = StaffTrainingReportForm({"title": "Activity report", "summary": "Summary"}, uploads(3))
+    def test_training_report_has_three_distinct_document_fields_without_drive_link(self):
+        uploads = {
+            f"document_{index}": SimpleUploadedFile(
+                f"document-{index}.pdf",
+                b"pdf",
+                content_type="application/pdf",
+            )
+            for index in range(1, 4)
+        }
+        form = StaffTrainingReportForm({"title": "Activity report", "summary": "Summary"}, uploads)
         self.assertTrue(form.is_valid(), form.errors)
-        form = StaffTrainingReportForm({"title": "Activity report", "summary": "Summary"}, uploads(4))
-        self.assertFalse(form.is_valid())
-        self.assertIn("no more than 3 documents", form.errors["documents"][0])
+        self.assertEqual(
+            [field for field in form.fields if field.startswith("document_")],
+            ["document_1", "document_2", "document_3"],
+        )
+        self.assertNotIn("documents", form.fields)
+        self.assertNotIn("drive_file_url", form.fields)
+
+        assignment = self.training_assignment()
+        self.login_staff()
+        response = self.client.get(reverse("staff_portal:training_report", args=[assignment.pk]))
+        for field_name in ["document_1", "document_2", "document_3"]:
+            self.assertContains(response, f'name="{field_name}"')
+        self.assertNotContains(response, "Google Drive file link")
+        self.assertNotContains(response, "Open Drive")
 
     def test_staff_can_upload_and_download_three_report_documents(self):
         assignment = self.training_assignment()
@@ -392,7 +453,9 @@ class StaffPortalTests(TestCase):
                     "action": "save",
                     "title": "Activity report",
                     "summary": "Summary",
-                    "documents": uploads,
+                    "document_1": uploads[0],
+                    "document_2": uploads[1],
+                    "document_3": uploads[2],
                 },
             )
             self.assertRedirects(response, reverse("staff_portal:training_report", args=[assignment.pk]))
@@ -418,18 +481,17 @@ class StaffPortalTests(TestCase):
             )
             for index in range(2)
         ]
-        new_files = MultiValueDict({
-            "documents": [
-                SimpleUploadedFile("new-1.pdf", b"pdf", content_type="application/pdf"),
-                SimpleUploadedFile("new-2.pdf", b"pdf", content_type="application/pdf"),
-            ]
-        })
+        new_files = {
+            "document_1": SimpleUploadedFile("new-1.pdf", b"pdf", content_type="application/pdf"),
+            "document_2": SimpleUploadedFile("new-2.pdf", b"pdf", content_type="application/pdf"),
+        }
         form = StaffTrainingReportForm(
             {"title": report.title, "summary": report.summary},
             new_files,
             instance=report,
         )
         self.assertFalse(form.is_valid())
+        self.assertIn("no more than 3 documents", form.non_field_errors()[0])
         form = StaffTrainingReportForm(
             {
                 "title": report.title,
