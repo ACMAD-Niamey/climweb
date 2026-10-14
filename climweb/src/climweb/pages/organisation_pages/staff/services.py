@@ -239,6 +239,26 @@ def invite_staff(member, email, request):
     return access
 
 
+def send_profile_update_reminder(access, request):
+    """Remind an activated or linked staff account to complete its profile."""
+    if not access.user.is_active or not access.user.email:
+        raise ValidationError("This staff account has no active work email.")
+    if not access.member.is_current_staff:
+        raise ValidationError("Former staff cannot receive profile reminders.")
+    url = request.build_absolute_uri(reverse("staff_portal:login"))
+    send_mail(
+        "Complete your ACMAD staff profile",
+        f"Hello {access.member.name},\n\n"
+        "Your ACMAD staff profile is ready for you to review and update.\n"
+        f"Sign in with your work email to complete your profile:\n{url}\n\n"
+        "Your changes will be reviewed before they are published on the ACMAD website.\n"
+        "If you need help accessing your account, contact your website administrator.\n",
+        settings.DEFAULT_FROM_EMAIL,
+        [access.user.email],
+        fail_silently=False,
+    )
+
+
 @transaction.atomic
 def review_update(update_id, reviewer, action, comment):
     if not reviewer.is_active or not reviewer.has_perm("staff.review_staff_profiles"):

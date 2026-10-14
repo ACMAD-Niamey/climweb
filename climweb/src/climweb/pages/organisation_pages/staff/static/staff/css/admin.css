@@ -81,3 +81,28 @@
 .staff-admin a:not(.button):hover {
     color: var(--w-color-text-link-hover);
 }
+
+.staff-admin .portal-bulk-form {
+    display: flex;
+    margin-top: 1.25rem;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.staff-admin .portal-bulk-form label {
+    display: flex;
+    margin: 0;
+    align-items: center;
+    gap: .55rem;
+}
+
+.staff-admin details {
+    margin: 1rem 0;
+}
+
+.staff-admin details summary {
+    color: var(--w-color-text-link-default);
+    font-weight: 600;
+    cursor: pointer;
+}
