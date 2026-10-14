@@ -10,6 +10,7 @@ from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
 from django.contrib.auth.views import LoginView, PasswordResetView, PasswordResetConfirmView
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.http import FileResponse, Http404, HttpResponse
@@ -44,7 +45,11 @@ from .models import (
     StaffTrainingReport,
     StaffTrainingReportDocument,
 )
-from .notifications import queue_report_submitted_notifications, queue_training_assigned_notifications
+from .notifications import (
+    queue_nomination_removed_notification,
+    queue_report_submitted_notifications,
+    queue_training_assigned_notifications,
+)
 from .services import (
     change_staff_employment,
     create_staff_member,
@@ -203,11 +208,13 @@ def staff_hr_dashboard(request):
     submitted_reports = StaffTrainingReport.objects.filter(
         status=StaffTrainingReport.Status.SUBMITTED,
     ).select_related("assignment__member")
+    assignment_count = assignments.count()
+    awaiting_review_count = submitted_reports.count()
     return render(request, "staff/portal/hr_dashboard.html", {
-        "training_assignments": assignments[:50],
-        "submitted_reports": submitted_reports,
-        "assignment_count": assignments.count(),
-        "awaiting_review_count": submitted_reports.count(),
+        "training_assignments": Paginator(assignments, 5).get_page(request.GET.get("assignments_page")),
+        "submitted_reports": Paginator(submitted_reports, 5).get_page(request.GET.get("reports_page")),
+        "assignment_count": assignment_count,
+        "awaiting_review_count": awaiting_review_count,
         "approved_count": StaffTrainingReport.objects.filter(status=StaffTrainingReport.Status.APPROVED).count(),
     })
 
@@ -224,6 +231,53 @@ def staff_hr_assign_training(request):
         messages.success(request, f"{len(assignments)} staff member(s) were assigned to {assignments[0].title}.")
         return redirect("staff_portal:hr_dashboard")
     return render(request, "staff/portal/hr_assign_training.html", {"form": form})
+
+
+@staff_required
+@reviewer_required
+@require_http_methods(["GET"])
+def staff_hr_training_assignment(request, assignment_id):
+    assignment = get_object_or_404(
+        StaffTrainingAssignment.objects.select_related("member", "assigned_by", "report"),
+        pk=assignment_id,
+    )
+    can_remove_nomination = (
+        assignment.start_date > timezone.localdate()
+        and assignment.status in {
+            StaffTrainingAssignment.Status.NOMINATED,
+            StaffTrainingAssignment.Status.CONFIRMED,
+        }
+    )
+    return render(request, "staff/portal/hr_training_assignment.html", {
+        "assignment": assignment,
+        "can_remove_nomination": can_remove_nomination,
+    })
+
+
+@staff_required
+@reviewer_required
+@require_POST
+def staff_hr_remove_nomination(request, assignment_id):
+    with transaction.atomic():
+        assignment = get_object_or_404(
+            StaffTrainingAssignment.objects.select_for_update(),
+            pk=assignment_id,
+        )
+        can_remove_nomination = (
+            assignment.start_date > timezone.localdate()
+            and assignment.status in {
+                StaffTrainingAssignment.Status.NOMINATED,
+                StaffTrainingAssignment.Status.CONFIRMED,
+            }
+        )
+        if not can_remove_nomination:
+            messages.error(request, "This nomination can no longer be removed because the activity has started or is no longer active.")
+        else:
+            assignment.status = StaffTrainingAssignment.Status.CANCELLED
+            assignment.save(update_fields=["status", "updated_at"])
+            queue_nomination_removed_notification(assignment)
+            messages.success(request, f"{assignment.member.name}'s nomination for {assignment.title} was removed.")
+    return redirect("staff_portal:hr_training_assignment", assignment_id=assignment.pk)
 
 
 @staff_required

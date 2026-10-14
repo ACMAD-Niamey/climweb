@@ -16,4 +16,18 @@
     }
     window.addEventListener('hashchange', updateSectionNavigation);
     updateSectionNavigation();
+
+    document.querySelectorAll('.portal-clickable-row[data-href]').forEach(function (row) {
+        function openRow(event) {
+            if (event.target.closest('a, button, input, select, textarea, label, form')) return;
+            window.location.assign(row.dataset.href);
+        }
+        row.addEventListener('click', openRow);
+        row.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openRow(event);
+            }
+        });
+    });
 })();

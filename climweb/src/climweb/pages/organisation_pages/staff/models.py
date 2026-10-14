@@ -337,6 +337,7 @@ class StaffNotificationDelivery(models.Model):
 
     class Event(models.TextChoices):
         TRAINING_ASSIGNED = "training_assigned", _("Activity assigned")
+        ACTIVITY_NOMINATION_REMOVED = "activity_nomination_removed", _("Activity nomination removed")
         REPORT_SUBMITTED = "report_submitted", _("Report submitted")
         REPORT_APPROVED = "report_approved", _("Report approved")
         REPORT_CHANGES_REQUESTED = "report_changes_requested", _("Report changes requested")

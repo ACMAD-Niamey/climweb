@@ -116,6 +116,15 @@ def queue_training_assigned_notifications(assignments):
     return deliveries
 
 
+def queue_nomination_removed_notification(assignment):
+    delivery, _ = _queue(
+        StaffNotificationDelivery.Event.ACTIVITY_NOMINATION_REMOVED,
+        assignment,
+        _staff_email(assignment),
+    )
+    return delivery
+
+
 def queue_report_submitted_notifications(report):
     marker = report.submitted_at.isoformat() if report.submitted_at else str(report.updated_at)
     deliveries = []
@@ -217,6 +226,13 @@ def _message_context(delivery):
             subject=f"Activity assignment: {assignment.title}",
             headline="You have been assigned a professional activity",
             message="HR has nominated you for the activity below. Please review the details and submit your report after the activity.",
+        )
+    elif event == StaffNotificationDelivery.Event.ACTIVITY_NOMINATION_REMOVED:
+        context.update(
+            subject=f"Activity nomination removed: {assignment.title}",
+            headline="Your activity nomination has been removed",
+            message="HR has removed your nomination for the activity below. You are no longer expected to attend or submit a report for this activity.",
+            action_url=_absolute_url(reverse("staff_portal:dashboard")),
         )
     elif event == StaffNotificationDelivery.Event.REPORT_SUBMITTED:
         context.update(

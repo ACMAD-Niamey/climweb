@@ -188,7 +188,6 @@ class StaffTrainingAssignmentForm(forms.Form):
     start_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
     end_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
     report_due_date = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
-    status = forms.ChoiceField(choices=StaffTrainingAssignment.Status.choices, initial=StaffTrainingAssignment.Status.NOMINATED)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -207,10 +206,15 @@ class StaffTrainingAssignmentForm(forms.Form):
     def save(self, assigned_by):
         values = {
             key: self.cleaned_data[key]
-            for key in ["activity_type", "title", "organizer", "location", "description", "start_date", "end_date", "report_due_date", "status"]
+            for key in ["activity_type", "title", "organizer", "location", "description", "start_date", "end_date", "report_due_date"]
         }
         return [
-            StaffTrainingAssignment.objects.create(member=member, assigned_by=assigned_by, **values)
+            StaffTrainingAssignment.objects.create(
+                member=member,
+                assigned_by=assigned_by,
+                status=StaffTrainingAssignment.Status.NOMINATED,
+                **values,
+            )
             for member in self.cleaned_data["member"]
         ]
 

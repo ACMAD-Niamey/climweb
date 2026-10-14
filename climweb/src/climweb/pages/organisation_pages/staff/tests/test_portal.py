@@ -174,6 +174,7 @@ class StaffPortalTests(TestCase):
         form_response = self.client.get(assignment_url)
         self.assertContains(form_response, 'data-searchable-multiselect="true"')
         self.assertContains(form_response, "staff/js/searchable_multiselect.js")
+        self.assertNotIn("status", form_response.context["form"].fields)
         today = timezone.localdate()
         response = self.client.post(assignment_url, {
             "member": [self.member.pk, self.other_member.pk],
@@ -239,12 +240,15 @@ class StaffPortalTests(TestCase):
         self.login_staff()
         dashboard_url = reverse("staff_portal:hr_dashboard")
         response = self.client.get(reverse("staff_portal:dashboard"))
-        self.assertContains(response, "HR Management")
-        self.assertEqual(self.client.get(dashboard_url).status_code, 200)
+        self.assertNotContains(response, "HR Management")
+        hr_dashboard = self.client.get(dashboard_url)
+        self.assertContains(hr_dashboard, "HR Dashboard")
+        self.assertNotContains(hr_dashboard, "CMS dashboard")
         assignment_url = reverse("staff_portal:hr_assign_training")
         assignment_form = self.client.get(assignment_url)
         self.assertContains(assignment_form, 'data-searchable-multiselect="true"')
         self.assertContains(assignment_form, "staff/js/searchable_multiselect.js")
+        self.assertNotIn("status", assignment_form.context["form"].fields)
 
         today = timezone.localdate()
         response = self.client.post(assignment_url, {
@@ -255,10 +259,11 @@ class StaffPortalTests(TestCase):
             "start_date": today,
             "end_date": today + timedelta(days=1),
             "report_due_date": today + timedelta(days=4),
-            "status": StaffTrainingAssignment.Status.NOMINATED,
+            "status": StaffTrainingAssignment.Status.CANCELLED,
         })
         self.assertRedirects(response, dashboard_url)
         assignment = StaffTrainingAssignment.objects.get(title="Portal-managed workshop")
+        self.assertEqual(assignment.status, StaffTrainingAssignment.Status.NOMINATED)
         report = StaffTrainingReport.objects.create(
             assignment=assignment,
             title="Workshop report",
@@ -275,6 +280,70 @@ class StaffPortalTests(TestCase):
         assignment.refresh_from_db()
         self.assertEqual(report.status, StaffTrainingReport.Status.APPROVED)
         self.assertEqual(assignment.status, StaffTrainingAssignment.Status.COMPLETED)
+
+    def test_hr_dashboard_paginates_clickable_lists_by_five(self):
+        self.user.user_permissions.add(Permission.objects.get(codename="review_staff_profiles"))
+        self.login_staff()
+        today = timezone.localdate()
+        for index in range(7):
+            assignment = self.training_assignment(
+                title=f"Paginated activity {index}",
+                start_date=today + timedelta(days=index + 1),
+                end_date=today + timedelta(days=index + 2),
+            )
+            StaffTrainingReport.objects.create(
+                assignment=assignment,
+                title=f"Paginated report {index}",
+                summary="Ready for review",
+                status=StaffTrainingReport.Status.SUBMITTED,
+                submitted_at=timezone.now() + timedelta(minutes=index),
+            )
+
+        response = self.client.get(reverse("staff_portal:hr_dashboard"))
+        self.assertEqual(len(response.context["training_assignments"]), 5)
+        self.assertEqual(len(response.context["submitted_reports"]), 5)
+        self.assertContains(response, 'class="portal-clickable-row"', count=10)
+        self.assertContains(response, "Page 1 of 2", count=2)
+
+        response = self.client.get(reverse("staff_portal:hr_dashboard"), {
+            "assignments_page": 2,
+            "reports_page": 2,
+        })
+        self.assertEqual(len(response.context["training_assignments"]), 2)
+        self.assertEqual(len(response.context["submitted_reports"]), 2)
+
+    def test_hr_can_remove_nomination_only_before_activity_starts(self):
+        self.user.user_permissions.add(Permission.objects.get(codename="review_staff_profiles"))
+        self.login_staff()
+        today = timezone.localdate()
+        future = self.training_assignment(
+            title="Future activity",
+            start_date=today + timedelta(days=1),
+            end_date=today + timedelta(days=2),
+        )
+        detail_url = reverse("staff_portal:hr_training_assignment", args=[future.pk])
+        remove_url = reverse("staff_portal:hr_remove_nomination", args=[future.pk])
+        self.assertContains(self.client.get(detail_url), "Remove nomination")
+        response = self.client.post(remove_url)
+        self.assertRedirects(response, detail_url)
+        future.refresh_from_db()
+        self.assertEqual(future.status, StaffTrainingAssignment.Status.CANCELLED)
+        delivery = StaffNotificationDelivery.objects.get(
+            assignment=future,
+            event=StaffNotificationDelivery.Event.ACTIVITY_NOMINATION_REMOVED,
+        )
+        self.assertEqual(delivery.recipient, self.user.email)
+        self.assertTrue(send_staff_notification(delivery.pk))
+        self.assertIn("nomination removed", mail.outbox[-1].subject.lower())
+        self.assertIn("no longer expected to attend", mail.outbox[-1].body)
+        self.assertIn(reverse("staff_portal:dashboard"), mail.outbox[-1].body)
+        self.assertEqual(self.client.get(remove_url).status_code, 405)
+
+        started = self.training_assignment(title="Started activity")
+        started_remove_url = reverse("staff_portal:hr_remove_nomination", args=[started.pk])
+        self.client.post(started_remove_url)
+        started.refresh_from_db()
+        self.assertEqual(started.status, StaffTrainingAssignment.Status.NOMINATED)
 
     def test_training_reports_accept_docx_and_pptx_uploads(self):
         supported_files = [
@@ -394,7 +463,7 @@ class StaffPortalTests(TestCase):
         self.client.force_login(self.admin)
         self.assertEqual(self.client.get("/cms-admin/").status_code, 200)
         self.assertContains(self.client.get(reverse("staff_portal:profile")), member.name)
-        self.assertContains(self.client.get(reverse("staff_portal:profile")), "CMS dashboard")
+        self.assertNotContains(self.client.get(reverse("staff_portal:profile")), "CMS dashboard")
 
     def test_link_existing_editor_retains_permissions_and_can_login_by_email(self):
         member = self.unlinked_member()
