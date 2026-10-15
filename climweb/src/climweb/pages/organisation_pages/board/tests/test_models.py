@@ -87,6 +87,7 @@ class TestBoardPages(WagtailPageTestCase):
         self.assertContains(response, "Together, we will strengthen ACMAD.")
         self.assertContains(response, "Director General of ACMAD")
         self.assertContains(response, "ojt-page board-president-page director-general-page")
+        self.assertContains(response, 'class="dg-profile-image-frame"')
 
     def test_page_type_relationships(self):
         self.assertAllowedParentPageTypes(BoardPage, {OrganisationIndexPage})
