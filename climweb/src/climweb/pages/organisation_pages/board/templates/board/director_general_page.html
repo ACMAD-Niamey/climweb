@@ -32,14 +32,12 @@
             <div class="container">
                 <div class="ojt-intro president-profile">
                     <figure class="dg-profile-figure">
-                        <div class="dg-profile-image-frame">
-                            {% if director_general.photo %}
-                                {% image director_general.photo width-760 as portrait %}
-                                <img class="ojt-intro-image president-profile-portrait" src="{{ portrait.url }}" alt="{{ director_general.name }}" width="{{ portrait.width }}" height="{{ portrait.height }}">
-                            {% else %}
-                                <img class="ojt-intro-image president-profile-portrait is-placeholder" src="{% static 'images/person.svg' %}" alt="" width="760" height="820">
-                            {% endif %}
-                        </div>
+                        {% if director_general.photo %}
+                            {% image director_general.photo fill-760x820 as portrait %}
+                            <img class="ojt-intro-image president-profile-portrait" src="{{ portrait.url }}" alt="{{ director_general.name }}" width="{{ portrait.width }}" height="{{ portrait.height }}">
+                        {% else %}
+                            <img class="ojt-intro-image president-profile-portrait" src="{% static 'images/person.svg' %}" alt="" width="760" height="820">
+                        {% endif %}
                         {% if page.photo_caption %}<figcaption class="dg-photo-caption">{{ page.photo_caption }}</figcaption>{% endif %}
                     </figure>
                     <div class="president-profile-copy">
