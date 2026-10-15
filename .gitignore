@@ -190,6 +190,9 @@ climweb/src/climweb/private_staff_reports/
 .env.dev
 .claude/settings.local.json
 
+# Local credential files; never commit service-account private keys.
+secrets/
+
 backup/
 .vscode/
 node_modules/

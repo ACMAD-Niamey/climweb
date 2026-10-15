@@ -1,6 +1,7 @@
 import hashlib
 import logging
 from functools import wraps
+from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.conf import settings
@@ -24,6 +25,10 @@ from django.views.decorators.http import require_http_methods, require_POST
 from .forms import (
     StaffAuthenticationForm,
     StaffCreateForm,
+    StaffDriveFolderForm,
+    StaffDriveMoveForm,
+    StaffDriveRenameForm,
+    StaffDriveUploadForm,
     StaffEditForm,
     StaffInvitationForm,
     StaffLinkUserForm,
@@ -38,12 +43,33 @@ from .forms import (
 )
 from .models import (
     StaffEmploymentEvent,
+    StaffDriveAudit,
     StaffMember,
     StaffProfileAccess,
     StaffProfileUpdate,
     StaffTrainingAssignment,
     StaffTrainingReport,
     StaffTrainingReportDocument,
+)
+from .google_drive import (
+    FOLDER_MIME_TYPE,
+    StaffDriveConfigurationError,
+    StaffDriveOperationError,
+    assert_within_root,
+    breadcrumbs,
+    create_folder,
+    download_item,
+    drive_is_configured,
+    ensure_staff_folder,
+    get_drive_service,
+    get_item,
+    list_folder_tree,
+    list_items,
+    move_item,
+    record_audit,
+    rename_item,
+    trash_item,
+    upload_file,
 )
 from .notifications import (
     queue_nomination_removed_notification,
@@ -196,8 +222,161 @@ def staff_dashboard(request):
             Q(report__isnull=True) | Q(report__status__in=[StaffTrainingReport.Status.DRAFT, StaffTrainingReport.Status.CHANGES_REQUESTED])
         ).count(),
         "approved_count": assignments.filter(report__status=StaffTrainingReport.Status.APPROVED).count(),
-        "drive_url": getattr(settings, "STAFF_GOOGLE_DRIVE_URL", ""),
+        "drive_enabled": drive_is_configured(),
     })
+
+
+def _drive_access(request):
+    service = get_drive_service()
+    if request.user.has_perm("staff.review_staff_profiles"):
+        return service, settings.GOOGLE_DRIVE_ROOT_FOLDER_ID, None
+    member = request.staff_access.member
+    return service, ensure_staff_folder(service, member, request.user), member
+
+
+def _drive_redirect(folder_id):
+    url = reverse("staff_portal:drive_files")
+    return redirect(f"{url}?{urlencode({'folder': folder_id})}")
+
+
+@staff_required
+@require_http_methods(["GET"])
+def staff_drive_files(request):
+    if not drive_is_configured():
+        return render(request, "staff/portal/drive_files.html", {
+            "integration_error": "Google Drive is not configured for this environment.",
+        }, status=503)
+    try:
+        service, allowed_root, _ = _drive_access(request)
+        folder_id = request.GET.get("folder") or allowed_root
+        folder = assert_within_root(service, folder_id, allowed_root)
+        if folder.get("mimeType") != FOLDER_MIME_TYPE:
+            raise PermissionDenied("The requested item is not a folder.")
+        search = request.GET.get("q", "").strip()[:100]
+        items, next_page_token = list_items(
+            service,
+            folder_id,
+            search=search,
+            page_token=request.GET.get("page_token"),
+        )
+        return render(request, "staff/portal/drive_files.html", {
+            "folder": folder,
+            "folder_id": folder_id,
+            "allowed_root": allowed_root,
+            "breadcrumbs": breadcrumbs(service, folder_id, allowed_root),
+            "items": items,
+            "next_page_token": next_page_token,
+            "search": search,
+            "upload_form": StaffDriveUploadForm(initial={"folder_id": folder_id}),
+            "folder_form": StaffDriveFolderForm(initial={"folder_id": folder_id}),
+            "is_drive_manager": request.user.has_perm("staff.review_staff_profiles"),
+        })
+    except (StaffDriveConfigurationError, StaffDriveOperationError) as exc:
+        logger.warning("Staff Drive listing failed: %s", exc)
+        return render(request, "staff/portal/drive_files.html", {"integration_error": str(exc)}, status=503)
+
+
+@staff_required
+@require_POST
+def staff_drive_upload(request):
+    form = StaffDriveUploadForm(request.POST, request.FILES)
+    if not form.is_valid():
+        messages.error(request, "Upload failed: " + " ".join(error for errors in form.errors.values() for error in errors))
+        return _drive_redirect(request.POST.get("folder_id", settings.GOOGLE_DRIVE_ROOT_FOLDER_ID))
+    service, allowed_root, member = _drive_access(request)
+    folder_id = form.cleaned_data["folder_id"]
+    folder = assert_within_root(service, folder_id, allowed_root)
+    if folder.get("mimeType") != FOLDER_MIME_TYPE:
+        raise PermissionDenied("The upload destination is not a folder.")
+    for upload in form.cleaned_data["uploads"]:
+        item = upload_file(service, folder_id, upload)
+        record_audit(request.user, member, StaffDriveAudit.Action.FILE_UPLOADED, item, parent_id=folder_id)
+    messages.success(request, f"{len(form.cleaned_data['uploads'])} file(s) uploaded.")
+    return _drive_redirect(folder_id)
+
+
+@staff_required
+@require_POST
+def staff_drive_create_folder(request):
+    form = StaffDriveFolderForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Folder could not be created: " + " ".join(error for errors in form.errors.values() for error in errors))
+        return _drive_redirect(request.POST.get("folder_id", settings.GOOGLE_DRIVE_ROOT_FOLDER_ID))
+    service, allowed_root, member = _drive_access(request)
+    parent_id = form.cleaned_data["folder_id"]
+    parent = assert_within_root(service, parent_id, allowed_root)
+    if parent.get("mimeType") != FOLDER_MIME_TYPE:
+        raise PermissionDenied("The selected parent is not a folder.")
+    item = create_folder(service, parent_id, form.cleaned_data["name"])
+    record_audit(request.user, member, StaffDriveAudit.Action.FOLDER_CREATED, item, parent_id=parent_id)
+    messages.success(request, f"Folder “{item['name']}” created.")
+    return _drive_redirect(parent_id)
+
+
+@staff_required
+@require_POST
+def staff_drive_rename(request, file_id):
+    form = StaffDriveRenameForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "The item could not be renamed.")
+        return _drive_redirect(request.POST.get("folder_id", settings.GOOGLE_DRIVE_ROOT_FOLDER_ID))
+    service, allowed_root, member = _drive_access(request)
+    if file_id == allowed_root:
+        raise PermissionDenied("The workspace root cannot be renamed.")
+    original = assert_within_root(service, file_id, allowed_root)
+    item = rename_item(service, file_id, form.cleaned_data["name"])
+    record_audit(request.user, member, StaffDriveAudit.Action.ITEM_RENAMED, item, old_name=original.get("name", ""))
+    messages.success(request, "Item renamed.")
+    return _drive_redirect(form.cleaned_data["folder_id"])
+
+
+@staff_required
+@require_http_methods(["GET", "POST"])
+def staff_drive_move(request, file_id):
+    service, allowed_root, member = _drive_access(request)
+    if file_id == allowed_root:
+        raise PermissionDenied("The workspace root cannot be moved.")
+    item = assert_within_root(service, file_id, allowed_root)
+    choices = [(allowed_root, "Workspace root"), *list_folder_tree(service, allowed_root)]
+    choices = [(value, label) for value, label in choices if value != file_id]
+    form = StaffDriveMoveForm(
+        request.POST or None,
+        initial={"return_folder_id": request.GET.get("folder") or (item.get("parents") or [allowed_root])[0]},
+        folder_choices=choices,
+    )
+    if request.method == "POST" and form.is_valid():
+        destination_id = form.cleaned_data["destination_id"]
+        destination = assert_within_root(service, destination_id, allowed_root)
+        if destination.get("mimeType") != FOLDER_MIME_TYPE:
+            raise PermissionDenied("The selected destination is not a folder.")
+        moved = move_item(service, file_id, destination_id, item.get("parents") or [])
+        record_audit(request.user, member, StaffDriveAudit.Action.ITEM_MOVED, moved, destination_id=destination_id)
+        messages.success(request, "Item moved.")
+        return _drive_redirect(form.cleaned_data["return_folder_id"])
+    return render(request, "staff/portal/drive_move.html", {"item": item, "form": form})
+
+
+@staff_required
+@require_POST
+def staff_drive_trash(request, file_id):
+    service, allowed_root, member = _drive_access(request)
+    if file_id == allowed_root:
+        raise PermissionDenied("The workspace root cannot be removed.")
+    assert_within_root(service, file_id, allowed_root)
+    item = trash_item(service, file_id)
+    record_audit(request.user, member, StaffDriveAudit.Action.ITEM_TRASHED, item)
+    messages.success(request, f"“{item.get('name', 'Item')}” moved to trash.")
+    return _drive_redirect(request.POST.get("folder_id") or allowed_root)
+
+
+@staff_required
+@require_http_methods(["GET"])
+def staff_drive_download(request, file_id):
+    service, allowed_root, member = _drive_access(request)
+    assert_within_root(service, file_id, allowed_root)
+    buffer, filename, content_type, item = download_item(service, file_id)
+    record_audit(request.user, member, StaffDriveAudit.Action.FILE_DOWNLOADED, item)
+    return FileResponse(buffer, as_attachment=True, filename=filename, content_type=content_type)
 
 
 @staff_required
@@ -400,7 +579,6 @@ def training_report(request, assignment_id):
         "report": report,
         "form": form,
         "locked": locked,
-        "drive_url": getattr(settings, "STAFF_GOOGLE_DRIVE_URL", ""),
     })
 
 
