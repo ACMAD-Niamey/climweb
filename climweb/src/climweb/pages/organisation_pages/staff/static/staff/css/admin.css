@@ -90,6 +90,42 @@
     flex-wrap: wrap;
 }
 
+.staff-admin .portal-recipient-list {
+    display: grid;
+    width: 100%;
+    max-height: 22rem;
+    overflow-y: auto;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: .65rem;
+}
+
+.staff-admin .portal-recipient-list label {
+    padding: .8rem .9rem;
+    align-items: flex-start;
+    border: 1px solid var(--w-color-border-furniture);
+    border-radius: .4rem;
+    background: var(--w-color-surface-field);
+    cursor: pointer;
+}
+
+.staff-admin .portal-recipient-list label:hover {
+    border-color: var(--w-color-border-interactive-more-contrast);
+}
+
+.staff-admin .portal-recipient-list input {
+    margin-top: .2rem;
+}
+
+.staff-admin .portal-recipient-list span,
+.staff-admin .portal-recipient-list small {
+    display: block;
+}
+
+.staff-admin .portal-recipient-list small {
+    margin-top: .2rem;
+    color: var(--w-color-text-meta);
+}
+
 .staff-admin .portal-bulk-form label {
     display: flex;
     margin: 0;
