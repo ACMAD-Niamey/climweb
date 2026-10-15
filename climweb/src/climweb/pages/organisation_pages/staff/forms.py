@@ -219,25 +219,45 @@ class StaffTrainingAssignmentForm(forms.Form):
         ]
 
 
-class MultipleFileInput(forms.ClearableFileInput):
-    allow_multiple_selected = True
+class StaffReportDocumentField(forms.FileField):
+    allowed_content_types = {
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-powerpoint",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "application/vnd.oasis.opendocument.text",
+        "application/vnd.oasis.opendocument.presentation",
+    }
 
-
-class MultipleFileField(forms.FileField):
-    def clean(self, data, initial=None):
-        if not data:
-            return []
-        files = data if isinstance(data, (list, tuple)) else [data]
-        clean_file = super().clean
-        return [clean_file(upload, initial) for upload in files]
+    def validate(self, value):
+        super().validate(value)
+        if not value:
+            return
+        if value.size > 10 * 1024 * 1024:
+            raise forms.ValidationError(f"{value.name} must be no larger than 10 MB.")
+        if getattr(value, "content_type", "") not in self.allowed_content_types:
+            raise forms.ValidationError(
+                f"{value.name} is not a supported PDF, Word, PowerPoint or OpenDocument file."
+            )
 
 
 class StaffTrainingReportForm(forms.ModelForm):
-    documents = MultipleFileField(
+    document_1 = StaffReportDocumentField(
         required=False,
-        label="Documents",
-        widget=MultipleFileInput(attrs={"accept": ".pdf,.doc,.docx,.ppt,.pptx,.odt,.odp"}),
-        help_text="Upload up to 3 PDF, Word, PowerPoint or OpenDocument files. Each file may be up to 10 MB.",
+        label="Supporting document 1",
+        widget=forms.ClearableFileInput(attrs={"accept": ".pdf,.doc,.docx,.ppt,.pptx,.odt,.odp"}),
+        help_text="PDF, Word, PowerPoint or OpenDocument file, up to 10 MB.",
+    )
+    document_2 = StaffReportDocumentField(
+        required=False,
+        label="Supporting document 2",
+        widget=forms.ClearableFileInput(attrs={"accept": ".pdf,.doc,.docx,.ppt,.pptx,.odt,.odp"}),
+    )
+    document_3 = StaffReportDocumentField(
+        required=False,
+        label="Supporting document 3",
+        widget=forms.ClearableFileInput(attrs={"accept": ".pdf,.doc,.docx,.ppt,.pptx,.odt,.odp"}),
     )
     remove_documents = forms.ModelMultipleChoiceField(
         queryset=StaffTrainingReportDocument.objects.none(),
@@ -248,11 +268,8 @@ class StaffTrainingReportForm(forms.ModelForm):
 
     class Meta:
         model = StaffTrainingReport
-        fields = ["title", "summary", "outcomes", "drive_file_url"]
+        fields = ["title", "summary", "outcomes"]
         labels = {"outcomes": "Key outcomes and follow-up actions"}
-        help_texts = {
-            "drive_file_url": "Optional link to the report in the organization's Google Drive.",
-        }
         widgets = {"summary": forms.Textarea(attrs={"rows": 7}), "outcomes": forms.Textarea(attrs={"rows": 5})}
 
     def __init__(self, *args, **kwargs):
@@ -261,45 +278,41 @@ class StaffTrainingReportForm(forms.ModelForm):
             self.fields["remove_documents"].queryset = self.instance.documents.all()
         else:
             self.fields["remove_documents"].widget = forms.HiddenInput()
-        self.order_fields(["title", "summary", "outcomes", "documents", "remove_documents", "drive_file_url"])
-
-    def clean_documents(self):
-        uploads = self.cleaned_data.get("documents", [])
-        allowed = {
-            "application/pdf",
-            "application/msword",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/vnd.ms-powerpoint",
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            "application/vnd.oasis.opendocument.text",
-            "application/vnd.oasis.opendocument.presentation",
-        }
-        for upload in uploads:
-            if upload.size > 10 * 1024 * 1024:
-                raise forms.ValidationError(f"{upload.name} must be no larger than 10 MB.")
-            if getattr(upload, "content_type", "") not in allowed:
-                raise forms.ValidationError(f"{upload.name} is not a supported PDF, Word, PowerPoint or OpenDocument file.")
-        return uploads
+        self.order_fields([
+            "title",
+            "summary",
+            "outcomes",
+            "document_1",
+            "document_2",
+            "document_3",
+            "remove_documents",
+        ])
 
     def clean(self):
         data = super().clean()
         current_count = self.instance.documents.count() if self.instance and self.instance.pk else 0
         removed_count = data.get("remove_documents").count() if data.get("remove_documents") is not None else 0
-        if current_count - removed_count + len(data.get("documents", [])) > 3:
-            self.add_error("documents", "A report can have no more than 3 documents.")
+        upload_count = sum(bool(data.get(field)) for field in ["document_1", "document_2", "document_3"])
+        if current_count - removed_count + upload_count > 3:
+            self.add_error(None, "A report can have no more than 3 documents. Remove an existing document before uploading its replacement.")
         return data
 
     def save_documents(self, report):
         for document in self.cleaned_data.get("remove_documents", []):
             document.file.delete(save=False)
             document.delete()
+        uploads = [
+            self.cleaned_data.get(field)
+            for field in ["document_1", "document_2", "document_3"]
+            if self.cleaned_data.get(field)
+        ]
         return [
             StaffTrainingReportDocument.objects.create(
                 report=report,
                 file=upload,
                 original_name=upload.name,
             )
-            for upload in self.cleaned_data.get("documents", [])
+            for upload in uploads
         ]
 
 
@@ -312,3 +325,67 @@ class StaffTrainingReportReviewForm(forms.Form):
         if data.get("action") == "request_changes" and not data.get("comment"):
             self.add_error("comment", "Explain the changes the staff member should make.")
         return data
+
+
+def clean_drive_name(value):
+    value = (value or "").strip()
+    if not value or value in {".", ".."} or any(character in value for character in ("/", "\\", "\x00")):
+        raise forms.ValidationError("Enter a valid name without slashes.")
+    return value
+
+
+class DriveMultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class DriveMultipleFileField(forms.FileField):
+    def clean(self, data, initial=None):
+        files = data if isinstance(data, (list, tuple)) else [data]
+        return [super(DriveMultipleFileField, self).clean(file, initial) for file in files if file]
+
+
+class StaffDriveUploadForm(forms.Form):
+    files = DriveMultipleFileField(
+        label="Choose files",
+        widget=DriveMultipleFileInput,
+        help_text="Upload up to 10 files at a time; each file may be up to 50 MB.",
+    )
+    folder_id = forms.CharField(widget=forms.HiddenInput)
+
+    def clean(self):
+        data = super().clean()
+        uploads = data.get("files") or []
+        if not uploads:
+            self.add_error("files", "Choose at least one file.")
+        elif len(uploads) > 10:
+            self.add_error("files", "Upload no more than 10 files at a time.")
+        for upload in uploads:
+            if upload.size > 50 * 1024 * 1024:
+                self.add_error("files", f"{upload.name} is larger than 50 MB.")
+        data["uploads"] = uploads
+        return data
+
+
+class StaffDriveFolderForm(forms.Form):
+    name = forms.CharField(max_length=255, label="Folder name")
+    folder_id = forms.CharField(widget=forms.HiddenInput)
+
+    def clean_name(self):
+        return clean_drive_name(self.cleaned_data["name"])
+
+
+class StaffDriveRenameForm(forms.Form):
+    name = forms.CharField(max_length=255, label="New name")
+    folder_id = forms.CharField(widget=forms.HiddenInput)
+
+    def clean_name(self):
+        return clean_drive_name(self.cleaned_data["name"])
+
+
+class StaffDriveMoveForm(forms.Form):
+    destination_id = forms.ChoiceField(label="Destination folder")
+    return_folder_id = forms.CharField(widget=forms.HiddenInput)
+
+    def __init__(self, *args, folder_choices=(), **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["destination_id"].choices = folder_choices

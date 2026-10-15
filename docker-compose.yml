@@ -27,6 +27,10 @@ x-climweb-variables: &climweb-variables
   PRODUCT_SUBSCRIPTION_RATE_LIMIT_EMAIL: ${PRODUCT_SUBSCRIPTION_RATE_LIMIT_EMAIL:-3}
   PRODUCT_SUBSCRIPTION_RATE_LIMIT_WINDOW: ${PRODUCT_SUBSCRIPTION_RATE_LIMIT_WINDOW:-3600}
   GOOGLE_MEET_SERVICE_ACCOUNT_FILE: ${GOOGLE_MEET_SERVICE_ACCOUNT_FILE:-}
+  GOOGLE_DRIVE_ENABLED: ${GOOGLE_DRIVE_ENABLED:-False}
+  GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE: /run/secrets/acmad-drive-service-account.json
+  GOOGLE_DRIVE_SHARED_DRIVE_ID: ${GOOGLE_DRIVE_SHARED_DRIVE_ID:-}
+  GOOGLE_DRIVE_ROOT_FOLDER_ID: ${GOOGLE_DRIVE_ROOT_FOLDER_ID:-}
   CMS_UPGRADE_HOOK_URL: ${CMS_UPGRADE_HOOK_URL:-}
   WAGTAILADMIN_BASE_URL: ${CMS_BASE_URL:-}
   LANGUAGE_CODE: ${CMS_DEFAULT_LANGUAGE_CODE:-en}
@@ -174,6 +178,7 @@ services:
       start_period: 30s
     volumes:
       - ./climweb:/climweb/web
+      - ${GOOGLE_DRIVE_SERVICE_ACCOUNT_HOST_FILE:-./secrets/acmad-drive-service-account.json}:/run/secrets/acmad-drive-service-account.json:ro
       - static:/climweb/web/src/climweb/static
       - media:/climweb/web/src/climweb/media
       - private_exports:/climweb/web/src/climweb/private_exports
@@ -286,6 +291,7 @@ services:
       <<: *climweb-variables-prod
     volumes:
       - static_prod:/climweb/web/src/climweb/static
+      - ${GOOGLE_DRIVE_SERVICE_ACCOUNT_HOST_FILE:-./secrets/acmad-drive-service-account.json}:/run/secrets/acmad-drive-service-account.json:ro
       - media_prod:/climweb/web/src/climweb/media
       - private_exports_prod:/climweb/web/src/climweb/private_exports
       - ${RCC_DATA_VOLUME_PROD:-./cms/rcc-data-prod}:/climweb/data/rcc
