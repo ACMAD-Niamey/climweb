@@ -1,9 +1,9 @@
 {% extends "staff/portal/base.html" %}
-{% block title %}File Management · ACMAD Staff{% endblock %}
-{% block page_name %}File Management{% endblock %}
+{% block title %}Drive · ACMAD Staff{% endblock %}
+{% block page_name %}Drive{% endblock %}
 {% block content %}
 <div class="portal-page-heading">
-    <div><p class="portal-eyebrow">GOOGLE SHARED DRIVE</p><h1>File Management</h1><p>{% if is_drive_manager %}Manage the organization workspace and staff folders.{% else %}Create, organize and securely manage your work files.{% endif %}</p></div>
+    <div><p class="portal-eyebrow">GOOGLE SHARED DRIVE</p><h1>Drive</h1><p>{% if is_drive_manager %}Browse the organization workspace and staff folders. Your uploads are always saved in your dedicated folder.{% else %}Your documents and activity report attachments are securely stored in your dedicated folder.{% endif %}</p></div>
 </div>
 {% if integration_error %}
 <section class="portal-panel portal-narrow"><div class="portal-status-banner"><strong>Google Drive is unavailable</strong><span>{{ integration_error }}</span></div><p>Ask an administrator to verify the Shared Drive settings and service-account access.</p></section>
@@ -13,12 +13,8 @@
 </nav>
 <div class="portal-drive-tools">
     <section class="portal-panel">
-        <p class="portal-eyebrow">UPLOAD</p><h2>Add files</h2>
+        <p class="portal-eyebrow">MY DEDICATED FOLDER</p><h2>Add files</h2><p class="portal-help">Files uploaded here are automatically placed in your personal staff folder.</p>
         <form method="post" enctype="multipart/form-data" action="{% url 'staff_portal:drive_upload' %}" class="portal-form">{% csrf_token %}{{ upload_form.as_p }}<button class="portal-button" type="submit">Upload files</button></form>
-    </section>
-    <section class="portal-panel">
-        <p class="portal-eyebrow">ORGANIZE</p><h2>New folder</h2>
-        <form method="post" action="{% url 'staff_portal:drive_create_folder' %}" class="portal-form">{% csrf_token %}{{ folder_form.as_p }}<button class="portal-secondary-button" type="submit">Create folder</button></form>
     </section>
 </div>
 <section class="portal-panel">
@@ -39,7 +35,7 @@
                 <form method="post" action="{% url 'staff_portal:drive_trash' item.id %}" onsubmit="return confirm('Move this item to the Shared Drive trash?')">{% csrf_token %}<input type="hidden" name="folder_id" value="{{ folder_id }}"><button class="portal-link-button is-danger" type="submit">Trash</button></form>
             </div></td>
         </tr>
-        {% empty %}<tr><td colspan="5"><div class="portal-empty"><span>◇</span><h3>No files here</h3><p>{% if search %}No items match your search.{% else %}Upload a file or create a folder to get started.{% endif %}</p></div></td></tr>{% endfor %}
+        {% empty %}<tr><td colspan="5"><div class="portal-empty"><span>◇</span><h3>No files here</h3><p>{% if search %}No items match your search.{% else %}Upload a file to get started.{% endif %}</p></div></td></tr>{% endfor %}
         </tbody></table>
     </div>
     {% if next_page_token %}<div class="portal-pagination"><span></span><span>More files are available</span><a href="{% url 'staff_portal:drive_files' %}?folder={{ folder_id|urlencode }}&amp;q={{ search|urlencode }}&amp;page_token={{ next_page_token|urlencode }}">Next →</a></div>{% endif %}

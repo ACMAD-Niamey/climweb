@@ -25,12 +25,10 @@ from django.views.decorators.http import require_http_methods, require_POST
 from .forms import (
     StaffAuthenticationForm,
     StaffCreateForm,
-    StaffDriveFolderForm,
     StaffDriveMoveForm,
     StaffDriveRenameForm,
     StaffDriveUploadForm,
     StaffEditForm,
-    StaffInvitationForm,
     StaffLinkUserForm,
     StaffOffboardingForm,
     StaffPasswordResetForm,
@@ -46,6 +44,7 @@ from .models import (
     StaffDriveAudit,
     StaffMember,
     StaffProfileAccess,
+    StaffProfileEmailLog,
     StaffProfileUpdate,
     StaffTrainingAssignment,
     StaffTrainingReport,
@@ -57,7 +56,6 @@ from .google_drive import (
     StaffDriveOperationError,
     assert_within_root,
     breadcrumbs,
-    create_folder,
     download_item,
     drive_is_configured,
     ensure_staff_folder,
@@ -88,6 +86,7 @@ from .services import (
     review_update,
     send_profile_update_reminder,
 )
+from .tasks import queue_report_document_drive_sync
 
 logger = logging.getLogger(__name__)
 
@@ -268,7 +267,6 @@ def staff_drive_files(request):
             "next_page_token": next_page_token,
             "search": search,
             "upload_form": StaffDriveUploadForm(initial={"folder_id": folder_id}),
-            "folder_form": StaffDriveFolderForm(initial={"folder_id": folder_id}),
             "is_drive_manager": request.user.has_perm("staff.review_staff_profiles"),
         })
     except (StaffDriveConfigurationError, StaffDriveOperationError) as exc:
@@ -283,9 +281,10 @@ def staff_drive_upload(request):
     if not form.is_valid():
         messages.error(request, "Upload failed: " + " ".join(error for errors in form.errors.values() for error in errors))
         return _drive_redirect(request.POST.get("folder_id", settings.GOOGLE_DRIVE_ROOT_FOLDER_ID))
-    service, allowed_root, member = _drive_access(request)
-    folder_id = form.cleaned_data["folder_id"]
-    folder = assert_within_root(service, folder_id, allowed_root)
+    service = get_drive_service()
+    member = request.staff_access.member
+    folder_id = ensure_staff_folder(service, member, request.user)
+    folder = assert_within_root(service, folder_id, folder_id)
     if folder.get("mimeType") != FOLDER_MIME_TYPE:
         raise PermissionDenied("The upload destination is not a folder.")
     for upload in form.cleaned_data["uploads"]:
@@ -293,24 +292,6 @@ def staff_drive_upload(request):
         record_audit(request.user, member, StaffDriveAudit.Action.FILE_UPLOADED, item, parent_id=folder_id)
     messages.success(request, f"{len(form.cleaned_data['uploads'])} file(s) uploaded.")
     return _drive_redirect(folder_id)
-
-
-@staff_required
-@require_POST
-def staff_drive_create_folder(request):
-    form = StaffDriveFolderForm(request.POST)
-    if not form.is_valid():
-        messages.error(request, "Folder could not be created: " + " ".join(error for errors in form.errors.values() for error in errors))
-        return _drive_redirect(request.POST.get("folder_id", settings.GOOGLE_DRIVE_ROOT_FOLDER_ID))
-    service, allowed_root, member = _drive_access(request)
-    parent_id = form.cleaned_data["folder_id"]
-    parent = assert_within_root(service, parent_id, allowed_root)
-    if parent.get("mimeType") != FOLDER_MIME_TYPE:
-        raise PermissionDenied("The selected parent is not a folder.")
-    item = create_folder(service, parent_id, form.cleaned_data["name"])
-    record_audit(request.user, member, StaffDriveAudit.Action.FOLDER_CREATED, item, parent_id=parent_id)
-    messages.success(request, f"Folder “{item['name']}” created.")
-    return _drive_redirect(parent_id)
 
 
 @staff_required
@@ -569,7 +550,8 @@ def training_report(request, assignment_id):
                 report.submitted_at = timezone.now() if action == "submit" else None
                 report.reviewer_comment = "" if action == "submit" else report.reviewer_comment
                 report.save()
-                form.save_documents(report)
+                documents = form.save_documents(report)
+                queue_report_document_drive_sync(documents, request.user)
                 if action == "submit":
                     queue_report_submitted_notifications(report)
             messages.success(request, "Report submitted to HR for approval." if action == "submit" else "Report draft saved.")
@@ -629,38 +611,18 @@ def photo_preview(request, update_id):
 
 
 @reviewer_required
-@require_http_methods(["GET", "POST"])
+@require_http_methods(["GET"])
 def dashboard(request):
-    form = StaffInvitationForm(request.POST or None, initial={"member": request.GET.get("member")})
-    if request.method == "POST":
-        # Creating accounts is deliberately reserved for superusers in this pilot.
-        if not request.user.is_superuser:
-            raise PermissionDenied
-        if form.is_valid():
-            try:
-                invite_staff(form.cleaned_data["member"], form.cleaned_data["email"], request)
-            except ValidationError as exc:
-                form.add_error(None, exc)
-            except IntegrityError:
-                form.add_error(None, "An account or invitation already exists. Reload and check the account list.")
-            except Exception:
-                # Never expose an invitation token or SMTP credentials in the UI.
-                logger.warning("Staff invitation delivery failed; administrator should check SMTP configuration.")
-                form.add_error(None, "The invitation could not be sent. Check SMTP configuration, then resend using the same staff member and email.")
-            else:
-                messages.success(request, "Invitation sent. The staff member will choose their own password.")
-                return redirect("staff_profile_dashboard")
     members = StaffMember.objects.select_related("department", "profile_access__user", "profile_access__linked_by", "employment").order_by("name", "pk")
     bulk_invite_candidates = list(profile_update_invitation_candidates()) if request.user.is_superuser else []
     return render(request, "staff/admin/dashboard.html", {
-        "form": form,
         "staff_members": members,
         "console_email": settings.EMAIL_BACKEND == "django.core.mail.backends.console.EmailBackend",
         "submissions": StaffProfileUpdate.objects.filter(status="submitted").select_related("access__member"),
         "recent": StaffProfileUpdate.objects.filter(status__in=["approved", "changes_requested", "withdrawn"]).select_related("access__member", "reviewed_by")[:20],
-        "training_assignments": StaffTrainingAssignment.objects.select_related("member", "report", "assigned_by")[:30],
-        "submitted_reports": StaffTrainingReport.objects.filter(status=StaffTrainingReport.Status.SUBMITTED).select_related("assignment__member"),
         "bulk_invite_candidates": bulk_invite_candidates,
+        "profile_email_logs": StaffProfileEmailLog.objects.select_related("actor", "member")[:50]
+        if request.user.is_superuser else [],
         "unlinked_current_staff_count": members.filter(profile_access__isnull=True).exclude(
             employment__status__in=["retired", "left"]
         ).count(),
@@ -689,20 +651,52 @@ def bulk_invite_profile_updates(request):
         messages.error(request, "Confirm that you want to email all eligible staff members.")
         return redirect("staff_profile_dashboard")
 
+    selected_ids = request.POST.getlist("access_ids")
+    if not selected_ids:
+        messages.error(request, "Select at least one staff member to receive an invitation or reminder.")
+        return redirect("staff_profile_dashboard")
+
+    selected_candidates = list(profile_update_invitation_candidates().filter(pk__in=selected_ids))
+    if not selected_candidates:
+        messages.error(request, "The selected staff accounts are no longer eligible. Reload the page and try again.")
+        return redirect("staff_profile_dashboard")
+
     invitation_count = 0
     reminder_count = 0
     failure_count = 0
-    for access in profile_update_invitation_candidates():
+    for access in selected_candidates:
+        is_invitation = not access.accepted_at and not access.linked_at and not access.user.has_usable_password()
+        event = (
+            StaffProfileEmailLog.Event.INVITATION
+            if is_invitation
+            else StaffProfileEmailLog.Event.PROFILE_REMINDER
+        )
         try:
-            if not access.accepted_at and not access.linked_at and not access.user.has_usable_password():
+            if is_invitation:
                 invite_staff(access.member, access.user.email, request)
                 invitation_count += 1
             else:
                 send_profile_update_reminder(access, request)
                 reminder_count += 1
-        except Exception:
+        except Exception as exc:
             failure_count += 1
+            StaffProfileEmailLog.objects.create(
+                actor=request.user,
+                member=access.member,
+                recipient=access.user.email,
+                event=event,
+                status=StaffProfileEmailLog.Status.FAILED,
+                error=str(exc)[:1000],
+            )
             logger.warning("Bulk staff profile invitation failed for access id %s", access.pk, exc_info=True)
+        else:
+            StaffProfileEmailLog.objects.create(
+                actor=request.user,
+                member=access.member,
+                recipient=access.user.email,
+                event=event,
+                status=StaffProfileEmailLog.Status.SENT,
+            )
 
     sent_count = invitation_count + reminder_count
     if sent_count:
@@ -841,13 +835,28 @@ def create_member(request):
             messages.success(request, f"{member.name} was added and published on the Our Team page.")
             if form.cleaned_data["send_invitation"]:
                 try:
-                    invite_staff(member, form.cleaned_data["email"], request)
+                    access = invite_staff(member, form.cleaned_data["email"], request)
                 except ValidationError as exc:
                     messages.error(request, "The staff record was saved, but no invitation was sent: " + " ".join(exc.messages))
-                except Exception:
+                except Exception as exc:
                     logger.warning("Invitation delivery failed after staff creation; administrator should check SMTP configuration.")
+                    StaffProfileEmailLog.objects.create(
+                        actor=request.user,
+                        member=member,
+                        recipient=form.cleaned_data["email"],
+                        event=StaffProfileEmailLog.Event.INVITATION,
+                        status=StaffProfileEmailLog.Status.FAILED,
+                        error=str(exc)[:1000],
+                    )
                     messages.error(request, "The staff record was saved, but the invitation could not be sent. Check email settings and resend from the invitation form below. Do not add the staff member again.")
                 else:
+                    StaffProfileEmailLog.objects.create(
+                        actor=request.user,
+                        member=access.member,
+                        recipient=access.user.email,
+                        event=StaffProfileEmailLog.Event.INVITATION,
+                        status=StaffProfileEmailLog.Status.SENT,
+                    )
                     messages.success(request, "Invitation sent. The staff member will choose their own password.")
             return redirect(reverse("staff_profile_dashboard") + f"?member={member.pk}")
     return render(request, "staff/admin/create.html", {

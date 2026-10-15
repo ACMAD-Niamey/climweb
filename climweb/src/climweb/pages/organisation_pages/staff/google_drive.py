@@ -133,12 +133,24 @@ def create_folder(service, parent_id, name):
 
 
 def ensure_staff_folder(service, member, actor=None):
+    folder_name = member.name.strip() or f"Staff {member.pk}"
     existing = StaffDriveFolder.objects.filter(member=member).first()
     if existing:
         try:
             item = get_item(service, existing.folder_id)
             assert_within_root(service, existing.folder_id, settings.GOOGLE_DRIVE_ROOT_FOLDER_ID)
             if item.get("mimeType") == FOLDER_MIME_TYPE:
+                if item.get("name") != folder_name:
+                    old_name = item.get("name", "")
+                    item = rename_item(service, existing.folder_id, folder_name)
+                    record_audit(
+                        actor,
+                        member,
+                        StaffDriveAudit.Action.ITEM_RENAMED,
+                        item,
+                        old_name=old_name,
+                        source="staff_folder_name_sync",
+                    )
                 return existing.folder_id
         except (PermissionDenied, StaffDriveOperationError):
             pass
@@ -146,7 +158,7 @@ def ensure_staff_folder(service, member, actor=None):
     folder = create_folder(
         service,
         settings.GOOGLE_DRIVE_ROOT_FOLDER_ID,
-        f"{member.name} — Staff {member.pk}",
+        folder_name,
     )
     with transaction.atomic():
         record, created = StaffDriveFolder.objects.select_for_update().get_or_create(
