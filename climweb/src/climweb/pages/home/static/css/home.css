@@ -1057,22 +1057,12 @@
   margin: 0;
   padding: 34px 38px;
   text-align: center;
-  color: white;
-  background:
-    linear-gradient(150deg, rgba(255, 255, 255, 0.07), transparent 48%),
-    var(--theme-header-dark, var(--primary-color, #0c447c));
+  color: var(--navy-900, #0a192f);
+  background: #fff;
 }
 
 .dg-message-profile::after {
-  content: "";
-  position: absolute;
-  right: -46px;
-  bottom: -64px;
-  width: 190px;
-  height: 190px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 50%;
-  box-shadow: 0 0 0 32px rgba(255, 255, 255, 0.035);
+  content: none;
 }
 
 .dg-message-copy .eyebrow {
@@ -1102,17 +1092,18 @@
   display: grid;
   place-items: center;
   margin-bottom: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(12, 68, 124, 0.14);
   border-radius: var(--theme-border-radius, 5px);
-  background: rgba(255, 255, 255, 0.08);
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(10, 42, 55, 0.1);
   overflow: hidden;
 }
 
 .dg-profile-photo svg {
   width: 78px;
   height: 78px;
-  fill: rgba(255, 255, 255, 0.08);
-  stroke: rgba(255, 255, 255, 0.58);
+  fill: rgba(8, 122, 90, 0.06);
+  stroke: rgba(10, 42, 55, 0.5);
   stroke-width: 2;
 }
 
@@ -1120,6 +1111,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center top;
 }
 
 .dg-message-copy h2 {
@@ -1135,18 +1127,18 @@
   z-index: 1;
   display: grid;
   gap: 4px;
-  color: rgba(255, 255, 255, 0.68);
+  color: var(--portal-subtle, #60727a);
   font-size: 0.76rem;
 }
 
 .dg-profile-details strong {
-  color: white;
+  color: var(--navy-900, #0a192f);
   font-size: 1rem;
 }
 
 .dg-profile-details small {
   margin-top: 3px;
-  color: var(--yellow-400, #f4c84a);
+  color: var(--primary-color, #087a5a);
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.09em;

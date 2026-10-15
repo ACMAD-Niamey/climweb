@@ -77,7 +77,7 @@
       <aside class="dg-message-profile" aria-label="{% translate 'Director General profile' %}">
         <div class="dg-profile-photo">
           {% if dg_staff_member.photo %}
-          {% image dg_staff_member.photo fill-420x440 as dg_profile_image %}
+          {% image dg_staff_member.photo width-840 as dg_profile_image %}
           <img src="{{ dg_profile_image.url }}" alt="{{ dg_staff_member.name }}">
           {% else %}
           <span role="img" aria-label="{% translate 'Director General photograph placeholder' %}">

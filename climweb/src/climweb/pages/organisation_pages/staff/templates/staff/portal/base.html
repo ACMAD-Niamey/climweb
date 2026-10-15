@@ -29,7 +29,7 @@
             --portal-font-heading: {{ theme_tokens.heading_font|default:'"Manrope", sans-serif'|safe }};
         }
     </style>
-    <link rel="stylesheet" href="{% static 'staff/css/portal.css' %}?v=20261014f">
+    <link rel="stylesheet" href="{% static 'staff/css/portal.css' %}?v=20261015a">
 </head>
 <body class="{% if user.is_authenticated and user.staff_profile_access %}portal-authenticated{% else %}portal-anonymous{% endif %}">
 {% if user.is_authenticated and user.staff_profile_access %}
@@ -67,7 +67,7 @@
         <header class="portal-topbar">
             <button class="portal-menu-toggle" type="button" aria-label="Toggle navigation" aria-controls="portal-sidebar" aria-expanded="false">☰</button>
             <div class="portal-topbar-copy"><strong>{% block page_name %}Staff workspace{% endblock %}</strong><span>{% now "l, d F Y" %}</span></div>
-            <div class="portal-user"><span>{% if user.staff_profile_access.member.photo %}{% image user.staff_profile_access.member.photo fill-80x80 %}{% else %}{{ user.staff_profile_access.member.name|slice:':1' }}{% endif %}</span><div><strong>{{ user.staff_profile_access.member.name }}</strong><small>{{ user.staff_profile_access.member.role }}</small></div></div>
+            <div class="portal-user"><span>{% if user.staff_profile_access.member.photo %}{% image user.staff_profile_access.member.photo width-160 %}{% else %}{{ user.staff_profile_access.member.name|slice:':1' }}{% endif %}</span><div><strong>{{ user.staff_profile_access.member.name }}</strong><small>{{ user.staff_profile_access.member.role }}</small></div></div>
         </header>
         <main class="portal-main">
             {% for message in messages %}<div role="status" class="portal-notice">{{ message }}</div>{% endfor %}
