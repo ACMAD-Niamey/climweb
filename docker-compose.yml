@@ -197,6 +197,7 @@ services:
       WAIT_HOSTS: climweb_db_dev:5432,climweb_redis_dev:6379,climweb_dev:8000
     volumes:
       - ./climweb:/climweb/web
+      - ${GOOGLE_DRIVE_SERVICE_ACCOUNT_HOST_FILE:-./secrets/acmad-drive-service-account.json}:/run/secrets/acmad-drive-service-account.json:ro
       - static:/climweb/web/src/climweb/static
       - media:/climweb/web/src/climweb/media
       - private_exports:/climweb/web/src/climweb/private_exports
@@ -294,6 +295,7 @@ services:
       - ${GOOGLE_DRIVE_SERVICE_ACCOUNT_HOST_FILE:-./secrets/acmad-drive-service-account.json}:/run/secrets/acmad-drive-service-account.json:ro
       - media_prod:/climweb/web/src/climweb/media
       - private_exports_prod:/climweb/web/src/climweb/private_exports
+      - private_staff_reports_prod:/climweb/web/src/climweb/private_staff_reports
       - ${RCC_DATA_VOLUME_PROD:-./cms/rcc-data-prod}:/climweb/data/rcc
       - ${BACKUP_VOLUME_PROD:-./cms/backup-prod}:/climweb/web/src/climweb/backup
     depends_on:
@@ -317,9 +319,11 @@ services:
     environment:
       <<: *climweb-variables-prod
     volumes:
+      - ${GOOGLE_DRIVE_SERVICE_ACCOUNT_HOST_FILE:-./secrets/acmad-drive-service-account.json}:/run/secrets/acmad-drive-service-account.json:ro
       - static_prod:/climweb/web/src/climweb/static
       - media_prod:/climweb/web/src/climweb/media
       - private_exports_prod:/climweb/web/src/climweb/private_exports
+      - private_staff_reports_prod:/climweb/web/src/climweb/private_staff_reports
       - ${RCC_DATA_VOLUME_PROD:-./cms/rcc-data-prod}:/climweb/data/rcc
       - ${BACKUP_VOLUME_PROD:-./cms/backup-prod}:/climweb/web/src/climweb/backup
     depends_on:
@@ -396,3 +400,4 @@ volumes:
   static_prod:
   media_prod:
   private_exports_prod:
+  private_staff_reports_prod:

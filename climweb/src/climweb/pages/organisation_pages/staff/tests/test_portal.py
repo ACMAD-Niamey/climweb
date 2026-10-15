@@ -22,12 +22,15 @@ from climweb.pages.home.tests.factories import HomePageFactory, get_or_create_ho
 from climweb.pages.organisation_pages.organisation.tests.factories import OrganisationIndexPageFactory
 from .factories import StaffPageFactory
 from ..forms import StaffDriveUploadForm, StaffProfileForm, StaffTrainingReportForm
+from ..google_drive import ensure_staff_folder
 from ..models import (
     Department,
+    StaffDriveFolder,
     StaffEmployment,
     StaffMember,
     StaffPageSelection,
     StaffProfileAccess,
+    StaffProfileEmailLog,
     StaffProfileUpdate,
     StaffNotificationDelivery,
     StaffTrainingAssignment,
@@ -36,6 +39,7 @@ from ..models import (
 )
 from ..notifications import queue_deadline_notifications, queue_training_assigned_notifications, send_staff_notification
 from ..services import change_staff_employment, invite_staff, link_existing_staff_user, member_fingerprint, review_update
+from ..tasks import sync_report_document_to_drive
 from ..wagtail_hooks import staff_profile_permissions
 
 
@@ -104,7 +108,7 @@ class StaffPortalTests(TestCase):
         self.assertContains(response, "Google Drive")
         self.assertContains(response, "Not configured")
         content = response.content.decode()
-        menu_labels = ["Dashboard", "Activities &amp; Reports", "File Management", "My Profile"]
+        menu_labels = ["Dashboard", "Activities &amp; Reports", "Drive", "My Profile"]
         menu_positions = [content.index(label) for label in menu_labels]
         self.assertEqual(menu_positions, sorted(menu_positions))
         self.assertContains(response, '<svg viewBox="0 0 24 24"', count=6)
@@ -137,8 +141,44 @@ class StaffPortalTests(TestCase):
         response = self.client.get(reverse("staff_portal:drive_files"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Workshop notes.docx")
+        self.assertContains(response, "<h1>Drive</h1>", html=True)
+        self.assertNotContains(response, "Create folder")
         self.assertContains(response, reverse("staff_portal:drive_download", args=["document123"]))
         within_root.assert_called_once_with(service, "staffRoot123", "staffRoot123")
+
+    @override_settings(
+        GOOGLE_DRIVE_ENABLED=True,
+        GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE="/run/secrets/test.json",
+        GOOGLE_DRIVE_SHARED_DRIVE_ID="sharedDrive123",
+        GOOGLE_DRIVE_ROOT_FOLDER_ID="rootFolder123",
+    )
+    @patch("climweb.pages.organisation_pages.staff.views.record_audit")
+    @patch("climweb.pages.organisation_pages.staff.views.upload_file")
+    @patch("climweb.pages.organisation_pages.staff.views.assert_within_root")
+    @patch("climweb.pages.organisation_pages.staff.views.ensure_staff_folder")
+    @patch("climweb.pages.organisation_pages.staff.views.get_drive_service")
+    def test_drive_upload_is_forced_into_the_users_dedicated_folder(
+        self, service_factory, ensure_folder, within_root, upload, record_audit
+    ):
+        service = object()
+        service_factory.return_value = service
+        ensure_folder.return_value = "personalFolder123"
+        within_root.return_value = {"id": "personalFolder123", "mimeType": "application/vnd.google-apps.folder"}
+        upload.return_value = {"id": "uploadedFile123", "name": "notes.pdf"}
+        self.login_staff()
+        response = self.client.post(reverse("staff_portal:drive_upload"), {
+            "folder_id": "anotherFolder123",
+            "files": SimpleUploadedFile("notes.pdf", b"notes", content_type="application/pdf"),
+        })
+        self.assertRedirects(
+            response,
+            reverse("staff_portal:drive_files") + "?folder=personalFolder123",
+            fetch_redirect_response=False,
+        )
+        ensure_folder.assert_called_once_with(service, self.member, self.user)
+        within_root.assert_called_once_with(service, "personalFolder123", "personalFolder123")
+        upload.assert_called_once()
+        self.assertEqual(upload.call_args.args[1], "personalFolder123")
 
     @override_settings(
         GOOGLE_DRIVE_ENABLED=True,
@@ -159,7 +199,31 @@ class StaffPortalTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("no more than 10", str(form.errors["files"]))
 
+    @override_settings(GOOGLE_DRIVE_ROOT_FOLDER_ID="rootFolder123")
+    @patch("climweb.pages.organisation_pages.staff.google_drive.record_audit")
+    @patch("climweb.pages.organisation_pages.staff.google_drive.rename_item")
+    @patch("climweb.pages.organisation_pages.staff.google_drive.assert_within_root")
+    @patch("climweb.pages.organisation_pages.staff.google_drive.get_item")
+    def test_existing_staff_drive_folder_is_renamed_to_staff_name_only(
+        self, get_item, within_root, rename, record_audit
+    ):
+        StaffDriveFolder.objects.create(member=self.member, folder_id="personalFolder123")
+        get_item.return_value = {
+            "id": "personalFolder123",
+            "name": f"{self.member.name} — Staff {self.member.pk}",
+            "mimeType": "application/vnd.google-apps.folder",
+        }
+        rename.return_value = {
+            "id": "personalFolder123",
+            "name": self.member.name,
+            "mimeType": "application/vnd.google-apps.folder",
+        }
+        service = object()
+        self.assertEqual(ensure_staff_folder(service, self.member, self.user), "personalFolder123")
+        rename.assert_called_once_with(service, "personalFolder123", self.member.name)
+
     def test_staff_can_save_and_submit_assigned_training_report(self):
+        self.other_user.user_permissions.add(Permission.objects.get(codename="review_staff_profiles"))
         assignment = self.training_assignment()
         self.login_staff()
         url = reverse("staff_portal:training_report", args=[assignment.pk])
@@ -175,14 +239,21 @@ class StaffPortalTests(TestCase):
         delivery = StaffNotificationDelivery.objects.get(
             event=StaffNotificationDelivery.Event.REPORT_SUBMITTED,
             report=report,
-            recipient=self.admin.email,
+            recipient=self.other_user.email,
+        )
+        self.assertFalse(
+            StaffNotificationDelivery.objects.filter(
+                event=StaffNotificationDelivery.Event.REPORT_SUBMITTED,
+                report=report,
+                recipient=self.admin.email,
+            ).exists()
         )
         with patch(
             "climweb.pages.organisation_pages.staff.notifications._email_logo_url",
             return_value="https://example.test/media/acmad-logo.png",
         ):
             send_staff_notification(delivery.pk)
-        self.assertEqual(mail.outbox[-1].to, [self.admin.email])
+        self.assertEqual(mail.outbox[-1].to, [self.other_user.email])
         self.assertIn("awaiting review", mail.outbox[-1].subject)
         self.assertIn(reverse("staff_portal:hr_review_training_report", args=[report.pk]), mail.outbox[-1].body)
         self.assertNotIn(reverse("staff_training_report_review", args=[report.pk]), mail.outbox[-1].body)
@@ -203,15 +274,29 @@ class StaffPortalTests(TestCase):
 
     def test_deadline_reminders_are_deduplicated(self):
         today = timezone.localdate()
-        assignment = self.training_assignment(report_due_date=today + timedelta(days=7))
+        assignment = self.training_assignment(report_due_date=today + timedelta(days=2))
         self.assertEqual(queue_deadline_notifications(today), 1)
         self.assertEqual(queue_deadline_notifications(today), 0)
         delivery = StaffNotificationDelivery.objects.get(
             assignment=assignment,
-            event=StaffNotificationDelivery.Event.REPORT_DUE_7_DAYS,
+            event=StaffNotificationDelivery.Event.REPORT_DUE_2_DAYS,
         )
         send_staff_notification(delivery.pk)
-        self.assertIn("due in 7 days", mail.outbox[-1].subject)
+        self.assertIn("due in 2 days", mail.outbox[-1].subject)
+
+    def test_overdue_reminders_are_sent_daily_and_deduplicated_per_day(self):
+        today = timezone.localdate()
+        assignment = self.training_assignment(report_due_date=today - timedelta(days=3))
+        self.assertEqual(queue_deadline_notifications(today), 1)
+        self.assertEqual(queue_deadline_notifications(today), 0)
+        self.assertEqual(queue_deadline_notifications(today + timedelta(days=1)), 1)
+        self.assertEqual(
+            StaffNotificationDelivery.objects.filter(
+                assignment=assignment,
+                event=StaffNotificationDelivery.Event.REPORT_OVERDUE,
+            ).count(),
+            2,
+        )
 
     def test_staff_cannot_open_another_members_training_report(self):
         assignment = self.training_assignment(member=self.other_member)
@@ -294,6 +379,11 @@ class StaffPortalTests(TestCase):
         hr_dashboard = self.client.get(dashboard_url)
         self.assertContains(hr_dashboard, "HR Dashboard")
         self.assertNotContains(hr_dashboard, "CMS dashboard")
+        self.assertContains(
+            hr_dashboard,
+            f'href="{reverse("staff_portal:dashboard")}#training"',
+        )
+        self.assertContains(hr_dashboard, ">Activities &amp; Reports</a>", html=False)
         assignment_url = reverse("staff_portal:hr_assign_training")
         assignment_form = self.client.get(assignment_url)
         self.assertContains(assignment_form, 'data-searchable-multiselect="true"')
@@ -466,6 +556,43 @@ class StaffPortalTests(TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(b"".join(response.streaming_content), b"file-1")
             self.assertIn(document.original_name, response["Content-Disposition"])
+
+    @override_settings(
+        GOOGLE_DRIVE_ENABLED=True,
+        GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE="/run/secrets/test.json",
+        GOOGLE_DRIVE_SHARED_DRIVE_ID="sharedDrive123",
+        GOOGLE_DRIVE_ROOT_FOLDER_ID="rootFolder123",
+    )
+    @patch("climweb.pages.organisation_pages.staff.tasks.record_audit")
+    @patch("climweb.pages.organisation_pages.staff.tasks.upload_file")
+    @patch("climweb.pages.organisation_pages.staff.tasks.ensure_staff_folder")
+    @patch("climweb.pages.organisation_pages.staff.tasks.get_drive_service")
+    def test_report_document_syncs_to_the_staff_dedicated_drive_folder(
+        self, service_factory, ensure_folder, upload, record_audit
+    ):
+        report = StaffTrainingReport.objects.create(
+            assignment=self.training_assignment(), title="Activity report", summary="Summary"
+        )
+        file_field = StaffTrainingReportDocument._meta.get_field("file")
+        with tempfile.TemporaryDirectory() as upload_root, patch.object(
+            file_field, "storage", FileSystemStorage(location=upload_root)
+        ):
+            document = StaffTrainingReportDocument.objects.create(
+                report=report,
+                file=SimpleUploadedFile("report.pdf", b"report", content_type="application/pdf"),
+                original_name="report.pdf",
+            )
+            service = object()
+            service_factory.return_value = service
+            ensure_folder.return_value = "personalFolder123"
+            upload.return_value = {"id": "driveReport123", "name": "report.pdf"}
+            result = sync_report_document_to_drive.run(document.pk, self.user.pk)
+        self.assertEqual(result, "driveReport123")
+        document.refresh_from_db()
+        self.assertEqual(document.drive_file_id, "driveReport123")
+        self.assertEqual(document.drive_sync_status, StaffTrainingReportDocument.DriveSyncStatus.SYNCED)
+        ensure_folder.assert_called_once_with(service, self.member, self.user)
+        self.assertEqual(upload.call_args.args[1], "personalFolder123")
 
     def test_existing_documents_count_toward_limit_and_can_be_removed(self):
         report = StaffTrainingReport.objects.create(
@@ -1000,6 +1127,9 @@ class StaffPortalTests(TestCase):
         self.assertFalse(access.user.has_usable_password())
         self.assertFalse(access.user.has_perm("wagtailadmin.access_admin"))
         self.assertEqual(len(mail.outbox), 1)
+        log = StaffProfileEmailLog.objects.get(member=access.member)
+        self.assertEqual(log.actor, self.admin)
+        self.assertEqual(log.status, StaffProfileEmailLog.Status.SENT)
 
     def test_dashboard_lists_staff_without_accounts_alongside_invited_staff(self):
         manual = StaffMember.objects.create(page=self.page, name="Manually added staff", role="Analyst", department=self.member.department)
@@ -1010,7 +1140,7 @@ class StaffPortalTests(TestCase):
         self.assertContains(response, "<td>Not invited</td>", html=True)
         self.assertContains(response, "<td>Active</td>", html=True)
         self.assertContains(response, "<td>Invitation pending</td>", html=True)
-        self.assertContains(response, f'?member={manual.pk}#staff-invitation')
+        self.assertContains(response, reverse("staff_profile_link_user", args=[manual.pk]))
         self.assertFalse(StaffProfileAccess.objects.filter(member=manual).exists())
 
     def test_new_staff_without_invitation_appears_in_dashboard_table(self):
@@ -1066,7 +1196,10 @@ class StaffPortalTests(TestCase):
         self.assertContains(response, "Do not add the staff member again")
         access = StaffProfileAccess.objects.get(member__name="New Staff")
         self.assertFalse(access.user.has_usable_password())
-        self.assertEqual(str(response.context["form"].initial["member"]), str(access.member_id))
+        self.assertContains(response, "New Staff")
+        log = StaffProfileEmailLog.objects.get(member=access.member)
+        self.assertEqual(log.actor, self.admin)
+        self.assertEqual(log.status, StaffProfileEmailLog.Status.FAILED)
 
     def test_add_member_is_superuser_only_and_csrf_protected(self):
         self.login_staff()
@@ -1287,7 +1420,11 @@ class StaffPortalTests(TestCase):
     def test_admin_screens_render_and_regular_accounts_are_denied(self):
         update = self.draft()
         self.client.force_login(self.admin)
-        self.assertContains(self.client.get(reverse("staff_profile_dashboard")), "Send invitation")
+        dashboard = self.client.get(reverse("staff_profile_dashboard"))
+        self.assertContains(dashboard, "Bulk profile invitations")
+        self.assertNotContains(dashboard, "Invite a staff member / resend a pending invitation")
+        self.assertNotContains(dashboard, "Activity reports awaiting review")
+        self.assertNotContains(dashboard, "Recent activity assignments")
         self.assertContains(self.client.get(reverse("staff_profile_review", args=[update.pk])), "Submitted changes")
         self.login_staff()
         self.assertEqual(self.client.post(reverse("staff_profile_review", args=[update.pk]), {"action": "approve"}).status_code, 403)
@@ -1313,18 +1450,42 @@ class StaffPortalTests(TestCase):
         self.client.force_login(self.admin)
         dashboard = self.client.get(reverse("staff_profile_dashboard"))
         self.assertContains(dashboard, "Bulk profile invitations")
-        self.assertContains(dashboard, "Pilot Staff — pilot@example.test")
-        self.assertContains(dashboard, "Pending Profile Staff — pending-profile@example.test")
-        self.assertNotContains(dashboard, "Other Staff — other@example.test")
-        response = self.client.post(reverse("staff_profile_bulk_invite"), {"confirm": "yes"}, follow=True)
+        self.assertContains(dashboard, "Pilot Staff")
+        self.assertContains(dashboard, "pilot@example.test")
+        self.assertContains(dashboard, "Pending Profile Staff")
+        self.assertContains(dashboard, "pending-profile@example.test")
+        self.assertNotIn(self.other_access, dashboard.context["bulk_invite_candidates"])
+        self.assertContains(dashboard, 'name="access_ids"', count=2)
+        with patch(
+            "climweb.pages.organisation_pages.staff.services._email_logo_url",
+            return_value="https://example.test/media/acmad-logo.png",
+        ):
+            response = self.client.post(
+                reverse("staff_profile_bulk_invite"),
+                {"confirm": "yes", "access_ids": [self.access.pk, pending_access.pk]},
+                follow=True,
+            )
         self.assertContains(response, "Sent 1 invitation(s) and 1 profile reminder(s).")
+        self.assertContains(response, "Profile email activity")
+        self.assertContains(response, self.admin.get_username())
+        self.assertContains(response, "Profile update reminder")
         self.assertEqual(len(mail.outbox), 2)
         self.assertEqual(
             {message.subject for message in mail.outbox},
             {"Set up your ACMAD staff profile account", "Complete your ACMAD staff profile"},
         )
+        self.assertTrue(all(message.alternatives for message in mail.outbox))
+        self.assertTrue(all('src="https://example.test/media/acmad-logo.png"' in message.alternatives[0][0] for message in mail.outbox))
         pending_access.refresh_from_db()
         self.assertGreater(pending_access.invited_at, first_invited_at)
+        logs = StaffProfileEmailLog.objects.select_related("actor", "member")
+        self.assertEqual(logs.count(), 2)
+        self.assertEqual({entry.actor for entry in logs}, {self.admin})
+        self.assertEqual(
+            {entry.event for entry in logs},
+            {StaffProfileEmailLog.Event.INVITATION, StaffProfileEmailLog.Event.PROFILE_REMINDER},
+        )
+        self.assertTrue(all(entry.status == StaffProfileEmailLog.Status.SENT for entry in logs))
 
     def test_bulk_profile_invite_requires_confirmation_and_superuser(self):
         url = reverse("staff_profile_bulk_invite")
@@ -1332,6 +1493,9 @@ class StaffPortalTests(TestCase):
         self.assertEqual(self.client.get(url).status_code, 405)
         response = self.client.post(url, {}, follow=True)
         self.assertContains(response, "Confirm that you want to email all eligible staff members.")
+        self.assertEqual(len(mail.outbox), 0)
+        response = self.client.post(url, {"confirm": "yes"}, follow=True)
+        self.assertContains(response, "Select at least one staff member")
         self.assertEqual(len(mail.outbox), 0)
 
         reviewer = get_user_model().objects.create_user(username="bulk-reviewer", password="Reviewer-password-9284!")
@@ -1382,9 +1546,7 @@ class StaffPortalTests(TestCase):
         self.client.force_login(reviewer)
         self.assertEqual(self.client.get(reverse("staff_profile_dashboard")).status_code, 200)
         denied = self.client.post(reverse("staff_profile_dashboard"), {"member": self.member.pk, "email": "new@example.test"})
-        # Wagtail wraps PermissionDenied in a redirect to the admin home.
-        self.assertEqual(denied.status_code, 302)
-        self.assertEqual(denied["Location"], reverse("wagtailadmin_home"))
+        self.assertEqual(denied.status_code, 405)
         self.assertFalse(get_user_model().objects.filter(email="new@example.test").exists())
         update = self.draft()
         response = self.client.post(reverse("staff_profile_review", args=[update.pk]), {"action": "approve", "comment": "Reviewed"})

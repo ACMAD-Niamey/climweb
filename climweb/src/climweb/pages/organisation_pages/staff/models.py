@@ -232,6 +232,45 @@ class StaffProfileUpdate(models.Model):
         ]
 
 
+class StaffProfileEmailLog(models.Model):
+    """Audit trail for invitations and profile-completion reminders."""
+
+    class Event(models.TextChoices):
+        INVITATION = "invitation", _("Profile invitation")
+        PROFILE_REMINDER = "profile_reminder", _("Profile update reminder")
+
+    class Status(models.TextChoices):
+        SENT = "sent", _("Sent")
+        FAILED = "failed", _("Failed")
+
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="staff_profile_emails_sent",
+    )
+    member = models.ForeignKey(
+        StaffMember,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="profile_email_logs",
+    )
+    recipient = models.EmailField()
+    event = models.CharField(max_length=24, choices=Event.choices)
+    status = models.CharField(max_length=12, choices=Status.choices)
+    error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        indexes = [models.Index(fields=["created_at"], name="staff_profile_email_created")]
+
+    def __str__(self):
+        return f"{self.get_event_display()} → {self.recipient}"
+
+
 class StaffTrainingAssignment(models.Model):
     """A professional activity assignment made by HR for a staff member."""
 
@@ -320,9 +359,19 @@ class StaffTrainingReport(models.Model):
 
 
 class StaffTrainingReportDocument(models.Model):
+    class DriveSyncStatus(models.TextChoices):
+        PENDING = "pending", _("Pending")
+        SYNCED = "synced", _("Synced")
+        FAILED = "failed", _("Failed")
+        DISABLED = "disabled", _("Drive disabled")
+
     report = models.ForeignKey(StaffTrainingReport, on_delete=models.CASCADE, related_name="documents")
     file = models.FileField(upload_to=staff_report_upload_path, storage=staff_report_storage)
     original_name = models.CharField(max_length=255)
+    drive_file_id = models.CharField(max_length=255, blank=True)
+    drive_sync_status = models.CharField(max_length=12, choices=DriveSyncStatus.choices, default=DriveSyncStatus.PENDING)
+    drive_sync_error = models.TextField(blank=True)
+    drive_synced_at = models.DateTimeField(null=True, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -397,6 +446,7 @@ class StaffNotificationDelivery(models.Model):
         REPORT_CHANGES_REQUESTED = "report_changes_requested", _("Report changes requested")
         REPORT_DUE_7_DAYS = "report_due_7_days", _("Report due in 7 days")
         REPORT_DUE_3_DAYS = "report_due_3_days", _("Report due in 3 days")
+        REPORT_DUE_2_DAYS = "report_due_2_days", _("Report due in 2 days")
         REPORT_DUE_1_DAY = "report_due_1_day", _("Report due in 1 day")
         REPORT_OVERDUE = "report_overdue", _("Report overdue")
 

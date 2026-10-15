@@ -12,6 +12,7 @@ from django.core.validators import validate_email
 from django.core.files.base import ContentFile
 from django.core.mail import send_mail
 from django.db import transaction
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html_join, strip_tags
@@ -30,10 +31,32 @@ from .models import (
     StaffTrainingAssignment,
     StaffTrainingReport,
 )
-from .notifications import queue_report_reviewed_notification
+from .notifications import _email_logo_url, queue_report_reviewed_notification
 
 
 INVITATION_LIFETIME = timedelta(hours=48)
+
+
+def _send_profile_portal_email(*, subject, recipient, greeting, headline, message, action_url, action_label, details):
+    context = {
+        "subject": subject,
+        "greeting": greeting,
+        "headline": headline,
+        "message": message,
+        "action_url": action_url,
+        "action_label": action_label,
+        "details": details,
+        "comment": "",
+        "logo_url": _email_logo_url(),
+    }
+    return send_mail(
+        subject,
+        render_to_string("staff/email/workflow_notification.txt", context),
+        settings.DEFAULT_FROM_EMAIL,
+        [recipient],
+        html_message=render_to_string("staff/email/workflow_notification.html", context),
+        fail_silently=False,
+    )
 
 
 @transaction.atomic
@@ -228,13 +251,18 @@ def invite_staff(member, email, request):
     url = request.build_absolute_uri(reverse("staff_portal:accept", args=[access.pk, token]))
     # Intentionally outside the transaction: failed delivery leaves a safe,
     # passwordless account that the administrator can resend an invitation to.
-    send_mail(
-        "Set up your ACMAD staff profile account",
-        f"Hello {member.name},\n\nYou have been invited to manage your ACMAD staff profile.\n"
-        f"Set your own password using this single-use link (valid for 48 hours):\n{url}\n\n"
-        "Your photo and biography changes will be reviewed before publication.\n"
-        "If you were not expecting this invitation, contact your website administrator.\n",
-        settings.DEFAULT_FROM_EMAIL, [email], fail_silently=False,
+    _send_profile_portal_email(
+        subject="Set up your ACMAD staff profile account",
+        recipient=email,
+        greeting=f"Hello {member.name},",
+        headline="Set up your ACMAD staff profile",
+        message="You have been invited to manage your ACMAD staff profile. Create your password, then review and complete your profile.",
+        action_url=url,
+        action_label="Create password",
+        details=[
+            {"label": "Account", "value": email},
+            {"label": "Invitation validity", "value": "48 hours"},
+        ],
     )
     return access
 
@@ -246,16 +274,15 @@ def send_profile_update_reminder(access, request):
     if not access.member.is_current_staff:
         raise ValidationError("Former staff cannot receive profile reminders.")
     url = request.build_absolute_uri(reverse("staff_portal:login"))
-    send_mail(
-        "Complete your ACMAD staff profile",
-        f"Hello {access.member.name},\n\n"
-        "Your ACMAD staff profile is ready for you to review and update.\n"
-        f"Sign in with your work email to complete your profile:\n{url}\n\n"
-        "Your changes will be reviewed before they are published on the ACMAD website.\n"
-        "If you need help accessing your account, contact your website administrator.\n",
-        settings.DEFAULT_FROM_EMAIL,
-        [access.user.email],
-        fail_silently=False,
+    _send_profile_portal_email(
+        subject="Complete your ACMAD staff profile",
+        recipient=access.user.email,
+        greeting=f"Hello {access.member.name},",
+        headline="Complete your ACMAD staff profile",
+        message="Your profile is ready for you to review and update. Your changes will be reviewed before they are published on the ACMAD website.",
+        action_url=url,
+        action_label="Open staff portal",
+        details=[{"label": "Account", "value": access.user.email}],
     )
 
 

@@ -16,7 +16,6 @@ urlpatterns = [
     path("hr/training-report/<int:report_id>/", views.staff_hr_review_training_report, name="hr_review_training_report"),
     path("files/", views.staff_drive_files, name="drive_files"),
     path("files/upload/", views.staff_drive_upload, name="drive_upload"),
-    path("files/folder/create/", views.staff_drive_create_folder, name="drive_create_folder"),
     path("files/<str:file_id>/download/", views.staff_drive_download, name="drive_download"),
     path("files/<str:file_id>/rename/", views.staff_drive_rename, name="drive_rename"),
     path("files/<str:file_id>/move/", views.staff_drive_move, name="drive_move"),

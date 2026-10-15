@@ -57,13 +57,13 @@ def _staff_email(assignment):
 
 
 def _reviewer_emails():
+    """Return accounts explicitly assigned the HR report-review permission."""
     User = get_user_model()
     return list(
         User.objects.filter(is_active=True)
         .exclude(email="")
         .filter(
-            Q(is_superuser=True)
-            | Q(user_permissions__content_type__app_label="staff", user_permissions__codename="review_staff_profiles")
+            Q(user_permissions__content_type__app_label="staff", user_permissions__codename="review_staff_profiles")
             | Q(groups__permissions__content_type__app_label="staff", groups__permissions__codename="review_staff_profiles")
         )
         .values_list("email", flat=True)
@@ -169,23 +169,16 @@ def queue_deadline_notifications(today=None):
         | Q(report__status__in=[StaffTrainingReport.Status.DRAFT, StaffTrainingReport.Status.CHANGES_REQUESTED])
     ).select_related("member__profile_access__user", "report")
 
-    events_by_days = {
-        7: StaffNotificationDelivery.Event.REPORT_DUE_7_DAYS,
-        3: StaffNotificationDelivery.Event.REPORT_DUE_3_DAYS,
-        1: StaffNotificationDelivery.Event.REPORT_DUE_1_DAY,
-    }
+    events_by_days = {2: StaffNotificationDelivery.Event.REPORT_DUE_2_DAYS}
     created_count = 0
     for days, event in events_by_days.items():
         for assignment in actionable.filter(report_due_date=today + timedelta(days=days)):
             _, created = _queue(event, assignment, _staff_email(assignment), marker=str(today))
             created_count += int(created)
 
-    # Overdue mail is sent on the first overdue day and then weekly, avoiding
-    # noisy daily messages while still escalating unresolved reports.
+    # Once overdue, send one reminder per day until the report is submitted or
+    # approved. The date marker makes repeated task runs on the same day safe.
     for assignment in actionable.filter(report_due_date__lt=today):
-        days_overdue = (today - assignment.report_due_date).days
-        if days_overdue % 7 != 1:
-            continue
         _, created = _queue(
             StaffNotificationDelivery.Event.REPORT_OVERDUE,
             assignment,
@@ -267,6 +260,7 @@ def _message_context(delivery):
             days = {
                 StaffNotificationDelivery.Event.REPORT_DUE_7_DAYS: 7,
                 StaffNotificationDelivery.Event.REPORT_DUE_3_DAYS: 3,
+                StaffNotificationDelivery.Event.REPORT_DUE_2_DAYS: 2,
                 StaffNotificationDelivery.Event.REPORT_DUE_1_DAY: 1,
             }[event]
             headline = f"Your activity report is due in {days} day{'s' if days != 1 else ''}"

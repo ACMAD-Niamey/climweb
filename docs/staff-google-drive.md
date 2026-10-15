@@ -25,10 +25,13 @@ docker compose --profile dev exec -T climweb_dev python /climweb/web/src/climweb
 
 ## Access model
 
-- Staff members receive an app-managed personal folder below the configured root the first time they open File Management.
+- Staff members receive an app-managed personal folder below the configured root the first time they open Drive or upload an activity report attachment.
 - Users with `staff.review_staff_profiles` can browse the configured organization root and all staff folders.
+- Users cannot create folders through the portal. Manual uploads and activity report attachments are always placed in the uploader's dedicated staff folder.
 - Every folder boundary is verified server-side before listing, upload, download, rename, move, or trash operations.
 - Mutating actions and downloads are recorded in `StaffDriveAudit`.
 - Uploaded files are limited to 50 MB each and 10 files per request.
+
+Activity report attachments retain an authenticated private local copy and are synchronized to Drive by Celery. Failed synchronization is retried automatically. The production web and Celery worker services share the `private_staff_reports_prod` volume so the worker can read the protected attachment during synchronization.
 
 Google-native Docs, Sheets, Slides, and Drawings are exported as DOCX, XLSX, PPTX, and PDF when downloaded through the portal.

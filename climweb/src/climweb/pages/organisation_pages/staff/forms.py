@@ -366,14 +366,6 @@ class StaffDriveUploadForm(forms.Form):
         return data
 
 
-class StaffDriveFolderForm(forms.Form):
-    name = forms.CharField(max_length=255, label="Folder name")
-    folder_id = forms.CharField(widget=forms.HiddenInput)
-
-    def clean_name(self):
-        return clean_drive_name(self.cleaned_data["name"])
-
-
 class StaffDriveRenameForm(forms.Form):
     name = forms.CharField(max_length=255, label="New name")
     folder_id = forms.CharField(widget=forms.HiddenInput)
