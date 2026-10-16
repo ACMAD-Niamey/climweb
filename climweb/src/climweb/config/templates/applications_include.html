@@ -1,4 +1,4 @@
-{% load wagtailimages_tags lazyimages_tags i18n %}
+{% load i18n %}
 
 <div class="app-section">
 
@@ -7,42 +7,9 @@
     <h2 class="app-title">{% translate "Applications" %}</h2>
   </div>
 
-  <div class="app-scroll">
+  <div class="app-grid">
     {% for app in applications %}
-      <a href="{{ app.application.url }}"
-         class="app-card"
-         target="_blank"
-         rel="noopener"
-         data-ga-action="click"
-         data-ga-event-category="Geospatial App"
-         data-ga-event-label="{{ app.application.title }}"
-         data-ga-value="{{ page.title }}">
-
-        <!-- THUMBNAIL -->
-        <div class="app-img">
-          {% if app.application.thumbnail %}
-            {% image app.application.thumbnail original as app_img %}
-            <img class="progressive__img progressive--not-loaded"
-                 data-progressive="{{ app_img.url }}"
-                 src="{% lazy_image_url app_img %}"
-                 alt="{{ app.application.title }}" />
-          {% else %}
-            <div class="app-img-placeholder"></div>
-          {% endif %}
-
-          <!-- GRADIENT OVERLAY -->
-          <div class="app-overlay">
-            <span class="app-name">{{ app.application.title }}</span>
-            <span class="app-view">
-              {% translate "Open App" %}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </span>
-          </div>
-        </div>
-
-      </a>
+      {% include "application_card.html" with application=app.application %}
     {% endfor %}
   </div>
 
