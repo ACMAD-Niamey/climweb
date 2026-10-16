@@ -4,6 +4,7 @@ import wagtail_factories
 from django.utils import timezone
 from wagtail.test.utils import WagtailPageTestCase
 
+from climweb.base.models import Application
 from climweb.base.seo_utils import get_html_meta_tags
 from climweb.base.test_utils import test_page_meta_tags
 from climweb.pages.home.tests.factories import get_or_create_homepage
@@ -72,6 +73,22 @@ class TestProductPages(WagtailPageTestCase):
     def test_product_page_render(self):
         self.assertPageIsRenderable(self.product1_page)
         self.assertPageIsRenderable(self.product2_page)
+
+    def test_product_page_shows_gis_application_in_intro_media_position(self):
+        application = Application.objects.create(
+            title="Observed Daily Rainfall",
+            url="https://example.com/observed-rainfall",
+        )
+        self.product1_page.gis_application = application
+        self.product1_page.save_revision().publish()
+
+        response = self.client.get(self.product1_page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="app-card app-card--intro"')
+        self.assertContains(response, application.title)
+        self.assertContains(response, application.url)
+        self.assertNotContains(response, 'class="intro-figure"')
     
     def test_product_pages_meta_tags(self):
         resp = self.client.get(self.product1_page.get_url())

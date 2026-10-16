@@ -6,7 +6,7 @@ from django.urls import reverse
 from wagtail.models import Site
 from wagtail.test.utils import WagtailPageTestCase
 
-from climweb.base.models import NavigationSettings
+from climweb.base.models import Application, NavigationSettings
 from climweb.base.seo_utils import get_html_meta_tags
 from climweb.base.test_utils import test_page_meta_tags
 from climweb.pages.home.tests.factories import get_or_create_homepage
@@ -22,6 +22,7 @@ from climweb.pages.services.models import (
     RCCClimateProductsPage,
     RCCCoordinationPage,
     RCCLongRangeForecastingPage,
+    ServiceApplication,
 )
 from .factories import (
     RCCClimateMonitoringPageFactory,
@@ -70,6 +71,23 @@ class TestServicesPages(WagtailPageTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, '<h2 class="intro-title"></h2>', html=True)
+
+    def test_service_applications_render_as_grid(self):
+        application = Application.objects.create(
+            title="Observed Daily Rainfall",
+            url="https://example.com/observed-rainfall",
+        )
+        ServiceApplication.objects.create(
+            page=self.service1_page,
+            application=application,
+        )
+
+        response = self.client.get(self.service1_page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="app-grid"')
+        self.assertNotContains(response, 'class="app-scroll"')
+        self.assertContains(response, application.title)
 
     def test_rcc_page_creation_forms_include_required_page_title(self):
         page_types = (

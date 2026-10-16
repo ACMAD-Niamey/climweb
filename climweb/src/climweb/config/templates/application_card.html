@@ -1,0 +1,32 @@
+{% load wagtailimages_tags lazyimages_tags i18n %}
+
+<a href="{{ application.url }}"
+   class="app-card{% if intro %} app-card--intro{% endif %}"
+   target="_blank"
+   rel="noopener noreferrer"
+   data-ga-action="click"
+   data-ga-event-category="Geospatial App"
+   data-ga-event-label="{{ application.title }}"
+   data-ga-value="{{ page.title }}">
+  <div class="app-img">
+    {% if application.thumbnail %}
+      {% image application.thumbnail original as app_img %}
+      <img class="progressive__img progressive--not-loaded"
+           data-progressive="{{ app_img.url }}"
+           src="{% lazy_image_url app_img %}"
+           alt="{{ application.title }}" />
+    {% else %}
+      <div class="app-img-placeholder"></div>
+    {% endif %}
+
+    <div class="app-overlay">
+      <span class="app-name">{{ application.title }}</span>
+      <span class="app-view">
+        {% translate "Open App" %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </span>
+    </div>
+  </div>
+</a>
