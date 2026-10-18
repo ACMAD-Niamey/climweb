@@ -244,7 +244,8 @@
    .wwd-icon rule (copied rather than @extended since this project has no Sass
    build step), scaled slightly down and re-themed for a light card background
    instead of .wwd-icon's dark-card context. */
-.ss-icon-badge {
+.ss-icon-badge,
+.ss-key-info-item > .ss-icon-badge {
     width: 40px;
     height: 40px;
     border-radius: 10px;

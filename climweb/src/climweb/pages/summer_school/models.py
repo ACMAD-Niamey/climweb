@@ -264,6 +264,19 @@ class SummerSchoolPage(MetadataPageMixin, Page):
     key_info_certificate = models.CharField(max_length=255, blank=True, verbose_name=_("Certificate"))
     key_info_contact = models.CharField(max_length=255, blank=True, verbose_name=_("Contact"))
     apply_button_text = models.CharField(max_length=60, default="Apply", verbose_name=_("Apply Button Text"))
+    online_meeting_url = models.URLField(
+        blank=True,
+        verbose_name=_("Online meeting URL"),
+        help_text=_(
+            "When provided, the featured Summer School buttons link to the live online event. "
+            "Clear this field when online participation is no longer available."
+        ),
+    )
+    online_meeting_button_text = models.CharField(
+        max_length=60,
+        default="Join Summer School Online",
+        verbose_name=_("Online meeting button text"),
+    )
 
     # --- Index card display ---
     card_icon = models.CharField(max_length=100, null=True, blank=True, verbose_name=_("Card Icon"),
@@ -404,6 +417,8 @@ class SummerSchoolPage(MetadataPageMixin, Page):
             FieldPanel('key_info_certificate'),
             FieldPanel('key_info_contact'),
             FieldPanel('apply_button_text'),
+            FieldPanel('online_meeting_url'),
+            FieldPanel('online_meeting_button_text'),
         ], heading=_("Key Info")),
         MultiFieldPanel([
             FieldPanel('card_icon', widget=IconChooserWidget),

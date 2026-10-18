@@ -247,6 +247,22 @@ class HeroUpdatesTests(WagtailPageTestCase):
         self.assertEqual(slides[2]["cta_url"], "https://summerschool.acmad.org/")
         self.assertEqual(slides[2]["title"], summer_school.hero_heading)
 
+    def test_summer_school_slide_links_to_online_meeting_when_configured(self):
+        summer_school_index = SummerSchoolIndexPageFactory(parent=self.home)
+        meeting_url = "https://meet.example.com/summer-school"
+        button_text = "Join the live sessions"
+        SummerSchoolPageFactory(
+            parent=summer_school_index,
+            online_meeting_url=meeting_url,
+            online_meeting_button_text=button_text,
+        )
+
+        slide = self.home.get_hero_updates()[0]
+
+        self.assertEqual(slide["kind"], "summer_school")
+        self.assertEqual(slide["cta_label"], button_text)
+        self.assertEqual(slide["cta_url"], meeting_url)
+
     def test_programme_toggles_hide_el_nino_and_summer_school(self):
         product_index = ProductIndexPageFactory(parent=self.home)
         ElNinoPageFactory(parent=product_index)
