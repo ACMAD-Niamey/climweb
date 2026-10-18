@@ -1079,14 +1079,22 @@ class HomePage(MetadataPageMixin, Page):
                     ),
                     "kind": "summer_school",
                     "badge": _("Summer School"),
-                    "cta_label": _("Explore Summer School"),
+                    "cta_label": (
+                        featured_edition.online_meeting_button_text
+                        if featured_edition and featured_edition.online_meeting_url
+                        else _("Explore Summer School")
+                    ),
                     "date": featured_edition.edition_start_date if featured_edition else None,
                     "end_date": None,
                     "image": (
                         featured_edition.featured_display_image if featured_edition else None
                     ) or summer_school_index.get_meta_image(),
                     "url": canonical_public_page_url(page_url),
-                    "cta_url": "https://summerschool.acmad.org/",
+                    "cta_url": (
+                        featured_edition.online_meeting_url
+                        if featured_edition and featured_edition.online_meeting_url
+                        else "https://summerschool.acmad.org/"
+                    ),
                 }
 
         if self.hero_updates_mode == "manual":

@@ -155,6 +155,17 @@ class BaseProductPage(AbstractIntroPage):
     show_in_menus_default = True
     
     service = models.ForeignKey(ServiceCategory, on_delete=models.PROTECT, verbose_name=_("Primary Service"))
+    gis_application = models.ForeignKey(
+        "base.Application",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("GIS application"),
+        help_text=_(
+            "Optional GIS application shown in place of the introduction image."
+        ),
+    )
     
     products_per_page = models.PositiveIntegerField(default=6, validators=[
         MinValueValidator(6),
@@ -270,6 +281,7 @@ class ProductPage(BaseProductPage):
         FieldPanel('other_services', widget=forms.CheckboxSelectMultiple),
         FieldPanel('product'),
         *AbstractIntroPage.content_panels,
+        FieldPanel('gis_application'),
         MultiFieldPanel(
             [
                 FieldPanel('products_per_page'),
@@ -1580,6 +1592,7 @@ class SubNationalProductPage(BaseProductPage):
         FieldPanel('service'),
         FieldPanel('product'),
         *AbstractIntroPage.content_panels,
+        FieldPanel('gis_application'),
         MultiFieldPanel(
             [
                 FieldPanel('products_per_page'),
