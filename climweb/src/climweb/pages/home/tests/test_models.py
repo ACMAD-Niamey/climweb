@@ -342,6 +342,20 @@ class TestHomeFeaturedSummerSchool(WagtailPageTestCase):
         self.assertContains(response, "Applications closed")
         self.assertNotContains(response, self.application_page.url)
 
+    def test_closed_application_is_replaced_by_online_join_link(self):
+        meeting_url = "https://meet.example.com/summer-school"
+        button_text = "Join the live sessions"
+        self.edition.application_open = False
+        self.edition.online_meeting_url = meeting_url
+        self.edition.online_meeting_button_text = button_text
+        self.edition.save()
+
+        response = self.client.get(self.page.url)
+
+        self.assertContains(response, meeting_url)
+        self.assertContains(response, button_text)
+        self.assertNotContains(response, "Applications closed")
+
     def test_homepage_editor_overrides_summer_school_section(self):
         self.page.homepage_summer_school = self.edition
         self.page.summer_school_section_label = "Training programme"

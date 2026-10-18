@@ -53,6 +53,13 @@
                         <a href="{{ edition.application_page.url }}" class="home-summer-school-banner-btn-primary">
                             {{ edition.apply_button_text }}
                         </a>
+                        {% elif edition.online_meeting_url %}
+                        <a href="{{ edition.online_meeting_url }}"
+                           class="home-summer-school-banner-btn-primary"
+                           target="_blank"
+                           rel="noopener noreferrer">
+                            {{ edition.online_meeting_button_text }}
+                        </a>
                         {% else %}
                         <span class="home-summer-school-banner-btn-secondary" style="opacity: 0.7; cursor: not-allowed;">
                             {% translate "Applications closed" %}

@@ -340,6 +340,20 @@ class TestSummerSchoolApplyButtonClosedState(WagtailPageTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Applications closed")
 
+    def test_edition_hero_offers_online_join_link_when_applications_closed(self):
+        meeting_url = "https://meet.example.com/summer-school"
+        button_text = "Join the live sessions"
+        self.edition.application_open = False
+        self.edition.online_meeting_url = meeting_url
+        self.edition.online_meeting_button_text = button_text
+        self.edition.save()
+
+        response = self.client.get(self.edition.url)
+
+        self.assertContains(response, meeting_url)
+        self.assertContains(response, button_text)
+        self.assertNotContains(response, "Applications closed")
+
     def test_index_page_featured_card_shows_apply_button_when_open(self):
         response = self.client.get(self.index_page.url)
 
@@ -355,6 +369,20 @@ class TestSummerSchoolApplyButtonClosedState(WagtailPageTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Applications closed")
+
+    def test_index_page_featured_card_offers_online_join_link_when_applications_closed(self):
+        meeting_url = "https://meet.example.com/summer-school"
+        button_text = "Join the live sessions"
+        self.edition.application_open = False
+        self.edition.online_meeting_url = meeting_url
+        self.edition.online_meeting_button_text = button_text
+        self.edition.save()
+
+        response = self.client.get(self.index_page.url)
+
+        self.assertContains(response, meeting_url)
+        self.assertContains(response, button_text)
+        self.assertNotContains(response, "Applications closed")
 
     def test_summer_school_navigation_uses_acmad_logo_and_school_home(self):
         for page in (self.index_page, self.edition, self.application_page):
