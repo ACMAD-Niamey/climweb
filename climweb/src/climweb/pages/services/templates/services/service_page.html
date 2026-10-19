@@ -54,6 +54,7 @@
                             {{ page.introduction_text|richtext }}
                         </div>
                     {% endif %}
+                    {% include "services/rationale_details.html" with page=page %}
                 </div>
             </section>
         {% endif %}
@@ -79,8 +80,8 @@
                             <div class="column is-one-quarter-desktop is-full-mobile">
                                 <a href="{{ product.url }}">
                                     <div class="product-card">
-                                        {% if product.introduction_image %}
-                                            {% image product.introduction_image original as product_img %}
+                                        {% if product.listing_image %}
+                                            {% image product.listing_image original as product_img %}
                                             <div class="progressive__bg progressive--not-loaded product-image"
                                                  data-progressive="{{ product_img.url }}"
                                                  style="background-image: url({% lazy_image_url product_img %});">
@@ -225,6 +226,18 @@
 
         const windowWidth = $(window).width();
         document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.service-rationale__toggle').forEach(function (button) {
+                const content = document.getElementById(button.getAttribute('aria-controls'));
+
+                if (!content) return;
+
+                button.addEventListener('click', function () {
+                    const isExpanded = button.getAttribute('aria-expanded') === 'true';
+                    button.setAttribute('aria-expanded', String(!isExpanded));
+                    content.hidden = isExpanded;
+                });
+            });
+
             document.querySelectorAll('.ac-wrap').forEach(function (wrap) {
                 wrap.querySelectorAll('.ac-header').forEach(function (header) {
                 header.addEventListener('click', function () {

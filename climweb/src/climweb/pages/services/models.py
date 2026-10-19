@@ -576,6 +576,14 @@ class ServicePage(AbstractBannerWithIntroPage):
         verbose_name=_("Introduction Title"),
         help_text=_("Optional introduction section title"),
     )
+    rationale_text = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Full rationale"),
+        help_text=_(
+            "Optional longer context displayed behind a Read full rationale button."
+        ),
+    )
     service = models.OneToOneField(ServiceCategory, on_delete=models.PROTECT, verbose_name=_("Service"))
 
     sector_heading = models.CharField(
@@ -660,6 +668,9 @@ class ServicePage(AbstractBannerWithIntroPage):
     content_panels = Page.content_panels + [
         FieldPanel('service'),
         *AbstractBannerWithIntroPage.content_panels,
+        MultiFieldPanel([
+            FieldPanel("rationale_text"),
+        ], heading=_("Expandable rationale")),
         MultiFieldPanel([
             FieldPanel("sector_heading"),
             FieldPanel("sector_introduction"),

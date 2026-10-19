@@ -13,6 +13,35 @@ from climweb.pages.services.models import ServiceIndexPage, ServicePage
 
 SERVICE_NAME = "Climate User Interface Platform"
 PAGE_TITLE = "African Continental User Interface Platform (CUIP)"
+INTRODUCTION_TITLE = "Why CUIP matters"
+INTRODUCTION_SUMMARY = (
+    "<p>African economies and livelihoods depend heavily on climate-sensitive sectors, particularly "
+    "rain-fed agriculture. CUIP strengthens collaboration between climate-information providers and "
+    "users to develop practical services for Agriculture, Disaster Risk Reduction, Health and Water.</p>"
+)
+RATIONALE_TEXT = (
+    "<p>Most African economies and livelihoods are highly dependent on rain-fed agriculture. Within "
+    "Africa, the agriculture sector is a leading contributor to national economies, averaging 21% and "
+    "ranging from 10% to 70% of GDP.</p>"
+    "<p>However, the region is constantly influenced by adverse climate extremes whose impacts are felt "
+    "far beyond agriculture, extending into Disaster Risk Reduction (DRR), Health and Water and negatively "
+    "affecting socioeconomic activity in these sectors. Recurrent events such as droughts, floods and low "
+    "and high temperatures reduce the continent's economic productivity. A continuation of these adverse "
+    "conditions is likely to have increasingly negative effects on African economies.</p>"
+    "<p>The lack of suitable coping and adaptation strategies, coupled with limited institutional, economic "
+    "and technological capacity to support the required actions, increases the region's vulnerability to "
+    "climate variability and climate-change impacts. Incorporating weather and climate information into "
+    "sectoral planning and management in Agriculture, DRR, Health and Water can improve effectiveness, "
+    "strengthen community livelihoods and reduce vulnerability to climate variability, extremes and adverse "
+    "climate-change impacts.</p>"
+    "<p>ACMAD and its partners recognize the urgent need to mainstream weather and climate information in "
+    "development to optimize positive outcomes and alleviate negative ones for African economies, communities "
+    "and societies in climate-sensitive sectors. Strengthening Africa's climate-service value chain is essential "
+    "to deliver the services needed for adaptation, resilience and sustainable development. Analysis of this "
+    "value chain highlights the urgency of creating effective mechanisms through which climate-information and "
+    "knowledge providers and users can interact, supporting co-design and co-development that lead to valuable, "
+    "bespoke climate services.</p>"
+)
 CONTINENTAL_TOR_RECORD = {
     "key": "continental-cuip-workshop-concept-note",
     "title": "Continental CUIP workshop concept note and adoption programme",
@@ -235,11 +264,9 @@ class Command(BaseCommand):
                 service=service,
                 banner_title="Climate information shaped around user decisions",
                 banner_subtitle="African Continental User Interface Platform",
-                introduction_title="Connecting climate knowledge with sector action",
-                introduction_text=(
-                    "<p>CUIP is ACMAD's interface for bringing climate-service producers and users together. "
-                    "It organizes actionable information around agriculture, health, water resources and disaster risk reduction.</p>"
-                ),
+                introduction_title=INTRODUCTION_TITLE,
+                introduction_text=INTRODUCTION_SUMMARY,
+                rationale_text=RATIONALE_TEXT,
                 sector_heading="Climate services for priority sectors",
                 sector_introduction="<p>Choose a sector to explore its risks, services, partners, products and supporting resources.</p>",
                 service_sectors=sector_content(products, documents),
@@ -298,6 +325,23 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS("Added the audited TOR content and records to the existing CUIP page."))
             else:
                 self.stdout.write("CUIP page already contains TOR content; dashboard edits were preserved.")
+
+        introduction_changed = False
+        current_introduction = str(page.introduction_text or "")
+        if not page.rationale_text:
+            page.rationale_text = RATIONALE_TEXT
+            introduction_changed = True
+        if (
+            not current_introduction
+            or "WWP Department has access" in current_introduction
+            or "CUIP is ACMAD's interface" in current_introduction
+        ):
+            page.introduction_title = INTRODUCTION_TITLE
+            page.introduction_text = INTRODUCTION_SUMMARY
+            introduction_changed = True
+        if introduction_changed:
+            page.save_revision().publish()
+            self.stdout.write(self.style.SUCCESS("Added the CUIP summary and expandable rationale."))
 
         visibility_changed = False
         if page.show_projects_section:

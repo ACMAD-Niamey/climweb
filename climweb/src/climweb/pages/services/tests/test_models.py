@@ -1,6 +1,8 @@
 from datetime import date
 from io import StringIO
+from pathlib import Path
 
+import wagtail_factories
 from django.core.management import call_command
 from django.urls import reverse
 from wagtail.models import Site
@@ -70,6 +72,26 @@ class TestServicesPages(WagtailPageTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, '<h2 class="intro-title"></h2>', html=True)
+
+    def test_service_page_can_expand_a_full_rationale(self):
+        self.service1_page.introduction_text = "<p>Short rationale summary.</p>"
+        self.service1_page.rationale_text = (
+            "<p>Longer evidence and context for the service rationale.</p>"
+        )
+        self.service1_page.save_revision().publish()
+
+        response = self.client.get(self.service1_page.get_url())
+
+        self.assertContains(response, "Short rationale summary.")
+        self.assertContains(response, 'class="service-rationale__toggle"')
+        self.assertContains(response, 'aria-controls="service-rationale-content"')
+        self.assertContains(response, 'id="service-rationale-content"')
+        self.assertContains(response, "Read full rationale")
+        self.assertContains(response, "Hide rationale")
+        self.assertContains(
+            response,
+            "Longer evidence and context for the service rationale.",
+        )
 
     def test_rcc_page_creation_forms_include_required_page_title(self):
         page_types = (
@@ -190,6 +212,24 @@ class TestServicesPages(WagtailPageTestCase):
 
         self.assertTemplateUsed(response, "services/service_page.html")
         self.assertTemplateNotUsed(response, "services/rcc_service_page.html")
+
+    def test_service_product_cards_use_listing_image_fallback(self):
+        product_index = ProductIndexPageFactory(parent=get_or_create_homepage())
+        default_thumbnail = wagtail_factories.ImageFactory(
+            title="Service product fallback thumbnail",
+        )
+        ProductPageFactory(
+            parent=product_index,
+            title="Product without introduction image",
+            service=self.service1_page.service,
+            introduction_image=None,
+            default_listing_thumbnail=default_thumbnail,
+        )
+
+        response = self.client.get(self.service1_page.get_url())
+
+        self.assertContains(response, "Product without introduction image")
+        self.assertContains(response, Path(default_thumbnail.file.name).stem)
 
     def test_rcc_page_displays_featured_partners(self):
         rcc_page = ServicePageFactory(
