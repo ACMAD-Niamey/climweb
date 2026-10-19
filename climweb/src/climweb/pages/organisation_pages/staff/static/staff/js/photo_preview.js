@@ -16,7 +16,7 @@
         frame.className = "photo-preview-frame";
         image.alt = "Preview of the selected profile photo";
         help.className = "photo-preview-help";
-        help.textContent = "This preview matches the circular team photo. Make sure your full face is visible and centred.";
+        help.textContent = "This preview matches the top-aligned circular crop used on the team page. Keep your face visible near the upper centre.";
 
         frame.appendChild(image);
         wrapper.appendChild(label);

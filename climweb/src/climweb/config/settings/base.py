@@ -454,6 +454,12 @@ STORAGES = {
             "location": env.str("RCC_DATA_ROOT", os.path.join(BASE_DIR, "rcc_data")),
         },
     },
+    "staff_reports": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {
+            "location": os.path.join(BASE_DIR, "private_staff_reports"),
+        },
+    },
 }
 
 # Hosts that RCC administrators may use for editable ARC2 THREDDS catalogue URLs.
@@ -490,6 +496,7 @@ MEDIA_URL = env.str("FORCE_SCRIPT_NAME", "") + "/media/"
 # download_submission_export_view in climweb.base.views, which checks the
 # same form-management permission as the submissions list itself.
 PRIVATE_EXPORTS_ROOT = os.path.join(BASE_DIR, "private_exports")
+PRIVATE_STAFF_REPORTS_ROOT = os.path.join(BASE_DIR, "private_staff_reports")
 SUBMISSION_EXPORT_RETENTION_HOURS = 48
 
 # Wagtail settings
@@ -972,6 +979,15 @@ VUE_FRONTEND_STATIC_PATH = 'vue'
 WAGTAIL_NEWSLETTER_MAILCHIMP_API_KEY = env("WAGTAIL_NEWSLETTER_MAILCHIMP_API_KEY", default="")
 WAGTAIL_NEWSLETTER_FROM_NAME = env("WAGTAIL_NEWSLETTER_FROM_NAME", default="")
 WAGTAIL_NEWSLETTER_REPLY_TO = env("WAGTAIL_NEWSLETTER_REPLY_TO", default="")
+
+# ACMAD staff Shared Drive integration. The service-account key must be mounted
+# as a read-only deployment secret and must never be committed to source control.
+GOOGLE_DRIVE_ENABLED = env.bool("GOOGLE_DRIVE_ENABLED", default=False)
+GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE = env.str(
+    "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", default=""
+)
+GOOGLE_DRIVE_SHARED_DRIVE_ID = env.str("GOOGLE_DRIVE_SHARED_DRIVE_ID", default="")
+GOOGLE_DRIVE_ROOT_FOLDER_ID = env.str("GOOGLE_DRIVE_ROOT_FOLDER_ID", default="")
 
 MARKDOWNIFY = {
     "default": {

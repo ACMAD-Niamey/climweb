@@ -206,9 +206,6 @@
         {% if page.applications.all %}
             <section class="pb-6">
                 <div class="container">
-                    <h2 class="section-title center">
-                        {% translate "Applications" %}
-                    </h2>
                     {% include 'applications_include.html' with applications=page.applications.all %}
                 </div>
             </section>

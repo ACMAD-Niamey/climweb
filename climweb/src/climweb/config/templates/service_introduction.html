@@ -65,6 +65,8 @@
         <div class="intro-video-embed">
           {% embed page.introduction_video_url %}
         </div>
+      {% elif page.gis_application %}
+        {% include "application_card.html" with application=page.gis_application intro=True %}
       {% elif featured_product %}
         {% include 'products/featured_product_card.html' with product=featured_product %}
       {% else %}

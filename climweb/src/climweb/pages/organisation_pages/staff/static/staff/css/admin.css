@@ -81,3 +81,64 @@
 .staff-admin a:not(.button):hover {
     color: var(--w-color-text-link-hover);
 }
+
+.staff-admin .portal-bulk-form {
+    display: flex;
+    margin-top: 1.25rem;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.staff-admin .portal-recipient-list {
+    display: grid;
+    width: 100%;
+    max-height: 22rem;
+    overflow-y: auto;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: .65rem;
+}
+
+.staff-admin .portal-recipient-list label {
+    padding: .8rem .9rem;
+    align-items: flex-start;
+    border: 1px solid var(--w-color-border-furniture);
+    border-radius: .4rem;
+    background: var(--w-color-surface-field);
+    cursor: pointer;
+}
+
+.staff-admin .portal-recipient-list label:hover {
+    border-color: var(--w-color-border-interactive-more-contrast);
+}
+
+.staff-admin .portal-recipient-list input {
+    margin-top: .2rem;
+}
+
+.staff-admin .portal-recipient-list span,
+.staff-admin .portal-recipient-list small {
+    display: block;
+}
+
+.staff-admin .portal-recipient-list small {
+    margin-top: .2rem;
+    color: var(--w-color-text-meta);
+}
+
+.staff-admin .portal-bulk-form label {
+    display: flex;
+    margin: 0;
+    align-items: center;
+    gap: .55rem;
+}
+
+.staff-admin details {
+    margin: 1rem 0;
+}
+
+.staff-admin details summary {
+    color: var(--w-color-text-link-default);
+    font-weight: 600;
+    cursor: pointer;
+}

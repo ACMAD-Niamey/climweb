@@ -6,7 +6,15 @@ from django.contrib.auth.forms import AuthenticationForm, PasswordResetForm
 from django.utils import timezone
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from .models import Department, StaffEmployment, StaffMember, StaffPage
+from .models import (
+    Department,
+    StaffEmployment,
+    StaffMember,
+    StaffPage,
+    StaffTrainingAssignment,
+    StaffTrainingReport,
+    StaffTrainingReportDocument,
+)
 
 
 class StaffInvitationForm(forms.Form):
@@ -158,3 +166,218 @@ class StaffEditForm(StaffProfileForm):
     department = forms.ModelChoiceField(queryset=Department.objects.all())
     source_fingerprint = forms.CharField(widget=forms.HiddenInput)
     field_order = ["name", "role", "department", "biography", "photo", "website", "linkedin", "github", "publications", "source_fingerprint"]
+
+
+class StaffTrainingAssignmentForm(forms.Form):
+    member = forms.ModelMultipleChoiceField(
+        queryset=StaffMember.objects.none(),
+        label="Staff members",
+        help_text="Search for and select one or more staff members for this activity.",
+        widget=forms.SelectMultiple(
+            attrs={
+                "data-searchable-multiselect": "true",
+                "data-search-placeholder": "Search staff by name…",
+            }
+        ),
+    )
+    activity_type = forms.ChoiceField(label="Activity type", choices=StaffTrainingAssignment.ActivityType.choices)
+    title = forms.CharField(max_length=200)
+    organizer = forms.CharField(max_length=200, required=False)
+    location = forms.CharField(max_length=200, required=False)
+    description = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 4}))
+    start_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+    end_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+    report_due_date = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["member"].queryset = StaffMember.objects.exclude(
+            employment__status__in=[StaffEmployment.Status.RETIRED, StaffEmployment.Status.LEFT]
+        ).select_related("department").order_by("name")
+
+    def clean(self):
+        data = super().clean()
+        if data.get("start_date") and data.get("end_date") and data["end_date"] < data["start_date"]:
+            self.add_error("end_date", "The end date cannot be before the start date.")
+        if data.get("report_due_date") and data.get("end_date") and data["report_due_date"] < data["end_date"]:
+            self.add_error("report_due_date", "The report due date cannot be before the activity ends.")
+        return data
+
+    def save(self, assigned_by):
+        values = {
+            key: self.cleaned_data[key]
+            for key in ["activity_type", "title", "organizer", "location", "description", "start_date", "end_date", "report_due_date"]
+        }
+        return [
+            StaffTrainingAssignment.objects.create(
+                member=member,
+                assigned_by=assigned_by,
+                status=StaffTrainingAssignment.Status.NOMINATED,
+                **values,
+            )
+            for member in self.cleaned_data["member"]
+        ]
+
+
+class StaffReportDocumentField(forms.FileField):
+    allowed_content_types = {
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-powerpoint",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "application/vnd.oasis.opendocument.text",
+        "application/vnd.oasis.opendocument.presentation",
+    }
+
+    def validate(self, value):
+        super().validate(value)
+        if not value:
+            return
+        if value.size > 10 * 1024 * 1024:
+            raise forms.ValidationError(f"{value.name} must be no larger than 10 MB.")
+        if getattr(value, "content_type", "") not in self.allowed_content_types:
+            raise forms.ValidationError(
+                f"{value.name} is not a supported PDF, Word, PowerPoint or OpenDocument file."
+            )
+
+
+class StaffTrainingReportForm(forms.ModelForm):
+    document_1 = StaffReportDocumentField(
+        required=False,
+        label="Supporting document 1",
+        widget=forms.ClearableFileInput(attrs={"accept": ".pdf,.doc,.docx,.ppt,.pptx,.odt,.odp"}),
+        help_text="PDF, Word, PowerPoint or OpenDocument file, up to 10 MB.",
+    )
+    document_2 = StaffReportDocumentField(
+        required=False,
+        label="Supporting document 2",
+        widget=forms.ClearableFileInput(attrs={"accept": ".pdf,.doc,.docx,.ppt,.pptx,.odt,.odp"}),
+    )
+    document_3 = StaffReportDocumentField(
+        required=False,
+        label="Supporting document 3",
+        widget=forms.ClearableFileInput(attrs={"accept": ".pdf,.doc,.docx,.ppt,.pptx,.odt,.odp"}),
+    )
+    remove_documents = forms.ModelMultipleChoiceField(
+        queryset=StaffTrainingReportDocument.objects.none(),
+        required=False,
+        label="Remove existing documents",
+        widget=forms.CheckboxSelectMultiple,
+    )
+
+    class Meta:
+        model = StaffTrainingReport
+        fields = ["title", "summary", "outcomes"]
+        labels = {"outcomes": "Key outcomes and follow-up actions"}
+        widgets = {"summary": forms.Textarea(attrs={"rows": 7}), "outcomes": forms.Textarea(attrs={"rows": 5})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields["remove_documents"].queryset = self.instance.documents.all()
+        else:
+            self.fields["remove_documents"].widget = forms.HiddenInput()
+        self.order_fields([
+            "title",
+            "summary",
+            "outcomes",
+            "document_1",
+            "document_2",
+            "document_3",
+            "remove_documents",
+        ])
+
+    def clean(self):
+        data = super().clean()
+        current_count = self.instance.documents.count() if self.instance and self.instance.pk else 0
+        removed_count = data.get("remove_documents").count() if data.get("remove_documents") is not None else 0
+        upload_count = sum(bool(data.get(field)) for field in ["document_1", "document_2", "document_3"])
+        if current_count - removed_count + upload_count > 3:
+            self.add_error(None, "A report can have no more than 3 documents. Remove an existing document before uploading its replacement.")
+        return data
+
+    def save_documents(self, report):
+        for document in self.cleaned_data.get("remove_documents", []):
+            document.file.delete(save=False)
+            document.delete()
+        uploads = [
+            self.cleaned_data.get(field)
+            for field in ["document_1", "document_2", "document_3"]
+            if self.cleaned_data.get(field)
+        ]
+        return [
+            StaffTrainingReportDocument.objects.create(
+                report=report,
+                file=upload,
+                original_name=upload.name,
+            )
+            for upload in uploads
+        ]
+
+
+class StaffTrainingReportReviewForm(forms.Form):
+    action = forms.ChoiceField(choices=[("approve", "Approve report"), ("request_changes", "Request changes")])
+    comment = forms.CharField(required=False, max_length=5000, widget=forms.Textarea(attrs={"rows": 4}))
+
+    def clean(self):
+        data = super().clean()
+        if data.get("action") == "request_changes" and not data.get("comment"):
+            self.add_error("comment", "Explain the changes the staff member should make.")
+        return data
+
+
+def clean_drive_name(value):
+    value = (value or "").strip()
+    if not value or value in {".", ".."} or any(character in value for character in ("/", "\\", "\x00")):
+        raise forms.ValidationError("Enter a valid name without slashes.")
+    return value
+
+
+class DriveMultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class DriveMultipleFileField(forms.FileField):
+    def clean(self, data, initial=None):
+        files = data if isinstance(data, (list, tuple)) else [data]
+        return [super(DriveMultipleFileField, self).clean(file, initial) for file in files if file]
+
+
+class StaffDriveUploadForm(forms.Form):
+    files = DriveMultipleFileField(
+        label="Choose files",
+        widget=DriveMultipleFileInput,
+        help_text="Upload up to 10 files at a time; each file may be up to 50 MB.",
+    )
+    folder_id = forms.CharField(widget=forms.HiddenInput)
+
+    def clean(self):
+        data = super().clean()
+        uploads = data.get("files") or []
+        if not uploads:
+            self.add_error("files", "Choose at least one file.")
+        elif len(uploads) > 10:
+            self.add_error("files", "Upload no more than 10 files at a time.")
+        for upload in uploads:
+            if upload.size > 50 * 1024 * 1024:
+                self.add_error("files", f"{upload.name} is larger than 50 MB.")
+        data["uploads"] = uploads
+        return data
+
+
+class StaffDriveRenameForm(forms.Form):
+    name = forms.CharField(max_length=255, label="New name")
+    folder_id = forms.CharField(widget=forms.HiddenInput)
+
+    def clean_name(self):
+        return clean_drive_name(self.cleaned_data["name"])
+
+
+class StaffDriveMoveForm(forms.Form):
+    destination_id = forms.ChoiceField(label="Destination folder")
+    return_folder_id = forms.CharField(widget=forms.HiddenInput)
+
+    def __init__(self, *args, folder_choices=(), **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["destination_id"].choices = folder_choices
