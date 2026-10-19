@@ -1,0 +1,36 @@
+{% load i18n wagtailcore_tags %}
+
+{% if page.rationale_text %}
+    {% if rationale_control %}
+        <button class="service-rationale__toggle"
+                type="button"
+                aria-expanded="false"
+                aria-controls="service-rationale-content">
+            <span class="service-rationale__show">{% translate "Read full rationale" %}</span>
+            <span class="service-rationale__hide">{% translate "Hide rationale" %}</span>
+        </button>
+    {% elif rationale_content %}
+        <div class="service-rationale__content format-text"
+             id="service-rationale-content"
+             hidden>
+            <h3>{% translate "Rationale" %}</h3>
+            {{ page.rationale_text|richtext }}
+        </div>
+    {% else %}
+        <div class="service-rationale">
+            <button class="service-rationale__toggle"
+                    type="button"
+                    aria-expanded="false"
+                    aria-controls="service-rationale-content">
+                <span class="service-rationale__show">{% translate "Read full rationale" %}</span>
+                <span class="service-rationale__hide">{% translate "Hide rationale" %}</span>
+            </button>
+            <div class="service-rationale__content format-text"
+                 id="service-rationale-content"
+                 hidden>
+                <h3>{% translate "Rationale" %}</h3>
+                {{ page.rationale_text|richtext }}
+            </div>
+        </div>
+    {% endif %}
+{% endif %}

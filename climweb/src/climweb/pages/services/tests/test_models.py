@@ -1,6 +1,8 @@
 from datetime import date
 from io import StringIO
+from pathlib import Path
 
+import wagtail_factories
 from django.core.management import call_command
 from django.urls import reverse
 from wagtail.models import Site
@@ -208,6 +210,24 @@ class TestServicesPages(WagtailPageTestCase):
 
         self.assertTemplateUsed(response, "services/service_page.html")
         self.assertTemplateNotUsed(response, "services/rcc_service_page.html")
+
+    def test_service_product_cards_use_listing_image_fallback(self):
+        product_index = ProductIndexPageFactory(parent=get_or_create_homepage())
+        default_thumbnail = wagtail_factories.ImageFactory(
+            title="Service product fallback thumbnail",
+        )
+        ProductPageFactory(
+            parent=product_index,
+            title="Product without introduction image",
+            service=self.service1_page.service,
+            introduction_image=None,
+            default_listing_thumbnail=default_thumbnail,
+        )
+
+        response = self.client.get(self.service1_page.get_url())
+
+        self.assertContains(response, "Product without introduction image")
+        self.assertContains(response, Path(default_thumbnail.file.name).stem)
 
     def test_rcc_page_displays_featured_partners(self):
         rcc_page = ServicePageFactory(
