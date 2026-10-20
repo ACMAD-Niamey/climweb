@@ -8,7 +8,6 @@
   <section class="climsa-hero">
     <div class="container climsa-hero__layout">
       <div class="climsa-hero__content">
-        {% if page.hero_kicker %}<p class="climsa-eyebrow">{{ page.hero_kicker }}</p>{% endif %}
         <h1>{{ page.hero_heading }}</h1>
         {% if page.hero_description %}<p class="climsa-hero__description">{{ page.hero_description }}</p>{% endif %}
         <div class="climsa-hero__actions">
@@ -22,22 +21,24 @@
           <img src="{{ hero_image.url }}" alt="{{ page.hero_heading }}">
         </figure>
       {% else %}
-        <div class="climsa-hero__mark" aria-hidden="true">
-          <span>CLIMSA</span>
-          <small>{% translate "Climate services for Africa" %}</small>
-        </div>
+        <figure class="climsa-hero__media">
+          <img src="{% static 'climsa/images/climsa-climate-services-hero.png' %}" alt="{% translate 'African climate professionals reviewing climate information' %}">
+        </figure>
       {% endif %}
     </div>
   </section>
 
   <section class="climsa-section climsa-about" id="climsa-about">
     <div class="container climsa-about__layout">
-      <div>
-        <p class="climsa-eyebrow climsa-eyebrow--blue">{% translate "CLIMSA at ACMAD" %}</p>
+      {% if page.programme_partners_logo %}
+        {% image page.programme_partners_logo width-720 as programme_partners_logo %}
+        <figure class="climsa-about__partners">
+          <img src="{{ programme_partners_logo.url }}" alt="{% translate 'CLIMSA programme partners' %}">
+        </figure>
+      {% endif %}
+      <div class="climsa-about__copy">
         <h2>{{ page.introduction_heading }}</h2>
-      </div>
-      <div class="climsa-richtext">
-        {{ page.introduction|richtext }}
+        <div class="climsa-richtext">{{ page.introduction|richtext }}</div>
         {% if page.about_page %}
           <a class="climsa-text-link" href="{{ page.about_page.url }}">{% translate "Read about CLIMSA" %} <span aria-hidden="true">→</span></a>
         {% endif %}
@@ -50,7 +51,6 @@
     <div class="container">
       <div class="climsa-section-heading">
         <div>
-          <p class="climsa-eyebrow climsa-eyebrow--blue">{% translate "Programme delivery" %}</p>
           <h2>{% translate "Project Outputs" %}</h2>
         </div>
         {% if page.activities_page %}
@@ -88,7 +88,6 @@
     <div class="container">
       <div class="climsa-section-heading">
         <div>
-          <p class="climsa-eyebrow climsa-eyebrow--blue">{% translate "Climate information" %}</p>
           <h2>{% translate "Our Products" %}</h2>
         </div>
         {% if page.products_page %}
@@ -122,15 +121,24 @@
     <div class="container climsa-updates-layout">
       <div id="climsa-news">
         <div class="climsa-section-heading climsa-section-heading--compact">
-          <div><p class="climsa-eyebrow climsa-eyebrow--blue">{% translate "Updates" %}</p><h2>{% translate "Latest News" %}</h2></div>
+          <div><h2>{% translate "Latest News" %}</h2></div>
           {% if page.news_page %}<a class="climsa-text-link" href="{{ page.news_page.url }}">{% translate "All news" %} →</a>{% endif %}
         </div>
         <div class="climsa-list">
           {% for item in page.selected_news %}
-            <article class="climsa-list-item">
-              <time datetime="{{ item.date|date:'Y-m-d' }}">{{ item.date|date:"d M Y" }}</time>
-              <h3><a href="{{ item.url }}">{{ item.title }}</a></h3>
-              {% if item.listing_summary %}<p>{{ item.listing_summary }}</p>{% endif %}
+            <article class="climsa-list-item climsa-list-item--news">
+              {% with news_image=item.get_meta_image %}
+                {% if news_image %}
+                  {% image news_image fill-360x240 as news_card_image %}
+                  <a class="climsa-news-image" href="{{ item.url }}" aria-label="{{ item.title }}">
+                    <img src="{{ news_card_image.url }}" alt="{{ item.title }}">
+                  </a>
+                {% endif %}
+              {% endwith %}
+              <div class="climsa-news-content">
+                <time datetime="{{ item.date|date:'Y-m-d' }}">{{ item.date|date:"d M Y" }}</time>
+                <h3><a href="{{ item.url }}">{{ item.title }}</a></h3>
+              </div>
             </article>
           {% empty %}
             <p class="climsa-empty">{% translate "No CLIMSA news has been selected yet." %}</p>
@@ -139,7 +147,7 @@
       </div>
       <div id="climsa-events">
         <div class="climsa-section-heading climsa-section-heading--compact">
-          <div><p class="climsa-eyebrow climsa-eyebrow--blue">{% translate "Engagement" %}</p><h2>{% translate "Events" %}</h2></div>
+          <div><h2>{% translate "Events" %}</h2></div>
           {% if page.events_page %}<a class="climsa-text-link" href="{{ page.events_page.url }}">{% translate "All events" %} →</a>{% endif %}
         </div>
         <div class="climsa-list">
@@ -166,7 +174,6 @@
     <div class="container">
       <div class="climsa-section-heading">
         <div>
-          <p class="climsa-eyebrow climsa-eyebrow--blue">{% translate "Knowledge resources" %}</p>
           <h2>{% translate "Publications" %}</h2>
         </div>
         {% if page.publications_page %}<a class="climsa-text-link" href="{{ page.publications_page.url }}">{% translate "Browse publications" %} →</a>{% endif %}

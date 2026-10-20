@@ -65,6 +65,16 @@ def default_climsa_outputs():
     ]
 
 
+DEFAULT_PROGRAMME_INTRODUCTION = (
+    "<p>Climate change and environmental issues are central to the 2030 Agenda for "
+    "Sustainable Development and the Paris Agreement on Climate Change. Achieving "
+    "sustainable development and mitigating climate change are interconnected goals "
+    "that must be pursued simultaneously. Reliable, science-based climate information "
+    "is essential to build resilience and effectively manage climate risks, enabling "
+    "countries and regions within the OACPS to adapt to the changing climate.</p>"
+)
+
+
 class ClimsaHomePage(MetadataPageMixin, Page):
     template = "climsa/climsa_home_page.html"
     parent_page_types = ["home.HomePage"]
@@ -111,18 +121,23 @@ class ClimsaHomePage(MetadataPageMixin, Page):
     )
     introduction_heading = models.CharField(
         max_length=150,
-        default="About the programme",
+        default="About the Programme",
         verbose_name=_("Introduction heading"),
     )
     introduction = RichTextField(
         blank=True,
         features=SUMMARY_RICHTEXT_FEATURES,
-        default=(
-            "<p>The Intra-ACP Climate Services and Related Applications programme strengthens "
-            "the production, access and use of climate information for decision-making across "
-            "Africa.</p>"
-        ),
+        default=DEFAULT_PROGRAMME_INTRODUCTION,
         verbose_name=_("Introduction"),
+    )
+    programme_partners_logo = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Programme partners logo"),
+        help_text=_("Displayed alongside the About the Programme introduction."),
     )
     outputs = StreamField(
         [("output", ClimsaOutputBlock())],
@@ -199,7 +214,11 @@ class ClimsaHomePage(MetadataPageMixin, Page):
             heading=_("Brand and hero"),
         ),
         MultiFieldPanel(
-            [FieldPanel("introduction_heading"), FieldPanel("introduction")],
+            [
+                FieldPanel("introduction_heading"),
+                FieldPanel("introduction"),
+                FieldPanel("programme_partners_logo"),
+            ],
             heading=_("Programme introduction"),
         ),
         FieldPanel("outputs"),
