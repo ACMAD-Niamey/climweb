@@ -54,6 +54,20 @@ class Command(BaseCommand):
                 climsa_page.climsa_logo = logo
                 climsa_page.save_revision().publish()
 
+        if not climsa_page.programme_partners_logo_id:
+            Image = get_image_model()
+            partners_logo = (
+                Image.objects.filter(
+                    Q(title__iexact="climsa2")
+                    | Q(file__iendswith="/climsa2.jpg")
+                )
+                .order_by("pk")
+                .first()
+            )
+            if partners_logo:
+                climsa_page.programme_partners_logo = partners_logo
+                climsa_page.save_revision().publish()
+
         site = Site.objects.filter(hostname=hostname).order_by("pk").first()
         site_created = site is None
         if site_created:
