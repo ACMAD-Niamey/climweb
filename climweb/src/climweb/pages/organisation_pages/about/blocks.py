@@ -13,7 +13,11 @@ class TimelineBlock(blocks.StructBlock):
             ('period', blocks.CharBlock(max_length=50, required=False,
                                         help_text=_("This can be the month of the year or the exact date. "
                                                   "Leave blank if not known"))),
-            ('description', blocks.TextBlock(help_text=_("Describe the milestone"), required=False))
+            ('description', blocks.TextBlock(help_text=_("Describe the milestone"), required=False)),
+            ('document', DocumentChooserBlock(
+                required=False,
+                help_text=_("Optional supporting document for this milestone"),
+            )),
         ]))
 
     class Meta:

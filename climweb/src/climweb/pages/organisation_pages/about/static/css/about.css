@@ -528,6 +528,20 @@
   margin: 0;
 }
 
+.tl-desc-link {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.45);
+  text-underline-offset: 3px;
+}
+
+.tl-desc-link:hover,
+.tl-desc-link:focus-visible {
+  color: #fff;
+  text-decoration-color: var(--primary-color);
+}
+
 /* ── RESPONSIVE ── */
 @media (max-width: 768px) {
   .tl-section { padding: 3rem 0 2rem; }
