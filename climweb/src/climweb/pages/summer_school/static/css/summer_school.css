@@ -995,6 +995,102 @@
 }
 
 /* ------------------------------------------------------------
+   IMAGE GALLERY
+   ------------------------------------------------------------ */
+
+.ss-gallery-intro {
+    color: #555;
+    line-height: 1.65;
+    margin: -0.4rem 0 1.4rem;
+    max-width: 760px;
+}
+
+.ss-gallery-grid {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ss-gallery-item {
+    background: #fff;
+    border: 1px solid #e8ecea;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgb(21 47 58 / 7%);
+    margin: 0;
+    overflow: hidden;
+}
+
+.ss-gallery-link {
+    display: block;
+    overflow: hidden;
+    position: relative;
+}
+
+.ss-gallery-image {
+    aspect-ratio: 3 / 2;
+    display: block;
+    height: auto;
+    object-fit: cover;
+    transition: transform .25s ease;
+    width: 100%;
+}
+
+.ss-gallery-view {
+    background: rgb(0 0 0 / 68%);
+    border-radius: 999px;
+    bottom: .8rem;
+    color: #fff;
+    font-size: .75rem;
+    font-weight: 700;
+    opacity: 0;
+    padding: .35rem .75rem;
+    position: absolute;
+    right: .8rem;
+    transform: translateY(4px);
+    transition: opacity .2s ease, transform .2s ease;
+}
+
+.ss-gallery-link:hover .ss-gallery-image,
+.ss-gallery-link:focus-visible .ss-gallery-image {
+    transform: scale(1.035);
+}
+
+.ss-gallery-link:hover .ss-gallery-view,
+.ss-gallery-link:focus-visible .ss-gallery-view {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.ss-gallery-link:focus-visible {
+    outline: 3px solid var(--primary-color-light);
+    outline-offset: -3px;
+}
+
+.ss-gallery-caption {
+    color: #555;
+    font-size: .875rem;
+    line-height: 1.5;
+    padding: .85rem 1rem 1rem;
+}
+
+@media (max-width: 900px) {
+    .ss-gallery-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .ss-gallery-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ss-gallery-view {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* ------------------------------------------------------------
    CONCEPT NOTE
    ------------------------------------------------------------ */
 

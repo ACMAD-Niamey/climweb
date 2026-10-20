@@ -4,7 +4,7 @@
 
 {% block extra_css %}
     {{ block.super }}
-    <link rel="stylesheet" type="text/css" href="{% static 'css/services_page.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/services_page.css' %}?v={% now 'U' %}">
     {% if page.service_sectors %}
         <link rel="stylesheet" type="text/css" href="{% static 'css/sector_service.css' %}">
     {% endif %}

@@ -1,0 +1,36 @@
+{% load wagtailcore_tags wagtailimages_tags i18n %}
+
+<div class="ss-section-heading">
+    <h2>{% if page.gallery_title %}{{ page.gallery_title }}{% else %}{% translate "Gallery" %}{% endif %}</h2>
+</div>
+
+{% if page.gallery_intro %}
+    <div class="ss-gallery-intro format-text">
+        {{ page.gallery_intro|richtext }}
+    </div>
+{% endif %}
+
+<div class="ss-gallery-grid">
+    {% for item in page.gallery_images %}
+        {% image item.value.image fill-720x480 as gallery_thumbnail %}
+        {% image item.value.image max-2400x1600 as gallery_full %}
+        <figure class="ss-gallery-item">
+            <a class="ss-gallery-link"
+               href="{{ gallery_full.url }}"
+               target="_blank"
+               rel="noopener"
+               aria-label="{% translate 'View full image' %}{% if item.value.caption %}: {{ item.value.caption }}{% endif %}">
+                <img class="ss-gallery-image"
+                     src="{{ gallery_thumbnail.url }}"
+                     width="{{ gallery_thumbnail.width }}"
+                     height="{{ gallery_thumbnail.height }}"
+                     loading="lazy"
+                     alt="{{ item.value.caption|default:page.gallery_title }}">
+                <span class="ss-gallery-view" aria-hidden="true">{% translate "View" %}</span>
+            </a>
+            {% if item.value.caption %}
+                <figcaption class="ss-gallery-caption">{{ item.value.caption }}</figcaption>
+            {% endif %}
+        </figure>
+    {% endfor %}
+</div>
