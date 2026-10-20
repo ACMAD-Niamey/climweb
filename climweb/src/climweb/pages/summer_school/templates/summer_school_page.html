@@ -60,6 +60,12 @@
                 </section>
             {% endif %}
 
+            {% if page.gallery_images %}
+                <section id="gallery">
+                    {% include 'summer_school_gallery_include.html' %}
+                </section>
+            {% endif %}
+
             <section id="concept-note">
                 {% include 'summer_school_concept_note_include.html' %}
             </section>

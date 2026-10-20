@@ -100,13 +100,13 @@
             </div>
 
             <!-- STATS PANEL -->
-            {% if publication.document.download_count or publication.view_count %}
+            {% if publication.total_download_count or publication.view_count %}
               <div class="pub-stats">
-                {% if publication.document.download_count %}
+                {% if publication.total_download_count %}
                   {% translate "Number of downloads" as no_of_down_title %}
                   <div class="pub-stat" title="{{ no_of_down_title }}">
                     <span class="pub-stat-icon">{% svg_icon name="download" %}</span>
-                    <span class="pub-stat-val">{{ publication.document.download_count }}</span>
+                    <span class="pub-stat-val">{{ publication.total_download_count }}</span>
                   </div>
                 {% endif %}
                 {% if publication.view_count and publication.view_count > 0 %}
