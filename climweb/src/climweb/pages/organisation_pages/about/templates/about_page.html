@@ -192,7 +192,13 @@
                             </div>
                             <div class="tl-content">
                                 <p class="tl-period">{{ milestone.period }}</p>
-                                <p class="tl-desc">{{ milestone.description }}</p>
+                                <p class="tl-desc">
+                                    {% if milestone.document %}
+                                        <a class="tl-desc-link" href="{{ milestone.document.url }}" target="_blank" rel="noopener noreferrer">{{ milestone.description }} <span aria-hidden="true">&#8599;</span></a>
+                                    {% else %}
+                                        {{ milestone.description }}
+                                    {% endif %}
+                                </p>
                             </div>
                             </div>
                         {% else %}
@@ -200,7 +206,13 @@
                             <div class="tl-item tl-item--left">
                             <div class="tl-content">
                                 <p class="tl-period">{{ milestone.period }}</p>
-                                <p class="tl-desc">{{ milestone.description }}</p>
+                                <p class="tl-desc">
+                                    {% if milestone.document %}
+                                        <a class="tl-desc-link" href="{{ milestone.document.url }}" target="_blank" rel="noopener noreferrer">{{ milestone.description }} <span aria-hidden="true">&#8599;</span></a>
+                                    {% else %}
+                                        {{ milestone.description }}
+                                    {% endif %}
+                                </p>
                             </div>
                             <div class="tl-node">
                                 <div class="tl-dot"></div>
