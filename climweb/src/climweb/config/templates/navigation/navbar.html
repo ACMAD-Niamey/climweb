@@ -2,6 +2,7 @@
 {% url 'wagtailadmin_home' as wagtail_admin_url %}
 {% wagtail_site as current_site %}
 {% section_navigation as section_nav %}
+{% rcc_navigation as rcc_nav %}
 
 <header class="site-header{% if section_nav %} site-header--{{ section_nav.kind }}{% endif %}">
 
