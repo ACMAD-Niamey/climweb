@@ -1,0 +1,24 @@
+{% extends "products/email/base_email.html" %}
+
+{% block subject %}Verify your subscription to {{ site_name|default:"ACMAD" }}{% endblock %}
+
+{% block content %}
+    <h2>Verify your email address</h2>
+    
+    <p>Thank you for subscribing to product notifications from <strong>{{ site_name|default:"ACMAD" }}</strong>.</p>
+    
+    <p>Please confirm your subscription by clicking the button below. You will not receive any product notifications until your email address is verified.</p>
+    
+    <div class="text-center">
+        <a href="{{ confirmation_url }}" class="button">Verify Email Address</a>
+    </div>
+    
+    <p class="muted" style="margin-top: 30px;">
+        If the button above does not work, copy and paste this link into your browser:<br>
+        <a href="{{ confirmation_url }}">{{ confirmation_url }}</a>
+    </p>
+    
+    <hr style="border: 0; border-top: 1px solid #eeeeee; margin: 30px 0;">
+    
+    <p class="muted">If you did not request this subscription, you can safely ignore this email.</p>
+{% endblock %}

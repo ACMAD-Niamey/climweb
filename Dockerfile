@@ -96,6 +96,7 @@ COPY --chown=$UID:$GID ./climweb /climweb/web
 RUN mkdir -p /climweb/web/src/climweb/static \
     && mkdir -p /climweb/web/src/climweb/media \
     && mkdir -p /climweb/web/src/climweb/backup \
+    && mkdir -p /climweb/web/src/climweb/private_exports \
     && chown -R $UID:$GID /climweb/web/src/climweb
 
 # Create a tmp directory for the django to use

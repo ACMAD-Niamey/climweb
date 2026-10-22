@@ -63,11 +63,17 @@
   letter-spacing: 0.07em;
 }
 
+.pd-dl-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 /* primary download button */
 .pd-dl-btn {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 7px;
   padding: 9px 14px;
   font-size: 12px;
@@ -78,6 +84,23 @@
   text-decoration: none;
   border: none;
   transition: opacity 0.15s;
+}
+
+.pd-dl-copy {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  min-width: 0;
+}
+
+.pd-dl-copy strong {
+  font-size: 12px;
+}
+
+.pd-dl-copy small {
+  font-size: 10px;
+  font-weight: 500;
+  opacity: .82;
 }
 
 .pd-dl-btn:hover {

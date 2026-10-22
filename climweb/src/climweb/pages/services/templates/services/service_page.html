@@ -4,7 +4,10 @@
 
 {% block extra_css %}
     {{ block.super }}
-    <link rel="stylesheet" type="text/css" href="{% static 'css/services_page.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/services_page.css' %}?v={% now 'U' %}">
+    {% if page.service_sectors %}
+        <link rel="stylesheet" type="text/css" href="{% static 'css/sector_service.css' %}">
+    {% endif %}
     {% if page.youtube_playlist %}
         <link rel="stylesheet" type="text/css" href="{% static 'css/jquery.skeleton.css' %}">
         <link rel="stylesheet" type="text/css" href="{% static 'css/video_include.css' %}">
@@ -17,26 +20,55 @@
 {% block content %}
     <main class="is-index">
         {% include 'hero.html' with page=page %}
+        {% if page.service_sectors %}
+            <section class="sector-service-nav" aria-label="{% translate 'Sector navigation' %}">
+                <div class="container">
+                    <nav class="sector-service__nav sector-service__nav--top">
+                        {% for block in page.service_sectors %}
+                            <a href="#{{ block.value.anchor }}">
+                                {% if block.value.icon %}<span class="sector-service__nav-icon">{% svg_icon name=block.value.icon %}</span>{% endif %}
+                                <span>{{ block.value.title }}</span>
+                            </a>
+                        {% endfor %}
+                    </nav>
+                </div>
+            </section>
+        {% endif %}
         {% if page.introduction_image %}
-            <section class="nmhs-work is-desktop">
+            <section class="service-introduction service-introduction--media nmhs-work is-desktop">
                 <div class="work container">
                     {% include 'service_introduction.html' with page=page what_we_do=False %}
                 </div>
             </section>
         {% else %}
-            <section>
+            <section class="service-introduction service-introduction--text">
                 <div class="work container">
-                    <h2 class="title is-3">
-                        {{ page.introduction_title }}
-                    </h2>
+                    {% if page.introduction_title %}
+                        <h2 class="title is-3">
+                            {{ page.introduction_title }}
+                        </h2>
+                    {% endif %}
 
-                    <div class="intro-description format-text">
-                        {{ page.introduction_text|richtext }}
-                    </div>
+                    {% if page.introduction_text %}
+                        <div class="intro-description format-text">
+                            {{ page.introduction_text|richtext }}
+                        </div>
+                    {% endif %}
+                    {% include "services/rationale_details.html" with page=page %}
                 </div>
             </section>
         {% endif %}
-        {% if page.products %}
+        {% if page.service_sectors %}
+            <section class="sector-service">
+                <div class="container">
+                    <div class="sector-service__sections">
+                        {% for block in page.service_sectors %}
+                            {% include_block block %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+        {% elif page.products %}
             <section id="offers" class="offers"
                      style="background-image: url('{% static 'img/bg_products.png' %}'); background-repeat:no-repeat; background-size:cover">
                 <div class="container">
@@ -48,8 +80,8 @@
                             <div class="column is-one-quarter-desktop is-full-mobile">
                                 <a href="{{ product.url }}">
                                     <div class="product-card">
-                                        {% if product.introduction_image %}
-                                            {% image product.introduction_image original as product_img %}
+                                        {% if product.listing_image %}
+                                            {% image product.listing_image original as product_img %}
                                             <div class="progressive__bg progressive--not-loaded product-image"
                                                  data-progressive="{{ product_img.url }}"
                                                  style="background-image: url({% lazy_image_url product_img %});">
@@ -133,7 +165,7 @@
             {% endfor %}
         {% endif %}
 
-        {% if page.projects.all %}
+        {% if page.show_projects_section and page.projects.all %}
             <section class="projects-inline">
                 <div class="container">
                     {% include 'projects_include.html' with page=page %}
@@ -141,7 +173,7 @@
             </section>
         {% endif %}
 
-        {% if page.events.all %}
+        {% if page.show_events_section and page.events.all %}
             <section class="events-inline">
                 <div class="container">
                     <h2 class="title is-3">
@@ -174,9 +206,6 @@
         {% if page.applications.all %}
             <section class="pb-6">
                 <div class="container">
-                    <h2 class="section-title center">
-                        {% translate "Applications" %}
-                    </h2>
                     {% include 'applications_include.html' with applications=page.applications.all %}
                 </div>
             </section>
@@ -194,6 +223,18 @@
 
         const windowWidth = $(window).width();
         document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.service-rationale__toggle').forEach(function (button) {
+                const content = document.getElementById(button.getAttribute('aria-controls'));
+
+                if (!content) return;
+
+                button.addEventListener('click', function () {
+                    const isExpanded = button.getAttribute('aria-expanded') === 'true';
+                    button.setAttribute('aria-expanded', String(!isExpanded));
+                    content.hidden = isExpanded;
+                });
+            });
+
             document.querySelectorAll('.ac-wrap').forEach(function (wrap) {
                 wrap.querySelectorAll('.ac-header').forEach(function (header) {
                 header.addEventListener('click', function () {
@@ -244,5 +285,3 @@
     </script>
 
 {% endblock extra_js %}
-
-

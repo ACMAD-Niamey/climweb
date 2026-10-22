@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% load static i18n wagtailcore_tags wagtailiconchooser_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/services_rcc.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_training.css' %}?v=2">
+{% endblock %}
+
+{% block body_class %}rcc-service-page rcc-training-page{% endblock %}
+
+{% block content %}
+<main>
+    {% if page.banner_image %}
+        {% include "hero.html" with page=page %}
+    {% else %}
+        <section class="page-hero rcc-simple-hero">
+            <div class="page-hero-overlay"></div>
+            <div class="page-hero-body"><div class="container">
+                <span class="page-hero-badge">{% translate "RCC climate function" %}</span>
+                <h1 class="page-hero-title">{{ page.banner_title|default:page.title }}</h1>
+                {% if page.banner_subtitle %}<p class="page-hero-subtitle">{{ page.banner_subtitle }}</p>{% endif %}
+            </div></div>
+        </section>
+    {% endif %}
+
+    <section class="rcc-training-overview">
+        <div class="container">
+            <a class="rcc-training-back" href="{{ page.get_parent.url }}">&#8592; {% translate "Regional Climate Centre" %}</a>
+            <div class="rcc-training-overview__grid">
+                <div>
+                    <p class="rcc-eyebrow">{% translate "Training function" %}</p>
+                    {% if page.introduction_title %}<h2>{{ page.introduction_title }}</h2>{% endif %}
+                    {% if page.introduction_text %}<div class="format-text">{{ page.introduction_text|richtext }}</div>{% endif %}
+                </div>
+                <div class="rcc-training-focus" aria-label="{% translate 'Training focus areas' %}">
+                    {% for block in page.focus_areas %}
+                        <article>
+                            <span>0{{ forloop.counter }}</span>
+                            <h3>{{ block.value.title }}</h3>
+                            <p>{{ block.value.description }}</p>
+                        </article>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="rcc-training-section rcc-training-programmes">
+        <div class="container">
+            <header class="rcc-training-heading">
+                <div><p class="rcc-eyebrow">{% translate "Capacity development" %}</p><h2>{% translate "Programmes and learning activities" %}</h2></div>
+                <p>{% translate "Practical learning combines methods, product development, interpretation, professional placements and regional exchange." %}</p>
+            </header>
+            <div class="rcc-training-programme-grid">
+                {% for block in page.programmes %}
+                    <article class="rcc-training-programme-card">
+                        <span class="rcc-training-icon">{% if block.value.icon %}{% svg_icon name=block.value.icon %}{% else %}{% svg_icon name="pick" %}{% endif %}</span>
+                        <h3>{{ block.value.title }}</h3>
+                        <p>{{ block.value.description }}</p>
+                        {% if block.value.page %}<a href="{% pageurl block.value.page %}">{% if block.value.link_label %}{{ block.value.link_label }}{% else %}{% translate "Explore programme" %}{% endif %} &#8594;</a>
+                        {% elif block.value.external_url %}<a href="{{ block.value.external_url }}" target="_blank" rel="noopener">{% if block.value.link_label %}{{ block.value.link_label }}{% else %}{% translate "Open resource" %}{% endif %} &#8599;</a>{% endif %}
+                    </article>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="rcc-training-section rcc-training-library" id="methods-and-guidance">
+        <div class="container">
+            <header class="rcc-training-heading">
+                <div><p class="rcc-eyebrow">{% translate "Technical library" %}</p><h2>{% translate "Methods, tools and guidance" %}</h2></div>
+                <p>{% translate "Quality-control procedures, climate-index guidance, data-rescue references and Climsoft documentation preserved from the RCC training library." %}</p>
+            </header>
+            <div class="rcc-training-resource-groups">
+                {% for block in page.methodology_groups %}
+                    <section class="rcc-training-resource-group" id="{{ block.value.anchor }}">
+                        <header>
+                            <span class="rcc-training-icon">{% svg_icon name=block.value.icon %}</span>
+                            <div><h3>{{ block.value.title }}</h3>{% if block.value.description %}<p>{{ block.value.description }}</p>{% endif %}</div>
+                        </header>
+                        <div class="rcc-training-resource-list">
+                            {% for resource in block.value.resources %}
+                                <article>
+                                    <div><small>{{ resource.resource_type }}</small><h4>{{ resource.title }}</h4>{% if resource.description %}<p>{{ resource.description }}</p>{% endif %}</div>
+                                    {% if resource.document %}<a href="{{ resource.document.url }}" target="_blank" rel="noopener">{% translate "View document" %} &#8599;</a>
+                                    {% elif resource.external_url %}<a href="{{ resource.external_url }}" target="_blank" rel="noopener">{% translate "View document" %} &#8599;</a>{% endif %}
+                                </article>
+                            {% empty %}<p class="rcc-training-empty">{% translate "Resources are being prepared." %}</p>{% endfor %}
+                        </div>
+                    </section>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="rcc-training-section rcc-training-reports" id="reports">
+        <div class="container">
+            <header class="rcc-training-heading">
+                <div><p class="rcc-eyebrow">{% translate "Learning record" %}</p><h2>{% translate "Workshop, training and survey reports" %}</h2></div>
+                <p>{% translate "Reports document the regional forums, professional placements, scientific stays and needs assessments that shaped RCC capacity development." %}</p>
+            </header>
+            <div class="rcc-training-report-grid">
+                {% for block in page.report_groups %}
+                    <section class="rcc-training-report-group" id="{{ block.value.anchor }}">
+                        <span class="rcc-training-icon">{% svg_icon name=block.value.icon %}</span>
+                        <h3>{{ block.value.title }}</h3>
+                        {% if block.value.description %}<p>{{ block.value.description }}</p>{% endif %}
+                        <ul>
+                            {% for resource in block.value.resources %}
+                                <li{% if forloop.counter > 3 %} hidden data-report-extra{% endif %}>
+                                    {% if resource.document %}<a href="{{ resource.document.url }}" target="_blank" rel="noopener">{{ resource.title }}</a>
+                                    {% elif resource.external_url %}<a href="{{ resource.external_url }}" target="_blank" rel="noopener">{{ resource.title }}</a>
+                                    {% else %}<span>{{ resource.title }}</span>{% endif %}
+                                    <small>{{ resource.resource_type }}</small>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                        {% if block.value.resources|length > 3 %}<button type="button" class="rcc-training-report-more" data-report-more data-more-label="{% translate 'See more' %}" data-less-label="{% translate 'Show less' %}" aria-expanded="false">{% translate "See more" %} &#8595;</button>{% endif %}
+                    </section>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+</main>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <script>
+        document.querySelectorAll("[data-report-more]").forEach(button => {
+            button.addEventListener("click", () => {
+                const card = button.closest(".rcc-training-report-group");
+                const extras = card.querySelectorAll("[data-report-extra]");
+                const expanded = button.getAttribute("aria-expanded") === "true";
+                extras.forEach(item => item.hidden = expanded);
+                button.setAttribute("aria-expanded", String(!expanded));
+                button.textContent = expanded ? `${button.dataset.moreLabel} ↓` : `${button.dataset.lessLabel} ↑`;
+            });
+        });
+    </script>
+{% endblock %}

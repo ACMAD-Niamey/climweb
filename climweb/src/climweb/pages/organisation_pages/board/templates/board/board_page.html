@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% load static i18n wagtailcore_tags wagtailimages_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'board/css/board.css' %}">
+{% endblock extra_css %}
+
+{% block content %}
+    <main class="is-index board-page">
+        {% include "hero.html" with page=page %}
+
+        {% if page.introduction_heading or page.introduction_title or page.introduction_text %}
+            <section class="nmhs-work is-desktop">
+                <div class="work container">
+                    <div class="columns is-centered has-text-centered intro-section-wrapper">
+                        <div class="column is-7 has-text-centered">
+                            {% if page.introduction_heading %}<p class="subtitle">{{ page.introduction_heading }}</p>{% endif %}
+                            {% if page.introduction_title %}<h2 class="title is-3">{{ page.introduction_title }}</h2>{% endif %}
+                            {% if page.introduction_text %}<div class="intro-description format-text">{{ page.introduction_text|richtext }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </section>
+        {% endif %}
+
+        <section class="board-section">
+            <div class="container">
+                {% with president=page.president_page %}
+                    {% if president %}
+                        <div class="board-group board-president-group">
+                            <p class="board-eyebrow">{% translate "Board leadership" %}</p>
+                            <h2 class="title is-3 has-text-centered">{% translate "President of the Board" %}</h2>
+                            <article class="president-card">
+                                <div class="president-card-portrait">
+                                    {% if president.photo %}
+                                        {% image president.photo fill-640x720 as president_portrait %}
+                                        <img src="{{ president_portrait.url }}" alt="{{ president.name }}" width="{{ president_portrait.width }}" height="{{ president_portrait.height }}">
+                                    {% else %}
+                                        <img src="{% static 'images/person.svg' %}" alt="" width="320" height="360">
+                                    {% endif %}
+                                </div>
+                                <div class="president-card-copy">
+                                    <span class="board-badge">{{ president.role }}</span>
+                                    <h3>{{ president.name }}</h3>
+                                    {% if president.country %}<p class="board-country">{{ president.country }}</p>{% endif %}
+                                    <div class="president-summary format-text">{{ president.biography|richtext|truncatewords_html:55 }}</div>
+                                    <a class="button is-primary" href="{% pageurl president %}">
+                                        {% translate "Meet the President" %}
+                                        <span aria-hidden="true">&nbsp;→</span>
+                                    </a>
+                                </div>
+                            </article>
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                {% if page.board_members.all %}
+                    <div class="board-group">
+                        <p class="board-eyebrow">{% translate "Board of Governors" %}</p>
+                        <h2 class="title is-3 has-text-centered">{% translate "Our Board Members" %}</h2>
+                        <div class="columns is-multiline is-centered board-grid">
+                            {% for member in page.board_members.all %}
+                                <div class="column is-one-quarter-desktop is-half-tablet is-full-mobile">
+                                    <article class="board-card">
+                                        <button type="button" class="board-card-trigger" data-board-modal="board-modal-{{ member.pk }}"
+                                                aria-haspopup="dialog" aria-controls="board-modal-{{ member.pk }}"
+                                                aria-labelledby="board-name-{{ member.pk }}">
+                                            <span class="board-figure">
+                                                {% if member.photo %}
+                                                    {% image member.photo width-600 as portrait %}
+                                                    <img src="{{ portrait.url }}" alt="{{ member.name }}" loading="lazy" width="{{ portrait.width }}" height="{{ portrait.height }}">
+                                                {% else %}
+                                                    <img src="{% static 'images/person.svg' %}" alt="" loading="lazy" width="150" height="150">
+                                                {% endif %}
+                                            </span>
+                                            <span id="board-name-{{ member.pk }}" class="board-name">{{ member.name }}</span>
+                                            {% if member.role %}<span class="board-position">{{ member.role }}</span>{% endif %}
+                                            {% if member.country %}<span class="board-badge">{{ member.country }}</span>{% endif %}
+                                            <span class="board-view-bio">{% if member.biography %}{% translate "View bio" %}{% else %}{% translate "View profile" %}{% endif %}</span>
+                                        </button>
+                                    </article>
+
+                                    <div id="board-modal-{{ member.pk }}" class="modal board-modal" role="dialog"
+                                         aria-modal="true" aria-labelledby="board-modal-name-{{ member.pk }}" aria-hidden="true" tabindex="-1">
+                                        <div class="modal-background" data-board-close></div>
+                                        <div class="modal-content board-modal-content">
+                                            <div class="box">
+                                                <div class="columns">
+                                                    <div class="column is-one-third-desktop is-full-tablet is-full-mobile">
+                                                        <figure class="board-figure">
+                                                            {% if member.photo %}
+                                                                {% image member.photo width-600 as modal_portrait %}
+                                                                <img src="{{ modal_portrait.url }}" alt="{{ member.name }}" loading="lazy" width="{{ modal_portrait.width }}" height="{{ modal_portrait.height }}">
+                                                            {% else %}
+                                                                <img src="{% static 'images/person.svg' %}" alt="" width="300" height="300">
+                                                            {% endif %}
+                                                        </figure>
+                                                    </div>
+                                                    <div class="column board-details">
+                                                        <h3 id="board-modal-name-{{ member.pk }}" class="board-name">{{ member.name }}</h3>
+                                                        {% if member.role %}<p class="board-position">{{ member.role }}</p>{% endif %}
+                                                        {% if member.country %}<span class="board-badge">{{ member.country }}</span>{% endif %}
+                                                        {% if member.biography %}<div class="board-bio format-text">{{ member.biography|richtext }}</div>{% endif %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="modal-close is-large" data-board-close aria-label="{% translate 'Close' %}"></button>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+{% endblock content %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <script src="{% static 'board/js/board.js' %}" defer></script>
+{% endblock extra_js %}

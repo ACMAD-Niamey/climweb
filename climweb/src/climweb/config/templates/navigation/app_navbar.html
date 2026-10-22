@@ -29,7 +29,7 @@
                     </a>
                 {% endif %}
                 {% if settings.base.ImportantPages.mailing_list_signup_page %}
-                    <a href="{{ settings.base.ImportantPages.mailing_list_signup_page.url }}"
+                    <a href="{% url 'product_subscription' %}"
                        class="level-item top-nav-item"
                     >
                         <span>{% translate "Subscribe" %}</span>

@@ -20,6 +20,166 @@ from django.utils.safestring import mark_safe
 register = template.Library()
 
 
+def _rcc_navigation(context):
+    """Return RCC navigation data when the request belongs to the RCC section."""
+    from climweb.pages.services.models import ServicePage
+
+    request = context.get("request")
+    page = context.get("page")
+    rcc_page = None
+
+    if page:
+        rcc_page = (
+            ServicePage.objects.live()
+            .filter(service__name=ServicePage.rcc_service_name)
+            .ancestor_of(page, inclusive=True)
+            .first()
+        )
+
+    resolver_match = getattr(request, "resolver_match", None) if request else None
+    is_rcc_route = bool(
+        resolver_match
+        and resolver_match.url_name
+        and resolver_match.url_name.startswith("rcc_")
+    )
+    if not rcc_page and is_rcc_route:
+        rcc_page = (
+            ServicePage.objects.live()
+            .filter(service__name=ServicePage.rcc_service_name)
+            .first()
+        )
+
+    if not rcc_page:
+        return None
+
+    home_url = public_page_url(rcc_page.get_url(request=request) or rcc_page.url)
+    data_page = rcc_page.data_services_page
+    products_page = rcc_page.climate_products_page
+    monitoring_page = rcc_page.climate_monitoring_page
+    main_site = Site.objects.filter(is_default_site=True).first()
+    return {
+        "kind": "rcc",
+        "home_url": home_url,
+        "main_site_url": main_site.root_url if main_site else "/",
+        "products_url": (
+            public_page_url(products_page.get_url(request=request))
+            if products_page
+            else f"{home_url}#rcc-products"
+        ),
+        "data_url": (
+            public_page_url(data_page.get_url(request=request))
+            if data_page
+            else f"{home_url}#rcc-data-services"
+        ),
+        "monitoring_url": (
+            public_page_url(monitoring_page.get_url(request=request))
+            if monitoring_page
+            else f"{home_url}#rcc-monitoring"
+        ),
+        "show_events": rcc_page.show_events_section and rcc_page.events.exists(),
+    }
+
+
+def _climsa_navigation(context):
+    """Return CLIMSA navigation data for the CLIMSA page tree or Site root."""
+    from climweb.pages.climsa.models import ClimsaHomePage
+
+    request = context.get("request")
+    page = context.get("page")
+    climsa_page = None
+
+    if page:
+        climsa_page = (
+            ClimsaHomePage.objects.live()
+            .ancestor_of(page, inclusive=True)
+            .first()
+        )
+
+    if not climsa_page and request:
+        current_site = Site.find_for_request(request)
+        if current_site:
+            root_page = current_site.root_page.specific
+            if isinstance(root_page, ClimsaHomePage):
+                climsa_page = root_page
+
+    if not climsa_page:
+        return None
+
+    home_url = public_page_url(
+        climsa_page.get_url(request=request) or climsa_page.url
+    )
+    main_site = Site.objects.filter(is_default_site=True).first()
+
+    def destination(page_field, anchor):
+        if page_field:
+            return public_page_url(page_field.get_url(request=request) or page_field.url)
+        return f"{home_url}{anchor}"
+
+    return {
+        "kind": "climsa",
+        "page": climsa_page,
+        "logo": climsa_page.climsa_logo,
+        "home_url": home_url,
+        "main_site_url": main_site.root_url if main_site else "/",
+        "about_url": destination(climsa_page.about_page, "#climsa-about"),
+        "activities_url": destination(climsa_page.activities_page, "#climsa-outputs"),
+        "products_url": destination(climsa_page.products_page, "#climsa-products"),
+        "news_url": destination(climsa_page.news_page, "#climsa-news"),
+        "publications_url": destination(
+            climsa_page.publications_page, "#climsa-publications"
+        ),
+        "events_url": destination(climsa_page.events_page, "#climsa-events"),
+    }
+
+
+@register.simple_tag(takes_context=True)
+def section_navigation(context):
+    """Return navigation for the active ACMAD programme section, if any."""
+    return _climsa_navigation(context) or _rcc_navigation(context)
+
+
+@register.simple_tag(takes_context=True)
+def rcc_navigation(context):
+    """Backward-compatible RCC-only navigation tag."""
+    return _rcc_navigation(context)
+
+
+@register.filter
+def public_page_url(page_or_url):
+    """Return a public URL without the internal restored HomePage slug."""
+    if not page_or_url:
+        return ""
+    url = getattr(page_or_url, "url", page_or_url)
+    if url == "/home-page" or url == "/home-page/":
+        return "/"
+    if isinstance(url, str) and url.startswith("/home-page/"):
+        return url[len("/home-page"):]
+    return url
+
+
+@register.simple_tag(takes_context=True)
+def utility_product_updates(context):
+    """Return the latest items for the homepage's utility-bar product choices."""
+    from climweb.pages.home.models import HomePage, get_significant_product_slides
+
+    request = context.get("request")
+    site = Site.find_for_request(request) if request else None
+    if not site:
+        return []
+
+    homepage = site.root_page.specific
+    if not isinstance(homepage, HomePage):
+        homepage = HomePage.objects.live().descendant_of(site.root_page, inclusive=True).first()
+    if not homepage:
+        return []
+
+    selected_products = (
+        [block.value for block in homepage.hero_featured_products if block.value]
+        if homepage.hero_featured_products else None
+    )
+    return get_significant_product_slides(selected_products)
+
+
 @register.simple_tag
 def cms_version():
     return __version__

@@ -1,25 +1,508 @@
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator, RegexValidator
 from django.db import models
 from django.db.models import Q
+from django.shortcuts import redirect
+from django.template.response import TemplateResponse
+from django.urls import reverse
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 from modelcluster.fields import ParentalKey
 from wagtail.admin.panels import (FieldPanel, MultiFieldPanel, PageChooserPanel, InlinePanel)
 from wagtail.fields import RichTextField, StreamField
 from wagtail.models import Page, Orderable
+from wagtail.snippets.models import register_snippet
 from wagtailmetadata.models import MetadataPageMixin
 
 from climweb.base import blocks
 from climweb.base import blocks as base_blocks
-from climweb.base.models import ServiceCategory, AbstractBannerWithIntroPage
+from climweb.base.models import (
+    AbstractBannerPage,
+    AbstractBannerWithIntroPage,
+    ServiceCategory,
+)
 from climweb.config.settings.base import SUMMARY_RICHTEXT_FEATURES
 from climweb.pages.events.models import EventPage
 from climweb.pages.flex_page.models import FlexPage
 from climweb.pages.news.models import NewsPage
+from climweb.pages.organisation_pages.partners.models import Partner
 from climweb.pages.organisation_pages.projects.models import ServiceProject
 from climweb.pages.products.models import ProductPage, SubNationalProductPage
 from climweb.pages.publications.models import PublicationPage
 from climweb.pages.videos.models import YoutubePlaylist
 from . import blocks as local_blocks
+
+
+def validate_training_proposal_file_size(value):
+    if value.size > 10 * 1024 * 1024:
+        raise ValidationError(_("Each uploaded file must be 10 MB or smaller."))
+
+
+@register_snippet
+class MeteorologicalService(models.Model):
+    country = models.CharField(max_length=100, verbose_name=_("Country"))
+    name = models.CharField(max_length=255, verbose_name=_("Service name"))
+    acronym = models.CharField(max_length=30, blank=True, verbose_name=_("Acronym"))
+    website_url = models.URLField(
+        max_length=500,
+        verbose_name=_("Website URL"),
+        help_text=_("The official website opened when a visitor selects the card."),
+    )
+    logo = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Logo"),
+        help_text=_("Upload the official service logo. A sourced fallback is used when empty."),
+    )
+    logo_source_url = models.URLField(
+        max_length=500,
+        blank=True,
+        verbose_name=_("Fallback logo URL"),
+        help_text=_("Optional external fallback used until a logo is uploaded."),
+    )
+    wmo_member_id = models.PositiveIntegerField(null=True, blank=True, unique=True, editable=False)
+    order = models.PositiveIntegerField(default=0, verbose_name=_("Display order"))
+    is_active = models.BooleanField(default=True, verbose_name=_("Visible on the directory"))
+
+    panels = [
+        FieldPanel("country"),
+        FieldPanel("name"),
+        FieldPanel("acronym"),
+        FieldPanel("website_url"),
+        FieldPanel("logo"),
+        FieldPanel("logo_source_url"),
+        FieldPanel("order"),
+        FieldPanel("is_active"),
+    ]
+
+    class Meta:
+        ordering = ("order", "country", "name")
+        verbose_name = _("Meteorological Service")
+        verbose_name_plural = _("Meteorological Services")
+
+    def __str__(self):
+        return f"{self.country} — {self.name}"
+
+
+@register_snippet
+class RCCDatasetAsset(models.Model):
+    """Metadata pointer to an RCC-managed dataset object.
+
+    Keeping the object name separate from the database makes the public URL stable
+    when the ``rcc_data`` storage backend is moved from disk to S3/MinIO.
+    """
+
+    key = models.SlugField(max_length=80, unique=True)
+    title = models.CharField(max_length=180)
+    summary = models.TextField(blank=True)
+    station = models.CharField(max_length=120, blank=True)
+    country = models.CharField(max_length=100, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=5, null=True, blank=True)
+    latitude = models.DecimalField(max_digits=8, decimal_places=5, null=True, blank=True)
+    source_url = models.URLField(max_length=700, blank=True)
+    object_name = models.CharField(max_length=500, blank=True)
+    original_filename = models.CharField(max_length=255, blank=True)
+    checksum_sha256 = models.CharField(max_length=64, blank=True)
+    size_bytes = models.PositiveBigIntegerField(default=0)
+    record_count = models.PositiveIntegerField(default=0)
+    coverage_start = models.DateField(null=True, blank=True)
+    coverage_end = models.DateField(null=True, blank=True)
+    synced_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.TextField(blank=True)
+
+    panels = [
+        FieldPanel("key"),
+        FieldPanel("title"),
+        FieldPanel("summary"),
+        MultiFieldPanel(
+            [
+                FieldPanel("station"),
+                FieldPanel("country"),
+                FieldPanel("longitude"),
+                FieldPanel("latitude"),
+            ],
+            heading=_("Location"),
+        ),
+        FieldPanel("source_url"),
+    ]
+
+    class Meta:
+        ordering = ("title",)
+        verbose_name = _("RCC dataset")
+        verbose_name_plural = _("RCC datasets")
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def is_available(self):
+        return bool(self.object_name and self.synced_at)
+
+
+class RCCARC2ImportConfig(models.Model):
+    """Shared ARC2 importer settings across every catalogue country."""
+
+    singleton_key = models.CharField(max_length=20, unique=True, default="arc2", editable=False)
+    catalogue_url = models.URLField(
+        max_length=700,
+        default=(
+            "http://sgbd.acmad.org:8080/thredds/catalog/ACMAD/CDD/"
+            "climatedataservice/Synoptic_Daily_ARC2_Data/catalog.xml"
+        ),
+    )
+    enabled = models.BooleanField(default=False)
+    interval_hours = models.PositiveSmallIntegerField(default=24)
+    import_all_stations = models.BooleanField(default=False)
+    discovered_countries = models.JSONField(default=list, blank=True)
+    selected_stations = models.JSONField(default=list, blank=True)
+    discovered_stations = models.JSONField(default=list, blank=True)
+    discovered_at = models.DateTimeField(null=True, blank=True)
+    discovery_error = models.TextField(blank=True)
+
+    def __str__(self):
+        return "ARC2 station importer"
+
+
+BASE_IMPORT_STATUS_CHOICES = [
+    ("queued", "Queued"),
+    ("running", "Running"),
+    ("succeeded", "Succeeded"),
+    ("partial", "Partially succeeded"),
+    ("failed", "Failed"),
+]
+
+
+class RCCARC2ImportRun(models.Model):
+    STATUS_CHOICES = BASE_IMPORT_STATUS_CHOICES + [("cancelled", "Stopped")]
+    TRIGGER_CHOICES = [("manual", "Manual"), ("scheduled", "Scheduled")]
+
+    config = models.ForeignKey(RCCARC2ImportConfig, on_delete=models.CASCADE, related_name="runs")
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="queued")
+    trigger = models.CharField(max_length=12, choices=TRIGGER_CHOICES)
+    stations = models.JSONField(default=list)
+    country = models.CharField(max_length=80, default="Niger")
+    catalogue_url = models.URLField(max_length=700, blank=True)
+    import_all_stations = models.BooleanField(default=False)
+    cancel_requested = models.BooleanField(default=False)
+    results = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    class Meta:
+        ordering = ("-created_at",)
+
+
+class RCCCPCImportConfig(models.Model):
+    singleton_key = models.CharField(max_length=20, unique=True, default="cpc-unified", editable=False)
+    catalogue_url = models.URLField(
+        max_length=700,
+        default=(
+            "http://sgbd.acmad.org:8080/thredds/catalog/ACMAD/CDD/"
+            "climatedataservice/Synoptic_Daily_CPC_Unified_Data/catalog.xml"
+        ),
+    )
+    enabled = models.BooleanField(default=False)
+    interval_hours = models.PositiveSmallIntegerField(default=24)
+    import_all_stations = models.BooleanField(default=False)
+    discovered_countries = models.JSONField(default=list, blank=True)
+    selected_stations = models.JSONField(default=list, blank=True)
+    discovered_stations = models.JSONField(default=list, blank=True)
+    discovered_at = models.DateTimeField(null=True, blank=True)
+    discovery_error = models.TextField(blank=True)
+
+    def __str__(self):
+        return "CPC-Unified station importer"
+
+
+class RCCCPCImportRun(models.Model):
+    STATUS_CHOICES = RCCARC2ImportRun.STATUS_CHOICES
+    TRIGGER_CHOICES = RCCARC2ImportRun.TRIGGER_CHOICES
+
+    config = models.ForeignKey(RCCCPCImportConfig, on_delete=models.CASCADE, related_name="runs")
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="queued")
+    trigger = models.CharField(max_length=12, choices=TRIGGER_CHOICES)
+    stations = models.JSONField(default=list)
+    country = models.CharField(max_length=80, default="")
+    catalogue_url = models.URLField(max_length=700, blank=True)
+    import_all_stations = models.BooleanField(default=False)
+    cancel_requested = models.BooleanField(default=False)
+    results = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    class Meta:
+        ordering = ("-created_at",)
+
+
+class RCCStationImportLogBase(models.Model):
+    LEVEL_CHOICES = [
+        ("info", "Info"),
+        ("success", "Success"),
+        ("warning", "Warning"),
+        ("error", "Error"),
+    ]
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    level = models.CharField(max_length=10, choices=LEVEL_CHOICES)
+    event = models.CharField(max_length=40)
+    station = models.CharField(max_length=150, blank=True)
+    message = models.TextField(blank=True)
+
+    class Meta:
+        abstract = True
+        ordering = ("id",)
+
+
+class RCCARC2ImportLog(RCCStationImportLogBase):
+    run = models.ForeignKey(RCCARC2ImportRun, on_delete=models.CASCADE, related_name="logs")
+
+
+class RCCCPCImportLog(RCCStationImportLogBase):
+    run = models.ForeignKey(RCCCPCImportRun, on_delete=models.CASCADE, related_name="logs")
+
+
+class RCCSeasonalMapImportConfig(models.Model):
+    singleton_key = models.CharField(max_length=30, unique=True, default="seasonal-maps", editable=False)
+    catalogue_url = models.URLField(
+        max_length=700,
+        default=(
+            "http://sgbd.acmad.org:8080/thredds/catalog/ACMAD/CDD/"
+            "statisticalanalysis/Precipitation/Gridded_Observation/catalog.xml"
+        ),
+    )
+    enabled = models.BooleanField(default=False)
+    interval_hours = models.PositiveSmallIntegerField(default=168)
+    import_all_maps = models.BooleanField(default=False)
+    discovered_maps = models.JSONField(default=list, blank=True)
+    selected_maps = models.JSONField(default=list, blank=True)
+    discovered_at = models.DateTimeField(null=True, blank=True)
+    discovery_error = models.TextField(blank=True)
+
+    def __str__(self):
+        return "Seasonal rainfall climatology map importer"
+
+
+class RCCSeasonalMapImportRun(models.Model):
+    STATUS_CHOICES = BASE_IMPORT_STATUS_CHOICES
+    TRIGGER_CHOICES = RCCARC2ImportRun.TRIGGER_CHOICES
+
+    config = models.ForeignKey(RCCSeasonalMapImportConfig, on_delete=models.CASCADE, related_name="runs")
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="queued")
+    trigger = models.CharField(max_length=12, choices=TRIGGER_CHOICES)
+    maps = models.JSONField(default=list)
+    catalogue_url = models.URLField(max_length=700)
+    import_all_maps = models.BooleanField(default=False)
+    results = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    class Meta:
+        ordering = ("-created_at",)
+
+
+class RCCSeasonalMapAsset(models.Model):
+    filename = models.CharField(max_length=80, unique=True)
+    season = models.CharField(max_length=3)
+    variant = models.CharField(max_length=10)
+    source_url = models.URLField(max_length=700)
+    object_name = models.CharField(max_length=500)
+    checksum_sha256 = models.CharField(max_length=64)
+    size_bytes = models.PositiveIntegerField()
+    width = models.PositiveIntegerField()
+    height = models.PositiveIntegerField()
+    synced_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ("filename",)
+
+
+class RCCClimateIndexAsset(models.Model):
+    legacy_index = models.PositiveSmallIntegerField(unique=True)
+    title = models.CharField(max_length=240)
+    scope = models.CharField(max_length=30)
+    period = models.CharField(max_length=100, blank=True)
+    description = models.TextField(blank=True)
+    source_url = models.URLField(max_length=700)
+    active = models.BooleanField(default=True)
+    object_name = models.CharField(max_length=500, blank=True)
+    checksum_sha256 = models.CharField(max_length=64, blank=True)
+    size_bytes = models.PositiveIntegerField(default=0)
+    width = models.PositiveIntegerField(default=0)
+    height = models.PositiveIntegerField(default=0)
+    synced_at = models.DateTimeField(null=True, blank=True)
+    last_attempted_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ("legacy_index",)
+
+
+@register_snippet
+class RCCReferenceClimatology(models.Model):
+    """Monthly station normals mirrored from the legacy African RCC service."""
+
+    country_code = models.CharField(max_length=3)
+    country = models.CharField(max_length=100)
+    station_id = models.CharField(max_length=20)
+    station_name = models.CharField(max_length=120)
+    period_start = models.PositiveSmallIntegerField()
+    period_end = models.PositiveSmallIntegerField()
+    monthly_data = models.JSONField(default=list)
+    source_url = models.URLField(max_length=700)
+    synced_at = models.DateTimeField(auto_now=True)
+
+    panels = [
+        MultiFieldPanel(
+            [
+                FieldPanel("country_code"),
+                FieldPanel("country"),
+                FieldPanel("station_id"),
+                FieldPanel("station_name"),
+            ],
+            heading=_("Station"),
+        ),
+        MultiFieldPanel(
+            [FieldPanel("period_start"), FieldPanel("period_end")],
+            heading=_("Reference period"),
+        ),
+        FieldPanel("monthly_data"),
+        FieldPanel("source_url"),
+    ]
+
+    class Meta:
+        ordering = ("country", "station_name", "period_start")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("country_code", "station_id", "period_start", "period_end"),
+                name="unique_rcc_station_climatology_period",
+            )
+        ]
+        verbose_name = _("RCC reference climatology")
+        verbose_name_plural = _("RCC reference climatologies")
+
+    def __str__(self):
+        return f"{self.country} — {self.station_name} ({self.period_start}–{self.period_end})"
+
+    @property
+    def period_label(self):
+        return f"{self.period_start}–{self.period_end}"
+
+    @property
+    def is_available(self):
+        return bool(self.synced_at and self.monthly_data)
+
+
+class RCCClimateIndexVersion(models.Model):
+    asset = models.ForeignKey(RCCClimateIndexAsset, on_delete=models.CASCADE, related_name="versions")
+    source_url = models.URLField(max_length=700)
+    object_name = models.CharField(max_length=500)
+    checksum_sha256 = models.CharField(max_length=64)
+    size_bytes = models.PositiveIntegerField()
+    width = models.PositiveIntegerField()
+    height = models.PositiveIntegerField()
+    synced_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ("-synced_at",)
+        constraints = [
+            models.UniqueConstraint(fields=("asset", "checksum_sha256"), name="unique_climate_index_version"),
+        ]
+
+
+class RCCClimateIndexImportConfig(models.Model):
+    singleton_key = models.CharField(max_length=30, unique=True, default="climate-indices", editable=False)
+    enabled = models.BooleanField(default=False)
+    interval_hours = models.PositiveSmallIntegerField(default=168)
+
+    def __str__(self):
+        return "Climate indices and historical graphs importer"
+
+
+class RCCClimateIndexImportRun(models.Model):
+    STATUS_CHOICES = BASE_IMPORT_STATUS_CHOICES
+    TRIGGER_CHOICES = RCCARC2ImportRun.TRIGGER_CHOICES
+
+    config = models.ForeignKey(RCCClimateIndexImportConfig, on_delete=models.CASCADE, related_name="runs")
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="queued")
+    trigger = models.CharField(max_length=12, choices=TRIGGER_CHOICES)
+    asset_ids = models.JSONField(default=list)
+    results = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    class Meta:
+        ordering = ("-created_at",)
+
+
+class RCCEIN15ImportConfig(models.Model):
+    singleton_key = models.CharField(max_length=20, unique=True, default="ein15", editable=False)
+    catalogue_url = models.URLField(
+        max_length=700,
+        default="http://sgbd.acmad.org:8080/thredds/catalog/ein15output/catalog.xml",
+    )
+    enabled = models.BooleanField(default=False)
+    interval_hours = models.PositiveSmallIntegerField(default=168)
+    discovered_files = models.JSONField(default=list, blank=True)
+    selected_files = models.JSONField(default=list, blank=True)
+    discovered_at = models.DateTimeField(null=True, blank=True)
+    discovery_error = models.TextField(blank=True)
+
+    def __str__(self):
+        return "EIN15 regional model output importer"
+
+
+class RCCEIN15ImportRun(models.Model):
+    STATUS_CHOICES = BASE_IMPORT_STATUS_CHOICES
+    TRIGGER_CHOICES = RCCARC2ImportRun.TRIGGER_CHOICES
+
+    config = models.ForeignKey(RCCEIN15ImportConfig, on_delete=models.CASCADE, related_name="runs")
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="queued")
+    trigger = models.CharField(max_length=12, choices=TRIGGER_CHOICES)
+    files = models.JSONField(default=list)
+    catalogue_url = models.URLField(max_length=700)
+    results = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    class Meta:
+        ordering = ("-created_at",)
+
+
+class RCCEIN15Asset(models.Model):
+    filename = models.CharField(max_length=100, unique=True)
+    source_url = models.URLField(max_length=700)
+    object_name = models.CharField(max_length=500)
+    checksum_sha256 = models.CharField(max_length=64)
+    size_bytes = models.PositiveBigIntegerField()
+    source_last_modified = models.CharField(max_length=100, blank=True)
+    synced_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ("filename",)
 
 
 class ServiceIndexPage(MetadataPageMixin, Page):
@@ -70,11 +553,58 @@ class ServiceIndexPage(MetadataPageMixin, Page):
 
 class ServicePage(AbstractBannerWithIntroPage):
     template = 'services/service_page.html'
+    rcc_template = 'services/rcc_service_page.html'
+    rcc_service_name = 'Regional Climate Center'
     parent_page_types = ['services.ServiceIndexPage']
-    subpage_types = ['flex_page.FlexPage', ]
+    subpage_types = [
+        'flex_page.FlexPage',
+        'services.OnTheJobTrainingPage',
+        'services.RCCClimateMonitoringPage',
+        'services.RCCClimateProductsPage',
+        'services.RCCCoordinationPage',
+        'services.RCCDataServicesPage',
+        'services.RCCLongRangeForecastingPage',
+        'services.RCCRecommendedFunctionsPage',
+        'services.RCCTrainingPage',
+    ]
     show_in_menus_default = True
-    
+
+    introduction_title = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name=_("Introduction Title"),
+        help_text=_("Optional introduction section title"),
+    )
+    rationale_text = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Full rationale"),
+        help_text=_(
+            "Optional longer context displayed behind a Read full rationale button."
+        ),
+    )
     service = models.OneToOneField(ServiceCategory, on_delete=models.PROTECT, verbose_name=_("Service"))
+
+    sector_heading = models.CharField(
+        max_length=180,
+        blank=True,
+        default="",
+        verbose_name=_("Sector section heading"),
+    )
+    sector_introduction = RichTextField(
+        blank=True,
+        default="",
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Sector section introduction"),
+    )
+    service_sectors = StreamField(
+        [("sector", local_blocks.SectorServiceBlock())],
+        blank=True,
+        null=True,
+        use_json_field=True,
+        verbose_name=_("Service sectors"),
+    )
     
     what_we_do_items = StreamField([
         ('what_we_do', base_blocks.WhatWeDoBlock()),
@@ -93,6 +623,23 @@ class ServicePage(AbstractBannerWithIntroPage):
     
     projects_description = RichTextField(help_text=_("Projects description text"), blank=True, null=True,
                                          features=SUMMARY_RICHTEXT_FEATURES, verbose_name=_("Project Description"))
+
+    show_projects_section = models.BooleanField(
+        default=True,
+        verbose_name=_("Show projects section"),
+    )
+    show_events_section = models.BooleanField(
+        default=True,
+        verbose_name=_("Show events section"),
+    )
+    show_news_section = models.BooleanField(
+        default=True,
+        verbose_name=_("Show news section"),
+    )
+    show_publications_section = models.BooleanField(
+        default=True,
+        verbose_name=_("Show publications section"),
+    )
     
     feature_block_items = StreamField([
         ('feature_item', base_blocks.FeatureBlock()),
@@ -122,6 +669,14 @@ class ServicePage(AbstractBannerWithIntroPage):
         FieldPanel('service'),
         *AbstractBannerWithIntroPage.content_panels,
         MultiFieldPanel([
+            FieldPanel("rationale_text"),
+        ], heading=_("Expandable rationale")),
+        MultiFieldPanel([
+            FieldPanel("sector_heading"),
+            FieldPanel("sector_introduction"),
+            FieldPanel("service_sectors"),
+        ], heading=_("Sector-based service content")),
+        MultiFieldPanel([
             FieldPanel('what_we_do_items'),
             FieldPanel('what_we_do_button_text'),
             PageChooserPanel('what_we_do_button_link'),
@@ -132,8 +687,12 @@ class ServicePage(AbstractBannerWithIntroPage):
         FieldPanel("extra_content"),
         MultiFieldPanel([
             FieldPanel('projects_description'),
+            FieldPanel('show_projects_section'),
+            FieldPanel('show_events_section'),
+            FieldPanel('show_news_section'),
+            FieldPanel('show_publications_section'),
         ],
-            heading=_("Projects Section"),
+            heading=_("Related content visibility"),
         ),
         FieldPanel('youtube_playlist'),
         InlinePanel('applications', heading=_("Applications"), label=_("Heading")),
@@ -143,6 +702,12 @@ class ServicePage(AbstractBannerWithIntroPage):
         verbose_name = _('Service Page')
         verbose_name_plural = _('Service Pages')
         ordering = ['service__order']
+
+    def get_template(self, request, *args, **kwargs):
+        """Use the dedicated landing page for the Regional Climate Center."""
+        if self.service.name == self.rcc_service_name:
+            return self.rcc_template
+        return super().get_template(request, *args, **kwargs)
     
     @cached_property
     def products(self):
@@ -177,6 +742,21 @@ class ServicePage(AbstractBannerWithIntroPage):
         flex_pages = FlexPage.objects.live().descendant_of(self)
         
         return flex_pages
+
+    @cached_property
+    def data_services_page(self):
+        """Return the published RCC data catalogue below this service page."""
+        return RCCDataServicesPage.objects.live().child_of(self).first()
+
+    @cached_property
+    def climate_products_page(self):
+        """Return the published RCC climate-products catalogue below this page."""
+        return RCCClimateProductsPage.objects.live().child_of(self).first()
+
+    @cached_property
+    def climate_monitoring_page(self):
+        """Return the published RCC climate-monitoring function page."""
+        return RCCClimateMonitoringPage.objects.live().child_of(self).first()
     
     @cached_property
     def listing_image(self):
@@ -210,12 +790,18 @@ class ServicePage(AbstractBannerWithIntroPage):
     @cached_property
     def latest_updates(self):
         updates = []
-        
-        news = NewsPage.objects.live().filter(services__in=[self.service]).order_by('-is_featured', '-date')[:2]
-        
-        publications = PublicationPage.objects.live().filter(categories__in=[self.service]).order_by(
-            '-featured',
-            '-publication_date')
+
+        news = NewsPage.objects.none()
+        if self.show_news_section:
+            news = NewsPage.objects.live().filter(
+                services__in=[self.service]
+            ).order_by('-is_featured', '-date')[:2]
+
+        publications = PublicationPage.objects.none()
+        if self.show_publications_section:
+            publications = PublicationPage.objects.live().filter(
+                categories__in=[self.service]
+            ).order_by('-featured', '-publication_date')
         
         if news.exists():
             if news.count() > 1:
@@ -234,6 +820,11 @@ class ServicePage(AbstractBannerWithIntroPage):
         updates.extend(publications)
         
         return updates
+
+    @cached_property
+    def featured_partners(self):
+        """Partners selected for prominent display across the main website."""
+        return Partner.objects.filter(visible_on_homepage=True, logo__isnull=False)[:6]
     
     @cached_property
     def nav_menu_icon(self):
@@ -241,11 +832,1199 @@ class ServicePage(AbstractBannerWithIntroPage):
     
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
-        
+
+        if self.service.name == self.rcc_service_name:
+            from adminboundarymanager.models import AdminBoundarySettings
+            from climweb.pages.home.models import HomeMapSettings
+
+            map_settings = HomeMapSettings.for_request(request)
+            boundary_settings = AdminBoundarySettings.for_request(request)
+            context.update({
+                "multi_hazard_api_base_url": map_settings.multi_hazard_api_base_url or "https://multi-hazard.acmad.org",
+                "multi_hazard_project_slug": map_settings.multi_hazard_project_slug or "multi-hazard",
+                "country_bounds": boundary_settings.combined_countries_bounds,
+            })
+
         if self.youtube_playlist:
             context['youtube_playlist_url'] = self.youtube_playlist.get_playlist_items_api_url(request)
         
         return context
+
+
+class RCCDataServicesPage(AbstractBannerWithIntroPage):
+    template = "services/rcc_data_services_page.html"
+    parent_page_types = ["services.ServicePage"]
+    subpage_types = []
+    max_count_per_parent = 1
+    show_in_menus_default = True
+
+    catalogue_notice = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Catalogue access notice"),
+        help_text=_("Explain access restrictions, verification dates and archive status."),
+    )
+    data_groups = StreamField(
+        [("group", local_blocks.RCCDataGroupBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Data service groups"),
+    )
+    data_request_page = models.ForeignKey(
+        "wagtailcore.Page",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Data request page"),
+    )
+
+    content_panels = Page.content_panels + [
+        *AbstractBannerWithIntroPage.content_panels,
+        FieldPanel("catalogue_notice"),
+        FieldPanel("data_groups"),
+        PageChooserPanel("data_request_page"),
+    ]
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+
+        # Imported here to avoid coupling the services and products model modules
+        # while still resolving the current Wagtail URL for each local archive.
+        from climweb.pages.products.models import ProductPage
+
+        product_urls = {}
+        for key, slug in (
+            ("rdt_product_url", "thunderstorm-and-nowcasting"),
+            ("itd_product_url", "itd-and-itcz-monitoring"),
+        ):
+            product_page = ProductPage.objects.live().filter(slug=slug).first()
+            product_urls[key] = (
+                product_page.get_url(request=request) if product_page else ""
+            )
+
+        context.update(product_urls)
+        return context
+
+    class Meta:
+        verbose_name = _("RCC Data Services Page")
+
+
+class RCCClimateProductsPage(AbstractBannerWithIntroPage):
+    template = "services/rcc_climate_products_page.html"
+    parent_page_types = ["services.ServicePage"]
+    subpage_types = []
+    max_count_per_parent = 1
+    show_in_menus_default = True
+
+    introduction_title = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name=_("Introduction Title"),
+        help_text=_("Optional introduction section title"),
+    )
+    introduction_text = RichTextField(
+        blank=True,
+        default="",
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Introduction text"),
+        help_text=_("Optional introduction section description"),
+    )
+
+    content_panels = Page.content_panels + [
+        *AbstractBannerWithIntroPage.content_panels,
+    ]
+
+    @cached_property
+    def products(self):
+        parent = self.get_parent().specific
+        return parent.products if isinstance(parent, ServicePage) else []
+
+    class Meta:
+        verbose_name = _("RCC Climate Products Page")
+
+
+class RCCClimateMonitoringPage(AbstractBannerWithIntroPage):
+    template = "services/rcc_climate_monitoring_page.html"
+    parent_page_types = ["services.ServicePage"]
+    subpage_types = []
+    max_count_per_parent = 1
+    show_in_menus_default = True
+
+    content_panels = Page.content_panels + [
+        *AbstractBannerWithIntroPage.content_panels,
+    ]
+
+    diagnostic_product_definitions = (
+        {
+            "key": "annual",
+            "slugs": ("annual-state-of-the-climate-report",),
+            "cadence": _("Annual assessment"),
+            "title": _("Annual State of the Climate Report"),
+            "summary": _(
+                "Observed climate conditions, significant extremes, impacts "
+                "and long-term trends across Africa."
+            ),
+        },
+        {
+            "key": "monthly",
+            "slugs": ("monthly-climate-diagnostic-bulletin",),
+            "cadence": _("Monthly diagnostics"),
+            "title": _("Monthly Climate Diagnostic Bulletin"),
+            "summary": _(
+                "Rainfall totals, anomalies, percent of normal and rainy-day "
+                "diagnostics for the continent."
+            ),
+        },
+        {
+            "key": "dekadal",
+            "slugs": ("dekadal-weather-forecast", "dekadal-climate-bulletin"),
+            "cadence": _("10-day assessment"),
+            "title": _("Dekadal Climate Bulletin"),
+            "summary": _(
+                "Ten-day climate conditions and technical guidance supporting "
+                "rapid regional assessment."
+            ),
+        },
+    )
+
+    rainfall_product_definitions = (
+        {
+            "key": "daily-rainfall",
+            "slugs": ("daily-rainfall-monitoring",),
+            "cadence": _("Daily monitoring"),
+            "title": _("Daily Rainfall Monitoring"),
+            "summary": _(
+                "Observed rainfall totals and spatial patterns supporting "
+                "day-to-day monitoring across Africa."
+            ),
+        },
+        {
+            "key": "seasonal-onset",
+            "slugs": ("rainfall-and-seasonal-onset-monitoring",),
+            "cadence": _("Seasonal tracking"),
+            "title": _("Rainfall and Seasonal Onset Monitoring"),
+            "summary": _(
+                "Tracks rainfall progression and the onset of the growing "
+                "season for climate-sensitive planning."
+            ),
+        },
+        {
+            "key": "five-day-rainfall",
+            "slugs": ("five-day-rainfall-probability-forecast",),
+            "cadence": _("Five-day outlook"),
+            "title": _("5-Day Rainfall Probability Forecast"),
+            "summary": _(
+                "Short-range rainfall probabilities for anticipating wet and "
+                "dry conditions."
+            ),
+        },
+        {
+            "key": "rainfall-exceedance",
+            "slugs": ("seasonal-rainfall-probability-of-exceedance",),
+            "cadence": _("Seasonal outlook"),
+            "title": _("Seasonal Rainfall Probability of Exceedance"),
+            "summary": _(
+                "Probability guidance showing where seasonal rainfall may "
+                "exceed decision-relevant thresholds."
+            ),
+        },
+    )
+
+    watch_product_definitions = (
+        {
+            "key": "climate-watch",
+            "slugs": ("climate-watch-bulletin",),
+            "cadence": _("Climate advisory"),
+            "title": _("Climate Watch Bulletin"),
+            "summary": _(
+                "Climate information and advisories focused on significant "
+                "anomalies, extremes and their potential impacts."
+            ),
+        },
+        {
+            "key": "atmospheric-analysis",
+            "slugs": ("atmospheric-analysis",),
+            "cadence": _("Synoptic analysis"),
+            "title": _("Atmospheric Analysis"),
+            "summary": _(
+                "Analysis of large-scale circulation and atmospheric drivers "
+                "affecting African climate."
+            ),
+        },
+        {
+            "key": "itd-itcz",
+            "slugs": ("itd-and-itcz-monitoring",),
+            "cadence": _("Position monitoring"),
+            "title": _("ITD and ITCZ Monitoring"),
+            "summary": _(
+                "Operational monitoring of tropical convergence features that "
+                "shape West African rainfall."
+            ),
+        },
+    )
+
+    cryosphere_product_definitions = (
+        {
+            "key": "cryosphere",
+            "slugs": ("cryosphere-and-african-mountain-glaciers",),
+            "cadence": _("Specialized monitoring"),
+            "title": _("Cryosphere and African Mountain Glaciers"),
+            "summary": _(
+                "Evidence and assessments of glacier and cryosphere change in "
+                "Africa's mountain environments."
+            ),
+        },
+    )
+
+    country_monitoring_links = (
+        {
+            "label": _("Africa"),
+            "scope": _("Continental view"),
+            "url": "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/WWFD/forecastinservice/Africa/africa_multimodele.html",
+        },
+        {
+            "label": _("Burundi"),
+            "scope": _("Country view"),
+            "url": "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/WWFD/forecastinservice/Burundi/burundi_multimodele.html",
+        },
+        {
+            "label": _("Cameroon"),
+            "scope": _("Country view"),
+            "url": "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/WWFD/forecastinservice/Cameroon/cameroon_multimodele.html",
+        },
+        {
+            "label": _("Guinea"),
+            "scope": _("Country view"),
+            "url": "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/WWFD/forecastinservice/Guinea/guinea_multimodele.html",
+        },
+        {
+            "label": _("Madagascar"),
+            "scope": _("Country view"),
+            "url": "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/WWFD/forecastinservice/Madagascar/madagascar_multimodele.html",
+        },
+        {
+            "label": _("Niger"),
+            "scope": _("Country view"),
+            "url": "http://sgbd.acmad.org:8080/thredds/fileServer/ACMAD/WWFD/forecastinservice/Niger/niger_multimodele.html",
+        },
+    )
+
+    def _resolve_products(self, definitions, pages_by_slug):
+        products = []
+        for definition in definitions:
+            page = next(
+                (
+                    pages_by_slug[slug]
+                    for slug in definition["slugs"]
+                    if slug in pages_by_slug
+                ),
+                None,
+            )
+            item = dict(definition)
+            item["page"] = page
+            item["latest"] = page.all_products.first() if page else None
+            products.append(item)
+        return products
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        product_groups = (
+            self.diagnostic_product_definitions,
+            self.rainfall_product_definitions,
+            self.watch_product_definitions,
+            self.cryosphere_product_definitions,
+        )
+        slugs = {
+            slug
+            for definitions in product_groups
+            for definition in definitions
+            for slug in definition["slugs"]
+        }
+        pages_by_slug = {
+            page.slug: page
+            for page in ProductPage.objects.live().filter(slug__in=slugs)
+        }
+        context["diagnostic_products"] = self._resolve_products(
+            self.diagnostic_product_definitions,
+            pages_by_slug,
+        )
+        context["rainfall_products"] = self._resolve_products(
+            self.rainfall_product_definitions,
+            pages_by_slug,
+        )
+        context["watch_products"] = self._resolve_products(
+            self.watch_product_definitions,
+            pages_by_slug,
+        )
+        context["cryosphere_product"] = self._resolve_products(
+            self.cryosphere_product_definitions,
+            pages_by_slug,
+        )[0]
+        context["country_monitoring_links"] = self.country_monitoring_links
+        return context
+
+    class Meta:
+        verbose_name = _("RCC Climate Monitoring Page")
+
+
+class RCCLongRangeForecastingPage(AbstractBannerWithIntroPage):
+    template = "services/rcc_long_range_forecasting_page.html"
+    parent_page_types = ["services.ServicePage"]
+    subpage_types = ["services.RCCConsensusForumPage"]
+    max_count_per_parent = 1
+    show_in_menus_default = True
+
+    content_panels = Page.content_panels + [
+        *AbstractBannerWithIntroPage.content_panels,
+    ]
+
+    outlook_product_definitions = (
+        {
+            "key": "maps",
+            "slug": "seasonal-forecast-maps",
+            "gallery_url_name": "rcc_tailored_forecast_gallery",
+            "label": _("Tailored forecast maps"),
+            "title": _("Tailored Precipitation and Temperature Forecasts"),
+            "summary": _(
+                "Regional and sub-regional precipitation and temperature "
+                "forecast maps tailored to upcoming seasons and climate "
+                "outlook regions."
+            ),
+            "topics": (_("Precipitation maps"), _("Temperature maps")),
+        },
+        {
+            "key": "bulletins",
+            "slug": "seasonal-outlook-bulletins",
+            "label": _("Forecast bulletins"),
+            "title": _("Seasonal Outlook Bulletins"),
+            "summary": _(
+                "Seasonal forecast interpretation, expected conditions and "
+                "regional guidance for climate-sensitive decisions."
+            ),
+        },
+        {
+            "key": "statements",
+            "slug": "seasonal-consensus-statements-and-communiques",
+            "gallery_url_name": "rcc_consensus_forums",
+            "label": _("Consensus products"),
+            "title": _("Consensus Statements for the Region and Sub-regions"),
+            "summary": _(
+                "Agreed regional outlooks prepared with climate experts through "
+                "Regional Climate Outlook Forums."
+            ),
+        },
+        {
+            "key": "recommendations",
+            "slug": "seasonal-recommendations-and-summaries",
+            "label": _("Decision guidance"),
+            "title": _("Recommendations and Summaries"),
+            "summary": _(
+                "Concise implications, recommendations and summaries accompanying "
+                "seasonal outlooks."
+            ),
+        },
+        {
+            "key": "technical-notes",
+            "slug": "seasonal-technical-notes",
+            "label": _("Technical documentation"),
+            "title": _("Technical Notes"),
+            "summary": _(
+                "Methods, interpretation details and supporting analysis behind "
+                "the seasonal forecast products."
+            ),
+        },
+    )
+
+    assessment_product_definitions = (
+        {
+            "key": "model-performance",
+            "slug": "seasonal-model-performance",
+            "gallery_url_name": "rcc_model_performance_gallery",
+            "label": _("Model assessment"),
+            "title": _("Statistical and Dynamical Model Performance"),
+            "summary": _(
+                "Maps and graphs assessing statistical and dynamical seasonal "
+                "forecasting systems."
+            ),
+            "topics": (_("Statistical models"), _("Dynamical models")),
+        },
+        {
+            "key": "verification",
+            "slug": "seasonal-forecast-verification",
+            "gallery_url_name": "rcc_forecast_verification_gallery",
+            "label": _("Forecast verification"),
+            "title": _("Forecast and Outlook Verification"),
+            "summary": _(
+                "Graphs, maps and evaluation reports showing how previous "
+                "precipitation and temperature outlooks performed against "
+                "observed conditions."
+            ),
+            "topics": (
+                _("Verification maps"),
+                _("Verification graphs and reports"),
+            ),
+        },
+    )
+
+    @staticmethod
+    def _resolve_products(definitions, pages_by_slug):
+        products = []
+        for definition in definitions:
+            item = dict(definition)
+            item["page"] = pages_by_slug.get(definition["slug"])
+            item["gallery_url"] = (
+                reverse(definition["gallery_url_name"])
+                if definition.get("gallery_url_name")
+                else ""
+            )
+            item["latest"] = (
+                item["page"].all_products.first() if item["page"] else None
+            )
+            item["count"] = (
+                item["page"].all_products.count() if item["page"] else 0
+            )
+            products.append(item)
+        return products
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        definitions = (
+            self.outlook_product_definitions + self.assessment_product_definitions
+        )
+        pages_by_slug = {
+            page.slug: page
+            for page in ProductPage.objects.live().filter(
+                slug__in=[definition["slug"] for definition in definitions]
+            )
+        }
+        context["outlook_products"] = self._resolve_products(
+            self.outlook_product_definitions,
+            pages_by_slug,
+        )
+        context["assessment_products"] = self._resolve_products(
+            self.assessment_product_definitions,
+            pages_by_slug,
+        )
+        context["outlook_forums"] = list(
+            RCCConsensusForumPage.objects.live().child_of(self).order_by("path")
+        )
+        return context
+
+    class Meta:
+        verbose_name = _("RCC Long-range Forecasting Page")
+
+
+class RCCTrainingPage(AbstractBannerWithIntroPage):
+    template = "services/rcc_training_page.html"
+    parent_page_types = ["services.ServicePage"]
+    subpage_types = []
+    max_count_per_parent = 1
+    show_in_menus_default = True
+
+    focus_areas = StreamField(
+        [("area", local_blocks.TrainingModuleBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("RCC training focus areas"),
+    )
+    programmes = StreamField(
+        [("programme", local_blocks.RCCTrainingProgrammeBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Programmes and activities"),
+    )
+    methodology_groups = StreamField(
+        [("group", local_blocks.RCCTrainingResourceGroupBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Methods, tools and guidance"),
+    )
+    report_groups = StreamField(
+        [("group", local_blocks.RCCTrainingResourceGroupBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Workshop, training and survey reports"),
+    )
+    training_videos = StreamField(
+        [("video", local_blocks.RCCTrainingVideoBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Forecast training videos"),
+    )
+    closing_text = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Closing note"),
+    )
+
+    content_panels = Page.content_panels + [
+        *AbstractBannerWithIntroPage.content_panels,
+        FieldPanel("focus_areas"),
+        FieldPanel("programmes"),
+        FieldPanel("methodology_groups"),
+        FieldPanel("report_groups"),
+    ]
+
+    class Meta:
+        verbose_name = _("RCC Training Page")
+
+
+class RCCRecommendedFunctionsPage(AbstractBannerWithIntroPage):
+    template = "services/rcc_recommended_functions_page.html"
+    parent_page_types = ["services.ServicePage"]
+    subpage_types = []
+    max_count_per_parent = 1
+    show_in_menus_default = True
+
+    functions = StreamField(
+        [("function", local_blocks.RCCRecommendedFunctionBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Highly recommended functions"),
+    )
+    evidence_heading = models.CharField(
+        max_length=180,
+        blank=True,
+        default="Research reports and climate-change evidence",
+    )
+    evidence_introduction = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    content_panels = Page.content_panels + [
+        *AbstractBannerWithIntroPage.content_panels,
+        FieldPanel("functions"),
+        MultiFieldPanel(
+            [FieldPanel("evidence_heading"), FieldPanel("evidence_introduction")],
+            heading=_("Evidence archive"),
+        ),
+    ]
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        report_product = ProductPage.objects.live().filter(
+            slug="climate-change-and-climate-projections"
+        ).first()
+        context["report_product"] = report_product
+        context["report_items"] = (
+            report_product.all_products.live().specific()[:6]
+            if report_product
+            else []
+        )
+        return context
+
+    class Meta:
+        verbose_name = _("RCC Highly Recommended Functions Page")
+
+
+class RCCCoordinationPage(AbstractBannerWithIntroPage):
+    template = "services/rcc_coordination_page.html"
+    parent_page_types = ["services.ServicePage"]
+    subpage_types = []
+    max_count_per_parent = 1
+    show_in_menus_default = True
+
+    coordination_areas = StreamField(
+        [("area", local_blocks.RCCCoordinationAreaBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Coordination activities and outputs"),
+    )
+
+    content_panels = Page.content_panels + [
+        *AbstractBannerWithIntroPage.content_panels,
+        FieldPanel("coordination_areas"),
+    ]
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        context["accof_page"] = RCCConsensusForumPage.objects.live().filter(
+            forum_code__iexact="ACCOF"
+        ).first()
+        return context
+
+    class Meta:
+        verbose_name = _("RCC Coordination Page")
+
+
+class RCCConsensusForumPage(AbstractBannerPage):
+    template = "services/rcc_consensus_forum_detail.html"
+    parent_page_types = ["services.RCCLongRangeForecastingPage"]
+    subpage_types = []
+    show_in_menus_default = False
+
+    forum_code = models.CharField(
+        max_length=30,
+        verbose_name=_("Forum acronym"),
+        help_text=_("For example PRESAC, MEDCOF or ACCOF."),
+    )
+    region = models.CharField(max_length=180)
+    target_season = models.CharField(max_length=180, blank=True)
+    summary = models.TextField(
+        max_length=500,
+        help_text=_("Short description used on the forum directory card."),
+    )
+    overview = RichTextField(features=SUMMARY_RICHTEXT_FEATURES)
+    geographic_coverage = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    climate_drivers = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    climate_hazards = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    consensus_method = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("How the consensus is developed"),
+    )
+    user_involvement = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    development_priorities = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    archive_codes = models.CharField(
+        max_length=120,
+        blank=True,
+        help_text=_(
+            "Comma-separated acronyms used to associate documents from the "
+            "Consensus Statements product archive. Defaults to the forum acronym."
+        ),
+    )
+    photos = StreamField(
+        [("photo", local_blocks.RCCForumPhotoBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Photo gallery"),
+    )
+    attached_documents = StreamField(
+        [("document", local_blocks.RCCForumDocumentBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Additional forum documents"),
+    )
+
+    content_panels = Page.content_panels + [
+        *AbstractBannerPage.content_panels,
+        MultiFieldPanel(
+            [
+                FieldPanel("forum_code"),
+                FieldPanel("region"),
+                FieldPanel("target_season"),
+                FieldPanel("summary"),
+                FieldPanel("archive_codes"),
+            ],
+            heading=_("Forum profile"),
+        ),
+        FieldPanel("overview"),
+        MultiFieldPanel(
+            [
+                FieldPanel("geographic_coverage"),
+                FieldPanel("climate_drivers"),
+                FieldPanel("climate_hazards"),
+            ],
+            heading=_("Climate context"),
+        ),
+        FieldPanel("consensus_method"),
+        FieldPanel("user_involvement"),
+        FieldPanel("development_priorities"),
+        FieldPanel("photos"),
+        FieldPanel("attached_documents"),
+    ]
+
+    @property
+    def document_codes(self):
+        value = self.archive_codes or self.forum_code
+        return tuple(code.strip().upper() for code in value.split(",") if code.strip())
+
+    def consensus_documents(self):
+        documents = []
+        seen = set()
+        for block in self.attached_documents:
+            document = block.value.get("document")
+            if not document or document.pk in seen:
+                continue
+            seen.add(document.pk)
+            documents.append(
+                {
+                    "name": block.value.get("title") or document.title,
+                    "date": block.value.get("date"),
+                    "document": document,
+                    "thumbnail": None,
+                    "manual": True,
+                }
+            )
+
+        product_page = ProductPage.objects.live().filter(
+            slug="seasonal-consensus-statements-and-communiques"
+        ).first()
+        if product_page:
+            for item in product_page.all_products.live().specific():
+                for block in item.products:
+                    if block.block_type != "document_product":
+                        continue
+                    item_type = block.value.product_item_type()
+                    document = block.value.get("document")
+                    if (
+                        not item_type
+                        or not document
+                        or document.pk in seen
+                        or not any(
+                            code in item_type.name.upper()
+                            for code in self.document_codes
+                        )
+                    ):
+                        continue
+                    seen.add(document.pk)
+                    documents.append(
+                        {
+                            "name": item_type.name,
+                            "date": block.value.get("date") or item.date,
+                            "document": document,
+                            "thumbnail": block.value.get("thumbnail"),
+                            "manual": False,
+                        }
+                    )
+        return sorted(
+            documents,
+            key=lambda item: (item["date"] is not None, item["date"]),
+            reverse=True,
+        )
+
+    @property
+    def document_count(self):
+        return len(self.consensus_documents())
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        parent = self.get_parent().specific
+        context.update(
+            {
+                "forum": self,
+                "documents": self.consensus_documents(),
+                "long_range_page": (
+                    parent if isinstance(parent, RCCLongRangeForecastingPage) else None
+                ),
+                "coordination_page": RCCCoordinationPage.objects.live().first(),
+            }
+        )
+        return context
+
+    class Meta:
+        verbose_name = _("RCC Consensus Forum Page")
+
+
+class OnTheJobTrainingPage(AbstractBannerWithIntroPage):
+    template = "services/on_the_job_training_page.html"
+    parent_page_types = ["home.HomePage", "services.ServicePage"]
+    subpage_types = []
+    show_in_menus_default = True
+    cache_control = "no-cache"
+
+    objectives = RichTextField(features=SUMMARY_RICHTEXT_FEATURES)
+    eligibility = RichTextField(features=SUMMARY_RICHTEXT_FEATURES)
+    duration = models.CharField(max_length=120, default="2-6 months")
+    location = models.CharField(max_length=160, default="ACMAD Headquarters, Niamey, Niger")
+    languages = models.CharField(max_length=120, default="English and French")
+    benefits = RichTextField(features=SUMMARY_RICHTEXT_FEATURES)
+    training_modules = StreamField(
+        [("module", local_blocks.TrainingModuleBlock())],
+        blank=True,
+        use_json_field=True,
+    )
+    application_introduction = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    application_steps = StreamField(
+        [("step", local_blocks.ApplicationStepBlock())],
+        blank=True,
+        use_json_field=True,
+    )
+    application_email = models.EmailField(default="secretariat@acmad.org")
+    show_training_proposal_form = models.BooleanField(
+        default=True,
+        verbose_name=_("Show online training proposal form"),
+    )
+    proposal_section_title = models.CharField(
+        max_length=160,
+        default="Submit a training proposal",
+        verbose_name=_("Proposal form title"),
+    )
+    proposal_section_introduction = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Proposal form introduction"),
+    )
+    reports_introduction = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    visitor_reports = StreamField(
+        [("report", local_blocks.VisitorReportBlock())],
+        blank=True,
+        use_json_field=True,
+    )
+    testimonials = StreamField(
+        [("testimony", local_blocks.TrainingTestimonialBlock())],
+        blank=True,
+        use_json_field=True,
+    )
+    gallery = StreamField(
+        [("item", local_blocks.TrainingGalleryItemBlock())],
+        blank=True,
+        use_json_field=True,
+    )
+    accommodation_introduction = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+    )
+    accommodation_options = StreamField(
+        [("accommodation", local_blocks.TrainingAccommodationBlock())],
+        blank=True,
+        use_json_field=True,
+    )
+    brochure = models.ForeignKey(
+        "wagtaildocs.Document",
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
+    PARTICIPANT_MAP_SCOPE_BOTH = "both"
+    PARTICIPANT_MAP_SCOPE_OJT = "ojt"
+    PARTICIPANT_MAP_SCOPE_SECONDMENT = "secondment"
+    PARTICIPANT_MAP_SCOPE_CHOICES = (
+        (PARTICIPANT_MAP_SCOPE_BOTH, _("On-the-job training and secondment")),
+        (PARTICIPANT_MAP_SCOPE_OJT, _("On-the-job training only")),
+        (PARTICIPANT_MAP_SCOPE_SECONDMENT, _("Secondment only")),
+    )
+
+    show_participant_map = models.BooleanField(
+        default=False,
+        verbose_name=_("Show participant map"),
+        help_text=_("Display an Africa choropleth of participants per country, "
+                    "built from the Capacity Building Participants register."),
+    )
+    participant_map_heading = models.CharField(
+        max_length=120,
+        default="Where our participants come from",
+        verbose_name=_("Participant map heading"),
+    )
+    participant_map_introduction = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Participant map introduction"),
+    )
+    participant_map_scope = models.CharField(
+        max_length=20,
+        choices=PARTICIPANT_MAP_SCOPE_CHOICES,
+        default=PARTICIPANT_MAP_SCOPE_BOTH,
+        verbose_name=_("Participants to include"),
+    )
+    participant_map_date_from = models.DateField(
+        null=True, blank=True, verbose_name=_("From date"),
+        help_text=_("Optional. Only count engagements active on or after this date."),
+    )
+    participant_map_date_to = models.DateField(
+        null=True, blank=True, verbose_name=_("To date"),
+        help_text=_("Optional. Only count engagements that started on or before this date."),
+    )
+
+    content_panels = Page.content_panels + [
+        *AbstractBannerWithIntroPage.content_panels,
+        MultiFieldPanel(
+            [
+                FieldPanel("objectives"),
+                FieldPanel("eligibility"),
+                FieldPanel("duration"),
+                FieldPanel("location"),
+                FieldPanel("languages"),
+                FieldPanel("benefits"),
+            ],
+            heading=_("Programme overview"),
+        ),
+        FieldPanel("training_modules"),
+        MultiFieldPanel(
+            [
+                FieldPanel("application_introduction"),
+                FieldPanel("application_steps"),
+                FieldPanel("application_email"),
+                FieldPanel("show_training_proposal_form"),
+                FieldPanel("proposal_section_title"),
+                FieldPanel("proposal_section_introduction"),
+            ],
+            heading=_("How to apply"),
+        ),
+        MultiFieldPanel(
+            [FieldPanel("reports_introduction"), FieldPanel("visitor_reports")],
+            heading=_("Visitor reports"),
+        ),
+        FieldPanel("testimonials"),
+        FieldPanel("gallery"),
+        MultiFieldPanel(
+            [
+                FieldPanel("accommodation_introduction"),
+                FieldPanel("accommodation_options"),
+            ],
+            heading=_("Accommodation"),
+        ),
+        FieldPanel("brochure"),
+        MultiFieldPanel(
+            [
+                FieldPanel("show_participant_map"),
+                FieldPanel("participant_map_heading"),
+                FieldPanel("participant_map_introduction"),
+                FieldPanel("participant_map_scope"),
+                FieldPanel("participant_map_date_from"),
+                FieldPanel("participant_map_date_to"),
+            ],
+            heading=_("Participant map"),
+        ),
+    ]
+
+    class Meta:
+        verbose_name = _("On-the-Job Training Page")
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+
+        if self.show_participant_map:
+            from climweb.base.models.participants import build_participant_map_context
+
+            if self.participant_map_scope == self.PARTICIPANT_MAP_SCOPE_BOTH:
+                categories = None
+            else:
+                categories = [self.participant_map_scope]
+
+            context.update(build_participant_map_context(
+                map_dom_id="ojt-participant-map",
+                categories=categories,
+                date_from=self.participant_map_date_from,
+                date_to=self.participant_map_date_to,
+                show_legend=True,
+                request=request,
+            ))
+
+        return context
+
+    def serve(self, request, *args, **kwargs):
+        if not self.show_training_proposal_form:
+            return super().serve(request, *args, **kwargs)
+
+        from .forms import TrainingProposalForm
+
+        is_proposal_post = (
+            request.method == "POST"
+            and request.POST.get("form_id") == "training-proposal"
+        )
+        form = TrainingProposalForm(
+            request.POST if is_proposal_post else None,
+            request.FILES if is_proposal_post else None,
+        )
+        if is_proposal_post and form.is_valid():
+            proposal = form.save(commit=False)
+            proposal.page = self
+            proposal.save()
+            return redirect(f"{self.url}?proposal=submitted")
+
+        context = self.get_context(request, *args, **kwargs)
+        context["training_proposal_form"] = form
+        context["proposal_submitted"] = (
+            request.GET.get("proposal") == "submitted"
+        )
+        response = TemplateResponse(
+            request,
+            self.get_template(request),
+            context,
+        )
+        response["Cache-Control"] = self.cache_control
+        return response
+
+
+@register_snippet
+class TrainingTopic(models.Model):
+    name = models.CharField(max_length=255, unique=True, verbose_name=_("Title"))
+    description = models.TextField(blank=True, verbose_name=_("Description"))
+
+    panels = [
+        FieldPanel("name"),
+        FieldPanel("description"),
+    ]
+
+    class Meta:
+        ordering = ("name",)
+        verbose_name = _("Training Topic")
+        verbose_name_plural = _("Training Topics")
+
+    def __str__(self):
+        return self.name
+
+
+@register_snippet
+class TrainingProposal(models.Model):
+    PROGRAMME_OJT = "ojt"
+    PROGRAMME_SECONDMENT = "secondment"
+    PROGRAMME_CHOICES = (
+        (PROGRAMME_OJT, _("On-the-job training")),
+        (PROGRAMME_SECONDMENT, _("Secondment")),
+    )
+    STATUS_NEW = "new"
+    STATUS_REVIEWING = "reviewing"
+    STATUS_ACCEPTED = "accepted"
+    STATUS_DECLINED = "declined"
+    STATUS_CHOICES = (
+        (STATUS_NEW, _("New")),
+        (STATUS_REVIEWING, _("Under review")),
+        (STATUS_ACCEPTED, _("Accepted")),
+        (STATUS_DECLINED, _("Declined")),
+    )
+    DOCUMENT_VALIDATORS = (
+        FileExtensionValidator(("pdf", "doc", "docx")),
+        validate_training_proposal_file_size,
+    )
+
+    page = models.ForeignKey(
+        OnTheJobTrainingPage,
+        on_delete=models.CASCADE,
+        related_name="training_proposals",
+        verbose_name=_("Training page"),
+    )
+    full_name = models.CharField(max_length=255, verbose_name=_("Full name"))
+    email = models.EmailField(verbose_name=_("Email address"))
+    phone = models.CharField(
+        max_length=80,
+        validators=[
+            RegexValidator(
+                regex=r"^\+?[0-9 ()-]{7,25}$",
+                message=_("Enter a valid telephone or WhatsApp number."),
+            )
+        ],
+        verbose_name=_("Telephone / WhatsApp"),
+    )
+    country = models.CharField(max_length=120, verbose_name=_("Country"))
+    organisation = models.ForeignKey(
+        MeteorologicalService,
+        on_delete=models.PROTECT,
+        related_name="training_proposals",
+        verbose_name=_("Organisation / NMHS"),
+    )
+    job_title = models.CharField(max_length=180, verbose_name=_("Job title"))
+    programme_type = models.CharField(
+        max_length=20,
+        choices=PROGRAMME_CHOICES,
+        default=PROGRAMME_OJT,
+        verbose_name=_("Programme type"),
+    )
+    proposal_title = models.ForeignKey(
+        TrainingTopic,
+        on_delete=models.PROTECT,
+        related_name="training_proposals",
+        verbose_name=_("Proposed training title"),
+    )
+    professional_background = models.TextField(
+        verbose_name=_("Professional background and current responsibilities"),
+    )
+    objectives = models.TextField(verbose_name=_("Training objectives"))
+    expected_outcomes = models.TextField(verbose_name=_("Expected outcomes"))
+    preferred_start_date = models.DateField(
+        verbose_name=_("Preferred start date"),
+    )
+    preferred_end_date = models.DateField(
+        verbose_name=_("Preferred end date"),
+    )
+    nomination_letter = models.FileField(
+        upload_to="training_proposals/%Y/%m/",
+        validators=DOCUMENT_VALIDATORS,
+        verbose_name=_("Nomination letter"),
+        help_text=_("Required PDF, DOC or DOCX file, maximum 10 MB."),
+    )
+    cv = models.FileField(
+        upload_to="training_proposals/%Y/%m/",
+        validators=DOCUMENT_VALIDATORS,
+        verbose_name=_("Curriculum vitae"),
+        help_text=_("Required PDF, DOC or DOCX file, maximum 10 MB."),
+    )
+    supporting_document = models.FileField(
+        upload_to="training_proposals/%Y/%m/",
+        validators=DOCUMENT_VALIDATORS,
+        verbose_name=_("Motivation letter or supporting document"),
+        help_text=_("Required PDF, DOC or DOCX file, maximum 10 MB."),
+    )
+    consent = models.BooleanField(
+        verbose_name=_(
+            "I confirm that the information is accurate and consent to ACMAD "
+            "using it to assess this training proposal."
+        ),
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_NEW,
+        verbose_name=_("Review status"),
+    )
+    internal_notes = models.TextField(blank=True, verbose_name=_("Internal notes"))
+    submitted_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Submitted at"))
+
+    panels = [
+        FieldPanel("page"),
+        MultiFieldPanel(
+            [
+                FieldPanel("status"),
+                FieldPanel("internal_notes"),
+            ],
+            heading=_("Review"),
+        ),
+        MultiFieldPanel(
+            [
+                FieldPanel("full_name"),
+                FieldPanel("email"),
+                FieldPanel("phone"),
+                FieldPanel("country"),
+                FieldPanel("organisation"),
+                FieldPanel("job_title"),
+            ],
+            heading=_("Applicant"),
+        ),
+        MultiFieldPanel(
+            [
+                FieldPanel("programme_type"),
+                FieldPanel("proposal_title"),
+                FieldPanel("professional_background"),
+                FieldPanel("objectives"),
+                FieldPanel("expected_outcomes"),
+                FieldPanel("preferred_start_date"),
+                FieldPanel("preferred_end_date"),
+            ],
+            heading=_("Proposal"),
+        ),
+        MultiFieldPanel(
+            [
+                FieldPanel("nomination_letter"),
+                FieldPanel("cv"),
+                FieldPanel("supporting_document"),
+            ],
+            heading=_("Documents"),
+        ),
+    ]
+
+    class Meta:
+        ordering = ("-submitted_at",)
+        verbose_name = _("Training Proposal")
+        verbose_name_plural = _("Training Proposals")
+
+    def __str__(self):
+        return f"{self.full_name} — {self.proposal_title}"
 
 
 class ServiceApplication(Orderable):

@@ -1,0 +1,144 @@
+/* Follow Wagtail's light, dark and system themes. Keep the standalone staff
+   portal's styling separate from the CMS dashboard and review screens. */
+.staff-admin .portal-panel {
+    background: var(--w-color-surface-page);
+    border-color: var(--w-color-border-furniture);
+    color: var(--w-color-text-context);
+}
+
+.staff-admin .portal-panel h1,
+.staff-admin .portal-panel h2,
+.staff-admin .portal-panel h3,
+.staff-admin .portal-panel label,
+.staff-admin .portal-panel th {
+    color: var(--w-color-text-label);
+}
+
+.staff-admin .portal-panel td {
+    color: var(--w-color-text-context);
+}
+
+.staff-admin .portal-panel input:not([type=hidden]):not([type=checkbox]),
+.staff-admin .portal-panel textarea,
+.staff-admin .portal-panel select,
+.staff-admin .portal-panel option {
+    background: var(--w-color-surface-field);
+    border-color: var(--w-color-border-field-default);
+    color: var(--w-color-text-context);
+}
+
+.staff-admin .portal-panel input:not([type=hidden]):not([type=checkbox]):hover,
+.staff-admin .portal-panel textarea:hover,
+.staff-admin .portal-panel select:hover {
+    border-color: var(--w-color-border-field-hover);
+}
+
+.staff-admin .portal-panel input:focus-visible,
+.staff-admin .portal-panel textarea:focus-visible,
+.staff-admin .portal-panel select:focus-visible {
+    outline: 3px solid var(--w-color-focus);
+    outline-offset: 2px;
+}
+
+.staff-admin .portal-panel input::placeholder,
+.staff-admin .portal-panel textarea::placeholder {
+    color: var(--w-color-text-placeholder);
+}
+
+.staff-admin .portal-panel .helptext,
+.staff-admin .portal-help {
+    color: var(--w-color-text-meta);
+}
+
+.staff-admin .portal-panel .errorlist {
+    color: var(--w-color-text-error);
+}
+
+.staff-admin .portal-panel [aria-invalid="true"] {
+    border-color: var(--w-color-text-error);
+}
+
+.staff-admin .portal-notice {
+    background: var(--w-color-surface-info-panel);
+    border-color: var(--w-color-border-interactive-more-contrast);
+    color: var(--w-color-text-context);
+}
+
+.staff-admin .portal-panel th,
+.staff-admin .portal-panel td,
+.staff-admin .portal-history {
+    border-color: var(--w-color-border-furniture);
+}
+
+.staff-admin .portal-table tbody tr:hover {
+    background: var(--w-color-surface-field);
+}
+
+.staff-admin a:not(.button) {
+    color: var(--w-color-text-link-default);
+}
+
+.staff-admin a:not(.button):hover {
+    color: var(--w-color-text-link-hover);
+}
+
+.staff-admin .portal-bulk-form {
+    display: flex;
+    margin-top: 1.25rem;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.staff-admin .portal-recipient-list {
+    display: grid;
+    width: 100%;
+    max-height: 22rem;
+    overflow-y: auto;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: .65rem;
+}
+
+.staff-admin .portal-recipient-list label {
+    padding: .8rem .9rem;
+    align-items: flex-start;
+    border: 1px solid var(--w-color-border-furniture);
+    border-radius: .4rem;
+    background: var(--w-color-surface-field);
+    cursor: pointer;
+}
+
+.staff-admin .portal-recipient-list label:hover {
+    border-color: var(--w-color-border-interactive-more-contrast);
+}
+
+.staff-admin .portal-recipient-list input {
+    margin-top: .2rem;
+}
+
+.staff-admin .portal-recipient-list span,
+.staff-admin .portal-recipient-list small {
+    display: block;
+}
+
+.staff-admin .portal-recipient-list small {
+    margin-top: .2rem;
+    color: var(--w-color-text-meta);
+}
+
+.staff-admin .portal-bulk-form label {
+    display: flex;
+    margin: 0;
+    align-items: center;
+    gap: .55rem;
+}
+
+.staff-admin details {
+    margin: 1rem 0;
+}
+
+.staff-admin details summary {
+    color: var(--w-color-text-link-default);
+    font-weight: 600;
+    cursor: pointer;
+}

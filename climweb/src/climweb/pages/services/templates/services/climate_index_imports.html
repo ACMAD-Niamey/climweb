@@ -1,0 +1,80 @@
+{% extends "wagtailadmin/base.html" %}
+
+{% block titletag %}Climate Indices — RCC Data Imports{% endblock %}
+
+{% block extra_css %}
+<style>
+  .rcc-index-wrap { max-width: 1200px; padding: 2rem; }
+  .rcc-index-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem; }
+  .rcc-index-card { border: 1px solid var(--w-color-border-furniture); border-radius: .5rem; padding: 1.25rem; margin-bottom: 1.25rem; }
+  .rcc-index-card h2 { margin-top: 0; }
+  .rcc-index-muted { color: var(--w-color-text-meta); }
+  .rcc-index-error { color: #b91c1c; }
+  .rcc-index-field { margin: 1rem 0; }
+  .rcc-index-field label { display: block; font-weight: 700; margin-bottom: .4rem; }
+  .rcc-index-field input[type=text], .rcc-index-field input[type=url], .rcc-index-field input[type=number], .rcc-index-field select, .rcc-index-field textarea { width: min(100%, 760px); }
+  .rcc-index-table-wrap { overflow-x: auto; }
+  .rcc-index-table { width: 100%; border-collapse: collapse; }
+  .rcc-index-table th, .rcc-index-table td { text-align: left; padding: .75rem; border-bottom: 1px solid var(--w-color-border-furniture); vertical-align: top; }
+  .rcc-index-preview { width: 90px; height: 65px; object-fit: contain; background: #f4f7f5; }
+  .rcc-index-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+  .rcc-index-actions form { margin: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rcc-index-wrap">
+  <h1>Climate indices and historical graphs</h1>
+  <p><a href="{% url 'rcc_imports' %}">← All RCC importers</a></p>
+  <p class="rcc-index-muted">Manage every graph independently. New sources can be added without a deployment; imported PNG versions remain in RCC storage.</p>
+
+  <div class="rcc-index-grid">
+    <section class="rcc-index-card">
+      <h2>Schedule</h2>
+      <form method="post">
+        {% csrf_token %}
+        <div class="rcc-index-field"><label for="{{ settings_form.interval_hours.id_for_label }}">Run every (hours)</label>{{ settings_form.interval_hours }}{{ settings_form.interval_hours.errors }}</div>
+        <div class="rcc-index-field"><label for="{{ settings_form.enabled.id_for_label }}">{{ settings_form.enabled }} Enable automatic imports</label>{{ settings_form.enabled.errors }}</div>
+        <button class="button" name="action" value="save_settings">Save schedule</button>
+      </form>
+    </section>
+    <section class="rcc-index-card">
+      <h2>Run now</h2>
+      <p>Import all {{ active_count }} active graph source{{ active_count|pluralize }}. Only one run can be active at a time.</p>
+      <form method="post">{% csrf_token %}<button class="button button-primary" name="action" value="run_all" {% if not active_count %}disabled{% endif %}>Import all active graphs</button></form>
+    </section>
+  </div>
+
+  <section class="rcc-index-card">
+    <h2>{% if edited_asset %}Edit graph source{% else %}Add graph source{% endif %}</h2>
+    <form method="post">
+      {% csrf_token %}
+      {% if edited_asset %}<input type="hidden" name="asset_id" value="{{ edited_asset.pk }}">{% endif %}
+      {% for field in asset_form %}<div class="rcc-index-field"><label for="{{ field.id_for_label }}">{% if field.name == 'active' %}{{ field }} {% endif %}{{ field.label }}</label>{% if field.name != 'active' %}{{ field }}{% endif %}{{ field.errors }}{% if field.name == 'source_url' %}<p class="rcc-index-muted">HTTPS PNG only. Additional trusted hosts can be configured with RCC_CLIMATE_INDEX_ALLOWED_SOURCE_HOSTS.</p>{% elif field.help_text %}<p class="rcc-index-muted">{{ field.help_text }}</p>{% endif %}</div>{% endfor %}
+      <button class="button button-primary" name="action" value="save_asset">Save graph source</button>
+      {% if edited_asset %}<a class="button" href="{% url 'rcc_climate_index_imports' %}">Add another</a>{% endif %}
+    </form>
+  </section>
+
+  <section class="rcc-index-card">
+    <h2>Managed graphs</h2>
+    {% if assets %}<div class="rcc-index-table-wrap"><table class="rcc-index-table">
+      <thead><tr><th>Preview</th><th>Graph</th><th>Source</th><th>Import status</th><th>Actions</th></tr></thead>
+      <tbody>{% for asset in assets %}<tr>
+        <td>{% if asset.is_available %}<a href="{% url 'rcc_climate_index_file' asset.pk %}" target="_blank" rel="noopener"><img class="rcc-index-preview" src="{% url 'rcc_climate_index_file' asset.pk %}" alt=""></a>{% else %}—{% endif %}</td>
+        <td><strong>{{ asset.legacy_index }}. {{ asset.title }}</strong><div class="rcc-index-muted">{{ asset.scope }}{% if asset.period %} · {{ asset.period }}{% endif %} · {% if asset.active %}Active{% else %}Disabled{% endif %}</div>{% if asset.description %}<div>{{ asset.description|truncatewords:20 }}</div>{% endif %}</td>
+        <td><a href="{{ asset.source_url }}" target="_blank" rel="noopener">Source PNG</a></td>
+        <td>{% if asset.synced_at %}{{ asset.synced_at|date:"Y-m-d H:i" }}<div class="rcc-index-muted">{{ asset.versions.count }} retained version{{ asset.versions.count|pluralize }} · {{ asset.size_bytes|filesizeformat }}</div>{% else %}Not imported{% endif %}{% if asset.last_error %}<div class="rcc-index-error">{{ asset.last_error }}</div>{% endif %}</td>
+        <td><div class="rcc-index-actions"><a class="button button-small" href="{% url 'rcc_climate_index_imports' %}?edit={{ asset.pk }}">Edit</a>{% if asset.active %}<form method="post">{% csrf_token %}<input type="hidden" name="asset_id" value="{{ asset.pk }}"><button class="button button-small" name="action" value="run_asset">Import now</button></form>{% endif %}{% if asset.is_available %}<a class="button button-small" href="{% url 'rcc_climate_index_file' asset.pk %}" target="_blank" rel="noopener">View</a>{% endif %}</div></td>
+      </tr>{% endfor %}</tbody>
+    </table></div>{% else %}<p class="rcc-index-muted">No graph sources configured.</p>{% endif %}
+  </section>
+
+  <section class="rcc-index-card">
+    <h2>Recent runs</h2>
+    {% if run_rows %}<div class="rcc-index-table-wrap"><table class="rcc-index-table"><thead><tr><th>Started</th><th>Trigger</th><th>Status</th><th>Progress</th><th>Errors</th></tr></thead><tbody>
+      {% for row in run_rows %}<tr><td>{{ row.run.created_at }}</td><td>{{ row.run.get_trigger_display }}</td><td>{{ row.run.get_status_display }}</td><td>{{ row.run.results|length }} / {{ row.run.asset_ids|length }} processed</td><td>{% if row.failed_count %}<details><summary>{{ row.failed_count }} failed</summary><ul>{% for item in row.failed %}<li>{{ item.title }}: <span class="rcc-index-error">{{ item.error }}</span></li>{% endfor %}</ul></details>{% else %}—{% endif %}</td></tr>{% endfor %}
+    </tbody></table></div>{% else %}<p class="rcc-index-muted">No imports yet.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

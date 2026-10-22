@@ -129,6 +129,14 @@
     backdrop-filter: none;
 }
 
+/* Closed-applications state - overrides the primary-color pill above
+   with a red/closed treatment once the deadline has passed. */
+.ss-pill--closed {
+    border-color: #e0455f;
+    color: #e0455f;
+    background: rgba(224, 69, 95, 0.08);
+}
+
 .ss-hero-cta {
     display: flex;
     flex-wrap: wrap;
@@ -236,7 +244,8 @@
    .wwd-icon rule (copied rather than @extended since this project has no Sass
    build step), scaled slightly down and re-themed for a light card background
    instead of .wwd-icon's dark-card context. */
-.ss-icon-badge {
+.ss-icon-badge,
+.ss-key-info-item > .ss-icon-badge {
     width: 40px;
     height: 40px;
     border-radius: 10px;
@@ -1265,6 +1274,102 @@
 }
 
 /* ------------------------------------------------------------
+   IMAGE GALLERY
+   ------------------------------------------------------------ */
+
+.ss-gallery-intro {
+    color: #555;
+    line-height: 1.65;
+    margin: -0.4rem 0 1.4rem;
+    max-width: 760px;
+}
+
+.ss-gallery-grid {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ss-gallery-item {
+    background: #fff;
+    border: 1px solid #e8ecea;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgb(21 47 58 / 7%);
+    margin: 0;
+    overflow: hidden;
+}
+
+.ss-gallery-link {
+    display: block;
+    overflow: hidden;
+    position: relative;
+}
+
+.ss-gallery-image {
+    aspect-ratio: 3 / 2;
+    display: block;
+    height: auto;
+    object-fit: cover;
+    transition: transform .25s ease;
+    width: 100%;
+}
+
+.ss-gallery-view {
+    background: rgb(0 0 0 / 68%);
+    border-radius: 999px;
+    bottom: .8rem;
+    color: #fff;
+    font-size: .75rem;
+    font-weight: 700;
+    opacity: 0;
+    padding: .35rem .75rem;
+    position: absolute;
+    right: .8rem;
+    transform: translateY(4px);
+    transition: opacity .2s ease, transform .2s ease;
+}
+
+.ss-gallery-link:hover .ss-gallery-image,
+.ss-gallery-link:focus-visible .ss-gallery-image {
+    transform: scale(1.035);
+}
+
+.ss-gallery-link:hover .ss-gallery-view,
+.ss-gallery-link:focus-visible .ss-gallery-view {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.ss-gallery-link:focus-visible {
+    outline: 3px solid var(--primary-color-light);
+    outline-offset: -3px;
+}
+
+.ss-gallery-caption {
+    color: #555;
+    font-size: .875rem;
+    line-height: 1.5;
+    padding: .85rem 1rem 1rem;
+}
+
+@media (max-width: 900px) {
+    .ss-gallery-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .ss-gallery-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ss-gallery-view {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* ------------------------------------------------------------
    CONCEPT NOTE
    ------------------------------------------------------------ */
 
@@ -1451,6 +1556,8 @@
 }
 
 .ss-partner-card {
+    position: relative;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1478,9 +1585,34 @@ a.ss-partner-card:hover {
 }
 
 .ss-partner-card-name {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-color, #1a1a1a);
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    height: 72%;
+    padding: 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 900;
+    color: #64df9e;
+    line-height: 1.3;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+    background: linear-gradient(to top, rgba(8, 18, 28, 0.97), rgba(8, 18, 28, 0.84), rgba(8, 18, 28, 0.52));
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(4px);
+    transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+}
+
+.ss-partner-card:hover .ss-partner-card-name,
+.ss-partner-card:focus-visible .ss-partner-card-name,
+.ss-partner-card:focus-within .ss-partner-card-name {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
 }
 
 @media (max-width: 768px) {
@@ -1709,6 +1841,16 @@ a.ss-partner-card:hover {
 
 .ss-application-form {
     padding: 1.75rem 2rem;
+}
+
+.ss-application-closed-notice {
+    margin: 1.75rem 2rem;
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    background: rgba(224, 69, 95, 0.08);
+    color: #e0455f;
+    font-weight: 600;
+    font-size: 14px;
 }
 
 /* Bulma field overrides — same treatment as feedback.css so a
@@ -2255,6 +2397,11 @@ a.ss-partner-card:hover {
 
 .ss-index-featured-btn.is-secondary:hover {
     background: var(--primary-color-lightest);
+}
+
+.ss-index-featured-btn.is-closed {
+    color: #e0455f;
+    background: rgba(224, 69, 95, 0.08);
 }
 
 @media (max-width: 768px) {

@@ -25,13 +25,14 @@ class TestStyleGuideView(TestCase):
         self.assertEqual(set(data.keys()), expected_keys)
 
     def test_tokens_json_uses_defaults_when_no_theme_configured(self):
-        # No Theme row exists in the test DB — defaults must be returned
+        Theme.objects.all().delete()
         response = self.client.get(reverse("style-guide-tokens"))
         data = response.json()
         self.assertEqual(data["primary"], "#0C447C")
         self.assertEqual(data["text"], "#363636")
 
     def test_style_guide_returns_200_when_no_theme_configured(self):
+        Theme.objects.all().delete()
         response = self.client.get(reverse("style-guide"))
         self.assertEqual(response.status_code, 200)
 
@@ -59,3 +60,58 @@ class TestStyleGuideView(TestCase):
         content = response.content.decode()
         for anchor in ["colors", "typography", "components", "for-developers"]:
             self.assertIn(f'id="{anchor}"', content, msg=f'Missing section anchor: id="{anchor}"')
+
+    def test_acmad_portal_defaults_generate_expected_tokens(self):
+        theme = Theme(name="ACMAD Portal")
+        theme.apply_acmad_portal_defaults()
+
+        tokens = theme.as_tokens()
+
+        self.assertEqual(tokens["navy_950"], "#071f2e")
+        self.assertEqual(tokens["green_700"], "#087a5a")
+        self.assertEqual(tokens["yellow_400"], "#f4c84a")
+        self.assertEqual(tokens["ink"], "#132a35")
+        self.assertIn("DM Sans", tokens["body_font"])
+        self.assertIn("Manrope", tokens["heading_font"])
+
+    def test_restore_acmad_portal_defaults_is_applied_on_save(self):
+        theme = Theme.objects.create(
+            name="Reset Test",
+            primary_hover_color="#111111",
+            restore_acmad_portal_defaults=True,
+        )
+
+        theme.refresh_from_db()
+
+        self.assertEqual(theme.primary_hover_color, "#087a5a")
+        self.assertEqual(theme.header_background_color, "#071f2e")
+        self.assertEqual(theme.body_font, "dm_sans")
+        self.assertFalse(theme.restore_acmad_portal_defaults)
+
+    def test_climweb_defaults_generate_expected_tokens(self):
+        theme = Theme(name="ClimWeb Default")
+        theme.apply_climweb_defaults()
+
+        tokens = theme.as_tokens()
+
+        self.assertEqual(tokens["navy_950"], "#176c9c")
+        self.assertEqual(tokens["green_700"], "#176c9c")
+        self.assertEqual(tokens["sand_50"], "#ffffff")
+        self.assertEqual(tokens["ink"], "#363636")
+        self.assertIn("Open Sans", tokens["body_font"])
+        self.assertIn("Open Sans", tokens["heading_font"])
+
+    def test_restore_climweb_defaults_is_applied_on_save(self):
+        theme = Theme.objects.create(
+            name="ClimWeb Reset Test",
+            primary_hover_color="#111111",
+            restore_climweb_defaults=True,
+        )
+
+        theme.refresh_from_db()
+
+        self.assertEqual(theme.primary_hover_color, "#176c9c")
+        self.assertEqual(theme.header_background_color, "#176c9c")
+        self.assertEqual(theme.body_font, "open_sans")
+        self.assertEqual(theme.border_radius, 12)
+        self.assertFalse(theme.restore_climweb_defaults)

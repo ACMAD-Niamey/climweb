@@ -112,26 +112,54 @@
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
 }
 
-.mhz-legend-row {
+.mhz-legend-title {
+  overflow: hidden;
+  margin-block-end: 8px;
+  color: #1a2330;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* A single horizontal strip of colour segments replaces the old
+   one-row-per-class list - it stays a fixed, compact size regardless of
+   how many classes a dataset's legend has (some run to 8-10+). Each
+   segment's full label is still available via its native title tooltip. */
+.mhz-legend-strip {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #2f3b4a;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.35;
-}
-
-.mhz-legend-row + .mhz-legend-row {
-  margin-block-start: 7px;
-}
-
-.mhz-legend-dot {
-  width: 10px;
+  overflow: hidden;
   height: 10px;
-  border-radius: 999px;
   border: 1px solid rgba(0, 0, 0, 0.16);
-  flex-shrink: 0;
+  border-radius: 999px;
+}
+
+.mhz-legend-segment {
+  flex: 1 1 0;
+  height: 100%;
+}
+
+.mhz-legend-segment + .mhz-legend-segment {
+  border-inline-start: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.mhz-legend-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  margin-block-start: 5px;
+  color: #2f3b4a;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.mhz-legend-labels span {
+  overflow: hidden;
+  max-inline-size: calc(50% - 3px);
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .mhz-date-chip {

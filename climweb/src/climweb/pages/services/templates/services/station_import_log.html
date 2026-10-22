@@ -1,0 +1,62 @@
+{% extends "wagtailadmin/base.html" %}
+
+{% block titletag %}{{ importer.label }} import log{% endblock %}
+
+{% block extra_css %}
+<style>
+  .rcc-log-wrap { max-width: 1200px; padding: 2rem; }
+  .rcc-log-summary { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1.5rem 0; }
+  .rcc-log-summary span { border: 1px solid var(--w-color-border-furniture); border-radius: .5rem; padding: .65rem 1rem; }
+  .rcc-log-filters { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.5rem 0; }
+  .rcc-log-table { width: 100%; border-collapse: collapse; }
+  .rcc-log-table th, .rcc-log-table td { text-align: left; padding: .7rem; border-bottom: 1px solid var(--w-color-border-furniture); vertical-align: top; }
+  .rcc-log-table td:last-child { overflow-wrap: anywhere; }
+  .rcc-log-error { color: #b91c1c; }
+  .rcc-log-pagination { display: flex; gap: 1rem; align-items: center; margin-top: 1.5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rcc-log-wrap">
+  <p><a href="{% url importer.route %}">← {{ importer.label }} importer</a></p>
+  <h1>{{ importer.label }} import run #{{ run.pk }}</h1>
+  <p>Status: <strong>{% if run.status == 'running' and run.cancel_requested %}Stopping after current station{% else %}{{ run.get_status_display }}{% endif %}</strong> · {{ run.get_trigger_display }} · queued {{ run.created_at }}</p>
+  {% if run.started_at %}<p>Started {{ run.started_at }}{% if run.finished_at %} · Finished {{ run.finished_at }}{% endif %}</p>{% endif %}
+  <div class="rcc-log-summary">
+    <span>{{ run.stations|length }} station{{ run.stations|length|pluralize }} discovered or selected</span>
+    <span>{{ succeeded }} succeeded</span>
+    <span>{{ failed }} failed</span>
+  </div>
+  {% if not has_logs %}<p class="help-block help-info">This run predates detailed logging. Its saved station results are shown below; individual timestamps are unavailable.</p>{% endif %}
+  <p>Newest entries appear first. Refresh this page to see new progress.</p>
+  <nav class="rcc-log-filters" aria-label="Log source">
+    {% if has_logs %}<a class="button" href="?source=events">Detailed events</a>{% endif %}
+    <a class="button" href="?source=results">Saved station results</a>
+  </nav>
+  <nav class="rcc-log-filters" aria-label="Filter import log">
+    <a class="button" href="?source={{ source }}">All</a>
+    <a class="button" href="?source={{ source }}&level=error">Errors</a>
+    {% if source == 'events' %}<a class="button" href="?source={{ source }}&level=warning">Warnings</a>{% endif %}
+    <a class="button" href="?source={{ source }}&level=success">Successes</a>
+    {% if source == 'events' %}<a class="button" href="?source={{ source }}&level=info">Progress</a>{% endif %}
+    <a class="button" href="{{ request.get_full_path }}">Refresh</a>
+  </nav>
+  {% if page_obj.object_list %}
+    <div style="overflow-x:auto"><table class="rcc-log-table">
+      <thead><tr><th>Time</th><th>Level</th><th>Event</th><th>Station / country</th><th>Details</th></tr></thead>
+      <tbody>{% for entry in page_obj %}<tr>
+        <td>{% if entry.created_at %}{{ entry.created_at|date:"Y-m-d H:i:s" }}{% else %}—{% endif %}</td>
+        <td>{{ entry.level|title }}</td>
+        <td>{{ entry.event }}</td>
+        <td>{{ entry.station|default:"—" }}</td>
+        <td{% if entry.level == 'error' %} class="rcc-log-error"{% endif %}>{{ entry.message|default:"—" }}</td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
+  {% else %}<p>No log entries match this filter yet.</p>{% endif %}
+  {% if page_obj.paginator.num_pages > 1 %}<nav class="rcc-log-pagination" aria-label="Log pages">
+    {% if page_obj.has_previous %}<a href="?source={{ source }}&level={{ level }}&page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+    <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a href="?source={{ source }}&level={{ level }}&page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+  </nav>{% endif %}
+</div>
+{% endblock %}

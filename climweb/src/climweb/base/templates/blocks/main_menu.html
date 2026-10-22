@@ -1,10 +1,10 @@
-{% load i18n wagtailcore_tags static wagtailimages_tags wagtailiconchooser_tags %}
+{% load i18n wagtailcore_tags static wagtailimages_tags wagtailiconchooser_tags nmhs_cms_tags %}
 
 {% if value.has_sub_items %}
   <div class="navbar-item nav-item has-dropdown is-hoverable {% if value.large_submenu %}is-mega{% endif %}">
 
     <a class="navbar-item nav-item-link"
-       {% if value.page.url %}href="{{ value.page.url }}"{% endif %}>
+       {% if value.page.url %}href="{{ value.page|public_page_url }}"{% endif %}>
       {{ value.label }}
       <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
         <polyline points="6 9 12 15 18 9"/>
@@ -32,7 +32,7 @@
                 {% endif %}
               </div>
               {% if value.page.url %}
-                <a href="{{ value.page.url }}" class="megamenu-view-all">
+                <a href="{{ value.page|public_page_url }}" class="megamenu-view-all">
                   {% blocktranslate with label=value.label %}
                     View all {{ label }}
                   {% endblocktranslate %}
@@ -61,7 +61,7 @@
                   <div class="megamenu-grid">
                     {% for sub_page in value.page.get_children %}
                       {% if sub_page.show_in_menus and sub_page.live %}
-                        <a class="megamenu-item" href="{{ sub_page.url }}">
+                        <a class="megamenu-item" href="{{ sub_page|public_page_url }}">
                           <div class="megamenu-item-icon">
                             {% if sub_page.specific.nav_menu_icon %}
                               {% svg_icon sub_page.specific.nav_menu_icon %}
@@ -87,7 +87,7 @@
                 <div class="megamenu-sub-row">
                   {% for item in value.sub_items %}
                     <a class="megamenu-pill"
-                       {% if item.value.page.url %}href="{{ item.value.page.url }}"
+                       {% if item.value.page.url %}href="{{ item.value.page|public_page_url }}"
                        {% else %}href="{{ item.value.external_url }}" target="_blank" rel="noopener noreferrer"
                        {% endif %}>
                       {{ item.value.label }}
@@ -108,7 +108,7 @@
         {% if value.page %}
           {% for sub_page in value.page.get_children %}
             {% if sub_page.show_in_menus and sub_page.live %}
-              <a class="navbar-item nav-dropdown-item" href="{{ sub_page.url }}">
+              <a class="navbar-item nav-dropdown-item" href="{{ sub_page|public_page_url }}">
                 <span class="nav-dropdown-label">{{ sub_page.title }}</span>
                 <span class="nav-dropdown-arrow">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -122,7 +122,7 @@
         {% if value.sub_items %}
           {% for item in value.sub_items %}
             <a class="navbar-item nav-dropdown-item"
-               {% if item.value.page.url %}href="{{ item.value.page.url }}"
+               {% if item.value.page.url %}href="{{ item.value.page|public_page_url }}"
                {% else %}href="{{ item.value.external_url }}" target="_blank" rel="noopener noreferrer"
                {% endif %}>
               <span class="nav-dropdown-label">{{ item.value.label }}</span>
@@ -143,7 +143,7 @@
 {% else %}
   {% if value.page.url or value.external_url %}
     <a class="navbar-item nav-item-link"
-       {% if value.page.url %}href="{{ value.page.url }}"
+       {% if value.page.url %}href="{{ value.page|public_page_url }}"
        {% else %}href="{{ value.external_url }}" target="_blank" rel="noopener noreferrer"
        {% endif %}>
       {{ value.label }}

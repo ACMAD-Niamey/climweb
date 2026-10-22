@@ -1,3 +1,5 @@
+import os
+
 from .dev import *
 
 # Tests must not share the dev/prod Redis cache. base.py's CACHES points at
@@ -18,5 +20,9 @@ STORAGES = {
     },
     "staticfiles": {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+    "rcc_data": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {"location": os.path.join(BASE_DIR, "test_rcc_data")},
     },
 }

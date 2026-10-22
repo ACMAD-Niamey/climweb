@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load static i18n nmhs_cms_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_data_services.css' %}?v=20260917-1">
+{% endblock %}
+{% block body_class %}rcc-data-services-page{% endblock %}
+
+{% block content %}
+<main>
+    <section class="page-hero rcc-ds-simple-hero rcc-dataset-hero">
+        <div class="page-hero-overlay"></div>
+        <div class="page-hero-body"><div class="container">
+            <span class="page-hero-badge">{{ product_label }} station data</span>
+            <h1 class="page-hero-title">{{ country }}</h1>
+            <p class="page-hero-subtitle">{% translate "Choose a station to view coverage, recent observations and download the daily CSV." %}</p>
+        </div></div>
+    </section>
+
+    <section id="stations" class="rcc-dataset-section rcc-browser-section"><div class="container">
+        <nav class="rcc-reference-breadcrumbs" aria-label="{% translate 'Breadcrumb' %}">
+            {% if climate_monitoring_page %}<a href="{{ climate_monitoring_page.url|public_page_url }}">{% translate "Climate Monitoring" %}</a>{% else %}<span>{% translate "Climate Monitoring" %}</span>{% endif %}
+            <span>/</span><a href="{% url category_url_name %}">{{ product_label }}</a><span>/</span><strong>{{ country }}</strong>
+        </nav>
+        <div class="rcc-browser-heading">
+            <div><p class="rcc-ds-eyebrow">{% translate "Step 2" %}</p><h2>{% translate "Choose a station" %}</h2></div>
+            <div class="rcc-browser-heading__actions">
+                <p>Available {{ product_label }} daily rainfall series for {{ country }}.</p>
+                <div class="rcc-view-toggle">
+                    <button class="rcc-view-toggle__btn is-active" data-view="grid" aria-label="{% translate 'Grid view' %}">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    </button>
+                    <button class="rcc-view-toggle__btn" data-view="list" aria-label="{% translate 'List view' %}">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <form class="rcc-browser-search" method="get" role="search" aria-label="{% translate 'Search stations' %}">
+            <label for="rcc-station-search">{% translate "Search stations" %}</label>
+            <div class="rcc-browser-search__field">
+                <input id="rcc-station-search" type="search" name="q" value="{{ search_query }}" maxlength="100" placeholder="{% translate 'Enter a station name' %}">
+                <button type="submit">{% translate "Search" %}</button>
+                {% if search_query %}<a href="{{ request.path }}">{% translate "Clear" %}</a>{% endif %}
+            </div>
+        </form>
+        {% if search_query %}<p class="rcc-browser-results" role="status">{% blocktranslate count count=stations|length %}{{ count }} station matches “{{ search_query }}”.{% plural %}{{ count }} stations match “{{ search_query }}”.{% endblocktranslate %}</p>{% endif %}
+        <div class="rcc-station-grid">
+            {% for station in stations %}
+                <a class="rcc-station-card" href="{% url 'rcc_dataset_detail' station.key %}">
+                    <div class="rcc-station-card__top"><span>{% translate "Synoptic station" %}</span><b aria-hidden="true">&#8594;</b></div>
+                    <h3>{{ station.station }}</h3>
+                    <p>{{ station.latitude }}, {{ station.longitude }}</p>
+                    <dl>
+                        <div><dt>{% translate "Coverage" %}</dt><dd>{{ station.coverage_start|date:"Y" }}–{{ station.coverage_end|date:"Y" }}</dd></div>
+                        <div><dt>{% translate "Records" %}</dt><dd>{{ station.record_count }}</dd></div>
+                    </dl>
+                </a>
+            {% empty %}<p>{% if search_query %}{% translate "No stations match your search." %}{% else %}{% translate "No stations are available for this country yet." %}{% endif %}</p>{% endfor %}
+        </div>
+    </div></section>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <script src="{% static 'js/rcc_view_toggle.js' %}"></script>
+{% endblock %}

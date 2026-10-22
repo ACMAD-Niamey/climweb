@@ -1,5 +1,9 @@
+import uuid
+from datetime import datetime
+
 from adminboundarymanager.models import AdminBoundarySettings
 from django import forms
+from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.template.defaultfilters import truncatechars
@@ -13,19 +17,27 @@ from modelcluster.fields import ParentalKey, ParentalManyToManyField
 from taggit.models import TaggedItemBase
 from wagtail import blocks
 from wagtail.admin.forms import WagtailAdminPageForm
-from wagtail.admin.panels import (FieldPanel, MultiFieldPanel)
+from wagtail.admin.panels import (FieldPanel, MultiFieldPanel, FieldRowPanel, InlinePanel, PageChooserPanel)
 from wagtail.api.v2.utils import get_full_url
-from wagtail.fields import StreamField
-from wagtail.models import Page
+from wagtail.fields import StreamField, RichTextField
+from wagtail.models import Orderable, Page
 from wagtail.rich_text import RichText
 from wagtail.snippets.models import register_snippet
+from wagtail.contrib.forms.models import AbstractFormField
+from wagtailcaptcha.forms import remove_captcha_field
+from wagtailcaptcha.models import WagtailCaptchaEmailForm
+
 from climweb.base.choosers import register_searchable_chooser
+from climweb.config.settings.base import SUMMARY_RICHTEXT_FEATURES
 
 from climweb.base.blocks import UUIDModelChooserBlock
-from climweb.base.mixins import MetadataPageMixin
+from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin,
+                                 FormPageClosingDateMixin, FormPageManualCloseMixin,
+                                 FormFieldMaxLengthMixin, FormCleanNameFallbackMixin)
 from climweb.base.models import Product, ProductItemType
-from climweb.base.models import ServiceCategory, AbstractIntroPage
-from climweb.base.utils import paginate, query_param_to_list, get_first_non_empty_p_string
+from climweb.base.models import ServiceCategory, AbstractIntroPage, AbstractBannerWithOptionalIntroPage
+from climweb.base.utils import paginate, query_param_to_list, get_first_non_empty_p_string, get_duplicates
+from climweb.base.forms import CustomWagtailCaptchaFormBuilder
 from climweb.pages.publications.models import PageView
 from .blocks import (
     ProductItemImageContentBlock,
@@ -33,13 +45,20 @@ from .blocks import (
     ProductItemGifContentBlock,
     ProductItemStreamContentBlock
 )
+from .subscription_security import (
+    get_client_ip,
+    subscription_rate_limited,
+    validate_honeypot,
+    validate_subscription_text,
+)
 
-
-class ProductIndexPage(MetadataPageMixin, Page):
+class ProductIndexPage(AbstractBannerWithOptionalIntroPage):
     parent_page_types = ['home.HomePage']
     subpage_types = [
         'products.ProductPage',
-        'products.SubNationalProductsLandingPage'
+        'products.ElNinoPage',
+        'products.SubNationalProductsLandingPage',
+        'products.ProductSubscriptionPage',
     ]
     template = "subpages_listing.html"
     
@@ -49,8 +68,18 @@ class ProductIndexPage(MetadataPageMixin, Page):
     listing_heading = models.CharField(max_length=255, default="Explore our Products",
                                        verbose_name=_("Products listing Heading"))
     group_menu_items_by_service = models.BooleanField(default=True, verbose_name=_("Group menu items by service"))
+    featured_product = models.ForeignKey(
+        'wagtailcore.Page',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        verbose_name=_("Featured product"),
+        help_text=_("Product shown beside the introduction on the Products page."),
+    )
     
-    content_panels = Page.content_panels + [
+    content_panels = AbstractBannerWithOptionalIntroPage.content_panels + [
+        PageChooserPanel("featured_product", "products.ProductPage"),
         FieldPanel("listing_heading"),
         FieldPanel("group_menu_items_by_service")
     ]
@@ -63,7 +92,9 @@ class ProductIndexPage(MetadataPageMixin, Page):
     def service_categories(self):
         product_service = set(ProductPage.objects.all().live().values_list('service', flat=True))
         
-        unique_services = ServiceCategory.objects.filter(id__in=list(product_service))
+        unique_services = ServiceCategory.objects.filter(
+            id__in=list(product_service)
+        ).order_by(models.F("order").asc(nulls_last=True), "name")
         
         return unique_services
     
@@ -82,16 +113,15 @@ class ProductIndexPage(MetadataPageMixin, Page):
         subnational_products = SubNationalProductPage.objects.live().descendant_of(self).order_by('menu_order')
         
         return list(products) + list(subnational_products)
+
+    @cached_property
+    def featured_product_page(self):
+        if self.featured_product and self.featured_product.live:
+            return self.featured_product.specific
+
+        return ProductPage.objects.child_of(self).live().order_by('menu_order', 'path').first()
     
-    def get_meta_image(self):
-        meta_image = super().get_meta_image()
-        
-        if not meta_image:
-            parent = self.get_parent()
-            if hasattr(parent, 'get_meta_image'):
-                meta_image = parent.get_meta_image()
-        
-        return meta_image
+
     
     def get_meta_description(self):
         meta_description = super().get_meta_description()
@@ -125,6 +155,17 @@ class BaseProductPage(AbstractIntroPage):
     show_in_menus_default = True
     
     service = models.ForeignKey(ServiceCategory, on_delete=models.PROTECT, verbose_name=_("Primary Service"))
+    gis_application = models.ForeignKey(
+        "base.Application",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("GIS application"),
+        help_text=_(
+            "Optional GIS application shown in place of the introduction image."
+        ),
+    )
     
     products_per_page = models.PositiveIntegerField(default=6, validators=[
         MinValueValidator(6),
@@ -151,6 +192,14 @@ class BaseProductPage(AbstractIntroPage):
     def listing_image(self):
         if self.introduction_image:
             return self.introduction_image
+
+        for product_item in self.all_products:
+            listing_image = product_item.products_listing_image
+            if listing_image:
+                return listing_image
+
+        if self.default_listing_thumbnail:
+            return self.default_listing_thumbnail
         return None
     
     @cached_property
@@ -201,6 +250,10 @@ class ProductPage(BaseProductPage):
     parent_page_types = ['products.ProductIndexPage']
     subpage_types = ['products.ProductItemPage']
     show_in_menus_default = True
+
+    @property
+    def display_title(self):
+        return self.title
     
     product = models.OneToOneField(Product, on_delete=models.PROTECT, verbose_name=_("Product"))
     other_services = ParentalManyToManyField(ServiceCategory, blank=True, verbose_name=_("Other relevant Services"),
@@ -209,6 +262,15 @@ class ProductPage(BaseProductPage):
         default=False,
         verbose_name=_("Feature on homepage"),
         help_text=_("Show this product in the homepage Featured Products card"),
+    )
+    homepage_feature_order = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        verbose_name=_("Homepage feature order"),
+        help_text=_(
+            "Controls the order of products selected for the homepage. "
+            "Lower numbers appear first."
+        ),
     )
     map_layers = StreamField([
         ('layers', LayerBlock(label="Layer"))
@@ -219,12 +281,14 @@ class ProductPage(BaseProductPage):
         FieldPanel('other_services', widget=forms.CheckboxSelectMultiple),
         FieldPanel('product'),
         *AbstractIntroPage.content_panels,
+        FieldPanel('gis_application'),
         MultiFieldPanel(
             [
                 FieldPanel('products_per_page'),
                 FieldPanel('default_listing_thumbnail'),
                 FieldPanel('menu_order'),
                 FieldPanel('is_featured_on_homepage'),
+                FieldPanel('homepage_feature_order'),
             ],
             heading=_("Other settings"),
         ),
@@ -313,6 +377,302 @@ class ProductPage(BaseProductPage):
         return super().serve(request, *args, **kwargs)
 
 
+class ElNinoPageForm(ProductPageForm):
+    """Allow the shared introduction fields to be blank on the ENSO page only."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["introduction_title"].required = False
+        self.fields["introduction_text"].required = False
+
+
+class ElNinoPage(ProductPage):
+    """Africa-focused ENSO information hub backed by monthly product issues."""
+
+    template = "products/el_nino_page.html"
+    parent_page_types = ["products.ProductIndexPage"]
+    subpage_types = ["products.ProductItemPage"]
+    max_count = 1
+    base_form_class = ElNinoPageForm
+
+    @property
+    def display_title(self):
+        return _("El-nino Special Bulletin")
+
+    enso_explanation = RichTextField(
+        features=SUMMARY_RICHTEXT_FEATURES,
+        blank=True,
+       default=(
+              "<p>ENSO links changes in the tropical Pacific Ocean with the atmosphere. El Niño is the warm phase, "
+              "La Niña the cool phase, and neutral conditions occur between them.</p>"
+              "<p>These phases can influence rainfall and temperature across Africa, but their effects vary by "
+              "region and season and must be considered alongside other climate drivers.</p>"
+          ),
+        verbose_name=_("ENSO explanation"),
+        help_text=_("Use this single section for ENSO phases, African impacts and bulletin context."),
+    )
+    explainer_image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("ENSO explainer image"),
+        help_text=_("Upload the image or infographic that explains ENSO and its phases."),
+    )
+    explainer_image_caption = models.CharField(
+        max_length=500,
+        blank=True,
+        verbose_name=_("ENSO explainer image caption"),
+        help_text=_("Optional caption displayed directly below the ENSO explainer image."),
+    )
+    secondary_section_title = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_("Additional section title"),
+    )
+    secondary_section_text = RichTextField(
+        features=SUMMARY_RICHTEXT_FEATURES,
+        blank=True,
+        verbose_name=_("Additional section text"),
+    )
+    secondary_section_image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Additional section image"),
+        help_text=_("Displayed on the right side of the additional ENSO content section."),
+    )
+    secondary_section_image_caption = models.CharField(
+        max_length=500,
+        blank=True,
+        verbose_name=_("Additional section image caption"),
+        help_text=_("Optional caption displayed directly below the image."),
+    )
+
+    content_panels = ProductPage.content_panels + [
+        MultiFieldPanel(
+            [
+                FieldPanel("enso_explanation"),
+                FieldPanel("explainer_image"),
+                FieldPanel("explainer_image_caption"),
+            ],
+            heading=_("ENSO page content"),
+        ),
+        MultiFieldPanel(
+            [
+                FieldPanel("secondary_section_title"),
+                FieldPanel("secondary_section_text"),
+                FieldPanel("secondary_section_image"),
+                FieldPanel("secondary_section_image_caption"),
+            ],
+            heading=_("Additional ENSO content section"),
+        ),
+        InlinePanel(
+            "partner_activities",
+            heading=_("Partner activities"),
+            label=_("Partner activity"),
+            help_text=_("Add lightweight external ENSO activities hosted by partner organisations."),
+        ),
+    ]
+
+    class Meta:
+        verbose_name = _("ENSO Page")
+        verbose_name_plural = _("ENSO Pages")
+
+    @cached_property
+    def latest_bulletin(self):
+        return self.all_products.first()
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        from climweb.pages.events.models import EventPage
+        from climweb.pages.news.models import NewsPage
+
+        latest_bulletin = self.latest_bulletin
+        archive = self.all_products
+        if latest_bulletin:
+            archive = archive.exclude(pk=latest_bulletin.pk)
+        context["latest_bulletin"] = latest_bulletin
+        context["latest_bulletin_document_url"] = None
+        if latest_bulletin:
+            for product_block in latest_bulletin.products:
+                if product_block.block_type == "document_product":
+                    document = product_block.value.get("document")
+                    if document:
+                        context["latest_bulletin_document_url"] = document.url
+                        break
+        now = timezone.now()
+        events = EventPage.objects.live().public().descendant_of(
+            self.get_site().root_page
+        ).filter(
+            locale_id=self.locale_id,
+            is_el_nino_related=True,
+            is_hidden=False,
+        )
+        upcoming_filter = models.Q(date_from__gte=now) | models.Q(date_to__gte=now)
+        upcoming_events = list(events.filter(upcoming_filter).order_by("date_from", "pk"))
+        past_events = list(events.exclude(upcoming_filter).order_by("-date_from", "-pk"))
+        news_items = list(
+            NewsPage.objects.live().public().descendant_of(
+                self.get_site().root_page
+            ).filter(
+                locale_id=self.locale_id,
+                is_el_nino_related=True,
+            ).order_by("-date", "-pk")
+        )
+
+        def activity_item(page, activity_date, image, kind_label, type_label, cta_label):
+            return {
+                "page": page,
+                "title": page.title,
+                "url": page.url,
+                "is_external": False,
+                "is_partner_activity": False,
+                "host_organisation": "",
+                "date": activity_date,
+                "image": image,
+                "summary": page.listing_summary,
+                "kind_label": kind_label,
+                "type_label": type_label,
+                "cta_label": cta_label,
+            }
+
+        def partner_activity_item(activity):
+            return {
+                "page": activity,
+                "title": activity.title,
+                "url": activity.external_url,
+                "is_external": True,
+                "is_partner_activity": True,
+                "host_organisation": activity.host_organisation,
+                "date": activity.date,
+                "image": activity.image,
+                "summary": "",
+                "kind_label": "",
+                "type_label": activity.get_activity_type_display(),
+                "cta_label": _("View activity"),
+            }
+
+        upcoming_updates = [
+            activity_item(
+                event,
+                event.date_from,
+                event.image,
+                _("Event"),
+                event.event_type,
+                _("View event"),
+            )
+            for event in upcoming_events
+        ]
+        recent_updates = [
+            activity_item(
+                event,
+                event.date_from,
+                event.image,
+                _("Event"),
+                event.event_type,
+                _("View event"),
+            )
+            for event in past_events
+        ] + [
+            activity_item(
+                news_item,
+                news_item.date,
+                news_item.get_meta_image(),
+                _("News"),
+                news_item.news_type,
+                _("Read news"),
+            )
+            for news_item in news_items
+        ]
+        partner_activities = list(self.partner_activities.all())
+        upcoming_updates.extend(
+            partner_activity_item(activity)
+            for activity in partner_activities
+            if activity.date >= now.date()
+        )
+        recent_updates.extend(
+            partner_activity_item(activity)
+            for activity in partner_activities
+            if activity.date < now.date()
+        )
+
+        def update_sort_date(item):
+            value = item["date"]
+            return value.date() if isinstance(value, datetime) else value
+
+        dated_updates = upcoming_updates + recent_updates
+        dated_updates.sort(key=update_sort_date, reverse=True)
+        context["el_nino_updates"] = paginate(
+            dated_updates,
+            request.GET.get("updates_page"),
+            3,
+        )
+        context["products"] = paginate(archive, request.GET.get("page"), self.products_per_page)
+        return context
+
+
+class ENSOPartnerActivity(Orderable):
+    ACTIVITY_TYPE_CHOICES = (
+        ("event", _("Event")),
+        ("news", _("News")),
+        ("briefing", _("Briefing")),
+        ("workshop", _("Workshop")),
+        ("other", _("Other")),
+    )
+
+    page = ParentalKey(
+        ElNinoPage,
+        on_delete=models.CASCADE,
+        related_name="partner_activities",
+    )
+    title = models.CharField(max_length=255, verbose_name=_("Title"))
+    date = models.DateField(default=timezone.localdate, verbose_name=_("Date"))
+    activity_type = models.CharField(
+        max_length=20,
+        choices=ACTIVITY_TYPE_CHOICES,
+        default="event",
+        verbose_name=_("Activity type"),
+    )
+    host_organisation = models.CharField(
+        max_length=255,
+        verbose_name=_("Hosting organisation"),
+    )
+    external_url = models.URLField(
+        max_length=1000,
+        verbose_name=_("External activity URL"),
+    )
+    image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Image"),
+    )
+
+    panels = [
+        FieldPanel("title"),
+        FieldRowPanel([
+            FieldPanel("date"),
+            FieldPanel("activity_type"),
+        ]),
+        FieldPanel("host_organisation"),
+        FieldPanel("external_url"),
+        FieldPanel("image"),
+    ]
+
+    class Meta(Orderable.Meta):
+        verbose_name = _("ENSO partner activity")
+        verbose_name_plural = _("ENSO partner activities")
+
+    def __str__(self):
+        return self.title
+
+
 register_searchable_chooser(RasterFileLayer)
 
 
@@ -344,7 +704,7 @@ class ProductItemPageForm(WagtailAdminPageForm):
 
 class ProductItemPage(MetadataPageMixin, Page):
     template = 'products/product_detail.html'
-    parent_page_types = ['products.ProductPage', 'products.SubNationalProductPage']
+    parent_page_types = ['products.ProductPage', 'products.ElNinoPage', 'products.SubNationalProductPage']
     subpage_types = []
     base_form_class = ProductItemPageForm
     
@@ -372,7 +732,7 @@ class ProductItemPage(MetadataPageMixin, Page):
     def __str__(self):
         parent_page = self.get_parent().specific
         return f"{parent_page.title} - {self.title}"
-    
+
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
 
@@ -562,6 +922,598 @@ class ProductIngestedFile(models.Model):
         return self.file_path
 
 
+class ProductSourceImport(models.Model):
+    """Provenance for a product item imported from an external catalogue."""
+
+    STATUS_IMPORTED = 'imported'
+    STATUS_FAILED = 'failed'
+    STATUS_CHOICES = [
+        (STATUS_IMPORTED, _("Imported")),
+        (STATUS_FAILED, _("Failed")),
+    ]
+
+    product = models.ForeignKey(
+        'base.Product',
+        on_delete=models.CASCADE,
+        related_name='source_imports',
+        verbose_name=_("Product"),
+    )
+    source_url = models.URLField(max_length=1000, unique=True, verbose_name=_("Source URL"))
+    source_system = models.CharField(max_length=255, verbose_name=_("Source System"))
+    source_published_date = models.DateField(verbose_name=_("Source Published Date"))
+    checksum_sha256 = models.CharField(max_length=64, verbose_name=_("SHA-256 Checksum"))
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_IMPORTED,
+        verbose_name=_("Status"),
+    )
+    error_message = models.TextField(blank=True, verbose_name=_("Error Message"))
+    attempt_count = models.PositiveIntegerField(default=1, verbose_name=_("Attempt Count"))
+    document = models.ForeignKey(
+        'base.CustomDocumentModel',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='product_source_imports',
+        verbose_name=_("Document"),
+    )
+    image = models.ForeignKey(
+        'wagtailimages.Image',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='product_source_imports',
+        verbose_name=_("Image"),
+    )
+    product_item_page = models.ForeignKey(
+        ProductItemPage,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='source_imports',
+        verbose_name=_("Product Item Page"),
+    )
+    imported_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-source_published_date', '-imported_at']
+        verbose_name = _("Product Source Import")
+        verbose_name_plural = _("Product Source Imports")
+
+    def __str__(self):
+        return f"{self.product} — {self.source_published_date}"
+
+
+class ProductImportRun(models.Model):
+    """A dashboard-requested historical product import or preview."""
+
+    MODE_PREVIEW = 'preview'
+    MODE_IMPORT = 'import'
+    MODE_CHOICES = [
+        (MODE_PREVIEW, _("Preview")),
+        (MODE_IMPORT, _("Import")),
+    ]
+
+    STATUS_QUEUED = 'queued'
+    STATUS_RUNNING = 'running'
+    STATUS_CANCELLING = 'cancelling'
+    STATUS_CANCELLED = 'cancelled'
+    STATUS_SUCCEEDED = 'succeeded'
+    STATUS_FAILED = 'failed'
+    STATUS_CHOICES = [
+        (STATUS_QUEUED, _("Queued")),
+        (STATUS_RUNNING, _("Running")),
+        (STATUS_CANCELLING, _("Stopping")),
+        (STATUS_CANCELLED, _("Stopped")),
+        (STATUS_SUCCEEDED, _("Succeeded")),
+        (STATUS_FAILED, _("Failed")),
+    ]
+
+    product_family = models.CharField(max_length=80, verbose_name=_("Product Family"))
+    mode = models.CharField(max_length=20, choices=MODE_CHOICES)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_QUEUED,
+    )
+    from_date = models.DateField(verbose_name=_("From Date"))
+    to_date = models.DateField(verbose_name=_("To Date"))
+    limit = models.PositiveIntegerField(default=100)
+    refresh_existing = models.BooleanField(default=False)
+    retry_failures = models.BooleanField(default=False)
+    cancel_requested = models.BooleanField(default=False)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='product_import_runs',
+    )
+    task_id = models.CharField(max_length=255, blank=True)
+    output = models.TextField(blank=True)
+    error_message = models.TextField(blank=True)
+    progress_percent = models.PositiveSmallIntegerField(default=0)
+    total_items = models.PositiveIntegerField(default=0)
+    processed_items = models.PositiveIntegerField(default=0)
+    imported_items = models.PositiveIntegerField(default=0)
+    failed_items = models.PositiveIntegerField(default=0)
+    skipped_items = models.PositiveIntegerField(default=0)
+    current_phase = models.CharField(max_length=255, blank=True)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-requested_at']
+        verbose_name = _("Product Import Run")
+        verbose_name_plural = _("Product Import Runs")
+
+    def __str__(self):
+        return (
+            f"{self.product_family}: {self.from_date}–{self.to_date} "
+            f"({self.status})"
+        )
+
+    @property
+    def product_family_label(self):
+        from climweb.pages.products.import_registry import get_product_import_definition
+
+        definition = get_product_import_definition(self.product_family)
+        return definition["label"] if definition else self.product_family
+
+
+class ProductImportSchedule(models.Model):
+    """Dashboard-managed automatic import interval for a product family."""
+
+    product_family = models.CharField(
+        max_length=80,
+        unique=True,
+        verbose_name=_("Product Family"),
+    )
+    interval_hours = models.PositiveIntegerField(
+        default=24,
+        validators=[MinValueValidator(1), MaxValueValidator(720)],
+        verbose_name=_("Interval Hours"),
+    )
+    enabled_override = models.BooleanField(
+        null=True,
+        blank=True,
+        verbose_name=_("Enabled Override"),
+        help_text=_("Leave empty to use the deployment configuration."),
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='product_import_schedules',
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['product_family']
+        verbose_name = _("Product Import Schedule")
+        verbose_name_plural = _("Product Import Schedules")
+
+    def __str__(self):
+        return f"{self.product_family}: every {self.interval_hours} hour(s)"
+
+
+class ProductImportSourceConfig(models.Model):
+    """Dashboard-managed source and discovery schema for a product importer."""
+
+    TYPE_HTML_ARCHIVE = 'html_archive'
+    TYPE_THREDDS_CATALOG = 'thredds_catalog'
+    TYPE_WORDPRESS_API = 'wordpress_api'
+    SOURCE_TYPE_CHOICES = [
+        (TYPE_HTML_ARCHIVE, _("HTML archive or directory listing")),
+        (TYPE_THREDDS_CATALOG, _("THREDDS XML catalogue")),
+        (TYPE_WORDPRESS_API, _("WordPress media API")),
+    ]
+
+    product_family = models.CharField(
+        max_length=80,
+        unique=True,
+        verbose_name=_("Product Family"),
+    )
+    source_type = models.CharField(
+        max_length=40,
+        choices=SOURCE_TYPE_CHOICES,
+        default=TYPE_HTML_ARCHIVE,
+        verbose_name=_("Source Type"),
+    )
+    source_url = models.URLField(max_length=1000, verbose_name=_("Source URL"))
+    source_system = models.CharField(
+        max_length=255,
+        verbose_name=_("Source Name"),
+    )
+    allowed_extensions = models.JSONField(default=list)
+    filename_pattern = models.TextField(verbose_name=_("Filename Pattern"))
+    date_format = models.CharField(
+        max_length=80,
+        default='%Y%m%d',
+        verbose_name=_("Date Format"),
+    )
+    history_url_pattern = models.TextField(
+        blank=True,
+        verbose_name=_("Historical Archive Pattern"),
+    )
+    request_headers = models.JSONField(default=dict, blank=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='product_import_source_configs',
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['product_family']
+        verbose_name = _("Product Import Source Configuration")
+        verbose_name_plural = _("Product Import Source Configurations")
+
+    def __str__(self):
+        return f"{self.product_family}: {self.source_url}"
+
+
+class ConfiguredProductImporter(models.Model):
+    """A safe, dashboard-created importer for a file-based product."""
+
+    STATUS_DRAFT = 'draft'
+    STATUS_ACTIVE = 'active'
+    STATUS_ARCHIVED = 'archived'
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, _("Draft")),
+        (STATUS_ACTIVE, _("Active")),
+        (STATUS_ARCHIVED, _("Archived")),
+    ]
+
+    key = models.SlugField(
+        max_length=80,
+        unique=True,
+        verbose_name=_("Importer Key"),
+        help_text=_("Stable identifier used by import runs and schedules."),
+    )
+    label = models.CharField(max_length=255, verbose_name=_("Importer Name"))
+    product_page = models.ForeignKey(
+        'products.ProductPage',
+        on_delete=models.PROTECT,
+        related_name='configured_importers',
+        verbose_name=_("Destination Product Page"),
+    )
+    product_item_type = models.ForeignKey(
+        'base.ProductItemType',
+        on_delete=models.PROTECT,
+        related_name='configured_importers',
+        verbose_name=_("Destination Product Type"),
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_DRAFT,
+    )
+    default_interval_hours = models.PositiveIntegerField(
+        default=24,
+        validators=[MinValueValidator(1), MaxValueValidator(720)],
+        verbose_name=_("Default Interval Hours"),
+    )
+    default_source_config = models.JSONField(default=dict)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='configured_product_importers',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['label']
+        verbose_name = _("Configured Product Importer")
+        verbose_name_plural = _("Configured Product Importers")
+
+    def __str__(self):
+        return self.label
+
+
+class ConfiguredProductImporterAuditEvent(models.Model):
+    """Immutable lifecycle history for a dashboard-created importer."""
+
+    ACTION_CREATED = 'created'
+    ACTION_UPDATED = 'updated'
+    ACTION_ARCHIVED = 'archived'
+    ACTION_RESTORED = 'restored'
+    ACTION_ENABLED = 'enabled'
+    ACTION_DISABLED = 'disabled'
+    ACTION_SOURCE_UPDATED = 'source_updated'
+    ACTION_SCHEDULE_UPDATED = 'schedule_updated'
+    ACTION_CHOICES = [
+        (ACTION_CREATED, _("Created")),
+        (ACTION_UPDATED, _("Updated")),
+        (ACTION_ARCHIVED, _("Archived")),
+        (ACTION_RESTORED, _("Restored")),
+        (ACTION_ENABLED, _("Enabled")),
+        (ACTION_DISABLED, _("Disabled")),
+        (ACTION_SOURCE_UPDATED, _("Source updated")),
+        (ACTION_SCHEDULE_UPDATED, _("Schedule updated")),
+    ]
+
+    importer = models.ForeignKey(
+        ConfiguredProductImporter,
+        on_delete=models.CASCADE,
+        related_name='audit_events',
+    )
+    action = models.CharField(max_length=40, choices=ACTION_CHOICES)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='configured_importer_audit_events',
+    )
+    changes = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at', '-pk']
+        verbose_name = _("Configured Product Importer Audit Event")
+        verbose_name_plural = _("Configured Product Importer Audit Events")
+
+    def __str__(self):
+        return f"{self.importer}: {self.get_action_display()}"
+
+
+@register_snippet
+class ProductSubscriber(models.Model):
+    """A locally owned subscriber with explicit product preferences."""
+
+    class Sector(models.TextChoices):
+        AGRICULTURE = "Agriculture", _("Agriculture")
+        AVIATION = "Aviation", _("Aviation")
+        MARINE = "Marine", _("Marine")
+        MEDIA = "Media", _("Media")
+        ENVIRONMENT = "Environment", _("Environment")
+        TOURISM = "Tourism", _("Tourism")
+        SECURITY = "Security", _("Security")
+        CIVIL_PROTECTION = "Civil Protection", _("Civil Protection")
+        TELECOMMUNICATION = "Telecommunication", _("Telecommunication")
+        HEALTH = "Health", _("Health")
+        BANKING_FINANCE = "Banking and Finance", _("Banking and Finance")
+        RESEARCH = "Research", _("Research")
+        WATER_SANITATION = "Water and Sanitation", _("Water and Sanitation")
+        OTHERS = "Others", _("Others")
+
+    class OrganizationType(models.TextChoices):
+        PUBLIC_SECTOR = "Public Sector", _("Public Sector")
+        INTERGOVERNMENTAL = (
+            "Intergovernmental Organisation",
+            _("Intergovernmental Organisation"),
+        )
+        PRIVATE_SECTOR = "Private Sector", _("Private Sector")
+        ACADEMIC_RESEARCH = "Academic/Research", _("Academic/Research")
+        MEDIA = "Media", _("Media")
+        YOUTH = "Youth", _("Youth")
+        DONOR_FINANCE = (
+            "Donor/Finance institutions",
+            _("Donor/Finance institutions"),
+        )
+        NGO = (
+            "Non Governmental Organisation (NGO)",
+            _("Non Governmental Organisation (NGO)"),
+        )
+        OTHERS = "Others", _("Others")
+
+    STATUS_PENDING = "pending"
+    STATUS_ACTIVE = "active"
+    STATUS_UNSUBSCRIBED = "unsubscribed"
+    STATUS_BOUNCED = "bounced"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, _("Pending")),
+        (STATUS_ACTIVE, _("Active")),
+        (STATUS_UNSUBSCRIBED, _("Unsubscribed")),
+        (STATUS_BOUNCED, _("Bounced")),
+    ]
+
+    email = models.EmailField(unique=True)
+    name = models.CharField(max_length=255, blank=True)
+    sector = models.CharField(
+        max_length=80,
+        choices=Sector.choices,
+        blank=True,
+    )
+    organization_type = models.CharField(
+        max_length=100,
+        choices=OrganizationType.choices,
+        blank=True,
+    )
+    organization_name = models.CharField(max_length=255, blank=True)
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING
+    )
+    confirmation_token = models.UUIDField(default=uuid.uuid4, unique=True)
+    unsubscribe_token = models.UUIDField(default=uuid.uuid4, unique=True)
+    consented_at = models.DateTimeField(default=timezone.now)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    unsubscribed_at = models.DateTimeField(null=True, blank=True)
+    consent_ip = models.GenericIPAddressField(null=True, blank=True)
+    consent_user_agent = models.CharField(max_length=500, blank=True)
+    extra_data = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    panels = [
+        FieldPanel("email"),
+        FieldPanel("name"),
+        FieldPanel("sector"),
+        FieldPanel("organization_type"),
+        FieldPanel("organization_name"),
+        FieldPanel("status"),
+        FieldPanel("extra_data"),
+    ]
+
+    class Meta:
+        ordering = ["email"]
+        verbose_name = _("Product subscriber")
+        verbose_name_plural = _("Product subscribers")
+
+    def __str__(self):
+        return self.email
+
+
+class ProductSubscriptionPreference(models.Model):
+    subscriber = models.ForeignKey(
+        ProductSubscriber,
+        on_delete=models.CASCADE,
+        related_name="preferences",
+    )
+    product_family = models.SlugField(max_length=80)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["product_family"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["subscriber", "product_family"],
+                name="unique_product_subscription_preference",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.subscriber.email}: {self.product_family}"
+
+
+class ProductFamilyNotificationConfig(models.Model):
+    product_family = models.SlugField(
+        max_length=80,
+        unique=True,
+        verbose_name=_("Product Family"),
+    )
+    notifications_enabled = models.BooleanField(
+        default=True,
+        verbose_name=_("Notifications Enabled"),
+        help_text=_("If disabled, no notifications will be sent for this product family."),
+    )
+    custom_subject = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_("Custom Email Subject"),
+        help_text=_("Optional. Use {{ product_label }} and {{ date }} as variables."),
+    )
+    introduction_text = models.TextField(
+        blank=True,
+        verbose_name=_("Email Introduction Text"),
+        help_text=_("Optional text to appear at the top of the notification email."),
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Product family notification config")
+        verbose_name_plural = _("Product family notification configs")
+
+    def __str__(self):
+        return self.product_family
+
+
+@register_snippet
+class ProductNotificationEvent(models.Model):
+    TRIGGER_AUTOMATIC = "automatic"
+    TRIGGER_MANUAL = "manual"
+    TRIGGER_CHOICES = [
+        (TRIGGER_AUTOMATIC, _("Automatic import")),
+        (TRIGGER_MANUAL, _("Dashboard action")),
+    ]
+    STATUS_QUEUED = "queued"
+    STATUS_SENDING = "sending"
+    STATUS_SENT = "sent"
+    STATUS_FAILED = "failed"
+    STATUS_CHOICES = [
+        (STATUS_QUEUED, _("Queued")),
+        (STATUS_SENDING, _("Sending")),
+        (STATUS_SENT, _("Sent")),
+        (STATUS_FAILED, _("Failed")),
+    ]
+
+    product_family = models.SlugField(max_length=80)
+    source_import = models.ForeignKey(
+        ProductSourceImport,
+        on_delete=models.CASCADE,
+        related_name="notification_events",
+    )
+    trigger = models.CharField(max_length=20, choices=TRIGGER_CHOICES)
+    automatic_key = models.CharField(
+        max_length=120, unique=True, null=True, blank=True
+    )
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default=STATUS_QUEUED
+    )
+    recipient_count = models.PositiveIntegerField(default=0)
+    sent_count = models.PositiveIntegerField(default=0)
+    failed_count = models.PositiveIntegerField(default=0)
+    error_message = models.TextField(blank=True)
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="product_notification_events",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    panels = [
+        FieldPanel("product_family"),
+        FieldPanel("source_import"),
+        FieldPanel("trigger"),
+        FieldPanel("status"),
+    ]
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = _("Product notification event")
+        verbose_name_plural = _("Product notification events")
+
+    def __str__(self):
+        return f"{self.product_family}: {self.source_import.source_published_date}"
+
+
+class ProductNotificationDelivery(models.Model):
+    STATUS_QUEUED = "queued"
+    STATUS_SENT = "sent"
+    STATUS_FAILED = "failed"
+    STATUS_CHOICES = [
+        (STATUS_QUEUED, _("Queued")),
+        (STATUS_SENT, _("Sent")),
+        (STATUS_FAILED, _("Failed")),
+    ]
+
+    event = models.ForeignKey(
+        ProductNotificationEvent,
+        on_delete=models.CASCADE,
+        related_name="deliveries",
+    )
+    subscriber = models.ForeignKey(
+        ProductSubscriber,
+        on_delete=models.CASCADE,
+        related_name="deliveries",
+    )
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default=STATUS_QUEUED
+    )
+    error_message = models.TextField(blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["subscriber__email"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event", "subscriber"],
+                name="unique_product_notification_delivery",
+            )
+        ]
+
+
 class SubNationalProductsLandingPage(AbstractIntroPage, Page):
     parent_page_types = ['products.ProductIndexPage']
     subpage_types = ['products.SubNationalProductPage']
@@ -640,6 +1592,7 @@ class SubNationalProductPage(BaseProductPage):
         FieldPanel('service'),
         FieldPanel('product'),
         *AbstractIntroPage.content_panels,
+        FieldPanel('gis_application'),
         MultiFieldPanel(
             [
                 FieldPanel('products_per_page'),
@@ -698,5 +1651,243 @@ class SubNationalProductPage(BaseProductPage):
         except Exception as e:
             # Log the error for debugging but continue serving the page
             print(f"Error recording page view: {e}")
-        
+
         return super().serve(request, *args, **kwargs)
+
+
+class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormPageClosingDateMixin,
+                              FormPageManualCloseMixin, FormPageReviewSettingsMixin, WagtailCaptchaEmailForm):
+    form_builder = CustomWagtailCaptchaFormBuilder
+    template = 'products/product_subscription_page.html'
+    parent_page_types = ['home.HomePage', 'products.ProductIndexPage']
+    subpage_types = []
+    max_count = 1
+    show_in_menus_default = True
+    landing_page_template = 'products/subscription_status.html'
+
+    cache_control = 'no-cache'
+
+    introduction_text = RichTextField(blank=True, verbose_name=_("Introduction text"))
+
+    content_panels = WagtailCaptchaEmailForm.content_panels + [
+        FieldPanel('introduction_text'),
+        InlinePanel('subscription_form_fields', label="Form fields"),
+        MultiFieldPanel([
+            FieldRowPanel([
+                FieldPanel('from_address', classname="col6"),
+                FieldPanel('to_address', classname="col6"),
+            ]),
+            FieldPanel('subject'),
+        ], _("Email")),
+    ] + FormPageManualCloseMixin.form_open_panels + FormPageReviewSettingsMixin.submission_review_settings_panels \
+        + FormPageClosingDateMixin.closing_date_panels
+
+    def get_meta_image(self):
+        meta_image = super().get_meta_image()
+        if not meta_image:
+            parent = self.get_parent()
+            if hasattr(parent, 'get_meta_image'):
+                meta_image = parent.get_meta_image()
+        return meta_image
+
+    def get_meta_description(self):
+        meta_description = super().get_meta_description()
+        if not meta_description:
+            parent = self.get_parent()
+            if hasattr(parent, 'get_meta_description'):
+                meta_description = parent.get_meta_description()
+        return meta_description
+
+    def get_form_fields(self):
+        return self.subscription_form_fields.all()
+
+    def get_form_class(self):
+        form_class = super(ProductSubscriptionPage, self).get_form_class()
+        form_class.required_css_class = 'required'
+        return form_class
+
+    def get_form(self, *args, **kwargs):
+        form = super().get_form(*args, **kwargs)
+        from .import_registry import get_product_import_definitions
+
+        choices = [
+            (definition["key"], definition["label"])
+            for definition in get_product_import_definitions()
+            if not definition.get("is_archived")
+        ]
+
+        form.fields['product_families'] = forms.MultipleChoiceField(
+            label=_("Products"),
+            widget=forms.CheckboxSelectMultiple,
+            help_text=_("Choose the product families you want to receive."),
+            choices=choices,
+            required=True
+        )
+        form.fields['consent'] = forms.BooleanField(
+            label=_("I agree to receive ACMAD product notifications by email."),
+            required=True
+        )
+        form.fields['contact_url'] = forms.CharField(
+            required=False,
+            label=_("Leave this field empty"),
+            widget=forms.HiddenInput,
+            validators=[validate_honeypot],
+        )
+        for field_name in ("name", "organization_name"):
+            if field_name in form.fields:
+                form.fields[field_name].validators.append(validate_subscription_text)
+        return form
+
+    def serve(self, request, *args, **kwargs):
+        import django.shortcuts
+        import django.template.response
+        from django.contrib import messages
+
+        if self.is_closed:
+            form = None
+            if request.method == 'POST':
+                messages.add_message(
+                    request, messages.ERROR,
+                    "This form is no longer accepting submissions."
+                )
+        elif request.method == 'POST':
+            form = self.get_form(request.POST, request.FILES, page=self, user=request.user)
+
+            if form.is_valid():
+                import logging
+                logger = logging.getLogger(__name__)
+
+                email = form.cleaned_data.get("email", "").strip().lower()
+                if subscription_rate_limited(request, email):
+                    return django.shortcuts.render(
+                        request,
+                        self.landing_page_template,
+                        {
+                            "status_title": _("Check your email"),
+                            "status_message": _(
+                                "We sent a verification link if the address can receive mail. "
+                                "Open it to activate product notifications."
+                            ),
+                        },
+                    )
+
+                try:
+                    duplicate_fields = get_duplicates(
+                        {
+                            key: value
+                            for key, value in form.cleaned_data.items()
+                            if isinstance(value, str)
+                            and value.strip()
+                            and key not in {"wagtailcaptcha", "contact_url"}
+                        }
+                    )
+                except Exception as e:
+                    logger.warning("[PRODUCT_SUBSCRIPTION_PAGE] Error checking for duplicate fields: {}".format(e))
+                    duplicate_fields = []
+
+                if not duplicate_fields:
+                    self.process_form_submission(form, request)
+
+                    return django.shortcuts.render(
+                        request,
+                        self.landing_page_template,
+                        {
+                            "status_title": _("Check your email"),
+                            "status_message": _(
+                                "We sent a verification link if the address can receive mail. "
+                                "Open it to activate product notifications."
+                            ),
+                        },
+                    )
+                else:
+                    self.process_suspicious_form(form)
+                    return django.shortcuts.render(
+                        request,
+                        self.landing_page_template,
+                        {
+                            "status_title": _("Check your email"),
+                            "status_message": _(
+                                "We sent a verification link if the address can receive mail. "
+                                "Open it to activate product notifications."
+                            ),
+                        },
+                    )
+        else:
+            form = self.get_form(page=self, user=request.user)
+
+        context = self.get_context(request)
+        context['form'] = form
+        response = django.template.response.TemplateResponse(
+            request,
+            self.get_template(request),
+            context
+        )
+        response['Cache-Control'] = self.cache_control
+        return response
+
+    def process_form_submission(self, form, request=None):
+        import uuid
+        from django.utils import timezone
+
+        # Save standard form submission just in case, this is built-in for AbstractEmailForm
+        super().process_form_submission(form)
+
+        cleaned_data = form.cleaned_data.copy()
+
+        email = cleaned_data.pop("email", "").strip().lower()
+        name = cleaned_data.pop("name", "").strip()
+        sector = cleaned_data.pop("sector", "")
+        organization_type = cleaned_data.pop("organization_type", "")
+        organization_name = cleaned_data.pop("organization_name", "").strip()
+        product_families = cleaned_data.pop("product_families", [])
+        cleaned_data.pop("consent", None)
+        cleaned_data.pop("wagtailcaptcha", None)
+        cleaned_data.pop("contact_url", None)
+
+        # Any other custom fields are saved into extra_data
+        extra_data = cleaned_data
+
+        subscriber, created = ProductSubscriber.objects.update_or_create(
+            email=email,
+            defaults={
+                "name": name,
+                "sector": sector,
+                "organization_type": organization_type,
+                "organization_name": organization_name,
+                "extra_data": extra_data,
+                "status": ProductSubscriber.STATUS_PENDING,
+                "confirmation_token": uuid.uuid4(),
+                "consented_at": timezone.now(),
+                "confirmed_at": None,
+                "unsubscribed_at": None,
+                "consent_ip": get_client_ip(request) if request else None,
+                "consent_user_agent": request.META.get("HTTP_USER_AGENT", "")[:500] if request else "",
+            },
+        )
+
+        subscriber.preferences.all().delete()
+        ProductSubscriptionPreference.objects.bulk_create(
+            [
+                ProductSubscriptionPreference(
+                    subscriber=subscriber, product_family=family
+                )
+                for family in product_families
+            ]
+        )
+
+        from .tasks import send_product_subscription_confirmation
+        send_product_subscription_confirmation.delay(subscriber.pk)
+
+        return subscriber
+
+    def process_suspicious_form(self, form):
+        remove_captcha_field(form)
+
+    class Meta:
+        verbose_name = _("Product Subscription Page")
+
+
+class ProductSubscriptionFormField(FormFieldMaxLengthMixin, AbstractFormField):
+    page = ParentalKey(ProductSubscriptionPage,
+                       on_delete=models.CASCADE,
+                       related_name="subscription_form_fields")

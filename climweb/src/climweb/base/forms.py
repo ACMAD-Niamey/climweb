@@ -130,6 +130,13 @@ class CustomFormBuilder(FormBuilder):
     def create_document_field(self, field, options):
         return FormDocumentField(**options)
 
+    def create_date_field(self, field, options):
+        # Class hook only - the calendar widget is wired up in
+        # bulma/forms/field.html, which loads the vanillajs-datepicker
+        # assets and initialises it against this class.
+        options.setdefault('widget', forms.DateInput(attrs={'class': 'datepicker-field', 'autocomplete': 'off'}))
+        return forms.DateField(**options)
+
     def create_multiline_field(self, field, options):
         # field is the AbstractFormField (+ FormFieldMaxLengthMixin) instance
         # being built - max_length is only ever set via that mixin's admin

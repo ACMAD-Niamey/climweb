@@ -124,7 +124,8 @@
 }
 
 
-.menu-category.active .layer-title, .menu-category:hover .layer-title {
+.menu-category.active .layer-title,
+.menu-category:hover .layer-title {
     background-color: rgba(78, 142, 203, 0.9);
     text-shadow: none;
 }
@@ -166,7 +167,10 @@
 }
 
 
-.irs--flat .irs-bar, .irs--flat .irs-single, .irs--flat .irs-handle > i:first-child, .irs--flat .irs-handle.state_hover > i:first-child {
+.irs--flat .irs-bar,
+.irs--flat .irs-single,
+.irs--flat .irs-handle>i:first-child,
+.irs--flat .irs-handle.state_hover>i:first-child {
     background-color: #4e8ecb
 }
 
@@ -185,15 +189,106 @@
 
 /* ── INLINE STAT (view count in footer) ── */
 .pub-stat-inline {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  color: #aaa;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: #aaa;
 }
 
 .pub-stat-inline .pub-stat-icon svg {
-  width: 12px;
-  height: 12px;
-  fill: #bbb;
+    width: 12px;
+    height: 12px;
+    fill: #bbb;
+}
+
+/* ── PRODUCT PAGE INTRO HEADER OVERRIDES ── */
+.product-page .intro-section {
+    padding: 0 !important;
+}
+
+.product-page .intro-figure img,
+.product-page .intro-img,
+.product-page .intro-figure svg {
+    max-height: 180px !important;
+    height: 100% !important;
+    width: auto !important;
+    object-fit: contain;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.product-page .intro-title {
+    font-size: 24px !important;
+    margin-bottom: 0.25rem !important;
+}
+
+.product-page .intro-accent {
+    margin-bottom: 0.25rem !important;
+}
+
+@media (max-width: 768px) {
+    .product-page .intro-section {
+        padding: 0.5rem 0 0 !important;
+    }
+
+    .product-page .intro-figure img,
+    .product-page .intro-img,
+    .product-page .intro-figure svg {
+        max-height: 140px !important;
+        height: 100% !important;
+        width: auto !important;
+        object-fit: contain;
+        border-radius: 12px;
+    }
+}
+/* Featured product displayed beside the Products page introduction. */
+.products-featured-card {
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 14px;
+    box-shadow: 0 14px 36px rgba(23, 42, 66, 0.12);
+}
+
+.products-featured-card-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: var(--primary-color-lightest, #edf6f2);
+}
+
+.products-featured-card-image img,
+.products-featured-card-placeholder {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.products-featured-card-body {
+    padding: 1.35rem 1.5rem 1.5rem;
+}
+
+.products-featured-card-label {
+    display: inline-block;
+    margin-bottom: 0.45rem;
+    color: var(--primary-color);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.products-featured-card h3 {
+    margin: 0 0 0.6rem;
+    font-size: 1.35rem;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.products-featured-card h3 a {
+    color: var(--text-color, #1a1a1a);
 }

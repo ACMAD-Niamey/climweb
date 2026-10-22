@@ -1,10 +1,20 @@
+from datetime import timedelta
+
+import wagtail_factories
 from django.utils import timezone
 from wagtail.test.utils import WagtailPageTestCase
 
+from climweb.base.models import Application
 from climweb.base.seo_utils import get_html_meta_tags
 from climweb.base.test_utils import test_page_meta_tags
 from climweb.pages.home.tests.factories import get_or_create_homepage
-from .factories import ProductIndexPageFactory, ProductPageFactory, ProductItemPageFactory
+from .factories import (
+    ElNinoPageFactory,
+    ProductIndexPageFactory,
+    ProductPageFactory,
+    ProductItemPageFactory,
+    ProductSubscriptionPageFactory,
+)
 
 
 class TestProductPages(WagtailPageTestCase):
@@ -28,6 +38,31 @@ class TestProductPages(WagtailPageTestCase):
     
     def test_products_index_page_render(self):
         self.assertPageIsRenderable(self.index_page)
+
+    def test_products_index_renders_selected_featured_product(self):
+        self.index_page.featured_product = self.product2_page
+        self.index_page.save_revision().publish()
+
+        response = self.client.get(self.index_page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Featured product")
+        self.assertContains(response, self.product2_page.title)
+        self.assertContains(response, self.product2_page.url)
+
+    def test_products_index_feature_falls_back_to_first_live_product(self):
+        self.assertEqual(
+            self.index_page.featured_product_page.pk,
+            self.product1_page.pk,
+        )
+
+    def test_products_index_uses_special_enso_bulletin_title(self):
+        enso_page = ElNinoPageFactory(parent=self.index_page)
+
+        response = self.client.get(self.index_page.url)
+
+        self.assertContains(response, "El-nino Special Bulletin")
+        self.assertContains(response, enso_page.url)
     
     def test_products_index_page_meta_tags(self):
         resp = self.client.get(self.index_page.get_url())
@@ -38,6 +73,22 @@ class TestProductPages(WagtailPageTestCase):
     def test_product_page_render(self):
         self.assertPageIsRenderable(self.product1_page)
         self.assertPageIsRenderable(self.product2_page)
+
+    def test_product_page_shows_gis_application_in_intro_media_position(self):
+        application = Application.objects.create(
+            title="Observed Daily Rainfall",
+            url="https://example.com/observed-rainfall",
+        )
+        self.product1_page.gis_application = application
+        self.product1_page.save_revision().publish()
+
+        response = self.client.get(self.product1_page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="app-card app-card--intro"')
+        self.assertContains(response, application.title)
+        self.assertContains(response, application.url)
+        self.assertNotContains(response, 'class="intro-figure"')
     
     def test_product_pages_meta_tags(self):
         resp = self.client.get(self.product1_page.get_url())
@@ -59,3 +110,124 @@ class TestProductPages(WagtailPageTestCase):
         meta_tags = get_html_meta_tags(resp.content)
         
         test_page_meta_tags(self, self.product1_page_product_item_page, meta_tags, request=resp.wsgi_request)
+
+    def test_product_listing_image_uses_introduction_image_first(self):
+        product_page = self.product1_page.__class__.objects.get(
+            pk=self.product1_page.pk
+        )
+        self.assertEqual(
+            product_page.listing_image,
+            product_page.introduction_image,
+        )
+
+    def test_product_listing_image_falls_back_to_latest_product_item(self):
+        product_page = self.product1_page.__class__.objects.get(
+            pk=self.product1_page.pk
+        )
+        product_page.introduction_image = None
+        product_page.save(update_fields=["introduction_image"])
+
+        self.assertEqual(
+            product_page.listing_image,
+            self.product1_page_product_item_page.products_listing_image,
+        )
+
+    def test_product_listing_image_uses_configured_default_when_empty(self):
+        default_thumbnail = wagtail_factories.ImageFactory()
+        product_page = self.product2_page.__class__.objects.get(
+            pk=self.product2_page.pk
+        )
+        product_page.introduction_image = None
+        product_page.default_listing_thumbnail = default_thumbnail
+        product_page.save(
+            update_fields=["introduction_image", "default_listing_thumbnail"]
+        )
+
+        self.assertEqual(product_page.listing_image, default_thumbnail)
+
+
+class TestProductSubscriptionPage(WagtailPageTestCase):
+    @classmethod
+    def setUpTestData(cls):
+        home_page = get_or_create_homepage()
+        cls.page = ProductSubscriptionPageFactory(parent=home_page)
+
+    def test_default_route_rendering(self):
+        self.assertPageIsRenderable(self.page)
+
+
+class TestProductSubscriptionPageClosingDate(WagtailPageTestCase):
+    """
+    submissions_closing_date (FormPageClosingDateMixin) used to only drive
+    the pre-deadline reminder email - it never actually stopped submissions
+    after the date passed. is_closed (FormPageReviewSettingsMixin) + the
+    serve() guard below fix that.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        home_page = get_or_create_homepage()
+        cls.page = ProductSubscriptionPageFactory(parent=home_page)
+
+    def test_is_closed_false_when_no_closing_date_set(self):
+        self.assertFalse(self.page.is_closed)
+
+    def test_is_closed_true_after_closing_date(self):
+        self.page.submissions_closing_date = timezone.now().date() - timedelta(days=1)
+        self.assertTrue(self.page.is_closed)
+
+    def test_get_rejects_form_after_closing_date(self):
+        self.page.submissions_closing_date = timezone.now().date() - timedelta(days=1)
+        self.page.save()
+
+        response = self.client.get(self.page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["form"])
+
+    def test_post_after_closing_date_does_not_create_a_subscriber(self):
+        from ..models import ProductSubscriber
+
+        self.page.submissions_closing_date = timezone.now().date() - timedelta(days=1)
+        self.page.save()
+
+        starting_count = ProductSubscriber.objects.count()
+
+        self.client.post(self.page.url, data={"email": "late@example.com"})
+
+        self.assertEqual(ProductSubscriber.objects.count(), starting_count)
+
+
+class TestProductSubscriptionPageManualClose(WagtailPageTestCase):
+    """
+    Product Subscription has no natural deadline, so it also gets a manual
+    on/off switch (form_open, FormPageManualCloseMixin) independent of the
+    closing date - editors can stop accepting submissions immediately.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        home_page = get_or_create_homepage()
+        cls.page = ProductSubscriptionPageFactory(parent=home_page)
+
+    def test_form_open_by_default(self):
+        self.assertTrue(self.page.form_open)
+        self.assertFalse(self.page.is_closed)
+
+    def test_is_closed_when_form_open_is_off(self):
+        self.page.form_open = False
+        self.assertTrue(self.page.is_closed)
+
+    def test_is_closed_when_form_open_is_off_even_with_future_closing_date(self):
+        self.page.form_open = False
+        self.page.submissions_closing_date = timezone.now().date() + timedelta(days=30)
+        self.assertTrue(self.page.is_closed)
+
+    def test_get_rejects_form_when_form_open_is_off(self):
+        self.page.form_open = False
+        self.page.save()
+
+        response = self.client.get(self.page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["form"])

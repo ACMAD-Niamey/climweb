@@ -6,13 +6,13 @@ from wagtail.fields import RichTextField, StreamField
 from wagtail.models import Page
 
 from climweb.base import blocks
-from climweb.base.models import AbstractIntroPage
+from climweb.base.models import AbstractBannerWithOptionalIntroPage
 from climweb.config.settings.base import SUMMARY_RICHTEXT_FEATURES
 from climweb.pages.organisation_pages.partners.models import Partner
 from .blocks import TimelineBlock
 
 
-class AboutPage(AbstractIntroPage):
+class AboutPage(AbstractBannerWithOptionalIntroPage):
     template = 'about_page.html'
     parent_page_types = ['organisation.OrganisationIndexPage']
     subpage_types = ['flex_page.FlexPage', ]
@@ -80,7 +80,7 @@ class AboutPage(AbstractIntroPage):
     )
     
     content_panels = Page.content_panels + [
-        *AbstractIntroPage.content_panels,
+        *AbstractBannerWithOptionalIntroPage.content_panels,
         MultiFieldPanel(
             [
                 FieldPanel('mission'),
@@ -137,3 +137,17 @@ class AboutPage(AbstractIntroPage):
     @property
     def partners(self):
         return Partner.objects.filter(is_main=True)[:5]
+
+    @cached_property
+    def strategic_plan(self):
+        """Return the Strategic Plan document from the former materials section."""
+        first_document = None
+        for category_block in self.additional_materials or []:
+            category = str(category_block.value.get('category', ''))
+            for material in category_block.value.get('materials', []):
+                if material.get('document') and first_document is None:
+                    first_document = material
+                label = f"{category} {material.get('title', '')}".lower()
+                if material.get('document') and 'strategic' in label and 'plan' in label:
+                    return material
+        return first_document

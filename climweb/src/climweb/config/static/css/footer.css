@@ -1,6 +1,6 @@
 /* ── FOOTER WRAPPER ── */
 .site-footer {
-  background: var(--primary-color);
+  background: var(--theme-header-dark, var(--primary-color));
 }
 
 /* ── TOP SECTION ── */
@@ -140,6 +140,14 @@
   font-size: 12px;
   color: rgba(255, 255, 255, 0.85);
   font-weight: 500;
+}
+
+.footer-address,
+.footer-address p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.68);
 }
 
 .footer-powered {

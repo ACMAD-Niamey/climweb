@@ -11,9 +11,9 @@ Upstream references:
 ## Background
 
 A standard Climweb deployment serves a single Wagtail Site on a single hostname. ACMAD's deployment additionally
-serves the Summer School section (`SummerSchoolIndexPage` and its children) on its own subdomain,
-`summerschool.acmad.org`, sharing the same application, database, and page tree as the main site at
-`new.acmad.org`. This is done using Wagtail's built-in multi-site support rather than a separate deployment.
+serves programme sections such as Summer School, RCC and CLIMSA on their own subdomains,
+sharing the same application, database, and page tree as the main ACMAD site. This is done using
+Wagtail's built-in multi-site support rather than separate deployments.
 
 This page documents how that was wired up, and the gotchas that came with it, so the same pattern can be repeated
 for a future subdomain without re-discovering each issue from scratch.
@@ -77,6 +77,34 @@ In Wagtail Admin under **Settings > Sites**, add a Site with:
 This does not move the page in the tree. The section's index page stays reachable at its original path under the
 default site *and* becomes reachable at `/` on the new subdomain simultaneously - both routes resolve through the
 same page-tree object.
+
+For the ACMAD RCC hostname, the equivalent Site record can be created or
+reconciled after deployment with:
+
+```bash
+docker compose --profile prod exec -T climweb_prod \
+  python /climweb/web/src/climweb/manage.py configure_rcc_subdomain
+```
+
+This configures `nrcc.acmad.org`, external port `443`, the live Regional
+Climate Center page as the root, and leaves the existing default Site unchanged.
+The ACMAD deployment serves it from `deploy/nginx/nginx.prod.acmad.ssl.conf`;
+the generic `nginx.prod.ssl.conf` supports the same hostname for installations
+that use that configuration instead.
+
+For CLIMSA, run the equivalent idempotent command after migrations:
+
+```bash
+docker compose --profile prod exec -T climweb_prod \
+  python /climweb/web/src/climweb/manage.py configure_climsa_subdomain --create
+```
+
+This creates the CLIMSA homepage beneath the main homepage when it is missing,
+then configures `climsa.acmad.org` on external port `443` with that page as its
+root. Editors can subsequently select the CLIMSA logo, hero, navigation targets,
+programme outputs, products, news, events and publications in Wagtail. Before
+enabling its HTTPS nginx block, add `climsa.acmad.org` to DNS, the shared TLS SAN
+certificate, `ALLOWED_HOSTS`, and `CSRF_TRUSTED_ORIGINS`.
 
 ## 4. Gotcha: `get_meta_description()` / `get_meta_image()` self-reference
 

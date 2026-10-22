@@ -28,18 +28,24 @@
           </div>
 
           <div class="cu-form-card">
-            <form action="{% pageurl page %}" method="POST" class="cu-form">
-              {% csrf_token %}
-              {{ form|bulma }}
-              <div class="cu-form-footer">
-                <button type="submit" class="cu-submit-btn">
-                  {% translate "Send message" %}
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <path d="M5 12h14M12 5l7 7-7 7"/>
-                  </svg>
-                </button>
-              </div>
-            </form>
+            {% if page.is_closed %}
+              <p class="cu-form-closed-notice">
+                {% translate "This form is no longer accepting submissions." %}
+              </p>
+            {% else %}
+              <form action="{% pageurl page %}" method="POST" class="cu-form">
+                {% csrf_token %}
+                {{ form|bulma }}
+                <div class="cu-form-footer">
+                  <button type="submit" class="cu-submit-btn">
+                    {% translate "Send message" %}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                  </button>
+                </div>
+              </form>
+            {% endif %}
           </div>
         </div>
 

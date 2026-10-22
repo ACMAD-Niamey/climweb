@@ -1,0 +1,184 @@
+.rcc-climsoft-intro,
+.rcc-climsoft-library {
+    padding: clamp(2.75rem, 5vw, 4.5rem) 0;
+}
+
+.rcc-climsoft-intro {
+    background: #fff;
+}
+
+.rcc-climsoft-intro__grid {
+    display: grid;
+    grid-template-columns: minmax(240px, .8fr) minmax(0, 1.2fr);
+    gap: clamp(2rem, 6vw, 6rem);
+    align-items: start;
+}
+
+.rcc-climsoft-intro h2,
+.rcc-climsoft-library h2 {
+    color: #173d32;
+    font-size: clamp(1.9rem, 3vw, 2.7rem);
+    line-height: 1.12;
+    margin: .45rem 0 0;
+}
+
+.rcc-climsoft-intro__grid > div:last-child > p {
+    color: #4e625b;
+    font-size: 1.05rem;
+    line-height: 1.75;
+    margin: 0;
+}
+
+.rcc-climsoft-intro__grid .rcc-climsoft-note {
+    border-left: 3px solid #d3a93a;
+    font-size: .92rem;
+    margin-top: 1.25rem;
+    padding-left: 1rem;
+}
+
+.rcc-climsoft-library {
+    background: #f5f8f6;
+}
+
+.rcc-climsoft-library__heading {
+    align-items: end;
+    display: flex;
+    justify-content: space-between;
+    gap: 2rem;
+    margin-bottom: 1.75rem;
+}
+
+.rcc-climsoft-library__heading > p {
+    color: #65766f;
+    margin: 0;
+}
+
+.rcc-climsoft-filters {
+    align-items: end;
+    background: #fff;
+    border: 1px solid #d8e2dd;
+    border-radius: .85rem;
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(190px, .55fr) auto auto;
+    gap: .8rem;
+    margin-bottom: 1.75rem;
+    padding: 1rem;
+}
+
+.rcc-climsoft-filters label {
+    color: #274a3f;
+    display: block;
+    font-size: .8rem;
+    font-weight: 700;
+    margin-bottom: .35rem;
+}
+
+.rcc-climsoft-filters input,
+.rcc-climsoft-filters select {
+    border: 1px solid #c9d6d0;
+    border-radius: .4rem;
+    min-height: 44px;
+    padding: .6rem .75rem;
+    width: 100%;
+}
+
+.rcc-climsoft-filters button,
+.rcc-climsoft-filters > a {
+    border-radius: .4rem;
+    font-weight: 700;
+    min-height: 44px;
+    padding: .7rem 1rem;
+}
+
+.rcc-climsoft-filters button {
+    background: #236b55;
+    border: 0;
+    color: #fff;
+}
+
+.rcc-climsoft-filters > a {
+    color: #236b55;
+}
+
+.rcc-climsoft-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.rcc-climsoft-card {
+    background: #fff;
+    border: 1px solid #d8e2dd;
+    border-radius: .85rem;
+    display: flex;
+    flex-direction: column;
+    min-height: 285px;
+    padding: 1.35rem;
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+.rcc-climsoft-card:hover {
+    border-color: #89b4a5;
+    box-shadow: 0 14px 30px rgba(25, 65, 52, .1);
+    transform: translateY(-3px);
+}
+
+.rcc-climsoft-card__meta {
+    color: #567168;
+    display: flex;
+    font-size: .73rem;
+    font-weight: 700;
+    justify-content: space-between;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.rcc-climsoft-card h3 {
+    font-size: 1.22rem;
+    line-height: 1.25;
+    margin: 1rem 0 .65rem;
+}
+
+.rcc-climsoft-card h3 a,
+.rcc-climsoft-card footer a {
+    color: #194d3d;
+}
+
+.rcc-climsoft-card > p {
+    color: #607169;
+    line-height: 1.6;
+    margin: 0 0 1rem;
+}
+
+.rcc-climsoft-card__details {
+    color: #7a8983;
+    font-size: .82rem;
+    margin-top: auto;
+}
+
+.rcc-climsoft-card footer {
+    border-top: 1px solid #e3eae6;
+    font-weight: 700;
+    margin-top: 1rem;
+    padding-top: .9rem;
+}
+
+.rcc-climsoft-empty {
+    background: #fff;
+    border: 1px dashed #b9cbc3;
+    border-radius: .85rem;
+    padding: 2rem;
+    text-align: center;
+}
+
+@media (max-width: 900px) {
+    .rcc-climsoft-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .rcc-climsoft-filters { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 640px) {
+    .rcc-climsoft-intro__grid,
+    .rcc-climsoft-grid,
+    .rcc-climsoft-filters { grid-template-columns: 1fr; }
+    .rcc-climsoft-library__heading { align-items: start; flex-direction: column; gap: .75rem; }
+}

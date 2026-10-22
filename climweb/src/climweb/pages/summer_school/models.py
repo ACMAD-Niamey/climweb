@@ -29,7 +29,8 @@ from climweb.base.models import FormFileSubmission
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import get_duplicates, generate_title_from_filename, query_param_to_list, paginate
 from .blocks import (CohortBlock, DailyActivityBlock, ScheduleSessionBlock,
-                     SummerSchoolPartnerBlock, SummerSchoolReviewBlock, TrainerBlock)
+                     SummerSchoolGalleryImageBlock, SummerSchoolPartnerBlock,
+                     SummerSchoolReviewBlock, TrainerBlock)
 
 SUMMARY_RICHTEXT_FEATURES = getattr(settings, "SUMMARY_RICHTEXT_FEATURES")
 
@@ -265,6 +266,19 @@ class SummerSchoolPage(MetadataPageMixin, Page):
     key_info_certificate = models.CharField(max_length=255, blank=True, verbose_name=_("Certificate"))
     key_info_contact = models.CharField(max_length=255, blank=True, verbose_name=_("Contact"))
     apply_button_text = models.CharField(max_length=60, default="Apply", verbose_name=_("Apply Button Text"))
+    online_meeting_url = models.URLField(
+        blank=True,
+        verbose_name=_("Online meeting URL"),
+        help_text=_(
+            "When provided, the featured Summer School buttons link to the live online event. "
+            "Clear this field when online participation is no longer available."
+        ),
+    )
+    online_meeting_button_text = models.CharField(
+        max_length=60,
+        default="Join Summer School Online",
+        verbose_name=_("Online meeting button text"),
+    )
 
     # --- Index card display ---
     card_icon = models.CharField(max_length=100, null=True, blank=True, verbose_name=_("Card Icon"),
@@ -334,6 +348,16 @@ class SummerSchoolPage(MetadataPageMixin, Page):
         ('review', SummerSchoolReviewBlock()),
     ], blank=True, use_json_field=True, verbose_name=_("Summer School Reviews"),
        help_text=_("Publish reviews collected from social platforms and feedback forms."))
+
+    # Legacy gallery fields are retained so existing content is not deleted.
+    # Daily Activities replaces the old gallery in the editor and front end.
+    # --- Image Gallery ---
+    gallery_title = models.CharField(max_length=255, default="Gallery", verbose_name=_("Gallery Title"))
+    gallery_intro = RichTextField(blank=True, features=SUMMARY_RICHTEXT_FEATURES,
+                                  verbose_name=_("Gallery Introduction"))
+    gallery_images = StreamField([
+        ('image', SummerSchoolGalleryImageBlock()),
+    ], blank=True, use_json_field=True, verbose_name=_("Gallery Images"))
 
     # --- Concept Note ---
     concept_note_title = models.CharField(max_length=255, default="Concept Note",
@@ -417,6 +441,8 @@ class SummerSchoolPage(MetadataPageMixin, Page):
             FieldPanel('key_info_certificate'),
             FieldPanel('key_info_contact'),
             FieldPanel('apply_button_text'),
+            FieldPanel('online_meeting_url'),
+            FieldPanel('online_meeting_button_text'),
         ], heading=_("Key Info")),
         MultiFieldPanel([
             FieldPanel('card_icon', widget=IconChooserWidget),
@@ -515,7 +541,13 @@ class SummerSchoolPage(MetadataPageMixin, Page):
 
     @cached_property
     def application_page(self):
-        return self.get_first_child()
+        # .specific, not the base Page get_first_child() returns - templates
+        # read SummerSchoolApplicationPage-only attributes off this (e.g.
+        # is_closed), which silently resolve to falsy/empty on a bare Page
+        # instance instead of raising, so a closed-applications check would
+        # look "off" forever. Same fix as EventPage.registration_page.
+        child = self.get_first_child()
+        return child.specific if child else None
 
     @cached_property
     def featured_display_image(self):
@@ -611,7 +643,7 @@ class SummerSchoolApplicationPage(MetadataPageMixin, FormCleanNameFallbackMixin,
     ], blank=True, use_json_field=True, verbose_name=_("Application Journey Stages"))
     journey_note = models.CharField(max_length=255, blank=True, verbose_name=_("Application Journey Note"),
                                     help_text=_("Optional caption shown under the journey steps"))
-    validation_field = models.CharField(max_length=100, blank=True, default="email_address",
+    validation_field = models.CharField(max_length=100, blank=True, default="email",
                                         verbose_name=_("Validation Field"),
                                         help_text=_("A field on the form to check if is already submitted so as to "
                                                     "prevent multiple submissions by one person. This is usually the "
@@ -715,6 +747,28 @@ class SummerSchoolApplicationPage(MetadataPageMixin, FormCleanNameFallbackMixin,
                 if fields_by_name.get(fallback_field) == 'email':
                     form_validation_value = form_data.get(fallback_field)
                     if form_validation_value:
+                        # the duplicate-search query below keys off
+                        # validation_field, not the fallback name - without
+                        # this, a fallback match still searches under the
+                        # original (mismatched) validation_field and never
+                        # finds the existing submission.
+                        validation_field = fallback_field
+                        break
+
+        # last resort: validation_field is stale/misconfigured (e.g. it names
+        # a field that was later relabeled - clean_name only gets set once,
+        # at field creation, and editing the label afterwards doesn't
+        # regenerate it). Fall back to whichever field is actually typed as
+        # email so duplicate-prevention keeps working while the CMS setting
+        # gets fixed, instead of silently letting every submission through.
+        if not form_validation_value:
+            for field in self.get_form_fields():
+                if field.field_type == 'email':
+                    candidate_name = effective_clean_name(field)
+                    candidate_value = form_data.get(candidate_name)
+                    if candidate_value:
+                        validation_field = candidate_name
+                        form_validation_value = candidate_value
                         break
 
         if form_validation_value:
@@ -751,7 +805,14 @@ class SummerSchoolApplicationPage(MetadataPageMixin, FormCleanNameFallbackMixin,
         return should_process
 
     def serve(self, request, *args, **kwargs):
-        if request.method == 'POST':
+        if self.is_closed:
+            form = None
+            if request.method == 'POST':
+                messages.add_message(
+                    request, messages.ERROR,
+                    "Applications for this summer school have closed."
+                )
+        elif request.method == 'POST':
             form = self.get_form(request.POST, request.FILES, page=self, user=request.user)
 
             if form.is_valid():

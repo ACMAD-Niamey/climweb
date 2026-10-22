@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load static i18n wagtailcore_tags wagtailimages_tags wagtailembeds_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'css/on_the_job_training.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'board/css/board.css' %}">
+{% endblock extra_css %}
+
+{% block body_class %}ojt-page board-president-page{% endblock %}
+
+{% block content %}
+    <main class="president-page">
+        {% if page.banner_image %}
+            {% include "hero.html" with page=page %}
+        {% else %}
+            <section class="page-hero ojt-simple-hero">
+                <div class="page-hero-overlay"></div>
+                <div class="page-hero-body">
+                    <div class="container">
+                        <span class="page-hero-badge">{% translate "Governance" %}</span>
+                        <h1 class="page-hero-title">{{ page.banner_title }}</h1>
+                        {% if page.banner_subtitle %}<p class="page-hero-subtitle">{{ page.banner_subtitle }}</p>{% endif %}
+                    </div>
+                </div>
+            </section>
+        {% endif %}
+
+        <section id="biography" class="ojt-section president-profile-section">
+            <div class="container">
+                <div class="ojt-intro president-profile">
+                    {% if page.photo %}
+                        {% image page.photo fill-760x820 as portrait %}
+                        <img class="ojt-intro-image president-profile-portrait" src="{{ portrait.url }}" alt="{{ page.name }}" width="{{ portrait.width }}" height="{{ portrait.height }}">
+                    {% else %}
+                        <img class="ojt-intro-image president-profile-portrait" src="{% static 'images/person.svg' %}" alt="" width="760" height="820">
+                    {% endif %}
+                    <div class="president-profile-copy">
+                        <p class="ojt-eyebrow">{{ page.role }}</p>
+                        <h2>{{ page.name }}</h2>
+                        {% if page.country %}<p class="board-country">{{ page.country }}</p>{% endif %}
+                    </div>
+                    <div class="president-biography format-text">{{ page.biography|richtext }}</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="vision" class="ojt-section ojt-muted president-vision-section">
+            <div class="container">
+                <p class="ojt-eyebrow">{% translate "Looking ahead" %}</p>
+                <h2>{% translate "Vision for ACMAD" %}</h2>
+                <div class="president-vision format-text ojt-lead">{{ page.vision|richtext }}</div>
+            </div>
+        </section>
+
+        {% if page.video_url %}
+            <section id="message" class="ojt-section ojt-apply president-video-section">
+                <div class="container">
+                    <p class="ojt-eyebrow">{% translate "In his own words" %}</p>
+                    {% if page.video_title %}<h2>{{ page.video_title }}</h2>{% endif %}
+                    <article class="president-video-card">
+                        <div class="president-video-embed">
+                            {% embed page.video_url max_width=1200 %}
+                        </div>
+                        {% if page.video_caption %}<p class="president-video-caption">{{ page.video_caption }}</p>{% endif %}
+                    </article>
+                </div>
+            </section>
+        {% endif %}
+    </main>
+{% endblock content %}

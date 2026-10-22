@@ -1,11 +1,13 @@
+import uuid
 from itertools import chain
 
 from django.conf import settings
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.core.mail import mail_admins
 from django.core.validators import MinValueValidator, MaxValueValidator
-from django.db import models
+from django.db import models, transaction
 from django.forms import CheckboxSelectMultiple
 from django.template.defaultfilters import truncatechars, date
 from django.template.response import TemplateResponse
@@ -20,7 +22,9 @@ from timezone_field import TimeZoneField
 from wagtail.admin.panels import (FieldPanel, InlinePanel, MultiFieldPanel, )
 from wagtail.admin.panels import TabbedInterface, ObjectList
 from wagtail.contrib.forms.forms import WagtailAdminFormPageForm
-from wagtail.contrib.forms.models import AbstractEmailForm, AbstractFormField
+from wagtail.contrib.forms.models import AbstractEmailForm, AbstractFormField, FORM_FIELD_CHOICES
+from wagtail.contrib.settings.models import BaseSiteSetting
+from wagtail.contrib.settings.registry import register_setting
 from wagtail.fields import StreamField, RichTextField
 from wagtail.models import Page
 from wagtail.snippets.models import register_snippet
@@ -31,19 +35,77 @@ from wagtailmailchimp.models import AbstractMailchimpIntegrationForm
 from wagtailzoom.models import AbstractZoomIntegrationForm
 
 from climweb.base import blocks
-from climweb.base.forms import CustomWagtailCaptchaFormBuilder, effective_clean_name
+from climweb.base.forms import (FormImageField, FormDocumentField, CustomSubmissionsListView,
+                                CustomWagtailCaptchaFormBuilder, effective_clean_name)
 from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin, FormPageClosingDateMixin,
                                  FormFieldMaxLengthMixin, FormCleanNameFallbackMixin)
+from climweb.base.models import FormFileSubmission
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import (
     get_pytz_gmt_offset_str,
     paginate,
     query_param_to_list,
-    get_first_non_empty_p_string
+    get_first_non_empty_p_string,
+    generate_title_from_filename
 )
 from .blocks import PanelistBlock, EventSponsorBlock, SessionBlock
 
 SUMMARY_RICHTEXT_FEATURES = getattr(settings, "SUMMARY_RICHTEXT_FEATURES")
+
+
+@register_setting(icon="calendar", name="google-meet-settings")
+class GoogleMeetSettings(BaseSiteSetting):
+    """Per-site, non-secret configuration for Google Calendar/Meet.
+
+    The service-account private key is intentionally supplied through the
+    GOOGLE_MEET_SERVICE_ACCOUNT_FILE deployment setting rather than stored in
+    the database or exposed in Wagtail admin.
+    """
+
+    enabled = models.BooleanField(
+        default=False,
+        verbose_name=_("Enable Google Meet integration"),
+    )
+    organizer_email = models.EmailField(
+        blank=True,
+        verbose_name=_("Google Workspace organizer email"),
+        help_text=_(
+            "The Workspace user the service account impersonates. Meetings "
+            "and calendar events are owned by this account."
+        ),
+    )
+    calendar_id = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_("Google Calendar ID"),
+        help_text=_("Leave blank to use the organizer's primary calendar."),
+    )
+    participant_email_subject = models.CharField(
+        max_length=255,
+        blank=True,
+        default="You're registered: {event_title}",
+        verbose_name=_("Participant email subject"),
+        help_text=_("You may use {event_title} in the subject."),
+    )
+
+    panels = [
+        FieldPanel("enabled"),
+        FieldPanel("organizer_email"),
+        FieldPanel("calendar_id"),
+        FieldPanel("participant_email_subject"),
+    ]
+
+    class Meta:
+        verbose_name = _("Google Meet settings")
+
+    def clean(self):
+        super().clean()
+        if self.enabled and not self.organizer_email:
+            raise ValidationError({
+                "organizer_email": _(
+                    "An organizer email is required when Google Meet is enabled."
+                )
+            })
 
 
 @register_snippet
@@ -121,18 +183,12 @@ class EventIndexPage(MetadataPageMixin, Page):
         
         return {'event_types': event_types, 'year': years}
     
-    def get_featured_event(self):
-        
-        queryset = self.all_events.filter(is_archived=False)
-        
-        featured_event = queryset.filter(featured=True).first()
-        
-        if featured_event:
-            return featured_event
-        else:
-            featured_event = queryset.first()
-        
-        return featured_event
+    def get_featured_events(self):
+        return self.all_events.filter(
+            models.Q(date_to__gte=timezone.now())
+            | models.Q(date_to__isnull=True, date_from__gte=timezone.now()),
+            is_archived=False,
+        ).order_by('date_from')[:3]
     
     def filter_events(self, request):
         events = self.all_events
@@ -174,7 +230,7 @@ class EventIndexPage(MetadataPageMixin, Page):
         context = super(EventIndexPage, self).get_context(
             request, *args, **kwargs)
         
-        context['featured_event'] = self.get_featured_event()
+        context['featured_events'] = self.get_featured_events()
         
         context['events'] = self.filter_and_paginate_events(request)
         
@@ -189,6 +245,13 @@ class EventPage(MetadataPageMixin, Page):
     
     MEETING_PLATFORM_CHOICES = (
         ('zoom', 'Zoom'),
+        ('google_meet', 'Google Meet'),
+    )
+
+    ATTENDANCE_MODE_CHOICES = (
+        ('in_person', _('In person')),
+        ('online', _('Online')),
+        ('hybrid', _('Hybrid')),
     )
     
     template = 'event_page.html'
@@ -250,6 +313,12 @@ class EventPage(MetadataPageMixin, Page):
     is_visible_on_homepage = models.BooleanField(
         default=False,
         help_text=_("Show this event on the homepage ?"), verbose_name=_("Is visible on homepage"))
+
+    is_el_nino_related = models.BooleanField(
+        default=False,
+        help_text=_("Show this event in the ENSO related activities section."),
+        verbose_name=_("ENSO related activity"),
+    )
     
     panelists = StreamField([
         ('panelist', PanelistBlock()),
@@ -268,6 +337,12 @@ class EventPage(MetadataPageMixin, Page):
     
     is_archived = models.BooleanField(default=False, verbose_name=_("Is archived"))
     registration_open = models.BooleanField(default=True, verbose_name=_("Registration open"))
+    attendance_mode = models.CharField(
+        max_length=20,
+        choices=ATTENDANCE_MODE_CHOICES,
+        default="in_person",
+        verbose_name=_("Attendance mode"),
+    )
     youtube_video_id = models.CharField(max_length=100, blank=True,
                                         help_text=_("Youtube Video ID if the event is being livestreamed"))
     meeting_platform = models.CharField(verbose_name=_("Meeting Registration Integration Platform"),
@@ -289,6 +364,7 @@ class EventPage(MetadataPageMixin, Page):
         FieldPanel('timezone'),
         FieldPanel('image'),
         FieldPanel('description'),
+        FieldPanel('attendance_mode'),
         FieldPanel('location'),
         FieldPanel('agenda_document'),
         FieldPanel('cost'),
@@ -300,6 +376,7 @@ class EventPage(MetadataPageMixin, Page):
         FieldPanel('featured'),
         FieldPanel('is_hidden'),
         FieldPanel('is_visible_on_homepage'),
+        FieldPanel('is_el_nino_related'),
         FieldPanel('sponsors'),
         # FieldPanel('youtube_video_id'),
     ]
@@ -307,6 +384,7 @@ class EventPage(MetadataPageMixin, Page):
     settings_panels = [
         FieldPanel('registration_open'),
         FieldPanel('form_template'),
+        FieldPanel('meeting_platform'),
         FieldPanel('enable_zoom_integration'),
         FieldPanel('enable_mailchimp_integration'),
     ]
@@ -323,6 +401,30 @@ class EventPage(MetadataPageMixin, Page):
     class Meta:
         ordering = ['-date_from', ]
         verbose_name = _("Event Page")
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if self.attendance_mode in {"online", "hybrid"}:
+            if not self.date_to:
+                errors["date_to"] = _(
+                    "An end date and time is required for online and hybrid events."
+                )
+            elif self.date_from and self.date_to <= self.date_from:
+                errors["date_to"] = _("The end date and time must be after the start.")
+            if not self.meeting_platform:
+                errors["meeting_platform"] = _(
+                    "Choose an online meeting platform for this event."
+                )
+        if errors:
+            raise ValidationError(errors)
+
+    @property
+    def uses_google_meet(self):
+        return (
+            self.attendance_mode in {"online", "hybrid"}
+            and self.meeting_platform == "google_meet"
+        )
     
     @property
     def listing_summary(self):
@@ -386,7 +488,12 @@ class EventPage(MetadataPageMixin, Page):
     
     @cached_property
     def registration_page(self):
-        return self.get_first_child()
+        # .specific, not the base Page get_first_child() returns - templates
+        # read EventRegistrationPage-only attributes off this (e.g. is_closed),
+        # which silently resolve to falsy/empty on a bare Page instance instead
+        # of raising, so the closed-registration checks would look "off" forever.
+        child = self.get_first_child()
+        return child.specific if child else None
     
     @cached_property
     def sessions_data(self):
@@ -438,6 +545,38 @@ class EventPage(MetadataPageMixin, Page):
         return get_pytz_gmt_offset_str(self.timezone)
 
 
+class EventMeeting(models.Model):
+    """Operational Google Calendar/Meet state, kept outside page revisions."""
+
+    class SyncStatus(models.TextChoices):
+        PENDING = "pending", _("Pending")
+        SYNCING = "syncing", _("Syncing")
+        READY = "ready", _("Ready")
+        FAILED = "failed", _("Failed")
+
+    event = models.OneToOneField(
+        EventPage,
+        on_delete=models.CASCADE,
+        related_name="google_meeting",
+    )
+    calendar_event_id = models.CharField(max_length=255, unique=True)
+    conference_request_id = models.UUIDField(default=uuid.uuid4, editable=False)
+    meet_url = models.URLField(blank=True)
+    payload_hash = models.CharField(max_length=64, blank=True)
+    sync_status = models.CharField(
+        max_length=20,
+        choices=SyncStatus.choices,
+        default=SyncStatus.PENDING,
+    )
+    last_error = models.TextField(blank=True)
+    last_synced_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Google Meet for {self.event.title}"
+
+
 # Custom page form to enable using a template to pre-populate  form fields
 class EventPageCustomForm(WagtailAdminFormPageForm):
     # Override the __init__ function to update 'initial' form values
@@ -477,7 +616,10 @@ class EventPageCustomForm(WagtailAdminFormPageForm):
         self.parent_page = parent_page
         
         latest_parent_revision = parent_page.get_latest_revision_as_object()
-        zoom_integration_enabled = latest_parent_revision.enable_zoom_integration
+        zoom_integration_enabled = (
+            latest_parent_revision.meeting_platform == "zoom"
+            and latest_parent_revision.enable_zoom_integration
+        )
         mailchimp_integration_enabled = latest_parent_revision.enable_mailchimp_integration
         
         if not zoom_integration_enabled:
@@ -491,7 +633,8 @@ class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormP
                             WagtailCaptchaEmailForm, AbstractMailchimpIntegrationForm, AbstractZoomIntegrationForm):
     base_form_class = EventPageCustomForm
     form_builder = CustomWagtailCaptchaFormBuilder
-    
+    submissions_list_view_class = CustomSubmissionsListView
+
     template = 'event_registration_page.html'
     landing_page_template = 'form_thank_you_landing.html'
     parent_page_types = ['events.EventPage']
@@ -516,7 +659,7 @@ class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormP
                                         help_text=_("A field on the form to check if is already submitted so as to "
                                                     "prevent multiple submissions by one person. This is usually the "
                                                     "email address field in snake casing format"),
-                                        default="email_address")
+                                        default="email")
     
     send_confirmation_email = models.BooleanField(default=False,
                                                   help_text=_("Should we send a confirmation/follow up email ?"),
@@ -578,7 +721,14 @@ class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormP
     def serve(self, request, *args, **kwargs):
         # Set self.request so wagtailzoom and other mixins can access it
         self.request = request
-        if request.method == "POST":
+        if self.is_closed:
+            form = None
+            if request.method == "POST":
+                messages.add_message(
+                    request, messages.ERROR,
+                    "Registration for this event has closed."
+                )
+        elif request.method == "POST":
             form = self.get_form(
                 request.POST, request.FILES, page=self, user=request.user
             )
@@ -586,11 +736,14 @@ class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormP
                 # check for email duplication
                 if self.should_process_form(request, form_data=form.data):
                     form_submission = self.process_form_submission(form)
-                    # Send confirmation email to submitter if enabled
-                    try:
-                        self.send_confirmation_email_to_submitter(form.cleaned_data)
-                    except Exception as e:
-                        logger.error(f"[EVENT_REGISTRATION_PAGE] Error sending confirmation email: {e}")
+                    # Google Meet delivery includes the registration confirmation
+                    # and join link, and is sent reliably by a Celery task. Other
+                    # providers keep the existing synchronous confirmation flow.
+                    if not self.event.uses_google_meet:
+                        try:
+                            self.send_confirmation_email_to_submitter(form.cleaned_data)
+                        except Exception as e:
+                            logger.error(f"[EVENT_REGISTRATION_PAGE] Error sending confirmation email: {e}")
                     return self.render_landing_page(request, form_submission, *args, **kwargs)
         else:
             form = self.get_form(page=self, user=request.user)
@@ -686,7 +839,10 @@ class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormP
         return form_class
     
     def should_perform_zoom_integration_operation(self, request, form):
-        return self.event.enable_zoom_integration
+        return (
+            self.event.meeting_platform == "zoom"
+            and self.event.enable_zoom_integration
+        )
     
     def should_perform_mailchimp_integration_operation(self, request, form):
         return self.event.enable_mailchimp_integration
@@ -695,7 +851,10 @@ class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormP
         return self.event.enable_mailchimp_integration
     
     def show_page_listing_zoom_integration_button(self):
-        return self.event.enable_zoom_integration
+        return (
+            self.event.meeting_platform == "zoom"
+            and self.event.enable_zoom_integration
+        )
     
     def should_process_form(self, request, form_data):
         should_process = True
@@ -715,6 +874,29 @@ class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormP
                     if fields_by_name.get(fallback_field) == 'email':
                         form_validation_value = form_data.get(fallback_field)
                         if form_validation_value:
+                            # the duplicate-search query below keys off
+                            # validation_field, not the fallback name -
+                            # without this, a fallback match still searches
+                            # under the original (mismatched) validation_field
+                            # and never finds the existing submission.
+                            validation_field = fallback_field
+                            break
+
+            # last resort: validation_field is stale/misconfigured (e.g. it
+            # names a field that was later relabeled - clean_name only gets
+            # set once, at field creation, and editing the label afterwards
+            # doesn't regenerate it). Fall back to whichever field is
+            # actually typed as email so duplicate-prevention keeps working
+            # while the CMS setting gets fixed, instead of silently letting
+            # every submission through.
+            if not form_validation_value:
+                for field in self.get_form_fields():
+                    if field.field_type == 'email':
+                        candidate_name = effective_clean_name(field)
+                        candidate_value = form_data.get(candidate_name)
+                        if candidate_value:
+                            validation_field = candidate_name
+                            form_validation_value = candidate_value
                             break
 
             if form_validation_value:
@@ -749,7 +931,57 @@ class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormP
                 should_process = True
         
         return should_process
-    
+
+    def process_form_submission(self, form):
+        cleaned_data = form.cleaned_data
+
+        for name, field in form.fields.items():
+            file_type = None
+            if isinstance(field, FormImageField):
+                file_type = 'image'
+            elif isinstance(field, FormDocumentField):
+                file_type = 'document'
+
+            if file_type:
+                file = cleaned_data.get(name)
+                if file:
+                    file.title = generate_title_from_filename(file.name)
+
+                    file_submission = FormFileSubmission.objects.create(
+                        file=file,
+                        file_type=file_type,
+                    )
+
+                    cleaned_data[name] = file_submission.pk
+                else:
+                    del cleaned_data[name]
+
+        submission = super(EventRegistrationPage, self).process_form_submission(form)
+
+        if self.event.uses_google_meet:
+            registration_page_id = self.pk
+            submission_id = submission.pk
+
+            def enqueue_google_meet_delivery():
+                from .tasks import deliver_google_meet_registration
+
+                try:
+                    deliver_google_meet_registration.delay(
+                        registration_page_id,
+                        submission_id,
+                    )
+                except Exception as exc:
+                    # The registration is already safely stored. Log broker
+                    # failures without turning a successful form POST into a 500.
+                    logger.error(
+                        "[GOOGLE_MEET] Could not enqueue registration delivery "
+                        f"for submission {submission_id}: {exc}"
+                    )
+
+            transaction.on_commit(enqueue_google_meet_delivery)
+
+        return submission
+
     def save(self, *args, **kwargs):
         parent = self.get_parent().specific
         
@@ -762,7 +994,55 @@ class EventRegistrationPage(MetadataPageMixin, FormCleanNameFallbackMixin, FormP
         return super().save(*args, **kwargs)
 
 
+class EventRegistrationDelivery(models.Model):
+    """Tracks Google Meet email delivery for one saved form submission."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", _("Pending")
+        PROCESSING = "processing", _("Processing")
+        SENT = "sent", _("Sent")
+        FAILED = "failed", _("Failed")
+
+    registration_page = models.ForeignKey(
+        EventRegistrationPage,
+        on_delete=models.CASCADE,
+        related_name="google_meet_deliveries",
+    )
+    submission_id = models.PositiveBigIntegerField()
+    email = models.EmailField(blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    attempts = models.PositiveIntegerField(default=0)
+    last_error = models.TextField(blank=True)
+    sent_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("registration_page", "submission_id"),
+                name="unique_google_meet_registration_delivery",
+            )
+        ]
+
+    def __str__(self):
+        return f"Google Meet delivery for submission {self.submission_id}"
+
+
 class EventRegistrationFormField(FormFieldMaxLengthMixin, AbstractFormField):
+    FILE_SUBMISSION_FIELD_CHOICES = (
+        ("image", _("Upload Image")),
+        ("document", _("Upload PDF Document")),
+    )
+
+    field_type = models.CharField(
+        verbose_name=_("field type"), max_length=16, choices=FORM_FIELD_CHOICES + FILE_SUBMISSION_FIELD_CHOICES
+    )
+
     page = ParentalKey(EventRegistrationPage,
                        on_delete=models.CASCADE,
                        related_name="registration_form_fields")
@@ -771,7 +1051,7 @@ class EventRegistrationFormField(FormFieldMaxLengthMixin, AbstractFormField):
 @register_snippet
 class EventRegistrationFormTemplate(ClusterableModel):
     template_name = models.CharField(max_length=200)
-    validation_field = models.CharField(max_length=200, default='email_address')
+    validation_field = models.CharField(max_length=200, default='email')
     
     panels = [
         FieldPanel('template_name'),
@@ -784,8 +1064,13 @@ class EventRegistrationFormTemplate(ClusterableModel):
 
 
 class EventRegistrationFormTemplateField(FormFieldMaxLengthMixin, AbstractFormField):
+    field_type = models.CharField(
+        verbose_name=_("field type"), max_length=16,
+        choices=FORM_FIELD_CHOICES + EventRegistrationFormField.FILE_SUBMISSION_FIELD_CHOICES
+    )
+
     form_template = ParentalKey(EventRegistrationFormTemplate, on_delete=models.CASCADE, related_name="form_fields")
-    
+
     EXCLUDE = ['id', 'clean_name', 'form_template']
     
     def to_dict(self):

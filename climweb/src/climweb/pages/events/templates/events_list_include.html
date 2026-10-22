@@ -1,4 +1,4 @@
-{% load wagtailcore_tags wagtailimages_tags lazyimages_tags i18n wagtailiconchooser_tags %}
+{% load wagtailcore_tags wagtailimages_tags lazyimages_tags i18n wagtailiconchooser_tags nmhs_cms_tags %}
 
 <div class="pub-results">
 
@@ -36,7 +36,7 @@
           <div class="pub-item-inner">
 
             <!-- THUMBNAIL -->
-            <a href="{{ event.url }}" class="pub-thumb">
+            <a href="{{ event.url|public_page_url }}" class="pub-thumb">
               {% if event.image %}
                 {% image event.image original as evt_img %}
                 <img class="progressive__img progressive--not-loaded pub-thumb-img"
@@ -62,7 +62,7 @@
               </div>
 
               <!-- TITLE -->
-              <a href="{{ event.url }}" class="pub-title">
+              <a href="{{ event.url|public_page_url }}" class="pub-title">
                 {{ event.event_title }}
               </a>
 
@@ -80,7 +80,7 @@
                   </span>
                   <span class="pub-date">{{ event.date_from|date:'d M Y' }}</span>
                 </div>
-                <a href="{{ event.url }}" class="pub-read-more">
+                <a href="{{ event.url|public_page_url }}" class="pub-read-more">
                   {% translate "Read More" %}
                   <span class="icon btn-icon">{% svg_icon name="arrow-right-full" %}</span>
                 </a>

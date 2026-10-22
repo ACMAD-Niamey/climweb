@@ -14,22 +14,31 @@ fake = Faker()
 class ProductIndexPageFactory(wagtail_factories.PageFactory):
     class Meta:
         model = models.ProductIndexPage
-    
+
     title = "Products Index Page"
+    banner_title = "Explore our Products"
+
+
+class ProductSubscriptionPageFactory(wagtail_factories.PageFactory):
+    class Meta:
+        model = models.ProductSubscriptionPage
+
+    title = "Subscribe to Products"
+    introduction_text = "Subscribe to receive product notifications."
 
 
 class ProductItemTypeFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = ProductItemType
     
-    name = factory.Faker("word")
+    name = factory.Sequence(lambda n: f"Type {n}")
 
 
 class ProductCategoryFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = ProductCategory
     
-    name = factory.Faker("word")
+    name = factory.Sequence(lambda n: f"Category {n}")
     icon = factory.Faker("random_element", elements=["desktop", "comment", "date"])
     
     @factory.post_generation
@@ -81,6 +90,25 @@ class ProductPageFactory(wagtail_factories.PageFactory):
     def introduction_text(self):
         p = fake.paragraph()
         return RichText(f"<p>{p}</p>")
+
+
+class ElNinoPageFactory(ProductPageFactory):
+    class Meta:
+        model = models.ElNinoPage
+
+    title = "ENSO in Africa"
+    introduction_title = "Understanding ENSO and its implications for Africa"
+    
+    @factory.lazy_attribute
+    def enso_explanation(self):
+        return RichText(
+            "<p>ENSO links changes in the tropical Pacific Ocean with the atmosphere. El Niño is the warm phase, "
+            "La Niña the cool phase, and neutral conditions occur between them.</p>"
+            "<p>These phases can influence rainfall and temperature across Africa, but their effects vary by "
+            "region and season and must be considered alongside other climate drivers.</p>"
+            "<p>The monthly bulletin brings together the latest ENSO status, the outlook for Africa and "
+            "region-specific considerations for preparedness and early action.</p>"
+        )
 
 
 class ProductItemImageContentBlockFactory(wagtail_factories.StructBlockFactory):

@@ -1,0 +1,15 @@
+{% extends "staff/portal/base.html" %}
+{% block title %}Sign in · ACMAD Staff Workspace{% endblock %}
+{% block content %}
+<section class="portal-panel portal-narrow portal-login-panel">
+    <p class="portal-eyebrow">SECURE STAFF ACCESS</p>
+    <h1>Staff sign in</h1>
+    <p class="portal-login-intro">Use the work email address associated with your staff profile.</p>
+    <form method="post" class="portal-form">{% csrf_token %}{{ form.as_p }}<button class="portal-button portal-login-submit" type="submit">Sign in to your workspace</button></form>
+    <div class="portal-login-support">
+        <a href="{% url 'staff_portal:password_reset' %}">Forgot your password?</a>
+        <p>Accounts are invitation-only. Contact your website administrator if you need access.</p>
+    </div>
+    <p class="portal-login-copyright">© {% now "Y" %} ACMAD. All rights reserved.</p>
+</section>
+{% endblock %}

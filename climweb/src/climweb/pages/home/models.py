@@ -4,6 +4,7 @@ from typing import Optional
 from adminboundarymanager.models import AdminBoundarySettings
 from django.conf import settings
 from django.contrib.gis.db import models
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.template.defaultfilters import truncatechars
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -15,14 +16,16 @@ if "forecastmanager" in settings.INSTALLED_APPS:
     from forecastmanager.forecast_settings import ForecastSetting
     from forecastmanager.models import City
 from geomanager.models import RasterFileLayer, WmsLayer, VectorTileLayer
+from modelcluster.fields import ParentalKey
 from modelcluster.models import ClusterableModel
 from wagtail import blocks
-from wagtail.admin.panels import MultiFieldPanel, FieldPanel, TabbedInterface, ObjectList, PageChooserPanel
+from wagtail.admin.panels import MultiFieldPanel, FieldPanel, InlinePanel, TabbedInterface, ObjectList, PageChooserPanel
 from wagtail.api.v2.utils import get_full_url
 from wagtail.contrib.settings.models import BaseSiteSetting
 from wagtail.contrib.settings.registry import register_setting
 from wagtail.fields import RichTextField, StreamField
-from wagtail.models import Page
+from wagtail.models import Orderable, Page
+from wagtail.snippets.models import register_snippet
 from wagtail_color_panel.fields import ColorField
 from wagtailiconchooser.blocks import IconChooserBlock
 from wagtailiconchooser.utils import get_svg_sprite_for_icons
@@ -35,10 +38,10 @@ from climweb.config.settings.base import SUMMARY_RICHTEXT_FEATURES
 from climweb.pages.events.models import EventPage
 from climweb.pages.news.models import NewsPage
 from climweb.pages.organisation_pages.partners.models import Partner
-from climweb.pages.products.models import ProductItemPage, ProductPage
-from climweb.pages.publications.models import PublicationPage
+from climweb.pages.organisation_pages.staff.models import StaffMember
+from climweb.pages.products.models import ElNinoPage, ProductItemPage, ProductPage
 from climweb.pages.services.models import ServicePage
-from climweb.pages.summer_school.models import SummerSchoolPage
+from climweb.pages.summer_school.models import SummerSchoolIndexPage, SummerSchoolPage
 from climweb.pages.videos.models import YoutubePlaylist
 from .blocks import AreaBoundaryBlock, AreaPolygonBlock
 
@@ -47,6 +50,7 @@ logger = logging.getLogger(__name__)
 CLIMWEB_ADDITIONAL_APPS = getattr(settings, "CLIMWEB_ADDITIONAL_APPS", [])
 
 HOME_SUBPAGE_TYPES = [
+    'climsa.ClimsaHomePage',
     'contact.ContactPage',
     'services.ServiceIndexPage',
     'products.ProductIndexPage',
@@ -67,7 +71,338 @@ HOME_SUBPAGE_TYPES = [
     'webstories.WebStoryListPage',
     'dashboards.DashboardGalleryPage',
     'summer_school.SummerSchoolIndexPage',
+    'products.ProductSubscriptionPage',
+    'services.OnTheJobTrainingPage',
 ]
+
+SIGNIFICANT_PRODUCT_SPECS = (
+    {
+        "key": "multi-hazard",
+        "parent_title": "Weather Watch and Prediction Products",
+        "title_prefix": "Continental Multi-Hazard Outlook",
+    },
+    {
+        "key": "heat",
+        "parent_title": "Heat and Thermal Stress",
+    },
+    {
+        "key": "thunderstorm",
+        "parent_title": "Thunderstorm and Nowcasting",
+    },
+)
+
+
+def default_hero_carousel_order():
+    return [
+        ("news", None),
+        ("news_2", None),
+        ("event", None),
+        ("event_2", None),
+        ("el_nino", None),
+        ("summer_school", None),
+    ]
+
+
+def canonical_public_page_url(url):
+    """Remove the internal HomePage slug from public-facing product URLs."""
+    if url == "/home-page":
+        return "/"
+    if url and url.startswith("/home-page/"):
+        return url[len("/home-page"):]
+    return url
+
+
+def _significant_product_spec_for_page(page):
+    for spec in SIGNIFICANT_PRODUCT_SPECS:
+        if page.title == spec["parent_title"]:
+            return {**spec, "parent": page}
+
+    title = page.title.lower()
+    if "heat" in title or "thermal" in title:
+        key = "heat"
+    elif "thunder" in title or "nowcast" in title:
+        key = "thunderstorm"
+    elif "hazard" in title:
+        key = "multi-hazard"
+    else:
+        key = "general"
+    return {"key": key, "parent": page}
+
+
+def get_significant_product_slides(product_pages=None):
+    slides = []
+
+    if product_pages:
+        specs = [_significant_product_spec_for_page(page.specific) for page in product_pages]
+    else:
+        specs = SIGNIFICANT_PRODUCT_SPECS
+
+    for spec in specs:
+        parent = spec.get("parent")
+        if parent:
+            if not parent.live:
+                continue
+        else:
+            parent = ProductPage.objects.live().filter(title=spec["parent_title"]).first()
+            if not parent:
+                continue
+
+        items = ProductItemPage.objects.live().child_of(parent)
+        if spec.get("title_prefix"):
+            items = items.filter(title__istartswith=spec["title_prefix"])
+
+        item = items.order_by("-date", "-first_published_at").first()
+        if not item:
+            continue
+
+        download_url = None
+        file_format = None
+        for product_block in item.products:
+            if product_block.block_type == "document_product":
+                document = product_block.value.get("document")
+                if document:
+                    download_url = document.url
+                    file_format = "PDF"
+                    break
+            elif product_block.block_type == "image_product":
+                image = product_block.value.get("image")
+                if image:
+                    download_url = image.file.url
+                    file_format = "IMAGE"
+                    break
+
+        try:
+            description = truncatechars(parent.get_meta_description() or "", 130)
+        except Exception:
+            description = ""
+
+        slides.append({
+            "key": spec["key"],
+            "display_title": parent.title,
+            "description": description,
+            "item_title": item.title,
+            "issue_date": item.date,
+            "valid_until": item.valid_until,
+            "page_url": canonical_public_page_url(item.url),
+            "download_url": download_url,
+            "file_format": file_format,
+        })
+
+    return slides
+
+
+@register_snippet
+class RegionalClimateCentre(ClusterableModel):
+    TYPE_CENTRE = "centre"
+    TYPE_NETWORK = "network"
+    TYPE_CHOICES = (
+        (TYPE_CENTRE, _("Regional Climate Centre")),
+        (TYPE_NETWORK, _("RCC Network")),
+    )
+
+    STATUS_DESIGNATED = "designated"
+    STATUS_DEMONSTRATION = "demonstration"
+    STATUS_INITIATED = "initiated"
+    STATUS_CHOICES = (
+        (STATUS_DESIGNATED, _("WMO designated")),
+        (STATUS_DEMONSTRATION, _("In demonstration")),
+        (STATUS_INITIATED, _("Initiated")),
+    )
+
+    LABEL_UPPER_RIGHT = "upper_right"
+    LABEL_LOWER_RIGHT = "lower_right"
+    LABEL_UPPER_LEFT = "upper_left"
+    LABEL_LOWER_LEFT = "lower_left"
+    LABEL_POSITION_CHOICES = (
+        (LABEL_UPPER_RIGHT, _("Upper right")),
+        (LABEL_LOWER_RIGHT, _("Lower right")),
+        (LABEL_UPPER_LEFT, _("Upper left")),
+        (LABEL_LOWER_LEFT, _("Lower left")),
+    )
+
+    display_name = models.CharField(
+        max_length=100,
+        unique=True,
+        verbose_name=_("Map label"),
+        help_text=_("Short centre name displayed beside the map marker."),
+    )
+    full_name = models.CharField(max_length=255, verbose_name=_("Full name"))
+    centre_type = models.CharField(
+        max_length=20,
+        choices=TYPE_CHOICES,
+        default=TYPE_CENTRE,
+        verbose_name=_("Entry type"),
+    )
+    city = models.CharField(max_length=100, blank=True, verbose_name=_("City"))
+    country = models.CharField(max_length=100, blank=True, verbose_name=_("Country"))
+    coverage = models.CharField(
+        max_length=180,
+        blank=True,
+        verbose_name=_("Geographical coverage"),
+        help_text=_("Especially useful for an RCC Network, for example Northern Africa."),
+    )
+    website_url = models.URLField(
+        max_length=500,
+        verbose_name=_("Website URL"),
+        help_text=_("Official website opened when the marker is selected."),
+    )
+    logo = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Logo"),
+        help_text=_("Optional official centre logo shown on the RCC directory page."),
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_DESIGNATED,
+        verbose_name=_("RCC status"),
+    )
+    map_x = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        validators=[MinValueValidator(0), MaxValueValidator(280)],
+        verbose_name=_("Horizontal map position"),
+        help_text=_("SVG horizontal coordinate from 0 (left) to 280 (right)."),
+    )
+    map_y = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        validators=[MinValueValidator(0), MaxValueValidator(270)],
+        verbose_name=_("Vertical map position"),
+        help_text=_("SVG vertical coordinate from 0 (top) to 270 (bottom)."),
+    )
+    label_position = models.CharField(
+        max_length=20,
+        choices=LABEL_POSITION_CHOICES,
+        default=LABEL_LOWER_RIGHT,
+        verbose_name=_("Label position"),
+    )
+    is_primary = models.BooleanField(
+        default=False,
+        verbose_name=_("Keep label visible"),
+        help_text=_("Keep this centre's label visible when the map is not being hovered."),
+    )
+    order = models.PositiveIntegerField(default=0, verbose_name=_("Display order"))
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_("Visible on homepage and RCC directory"),
+    )
+
+    panels = [
+        MultiFieldPanel(
+            [
+                FieldPanel("display_name"),
+                FieldPanel("full_name"),
+                FieldPanel("centre_type"),
+                FieldPanel("city"),
+                FieldPanel("country"),
+                FieldPanel("coverage"),
+                FieldPanel("website_url"),
+                FieldPanel("logo"),
+                FieldPanel("status"),
+            ],
+            heading=_("Centre information"),
+        ),
+        MultiFieldPanel(
+            [
+                FieldPanel("map_x"),
+                FieldPanel("map_y"),
+                FieldPanel("label_position"),
+                InlinePanel(
+                    "additional_map_nodes",
+                    label=_("Network node"),
+                    help_text=_("Add the other participating locations of an RCC Network."),
+                ),
+            ],
+            heading=_("Map placement"),
+        ),
+        MultiFieldPanel(
+            [FieldPanel("is_primary"), FieldPanel("order"), FieldPanel("is_active")],
+            heading=_("Homepage display"),
+        ),
+    ]
+
+    class Meta:
+        ordering = ("order", "display_name")
+        verbose_name = _("Regional Climate Centre")
+        verbose_name_plural = _("Regional Climate Centres")
+
+    def __str__(self):
+        return self.display_name
+
+    @property
+    def marker_transform(self):
+        return f"translate({self.map_x} {self.map_y})"
+
+    @property
+    def marker_title(self):
+        location = self.coverage or ", ".join(filter(None, (self.city, self.country)))
+        return f"{self.full_name} — {location}" if location else self.full_name
+
+    @property
+    def label_geometry(self):
+        geometries = {
+            self.LABEL_UPPER_RIGHT: {
+                "line_path": "M6 -2 L14 -8",
+                "text_x": "17",
+                "name_y": "-9",
+                "place_y": "-1",
+                "text_anchor": "start",
+            },
+            self.LABEL_LOWER_RIGHT: {
+                "line_path": "M5 1 L14 6",
+                "text_x": "17",
+                "name_y": "5",
+                "place_y": "13",
+                "text_anchor": "start",
+            },
+            self.LABEL_UPPER_LEFT: {
+                "line_path": "M-5 0 L-13 -7",
+                "text_x": "-16",
+                "name_y": "-8",
+                "place_y": "0",
+                "text_anchor": "end",
+            },
+            self.LABEL_LOWER_LEFT: {
+                "line_path": "M-5 1 L-12 7",
+                "text_x": "-15",
+                "name_y": "6",
+                "place_y": "14",
+                "text_anchor": "end",
+            },
+        }
+        return geometries[self.label_position]
+
+
+class RegionalClimateCentreMapNode(Orderable):
+    centre = ParentalKey(
+        RegionalClimateCentre,
+        on_delete=models.CASCADE,
+        related_name="additional_map_nodes",
+    )
+    name = models.CharField(max_length=100, blank=True, verbose_name=_("Node name"))
+    map_x = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        validators=[MinValueValidator(0), MaxValueValidator(280)],
+        verbose_name=_("Horizontal map position"),
+    )
+    map_y = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        validators=[MinValueValidator(0), MaxValueValidator(270)],
+        verbose_name=_("Vertical map position"),
+    )
+
+    panels = [FieldPanel("name"), FieldPanel("map_x"), FieldPanel("map_y")]
+
+    @property
+    def marker_transform(self):
+        return f"translate({self.map_x} {self.map_y})"
 
 if "forecastmanager" in settings.INSTALLED_APPS:
     HOME_SUBPAGE_TYPES += ['weather.WeatherDetailPage', 'cityclimate.CityClimateDataPage']
@@ -185,7 +520,86 @@ class HomePage(MetadataPageMixin, Page):
             ('custom_blurb', blocks.TextBlock(required=False, max_length=160)),
             ('icon', IconChooserBlock(required=False)),
         ], label=_("Product"))),
-    ], null=True, blank=True, use_json_field=True, max_num=3, verbose_name=_("Featured Products"))
+    ], null=True, blank=True, use_json_field=True, max_num=5, verbose_name=_("Featured Products"))
+
+    hero_featured_products = StreamField([
+        ('product', blocks.PageChooserBlock(page_type=['products.ProductPage'])),
+    ], null=True, blank=True, use_json_field=True, max_num=3,
+        verbose_name=_("Utility Navbar Products"),
+        help_text=_("Choose up to three product families for the rotating utility bar. "
+                    "Their latest published items are shown in this order. Leave empty to use the defaults."))
+
+    hero_updates_mode = models.CharField(
+        max_length=10, default="automatic",
+        choices=[("automatic", _("Automatic")), ("manual", _("Manual"))],
+        verbose_name=_("Update selection"),
+        help_text=_("Automatic uses the newest news item as the lead slide. "
+                    "Only public, published pages from this homepage are included."),
+    )
+    hero_featured_updates = StreamField([
+        ('news', blocks.PageChooserBlock(page_type=['news.NewsPage'], label=_("News"))),
+        ('event', blocks.PageChooserBlock(page_type=['events.EventPage'], label=_("Event"))),
+    ], blank=True, use_json_field=True, max_num=5,
+        verbose_name=_("Featured news and events"),
+        help_text=_("Choose up to five news or event pages. Drag the items to set their carousel order."))
+    hero_show_el_nino = models.BooleanField(
+        default=True, verbose_name=_("Show ENSO"),
+        help_text=_("Include the ENSO programme slide in the carousel."),
+    )
+    hero_show_summer_school = models.BooleanField(
+        default=True, verbose_name=_("Show Summer School"),
+        help_text=_("Include the Summer School programme slide in the carousel."),
+    )
+    show_enso_section = models.BooleanField(
+        default=True,
+        verbose_name=_("Show ENSO section"),
+        help_text=_("Show the ENSO feature section on the homepage when a live ENSO page is available."),
+    )
+
+    show_summer_school_section = models.BooleanField(
+        default=True,
+        verbose_name=_("Show Summer School section"),
+    )
+    homepage_summer_school = models.ForeignKey(
+        'summer_school.SummerSchoolPage',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        verbose_name=_("Summer School edition"),
+        help_text=_("Choose the edition featured on the homepage. Leave empty to use the latest featured edition."),
+    )
+    summer_school_section_label = models.CharField(
+        max_length=100,
+        blank=True,
+        default="Summer School",
+        verbose_name=_("Section label"),
+    )
+    summer_school_section_title = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_("Section title override"),
+        help_text=_("Leave empty to use the selected edition's heading."),
+    )
+    summer_school_section_description = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Section description"),
+    )
+    summer_school_section_image = models.ForeignKey(
+        'wagtailimages.Image',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        verbose_name=_("Section image override"),
+    )
+    summer_school_section_button_text = models.CharField(
+        max_length=60,
+        blank=True,
+        default="Learn more",
+        verbose_name=_("Button text"),
+    )
 
     services_strip = StreamField([
         ('item', blocks.StructBlock([
@@ -197,6 +611,40 @@ class HomePage(MetadataPageMixin, Page):
         ], label=_("Item"))),
     ], null=True, blank=True, use_json_field=True, max_num=5, verbose_name=_("Services Strip"),
         help_text=_("Compact link strip below the cards. Leave empty to derive from Service pages."))
+
+    show_dg_message = models.BooleanField(
+        default=True,
+        verbose_name=_("Show DG/CEO message section"),
+    )
+    dg_message_heading = models.CharField(
+        max_length=120,
+        default="DG/CEO's message",
+        verbose_name=_("Section heading"),
+    )
+    dg_message = RichTextField(
+        features=SUMMARY_RICHTEXT_FEATURES,
+        default=(
+            "Across Africa, climate information becomes most valuable when it reaches people in time to guide action. "
+            "ACMAD is committed to turning science, regional cooperation and innovation into trusted services that help "
+            "institutions and communities anticipate risk and build lasting resilience."
+        ),
+        verbose_name=_("Message"),
+    )
+    dg_message_closing = models.CharField(
+        max_length=200,
+        blank=True,
+        default="Science in service of people, partnerships and preparedness.",
+        verbose_name=_("Closing statement"),
+    )
+    dg_message_staff_member = models.ForeignKey(
+        StaffMember,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("DG/CEO staff member"),
+        help_text=_("Select the staff profile whose name, title and photograph should appear with the message."),
+    )
 
     youtube_playlist = models.ForeignKey(
         YoutubePlaylist,
@@ -256,8 +704,35 @@ class HomePage(MetadataPageMixin, Page):
             FieldPanel('featured_products'),
         ], heading=_("Featured Products")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
         MultiFieldPanel([
+            FieldPanel('hero_featured_products'),
+        ], heading=_("Utility Navbar Products")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
+        MultiFieldPanel([
+            FieldPanel('hero_updates_mode'),
+            FieldPanel('hero_featured_updates'),
+            FieldPanel('hero_show_el_nino'),
+            FieldPanel('hero_show_summer_school'),
+        ], heading=_("Hero Carousel")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
+        MultiFieldPanel([
+            FieldPanel('show_enso_section'),
+        ], heading=_("ENSO Section")),
+        MultiFieldPanel([
+            FieldPanel('show_summer_school_section'),
+            PageChooserPanel('homepage_summer_school', 'summer_school.SummerSchoolPage'),
+            FieldPanel('summer_school_section_label'),
+            FieldPanel('summer_school_section_title'),
+            FieldPanel('summer_school_section_description'),
+            FieldPanel('summer_school_section_image'),
+            FieldPanel('summer_school_section_button_text'),
+        ], heading=_("Summer School Homepage Section")),
+        MultiFieldPanel([
             FieldPanel('services_strip'),
         ], heading=_("Services Strip")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
+        MultiFieldPanel([
+            FieldPanel('show_dg_message'),
+            FieldPanel('dg_message_heading'),
+            FieldPanel('dg_message'),
+            FieldPanel('dg_message_staff_member'),
+        ], heading=_("DG/CEO Message")),
         MultiFieldPanel([
             FieldPanel('youtube_playlist'),
         ], heading=_("Media Section")),
@@ -441,7 +916,195 @@ class HomePage(MetadataPageMixin, Page):
             })
         
         context['IS_METEOROLOGICAL'] = settings.IS_METEOROLOGICAL
+        selected_dg = self.dg_message_staff_member
+        context["dg_staff_member"] = (selected_dg if selected_dg and selected_dg.is_current_staff else None) or StaffMember.objects.exclude(
+            employment__status__in=["retired", "left"]
+        ).filter(
+            models.Q(role__icontains="Director General")
+            | models.Q(name__icontains="Ousmane Ndiaye")
+        ).select_related("photo").first()
+        from climweb.pages.organisation_pages.board.models import DirectorGeneralPage
+
+        context["director_general_page"] = DirectorGeneralPage.objects.live().public().descendant_of(
+            self
+        ).filter(locale_id=self.locale_id).first()
+        context["regional_climate_centres"] = RegionalClimateCentre.objects.filter(
+            is_active=True
+        ).prefetch_related("additional_map_nodes")
+        context["rcc_directory_page"] = Page.objects.live().descendant_of(self).filter(
+            title__iexact="Regional Climate Centres",
+            locale_id=self.locale_id,
+        ).first()
+        if settings.IS_METEOROLOGICAL:
+            context["hero_updates"] = self.get_hero_updates(request)
+        context["enso_homepage"] = self.get_enso_homepage_feature(request)
         return context
+
+    def get_enso_homepage_feature(self, request=None):
+        """Build the homepage ENSO feature from the live ENSO landing page."""
+        if not self.show_enso_section:
+            return None
+
+        enso_page = ElNinoPage.objects.live().public().descendant_of(self).filter(
+            locale_id=self.locale_id,
+        ).first()
+        if not enso_page:
+            return None
+
+        page_url = enso_page.get_url(request=request)
+        if not page_url:
+            return None
+
+        latest_bulletin = ProductItemPage.objects.live().public().child_of(enso_page).order_by(
+            "-date", "-first_published_at",
+        ).first()
+        bulletin_url = latest_bulletin.get_url(request=request) if latest_bulletin else None
+        if latest_bulletin:
+            for product_block in latest_bulletin.products:
+                if product_block.block_type == "document_product":
+                    document = product_block.value.get("document")
+                    if document:
+                        bulletin_url = document.url
+                        break
+
+        summary = _(
+            "ENSO is a recurring interaction between the tropical Pacific Ocean and the atmosphere. "
+            "Its El Niño, La Niña and neutral phases can shift rainfall and temperature patterns across "
+            "Africa, influencing water, agriculture, health, energy and disaster preparedness."
+        )
+        return {
+            "page": enso_page,
+            "url": canonical_public_page_url(page_url),
+            "image": (
+                enso_page.explainer_image
+                or enso_page.introduction_image
+                or enso_page.get_meta_image()
+            ),
+            "summary": summary,
+            "latest_bulletin": latest_bulletin,
+            "bulletin_url": canonical_public_page_url(bulletin_url),
+        }
+
+    def get_hero_updates(self, request=None):
+        """Build the selected updates followed by the enabled programme slides."""
+        now = timezone.now()
+        news = NewsPage.objects.live().public().descendant_of(self).filter(
+            locale_id=self.locale_id, date__lte=now,
+        )
+        events = EventPage.objects.live().public().descendant_of(self).filter(locale_id=self.locale_id)
+        if self.hero_updates_mode == "manual":
+            pages = []
+            for index, block in enumerate(self.hero_featured_updates):
+                queryset = news if block.block_type == "news" else events
+                selected = queryset.filter(pk=block.value.pk).first()
+                if selected:
+                    pages.append((f"update_{index}", selected))
+        else:
+            latest_news = news.order_by("-date", "-pk").first()
+            pages = [("news", latest_news)] if latest_news else []
+
+        slides_by_kind = {}
+        for slot, item in pages:
+            is_event = isinstance(item, EventPage)
+            url = item.get_url(request=request)
+            if not url:
+                continue
+            kind = "event" if is_event else "news"
+            slides_by_kind[slot] = {
+                "id": item.pk,
+                "title": item.title,
+                "kind": kind,
+                "badge": _("Event") if is_event else _("Latest news"),
+                "cta_label": _("View event") if is_event else _("Read more"),
+                "date": item.date_from if is_event else item.date,
+                "end_date": item.date_to if is_event else None,
+                "image": item.get_meta_image(),
+                "url": canonical_public_page_url(url),
+            }
+
+        el_nino_page = None
+        if self.hero_show_el_nino:
+            el_nino_page = ElNinoPage.objects.live().public().descendant_of(self).filter(
+                locale_id=self.locale_id,
+            ).first()
+        if el_nino_page:
+            latest_bulletin = ProductItemPage.objects.live().public().child_of(el_nino_page).order_by(
+                "-date", "-first_published_at",
+            ).first()
+            page_url = el_nino_page.get_url(request=request)
+            if page_url:
+                bulletin_url = latest_bulletin.get_url(request=request) if latest_bulletin else page_url
+                if latest_bulletin:
+                    for product_block in latest_bulletin.products:
+                        if product_block.block_type == "document_product":
+                            document = product_block.value.get("document")
+                            if document:
+                                bulletin_url = document.url
+                                break
+                slides_by_kind["el_nino"] = {
+                    "id": f"el-nino-{el_nino_page.pk}",
+                    "title": _("El-nino Special Bulletin"),
+                    "kind": "el_nino",
+                    "badge": _("ENSO"),
+                    "cta_label": _("View Bulletin"),
+                    "date": latest_bulletin.date if latest_bulletin else None,
+                    "end_date": None,
+                    "image": (
+                        latest_bulletin.products_listing_image if latest_bulletin else None
+                    ) or (
+                        el_nino_page.explainer_image
+                        or el_nino_page.introduction_image
+                        or el_nino_page.get_meta_image()
+                    ),
+                    "image_alt": _("El Niño bulletin for Africa"),
+                    "url": canonical_public_page_url(page_url),
+                    "cta_url": canonical_public_page_url(bulletin_url),
+                }
+
+        summer_school_index = None
+        if self.hero_show_summer_school:
+            summer_school_index = SummerSchoolIndexPage.objects.live().public().descendant_of(self).filter(
+                locale_id=self.locale_id,
+            ).first()
+        if summer_school_index:
+            featured_edition = SummerSchoolPage.objects.live().public().child_of(
+                summer_school_index,
+            ).order_by("-featured", "-edition_start_date", "-pk").first()
+            page_url = summer_school_index.get_url(request=request)
+            if page_url:
+                slides_by_kind["summer_school"] = {
+                    "id": f"summer-school-{summer_school_index.pk}",
+                    "title": (
+                        featured_edition.hero_heading if featured_edition
+                        else summer_school_index.hero_heading or summer_school_index.title
+                    ),
+                    "kind": "summer_school",
+                    "badge": _("Summer School"),
+                    "cta_label": (
+                        featured_edition.online_meeting_button_text
+                        if featured_edition and featured_edition.online_meeting_url
+                        else _("Explore Summer School")
+                    ),
+                    "date": featured_edition.edition_start_date if featured_edition else None,
+                    "end_date": None,
+                    "image": (
+                        featured_edition.featured_display_image if featured_edition else None
+                    ) or summer_school_index.get_meta_image(),
+                    "url": canonical_public_page_url(page_url),
+                    "cta_url": (
+                        featured_edition.online_meeting_url
+                        if featured_edition and featured_edition.online_meeting_url
+                        else "https://summerschool.acmad.org/"
+                    ),
+                }
+
+        if self.hero_updates_mode == "manual":
+            order = [slot for slot, _item in pages]
+            order.extend(["el_nino", "summer_school"])
+        else:
+            order = ["news", "el_nino", "summer_school"]
+
+        return [slides_by_kind[kind] for kind in order if kind in slides_by_kind]
 
     @cached_property
     def partners(self):
@@ -451,35 +1114,20 @@ class HomePage(MetadataPageMixin, Page):
     
     @cached_property
     def latest_updates(self):
-        updates = []
-        
-        # get latest news, publication, crop monitor, seasonal forecast, food security statement,
-        news = NewsPage.objects.live().filter(is_visible_on_homepage=True).order_by('-date').first()
-        events = EventPage.objects.live().filter(is_visible_on_homepage=True).order_by('-date_from').first()
-        
-        if events is None:
-            events = EventPage.objects.live().order_by('-date_from').first()
-        
-        if news is None:
-            news = NewsPage.objects.live().order_by('-date').first()
-        
-        publications = PublicationPage.objects.live().filter(is_visible_on_homepage=True).order_by(
-            '-publication_date').first()
-        
-        if publications is None:
-            publications = PublicationPage.objects.live().order_by('-publication_date').first()
-        
-        # featured summer school edition takes priority over news/events/publications
-        if self.featured_summer_school:
-            updates.append(self.featured_summer_school)
-        if news:
-            updates.append(news)
-        if events:
-            updates.append(events)
-        if publications:
-            updates.append(publications)
-
-        return updates
+        news = list(
+            NewsPage.objects.live().public().descendant_of(self).order_by('-date', '-pk')[:6]
+        )
+        events = list(
+            EventPage.objects.live().public().descendant_of(self).filter(
+                is_hidden=False
+            ).order_by('-date_from', '-pk')[:6]
+        )
+        updates = news + events
+        updates.sort(
+            key=lambda item: item.date if isinstance(item, NewsPage) else item.date_from,
+            reverse=True,
+        )
+        return updates[:6]
     
     @cached_property
     def services(self):
@@ -488,6 +1136,10 @@ class HomePage(MetadataPageMixin, Page):
 
     @cached_property
     def featured_summer_school(self):
+        if not self.show_summer_school_section:
+            return None
+        if self.homepage_summer_school_id and self.homepage_summer_school.live:
+            return self.homepage_summer_school
         # editors opt an edition into this via the "Featured" + "Is visible on
         # homepage" checkboxes on the SummerSchoolPage itself; most recent
         # edition wins if more than one is marked
@@ -584,11 +1236,11 @@ class HomePage(MetadataPageMixin, Page):
         Products for the homepage Featured Products card.
 
         Manual picks from the featured_products StreamField come first because
-        editors curated their order. Products flagged with is_featured_on_homepage
-        then fill any remaining slots, so the card stays populated even when
-        no manual curation was done. Capped at 3 to fit the card layout.
+        editors curated their order, but the ProductPage feature checkbox remains
+        the source of truth. Products flagged with is_featured_on_homepage then
+        fill any remaining slots. Capped at 5 to fit the card layout.
         """
-        max_items = 3
+        max_items = 5
         items: list[dict] = []
         seen_page_ids: set[int] = set()
 
@@ -633,6 +1285,11 @@ class HomePage(MetadataPageMixin, Page):
                     logger.warning("Failed to resolve featured product page for homepage %s", self.pk,
                                    exc_info=True)
                     continue
+                # A page may remain in this legacy manual list after an editor
+                # turns off its homepage feature checkbox. Respect the checkbox
+                # so unselecting a product always removes it from the homepage.
+                if not page.is_featured_on_homepage:
+                    continue
                 if page.pk in seen_page_ids:
                     continue
                 seen_page_ids.add(page.pk)
@@ -643,11 +1300,17 @@ class HomePage(MetadataPageMixin, Page):
                     icon=value.get("icon"),
                 ))
 
-        # 2. Fill remaining slots with flagged products, ordered by tree path
-        #    for a stable, predictable order.
+        # 2. Fill remaining slots with flagged products. Editors can control
+        #    their homepage order on each ProductPage; products without an
+        #    explicit order follow afterwards in stable tree order.
         if len(items) < max_items:
             try:
-                flagged = ProductPage.objects.live().filter(is_featured_on_homepage=True).order_by("path")
+                flagged = ProductPage.objects.live().filter(
+                    is_featured_on_homepage=True
+                ).order_by(
+                    models.F("homepage_feature_order").asc(nulls_last=True),
+                    "path",
+                )
                 for page in flagged:
                     if len(items) >= max_items:
                         break

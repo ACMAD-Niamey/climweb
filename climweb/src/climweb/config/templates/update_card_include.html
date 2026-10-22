@@ -1,6 +1,6 @@
 {% load wagtailcore_tags wagtailimages_tags lazyimages_tags wagtailiconchooser_tags i18n %}
 
-<div class="card update-card h-100">
+<div class="card update-card{% if not card.card_image %} update-card--no-image{% endif %} h-100">
 
   {% if card.card_image %}
   <div class="card-image">

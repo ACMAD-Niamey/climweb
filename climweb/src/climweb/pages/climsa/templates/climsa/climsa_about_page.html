@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load i18n static wagtailcore_tags wagtailimages_tags %}
+
+{% block body_class %}climsa-about-page{% endblock %}
+
+{% block content %}
+<main class="climsa-main">
+  {% static 'climsa/images/climsa-climate-services-hero.png' as default_climsa_hero %}
+  {% if page.hero_image %}
+    {% image page.hero_image width-1800 as climsa_hero_background %}
+  {% endif %}
+  <section class="climsa-hero climsa-hero--inner" style="--climsa-hero-image: url('{% if climsa_hero_background %}{{ climsa_hero_background.url }}{% else %}{{ default_climsa_hero }}{% endif %}');">
+    <div class="container climsa-hero__layout">
+      <div class="climsa-hero__content">
+        <h1>{{ page.title }}</h1>
+      </div>
+    </div>
+  </section>
+
+  <section class="climsa-section climsa-about-overview">
+    <div class="container climsa-about-overview__layout">
+      <div class="climsa-about-overview__copy">
+        <h2>{{ page.introduction_heading }}</h2>
+        <div class="climsa-richtext">{{ page.introduction|richtext }}</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="climsa-section climsa-programme-results">
+    <div class="container climsa-programme-results__layout">
+      {% if page.factsheet_url %}
+        <aside class="climsa-factsheet-card">
+          <span class="climsa-factsheet-card__label">{% translate "Programme resource" %}</span>
+          <h2>{{ page.factsheet_heading }}</h2>
+          {% if page.factsheet_description %}<p>{{ page.factsheet_description }}</p>{% endif %}
+          <a class="climsa-button climsa-button--primary" href="{{ page.factsheet_url }}" target="_blank" rel="noopener noreferrer">
+            {% translate "Download factsheet" %} <span aria-hidden="true">↗</span>
+          </a>
+        </aside>
+      {% endif %}
+
+      <div class="climsa-programme-results__outputs">
+        <div class="climsa-section-heading">
+          <h2>{{ page.outputs_heading }}</h2>
+        </div>
+        <div class="climsa-about-output-grid">
+          {% for block in page.outputs %}
+            {% with output=block.value %}
+              <article class="climsa-about-output">
+                <span class="climsa-about-output__number">{{ output.number }}</span>
+                <h3>{{ output.description }}</h3>
+              </article>
+            {% endwith %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+{% endblock %}

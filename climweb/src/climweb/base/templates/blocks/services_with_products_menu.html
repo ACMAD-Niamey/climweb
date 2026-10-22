@@ -1,4 +1,4 @@
-{% load wagtailimages_tags lazyimages_tags wagtailiconchooser_tags %}
+{% load wagtailcore_tags wagtailimages_tags lazyimages_tags wagtailiconchooser_tags nmhs_cms_tags %}
 
 <div class="svc-menu">
   {% for sub_page in value.page.get_children %}
@@ -7,7 +7,7 @@
       <div class="svc-menu-col">
 
         <!-- SERVICE HEADER -->
-        <a class="svc-menu-hdr" href="{{ sub_page.url }}">
+        <a class="svc-menu-hdr" href="{{ sub_page|public_page_url }}">
           <div class="svc-menu-icon">
             {% if service_page.nav_menu_icon %}
               {% svg_icon service_page.nav_menu_icon %}
@@ -27,7 +27,7 @@
           <div class="svc-menu-products">
             {% for product_page in service_page.core_products %}
               {% if product_page.show_in_menus %}
-                <a class="svc-menu-product" href="{{ product_page.url }}">
+                <a class="svc-menu-product" href="{{ product_page|public_page_url }}">
                   {{ product_page.title }}
                 </a>
               {% endif %}
@@ -41,7 +41,7 @@
             {% for flex_page in service_page.flex_pages %}
               {% if flex_page.show_in_menus %}
                 <a class="svc-menu-product svc-menu-product--flex"
-                   href="{{ flex_page.url }}">
+                   href="{{ flex_page|public_page_url }}">
                   {{ flex_page.title }}
                 </a>
               {% endif %}

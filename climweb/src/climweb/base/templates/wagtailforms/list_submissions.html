@@ -11,6 +11,20 @@
             </a>
         </p>
     {% endif %}
+    <p>
+        {# Background export: builds a zip (Excel + CSV + the uploaded files #}
+        {# themselves) and emails a download link when ready - see #}
+        {# request_submission_export_view in climweb/base/views.py. The inline #}
+        {# CSV/XLSX export buttons above (Wagtail's own) still work for small #}
+        {# forms, but time out / error on forms with many submissions and file #}
+        {# uploads. #}
+        <form method="post" action="{% url 'request_submission_export' form_page.id %}" style="display:inline">
+            {% csrf_token %}
+            <button type="submit" class="button button-small button-secondary">
+                {% translate "Request full export (zip, emailed when ready)" %}
+            </button>
+        </form>
+    </p>
     <form class="w-overflow-auto" data-controller="w-bulk" data-w-bulk-action-inactive-class="w-invisible" action="{% url 'wagtailforms:delete_submissions' form_page.id %}" method="get">
         <input type="hidden" value="{{ next_url }}" name="next">
         <table class="listing">

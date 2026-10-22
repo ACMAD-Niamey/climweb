@@ -56,10 +56,23 @@
                 <a href="{{ edition.url }}" class="ss-index-featured-btn is-secondary">
                     {% translate "View details" %}
                 </a>
-                {% if edition.application_open and edition.application_page and edition.application_page.live %}
-                    <a href="{{ edition.application_page.url }}" class="ss-index-featured-btn is-primary">
-                        {{ edition.apply_button_text }}
-                    </a>
+                {% if edition.application_page %}
+                    {% if edition.application_open and edition.application_page.live and not edition.application_page.is_closed %}
+                        <a href="{{ edition.application_page.url }}" class="ss-index-featured-btn is-primary">
+                            {{ edition.apply_button_text }}
+                        </a>
+                    {% elif edition.online_meeting_url %}
+                        <a href="{{ edition.online_meeting_url }}"
+                           class="ss-index-featured-btn is-primary"
+                           target="_blank"
+                           rel="noopener noreferrer">
+                            {{ edition.online_meeting_button_text }}
+                        </a>
+                    {% elif not edition.application_open or edition.application_page.is_closed %}
+                        <span class="ss-index-featured-btn is-closed">
+                            {% translate "Applications closed" %}
+                        </span>
+                    {% endif %}
                 {% endif %}
             </div>
         </div>

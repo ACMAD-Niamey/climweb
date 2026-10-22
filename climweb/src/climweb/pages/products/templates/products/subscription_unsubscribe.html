@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<main class="section">
+    <div class="container" style="max-width: 760px">
+        <h1 class="title">{% translate "Unsubscribe from product notifications" %}</h1>
+        <p class="mb-5">{% blocktranslate with email=subscriber.email %}Stop all ACMAD product notifications for {{ email }}?{% endblocktranslate %}</p>
+        <form method="post">
+            {% csrf_token %}
+            <button class="button is-danger" type="submit">{% translate "Unsubscribe" %}</button>
+        </form>
+    </div>
+</main>
+{% endblock %}

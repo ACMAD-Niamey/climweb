@@ -1,0 +1,69 @@
+{% load i18n wagtailcore_tags wagtailimages_tags %}
+
+<div class="met-services-directory" data-met-services-directory>
+    <div class="container">
+        {% if value.show_search %}
+            <div class="met-services-tools">
+                <label class="met-services-search">
+                    <span class="is-sr-only">{% translate "Search meteorological services" %}</span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="11" cy="11" r="7"></circle>
+                        <path d="m20 20-4-4"></path>
+                    </svg>
+                    <input type="search"
+                           placeholder="{% translate 'Search by country or service name' %}"
+                           data-met-services-search>
+                </label>
+                <p class="met-services-count" aria-live="polite">
+                    <strong data-met-services-count>{{ met_services|length }}</strong>
+                    {% translate "services" %}
+                </p>
+            </div>
+        {% endif %}
+
+        <div class="met-services-grid" data-met-services-grid>
+            {% for met_service in met_services %}
+                <a class="met-service-card"
+                   href="{{ met_service.website_url }}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   data-met-service-card
+                   data-search-text="{{ met_service.country|lower }} {{ met_service.name|lower }} {{ met_service.acronym|lower }}">
+                    <div class="met-service-logo">
+                        {% if met_service.logo %}
+                            {% image met_service.logo max-320x180 as service_logo %}
+                            <img src="{{ service_logo.url }}" alt="{{ met_service.name }} {% translate 'logo' %}">
+                        {% elif met_service.logo_source_url %}
+                            <img src="{{ met_service.logo_source_url }}"
+                                 alt="{{ met_service.name }} {% translate 'logo' %}"
+                                 loading="lazy">
+                        {% else %}
+                            <span aria-hidden="true">{{ met_service.country|slice:":2"|upper }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="met-service-content">
+                        <p class="met-service-country">{{ met_service.country }}</p>
+                        <h3>{{ met_service.name }}</h3>
+                        {% if met_service.acronym %}<p class="met-service-acronym">{{ met_service.acronym }}</p>{% endif %}
+                    </div>
+                    <span class="met-service-link-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M7 17 17 7"></path>
+                            <path d="M8 7h9v9"></path>
+                        </svg>
+                    </span>
+                </a>
+            {% empty %}
+                <div class="met-services-empty">
+                    <h3>{% translate "No meteorological services have been added yet." %}</h3>
+                    <p>{% translate "Add services from Snippets → Meteorological Services in the dashboard." %}</p>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="met-services-no-results" data-met-services-empty hidden>
+            <h3>{% translate "No matching services" %}</h3>
+            <p>{% translate "Try another country, organisation name or acronym." %}</p>
+        </div>
+    </div>
+</div>

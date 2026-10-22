@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% load static i18n wagtailcore_tags wagtailimages_tags nmhs_cms_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/services_rcc.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_long_range_forecasting.css' %}?v=2">
+{% endblock %}
+
+{% block body_class %}rcc-service-page rcc-long-range-page{% endblock %}
+
+{% block content %}
+<main>
+    {% if page.banner_image %}
+        {% include "hero.html" with page=page %}
+    {% else %}
+        <section class="page-hero rcc-simple-hero">
+            <div class="page-hero-overlay"></div>
+            <div class="page-hero-body"><div class="container">
+                <span class="page-hero-badge">{% translate "RCC climate function" %}</span>
+                <h1 class="page-hero-title">{{ page.banner_title|default:page.title }}</h1>
+                {% if page.banner_subtitle %}<p class="page-hero-subtitle">{{ page.banner_subtitle }}</p>{% endif %}
+            </div></div>
+        </section>
+    {% endif %}
+
+    <section class="rcc-lrf-overview">
+        <div class="container">
+            <div class="rcc-lrf-overview__grid">
+                <div>
+                    <p class="rcc-eyebrow">{% translate "Long-range forecasting function" %}</p>
+                    <h2>{{ page.introduction_title }}</h2>
+                    <div class="format-text">{{ page.introduction_text|richtext }}</div>
+                </div>
+                <aside class="rcc-lrf-process" aria-label="{% translate 'Forecast production process' %}">
+                    <div><span>01</span><strong>{% translate "Collect" %}</strong><p>{% translate "Global ensemble and multimodel guidance" %}</p></div>
+                    <div><span>02</span><strong>{% translate "Assess" %}</strong><p>{% translate "Model performance and forecast quality" %}</p></div>
+                    <div><span>03</span><strong>{% translate "Consolidate" %}</strong><p>{% translate "Regional and sub-regional outlooks" %}</p></div>
+                    <div><span>04</span><strong>{% translate "Communicate" %}</strong><p>{% translate "Maps, bulletins and consensus guidance" %}</p></div>
+                </aside>
+            </div>
+        </div>
+    </section>
+
+    <section class="rcc-lrf-products rcc-lrf-section">
+        <div class="container">
+            <header class="rcc-lrf-heading">
+                <div><p class="rcc-eyebrow">{% translate "Operational outlooks" %}</p><h2>{% translate "Seasonal forecast products" %}</h2></div>
+                <p>{% translate "Explore locally managed maps and documents covering the forecast, its interpretation and agreed regional guidance." %}</p>
+            </header>
+            <div class="rcc-lrf-product-grid">
+                {% for item in outlook_products %}
+                    <article class="rcc-lrf-product-card rcc-lrf-product-card--{{ item.key }}">
+                        <div class="rcc-lrf-product-card__meta"><span>0{{ forloop.counter }}</span><b>{{ item.label }}</b></div>
+                        <h3>{% if item.gallery_url %}<a href="{{ item.gallery_url }}">{{ item.title }}</a>{% elif item.page %}<a href="{{ item.page|public_page_url }}">{{ item.title }}</a>{% else %}{{ item.title }}{% endif %}</h3>
+                        <p>{{ item.summary }}</p>
+                        {% if item.topics %}
+                            <ul class="rcc-lrf-card-topics">
+                                {% for topic in item.topics %}<li>{{ topic }}</li>{% endfor %}
+                            </ul>
+                        {% endif %}
+                        <footer>
+                            <span>{% blocktranslate count count=item.count %}{{ count }} item{% plural %}{{ count }} items{% endblocktranslate %}</span>
+                            {% if item.gallery_url %}<a href="{{ item.gallery_url }}">{% if item.key == "statements" %}{% translate "Explore forums" %}{% else %}{% translate "Explore maps" %}{% endif %} &#8594;</a>{% elif item.page %}<a href="{{ item.page|public_page_url }}">{% translate "Open archive" %} &#8594;</a>{% endif %}
+                        </footer>
+                    </article>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="rcc-lrf-assessment rcc-lrf-section">
+        <div class="container">
+            <header class="rcc-lrf-heading">
+                <div><p class="rcc-eyebrow">{% translate "Forecast quality" %}</p><h2>{% translate "Performance and verification" %}</h2></div>
+                <p>{% translate "Review model behaviour and compare issued seasonal outlooks with observed climate conditions." %}</p>
+            </header>
+            <div class="rcc-lrf-assessment__grid">
+                {% for item in assessment_products %}
+                    <article class="rcc-lrf-assessment-card">
+                        <span>{{ item.label }}</span>
+                        <h3>{% if item.gallery_url %}<a href="{{ item.gallery_url }}">{{ item.title }}</a>{% elif item.page %}<a href="{{ item.page|public_page_url }}">{{ item.title }}</a>{% else %}{{ item.title }}{% endif %}</h3>
+                        <p>{{ item.summary }}</p>
+                        {% if item.topics %}
+                            <ul class="rcc-lrf-card-topics rcc-lrf-card-topics--dark">
+                                {% for topic in item.topics %}<li>{{ topic }}</li>{% endfor %}
+                            </ul>
+                        {% endif %}
+                        <footer>
+                            {% if item.latest %}<small>{% translate "Latest" %}: {{ item.latest.date|date:"j M Y" }}</small>{% else %}<small>{% translate "Archive being prepared" %}</small>{% endif %}
+                            {% if item.gallery_url %}<a href="{{ item.gallery_url }}">{% translate "Explore maps and graphs" %} &#8599;</a>{% elif item.page %}<a href="{{ item.page|public_page_url }}">{% translate "View assessment" %} &#8599;</a>{% endif %}
+                        </footer>
+                    </article>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="rcc-lrf-forums rcc-lrf-section">
+        <div class="container">
+            <div class="rcc-lrf-forums__panel">
+                <div>
+                    <p class="rcc-eyebrow">{% translate "Regional collaboration" %}</p>
+                    <h2>{% translate "Climate Outlook Forums" %}</h2>
+                    <p>{% translate "Consensus products bring together ACMAD, African climate centres, National Meteorological and Hydrological Services and global producing centres." %}</p>
+                </div>
+                <div class="rcc-lrf-forums__list" aria-label="{% translate 'Regional Climate Outlook Forums' %}">
+                    {% for forum in outlook_forums %}<a href="{{ forum.url }}"><strong>{{ forum.forum_code }}</strong><span>{{ forum.region }}</span></a>{% endfor %}
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+{% endblock %}

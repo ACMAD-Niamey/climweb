@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load static i18n %}
+
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static 'css/rcc_data_services.css' %}">
+<link rel="stylesheet" type="text/css" href="{% static 'css/rcc_ein15_archive.css' %}">
+{% endblock %}
+{% block body_class %}rcc-data-services-page{% endblock %}
+
+{% block content %}
+<main>
+    <section class="page-hero rcc-ds-simple-hero rcc-dataset-hero">
+        <div class="page-hero-overlay"></div>
+        <div class="page-hero-body"><div class="container">
+            <span class="page-hero-badge">{% translate "RCC model archive" %}</span>
+            <h1 class="page-hero-title">{% translate "EIN15 regional model output" %}</h1>
+            <p class="page-hero-subtitle">{% translate "Explore locally hosted files from ACMAD’s archived regional simulation." %}</p>
+        </div></div>
+    </section>
+
+    <nav class="rcc-ds-nav" aria-label="{% translate 'Archive navigation' %}"><div class="container">
+        {% if data_services_page %}<a href="{{ data_services_page.url }}">{% translate "Data Services" %}</a>{% endif %}
+        <a href="#files">{% translate "Available files" %}</a>
+    </div></nav>
+
+    <section id="files" class="rcc-dataset-section rcc-ein15-archive"><div class="container">
+        <div class="rcc-ein15-archive__heading">
+            <div>
+                <p class="rcc-ds-eyebrow">{% translate "NetCDF archive" %}</p>
+                <h2>{% translate "Available model files" %}</h2>
+            </div>
+            <p>{% blocktranslate count count=total_files %}{{ count }} file hosted{% plural %}{{ count }} files hosted{% endblocktranslate %}</p>
+        </div>
+        <p class="rcc-ein15-archive__intro">{% translate "Only files already copied into RCC storage appear here. The timestamps shown come from filenames; the simulation’s full time coverage and variables have not yet been audited." %}</p>
+
+        <form class="rcc-ein15-archive__filters" method="get" aria-label="{% translate 'Filter model files' %}">
+            <div>
+                <label for="ein15-type">{% translate "File group" %}</label>
+                <select id="ein15-type" name="type">
+                    <option value="">{% translate "All groups" %}</option>
+                    {% for family in families %}<option value="{{ family }}" {% if selected_family == family %}selected{% endif %}>{{ family }}</option>{% endfor %}
+                </select>
+            </div>
+            <button type="submit">{% translate "Apply filter" %}</button>
+            {% if selected_family %}<a href="{% url 'rcc_ein15_archive' %}">{% translate "Clear" %}</a>{% endif %}
+        </form>
+
+        {% if cards %}
+            <div class="rcc-ein15-archive__grid">
+                {% for card in cards %}
+                    <article class="rcc-ein15-file">
+                        <div class="rcc-ein15-file__top">
+                            <span class="rcc-ein15-file__icon" aria-hidden="true">NC</span>
+                            <span class="rcc-ein15-file__group">{{ card.family }}</span>
+                        </div>
+                        <h3>{{ card.asset.filename }}</h3>
+                        <dl>
+                            <div><dt>{% translate "Filename timestamp" %}</dt><dd>{{ card.timestamp }}</dd></div>
+                            <div><dt>{% translate "File size" %}</dt><dd>{{ card.asset.size_bytes|filesizeformat }}</dd></div>
+                            <div><dt>{% translate "Last synchronized" %}</dt><dd>{{ card.asset.synced_at|date:"d M Y" }}</dd></div>
+                        </dl>
+                        <a class="rcc-ein15-file__download" href="{% url 'rcc_ein15_file' card.asset.pk %}">{% translate "Download NetCDF" %} <span aria-hidden="true">&#8595;</span></a>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="rcc-ein15-archive__empty">
+                <h3>{% if total_files %}{% translate "No files match this group" %}{% else %}{% translate "Files are being prepared" %}{% endif %}</h3>
+                <p>{% if total_files %}{% translate "Choose another group to see the locally hosted files." %}{% else %}{% translate "Validated EIN15 files will appear here after import." %}{% endif %}</p>
+                {% if total_files %}<a href="{% url 'rcc_ein15_archive' %}">{% translate "Show all files" %}</a>{% endif %}
+            </div>
+        {% endif %}
+    </div></section>
+</main>
+{% endblock %}

@@ -5,6 +5,7 @@
 *.csv
 __pycache__/
 local_settings.py
+local.py
 db.sqlite3
 db.sqlite3-journal
 media
@@ -184,9 +185,13 @@ dump.rdb
 docker/volumes
 climweb/src/climweb/static
 climweb/src/climweb/media
+climweb/src/climweb/private_staff_reports/
 .env.local
 .env.dev
 .claude/settings.local.json
+
+# Local credential files; never commit service-account private keys.
+secrets/
 
 backup/
 .vscode/
@@ -206,3 +211,15 @@ share/
 pyvenv.cfg
 *.dylib
 include/
+
+# Dev-only Docker Compose override and paired nginx config.
+# These enable live static-file serving without collectstatic and must
+# never be committed or deployed to production.
+docker-compose.override.yml
+deploy/nginx/nginx.dev.livereload.conf
+
+# The generic `parts/` rule above (a buildout artefact from the base Python
+# .gitignore) otherwise hides our wagtail-metadata template override, whose
+# path is fixed by the package as wagtailmetadata/parts/tags.html.
+!climweb/src/climweb/config/templates/wagtailmetadata/parts/
+!climweb/src/climweb/config/templates/wagtailmetadata/parts/tags.html

@@ -1,0 +1,10 @@
+{% load i18n %}
+{% if member.website or member.linkedin or member.github or member.publications or member.registered_email %}
+<div class="staff-profile-links" role="group" aria-label="{% translate 'Contact and professional links' %}">
+    {% if member.website %}<a href="{{ member.website }}" target="_blank" rel="noopener noreferrer" aria-label="{% translate 'Website' %} — {{ member.name }}" title="{% translate 'Website' %}">{% include "staff/includes/social_icon.html" with icon="website" only %}</a>{% endif %}
+    {% if member.linkedin %}<a href="{{ member.linkedin }}" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn — {{ member.name }}" title="LinkedIn">{% include "staff/includes/social_icon.html" with icon="linkedin" only %}</a>{% endif %}
+    {% if member.github %}<a href="{{ member.github }}" target="_blank" rel="noopener noreferrer" aria-label="GitHub — {{ member.name }}" title="GitHub">{% include "staff/includes/social_icon.html" with icon="github" only %}</a>{% endif %}
+    {% if member.publications %}<a href="{{ member.publications }}" target="_blank" rel="noopener noreferrer" aria-label="{% translate 'Publications' %} — {{ member.name }}" title="{% translate 'Publications' %}">{% include "staff/includes/social_icon.html" with icon="publications" only %}</a>{% endif %}
+    {% if member.registered_email %}<a href="mailto:{{ member.registered_email|urlencode:'@' }}" aria-label="{% translate 'Email' %} — {{ member.name }}" title="{% translate 'Email' %}: {{ member.registered_email }}">{% include "staff/includes/social_icon.html" with icon="email" only %}</a>{% endif %}
+</div>
+{% endif %}

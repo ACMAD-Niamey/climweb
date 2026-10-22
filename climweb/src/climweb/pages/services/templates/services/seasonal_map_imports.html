@@ -1,0 +1,93 @@
+{% extends "wagtailadmin/base.html" %}
+
+{% block titletag %}Seasonal Rainfall Maps — RCC Data Imports{% endblock %}
+
+{% block extra_css %}
+<style>
+  .rcc-map-wrap { max-width: 1100px; padding: 2rem; }
+  .rcc-map-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem; }
+  .rcc-map-card { border: 1px solid var(--w-color-border-furniture); border-radius: .5rem; padding: 1.25rem; margin-bottom: 1.25rem; }
+  .rcc-map-card h2 { margin-top: 0; }
+  .rcc-map-muted { color: var(--w-color-text-meta); }
+  .rcc-map-field { margin: 1rem 0; }
+  .rcc-map-field label { display: block; font-weight: 700; margin-bottom: .4rem; }
+  .rcc-map-field input[type=url] { width: min(100%, 720px); }
+  .rcc-map-select ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .5rem; list-style: none; padding: 0; }
+  .rcc-map-select label { font-weight: 400; }
+  .rcc-map-table-wrap { overflow-x: auto; }
+  .rcc-map-table { width: 100%; border-collapse: collapse; }
+  .rcc-map-table th, .rcc-map-table td { text-align: left; padding: .75rem; border-bottom: 1px solid var(--w-color-border-furniture); vertical-align: top; }
+  .rcc-map-error { color: #b91c1c; }
+  .rcc-map-preview { max-width: 80px; max-height: 65px; object-fit: contain; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rcc-map-wrap">
+  <h1>Seasonal rainfall climatology maps</h1>
+  <p><a href="{% url 'rcc_imports' %}">← All RCC importers</a></p>
+  <p class="rcc-map-muted">Validate and mirror archived PNG maps here. Public product placement can be decided later; automatic imports are off by default.</p>
+
+  <section class="rcc-map-card">
+    <h2>Source and schedule</h2>
+    <form method="post">
+      {% csrf_token %}
+      <div class="rcc-map-field"><label for="{{ settings_form.catalogue_url.id_for_label }}">THREDDS root catalogue URL</label>{{ settings_form.catalogue_url }}{{ settings_form.catalogue_url.errors }}<p class="rcc-map-muted">Changing the source clears discoveries and disables the schedule until refreshed.</p></div>
+      <div class="rcc-map-grid">
+        <div class="rcc-map-field"><label for="{{ settings_form.interval_hours.id_for_label }}">Run every (hours)</label>{{ settings_form.interval_hours }}{{ settings_form.interval_hours.errors }}</div>
+        <div class="rcc-map-field"><label for="{{ settings_form.enabled.id_for_label }}">{{ settings_form.enabled }} Enable automatic imports</label>{{ settings_form.enabled.errors }}</div>
+      </div>
+      <div class="rcc-map-field"><label for="{{ settings_form.import_all_maps.id_for_label }}">{{ settings_form.import_all_maps }} Import all maps in the catalogue</label><p class="rcc-map-muted">Otherwise, only the maps selected below are imported.</p></div>
+      <button class="button button-primary" name="action" value="save_settings">Save settings</button>
+    </form>
+  </section>
+
+  <div class="rcc-map-grid">
+    <section class="rcc-map-card">
+      <h2>Catalogue discovery</h2>
+      <p>{{ config.discovered_maps|length }} maps found · {{ config.selected_maps|length }} selected</p>
+      {% if config.discovered_at %}<p class="rcc-map-muted">Last checked {{ config.discovered_at }}</p>{% endif %}
+      {% if config.discovery_error %}<p class="rcc-map-error">{{ config.discovery_error }}</p>{% endif %}
+      <form method="post">{% csrf_token %}<button class="button" name="action" value="discover">Refresh maps</button></form>
+    </section>
+    <section class="rcc-map-card">
+      <h2>Run now</h2>
+      <p>Import the saved selection in the background. Only one seasonal-map run can be active at a time.</p>
+      <form method="post">{% csrf_token %}<button class="button button-primary" name="action" value="run" {% if not config.import_all_maps and not config.selected_maps %}disabled{% endif %}>Run now</button></form>
+    </section>
+  </div>
+
+  <details class="rcc-map-card" {% if selection_form.errors %}open{% endif %}>
+    <summary><strong>Select maps</strong></summary>
+    {% if config.discovered_maps %}
+      <form method="post" class="rcc-map-field">
+        {% csrf_token %}{{ selection_form.maps.errors }}
+        <div class="rcc-map-select">{{ selection_form.maps }}</div>
+        <button class="button" name="action" value="save_maps">Save map selection</button>
+      </form>
+    {% else %}<p class="rcc-map-muted">Refresh maps first to make a selection.</p>{% endif %}
+  </details>
+
+  <section class="rcc-map-card">
+    <h2>Hosted maps</h2>
+    {% if assets %}<div class="rcc-map-table-wrap"><table class="rcc-map-table"><thead><tr><th>Preview</th><th>File</th><th>Season</th><th>Type</th><th>Last synchronized</th></tr></thead><tbody>
+      {% for asset in assets %}<tr>
+        <td><a href="{% url 'rcc_seasonal_map_preview' asset.pk %}" target="_blank" rel="noopener"><img class="rcc-map-preview" src="{% url 'rcc_seasonal_map_preview' asset.pk %}" alt="{{ asset.season }} {{ asset.variant }} map preview"></a></td>
+        <td><a href="{% url 'rcc_seasonal_map_preview' asset.pk %}" target="_blank" rel="noopener">{{ asset.filename }}</a><div class="rcc-map-muted">{{ asset.size_bytes|filesizeformat }} · {{ asset.width }} × {{ asset.height }}</div></td>
+        <td>{{ asset.season }}</td><td>{{ asset.variant }}</td><td>{{ asset.synced_at|date:"Y-m-d H:i" }}</td>
+      </tr>{% endfor %}
+    </tbody></table></div>{% else %}<p class="rcc-map-muted">No maps imported yet.</p>{% endif %}
+  </section>
+
+  <section class="rcc-map-card">
+    <h2>Recent runs</h2>
+    {% if run_rows %}<div class="rcc-map-table-wrap"><table class="rcc-map-table"><thead><tr><th>Started</th><th>Scope</th><th>Status</th><th>Progress</th><th>Errors</th></tr></thead><tbody>
+      {% for row in run_rows %}<tr>
+        <td>{{ row.run.created_at }}</td><td>{% if row.run.import_all_maps %}All maps{% else %}{{ row.run.maps|length }} selected{% endif %}</td>
+        <td>{{ row.run.get_status_display }}</td><td>{{ row.completed }} processed{% if row.run.maps %} / {{ row.run.maps|length }} maps{% endif %}</td>
+        <td>{% if row.failed_count %}<details><summary>{{ row.failed_count }} failed</summary><ul>{% for error in row.failed %}<li>{{ error.map }}: <span class="rcc-map-error">{{ error.error }}</span></li>{% endfor %}</ul></details>{% else %}—{% endif %}</td>
+      </tr>{% endfor %}
+    </tbody></table></div>{% else %}<p class="rcc-map-muted">No imports yet.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

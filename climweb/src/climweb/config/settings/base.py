@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "climweb.base",
     
     "climweb.pages.home",
+    "climweb.pages.climsa",
     "climweb.pages.services",
     "climweb.pages.products",
     "climweb.pages.mediacenter",
@@ -62,6 +63,7 @@ INSTALLED_APPS = [
     "climweb.pages.organisation_pages.tenders",
     "climweb.pages.organisation_pages.vacancies",
     "climweb.pages.organisation_pages.staff",
+    "climweb.pages.organisation_pages.board",
     "climweb.pages.email_subscription",
     "climweb.pages.surveys",
     "climweb.pages.search",
@@ -237,10 +239,12 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "climweb.pages.organisation_pages.staff.middleware.StaffPortalRestrictionMiddleware",
     'django.contrib.sites.middleware.CurrentSiteMiddleware',
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "climweb.base.middleware.StripHomePageSlugMiddleware",
     "wagtail.contrib.redirects.middleware.RedirectMiddleware",
     
     'wagtail_2fa.middleware.VerifyUserPermissionsMiddleware',
@@ -445,7 +449,24 @@ STORAGES = {
     "staticfiles": {
         "BACKEND": "climweb.base.storage.ManifestStaticFilesStorageNotStrict",
     },
+    "rcc_data": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {
+            "location": env.str("RCC_DATA_ROOT", os.path.join(BASE_DIR, "rcc_data")),
+        },
+    },
+    "staff_reports": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {
+            "location": os.path.join(BASE_DIR, "private_staff_reports"),
+        },
+    },
 }
+
+# Hosts that RCC administrators may use for editable ARC2 THREDDS catalogue URLs.
+RCC_ARC2_ALLOWED_SOURCE_HOSTS = env.list(
+    "RCC_ARC2_ALLOWED_SOURCE_HOSTS", default=["sgbd.acmad.org"]
+)
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
@@ -468,6 +489,16 @@ STATIC_URL = env.str("FORCE_SCRIPT_NAME", "") + "/static/"
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 MEDIA_URL = env.str("FORCE_SCRIPT_NAME", "") + "/media/"
+
+# Deliberately NOT under MEDIA_ROOT and NOT served by nginx (unlike /media/,
+# which is served directly and publicly with no auth check - see deploy/nginx/
+# nginx.conf). Generated submission-export zips can contain applicant resumes
+# and support letters, so they're only ever streamed out via
+# download_submission_export_view in climweb.base.views, which checks the
+# same form-management permission as the submissions list itself.
+PRIVATE_EXPORTS_ROOT = os.path.join(BASE_DIR, "private_exports")
+PRIVATE_STAFF_REPORTS_ROOT = os.path.join(BASE_DIR, "private_staff_reports")
+SUBMISSION_EXPORT_RETENTION_HOURS = 48
 
 # Wagtail settings
 WAGTAIL_SITE_NAME = env.str("WAGTAIL_SITE_NAME", "ClimWeb")
@@ -503,6 +534,25 @@ RECAPTCHA_PRIVATE_KEY = env.str('RECAPTCHA_PRIVATE_KEY', '')
 # RECAPTCHA_DOMAIN = env.str('RECAPTCHA_DOMAIN', 'www.google.com')
 RECAPTCHA_VERIFY_REQUEST_TIMEOUT = env.str('RECAPTCHA_VERIFY_REQUEST_TIMEOUT', "60")
 
+# Public product-subscription abuse controls. Counts are shared through the
+# default Redis cache, so limits apply consistently across web workers.
+PRODUCT_SUBSCRIPTION_RATE_LIMIT_IP = env.int(
+    "PRODUCT_SUBSCRIPTION_RATE_LIMIT_IP", default=10
+)
+PRODUCT_SUBSCRIPTION_RATE_LIMIT_EMAIL = env.int(
+    "PRODUCT_SUBSCRIPTION_RATE_LIMIT_EMAIL", default=3
+)
+PRODUCT_SUBSCRIPTION_RATE_LIMIT_WINDOW = env.int(
+    "PRODUCT_SUBSCRIPTION_RATE_LIMIT_WINDOW", default=3600
+)
+
+# Google Calendar / Meet integration. This must point to a service-account JSON
+# key mounted as a deployment secret; credentials are never stored in Wagtail.
+GOOGLE_MEET_SERVICE_ACCOUNT_FILE = env.str(
+    "GOOGLE_MEET_SERVICE_ACCOUNT_FILE",
+    default="",
+)
+
 # try to convert RECAPTCHA_VERIFY_REQUEST_TIMEOUT to an integer
 if RECAPTCHA_VERIFY_REQUEST_TIMEOUT:
     try:
@@ -512,7 +562,20 @@ if RECAPTCHA_VERIFY_REQUEST_TIMEOUT:
 
 # EMAIL SETTINGS
 # Default email address used to send messages from the website.
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="") or "climweb@localhost"
+
+EMAIL_HOST = env("EMAIL_HOST", default="") or "localhost"
+_email_port = env("EMAIL_PORT", default="")
+EMAIL_PORT = int(_email_port) if _email_port else 25
+
+_email_tls = env("EMAIL_USE_TLS", default="")
+EMAIL_USE_TLS = str(_email_tls).lower() in ("yes", "y", "true", "t", "1") if _email_tls else False
+
+_email_ssl = env("EMAIL_USE_SSL", default="")
+EMAIL_USE_SSL = str(_email_ssl).lower() in ("yes", "y", "true", "t", "1") if _email_ssl else False
+
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 
 # A list of people who get error notifications.
 ADMINS = getaddresses([env('DJANGO_ADMINS', default="")])
@@ -652,6 +715,173 @@ CELERY_SINGLETON_BACKEND_CLASS = (
 # Set max memory per child process (in kilobytes, e.g., 200000 KB = 200 MB)
 CELERY_WORKER_MAX_MEMORY_PER_CHILD = env.int("CELERY_WORKER_MAX_MEMORY_PER_CHILD", default=200000)
 
+# ACMAD's public Continental Multi-Hazard Outlook archive can be polled by the
+# products Celery worker. It is opt-in so upstream ClimWeb installations do not
+# unexpectedly fetch ACMAD-specific content.
+ACMAD_INITIAL_IMPORT_ON_STARTUP = env.bool(
+    "ACMAD_INITIAL_IMPORT_ON_STARTUP", default=False
+)
+ACMAD_MULTIHAZARD_AUTO_IMPORT = env.bool("ACMAD_MULTIHAZARD_AUTO_IMPORT", default=False)
+ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS", default=6
+)
+ACMAD_MULTIHAZARD_IMPORT_LIMIT = env.int("ACMAD_MULTIHAZARD_IMPORT_LIMIT", default=10)
+ACMAD_RAINFALL_AUTO_IMPORT = env.bool("ACMAD_RAINFALL_AUTO_IMPORT", default=False)
+ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS", default=6
+)
+ACMAD_RAINFALL_IMPORT_LIMIT = env.int("ACMAD_RAINFALL_IMPORT_LIMIT", default=7)
+ACMAD_DEKADAL_AUTO_IMPORT = env.bool("ACMAD_DEKADAL_AUTO_IMPORT", default=False)
+ACMAD_DEKADAL_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_DEKADAL_IMPORT_INTERVAL_HOURS", default=24
+)
+ACMAD_MONTHLY_CLIMATE_AUTO_IMPORT = env.bool(
+    "ACMAD_MONTHLY_CLIMATE_AUTO_IMPORT", default=False
+)
+ACMAD_MONTHLY_CLIMATE_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_MONTHLY_CLIMATE_IMPORT_INTERVAL_HOURS", default=24
+)
+ACMAD_MONTHLY_CLIMATE_IMPORT_LIMIT = env.int(
+    "ACMAD_MONTHLY_CLIMATE_IMPORT_LIMIT", default=2
+)
+ACMAD_SEASON_ONSET_AUTO_IMPORT = env.bool(
+    "ACMAD_SEASON_ONSET_AUTO_IMPORT", default=False
+)
+ACMAD_SEASON_ONSET_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_SEASON_ONSET_IMPORT_INTERVAL_HOURS", default=24
+)
+ACMAD_SEASON_ONSET_IMPORT_LIMIT = env.int(
+    "ACMAD_SEASON_ONSET_IMPORT_LIMIT", default=3
+)
+ACMAD_CLIMATE_CHANGE_AUTO_IMPORT = env.bool(
+    "ACMAD_CLIMATE_CHANGE_AUTO_IMPORT", default=False
+)
+ACMAD_CLIMATE_CHANGE_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_CLIMATE_CHANGE_IMPORT_INTERVAL_HOURS", default=168
+)
+ACMAD_CLIMATE_CHANGE_IMPORT_LIMIT = env.int(
+    "ACMAD_CLIMATE_CHANGE_IMPORT_LIMIT", default=5
+)
+ACMAD_ANNUAL_CLIMATE_AUTO_IMPORT = env.bool(
+    "ACMAD_ANNUAL_CLIMATE_AUTO_IMPORT", default=False
+)
+ACMAD_ANNUAL_CLIMATE_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_ANNUAL_CLIMATE_IMPORT_INTERVAL_HOURS", default=168
+)
+ACMAD_ANNUAL_CLIMATE_IMPORT_LIMIT = env.int(
+    "ACMAD_ANNUAL_CLIMATE_IMPORT_LIMIT", default=5
+)
+ACMAD_CLIMATE_WATCH_AUTO_IMPORT = env.bool(
+    "ACMAD_CLIMATE_WATCH_AUTO_IMPORT", default=False
+)
+ACMAD_CLIMATE_WATCH_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_CLIMATE_WATCH_IMPORT_INTERVAL_HOURS", default=168
+)
+ACMAD_CLIMATE_WATCH_IMPORT_LIMIT = env.int(
+    "ACMAD_CLIMATE_WATCH_IMPORT_LIMIT", default=5
+)
+ACMAD_RAINFALL_EXCEEDANCE_AUTO_IMPORT = env.bool(
+    "ACMAD_RAINFALL_EXCEEDANCE_AUTO_IMPORT", default=False
+)
+ACMAD_RAINFALL_EXCEEDANCE_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_RAINFALL_EXCEEDANCE_IMPORT_INTERVAL_HOURS", default=168
+)
+ACMAD_RAINFALL_EXCEEDANCE_IMPORT_LIMIT = env.int(
+    "ACMAD_RAINFALL_EXCEEDANCE_IMPORT_LIMIT", default=3
+)
+ACMAD_FIVE_DAY_RAINFALL_AUTO_IMPORT = env.bool(
+    "ACMAD_FIVE_DAY_RAINFALL_AUTO_IMPORT", default=False
+)
+ACMAD_FIVE_DAY_RAINFALL_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_FIVE_DAY_RAINFALL_IMPORT_INTERVAL_HOURS", default=24
+)
+ACMAD_FIVE_DAY_RAINFALL_IMPORT_LIMIT = env.int(
+    "ACMAD_FIVE_DAY_RAINFALL_IMPORT_LIMIT", default=3
+)
+ACMAD_SEASONAL_VERIFICATION_AUTO_IMPORT = env.bool(
+    "ACMAD_SEASONAL_VERIFICATION_AUTO_IMPORT", default=False
+)
+ACMAD_SEASONAL_VERIFICATION_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_SEASONAL_VERIFICATION_IMPORT_INTERVAL_HOURS", default=168
+)
+ACMAD_SEASONAL_VERIFICATION_IMPORT_LIMIT = env.int(
+    "ACMAD_SEASONAL_VERIFICATION_IMPORT_LIMIT", default=3
+)
+ACMAD_MODEL_PERFORMANCE_AUTO_IMPORT = env.bool(
+    "ACMAD_MODEL_PERFORMANCE_AUTO_IMPORT", default=False
+)
+ACMAD_MODEL_PERFORMANCE_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_MODEL_PERFORMANCE_IMPORT_INTERVAL_HOURS", default=168
+)
+ACMAD_MODEL_PERFORMANCE_IMPORT_LIMIT = env.int(
+    "ACMAD_MODEL_PERFORMANCE_IMPORT_LIMIT", default=3
+)
+ACMAD_CRYOSPHERE_AUTO_IMPORT = env.bool("ACMAD_CRYOSPHERE_AUTO_IMPORT", default=False)
+ACMAD_CRYOSPHERE_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_CRYOSPHERE_IMPORT_INTERVAL_HOURS", default=720
+)
+ACMAD_CRYOSPHERE_IMPORT_LIMIT = env.int("ACMAD_CRYOSPHERE_IMPORT_LIMIT", default=5)
+ACMAD_POLICY_BRIEFS_AUTO_IMPORT = env.bool(
+    "ACMAD_POLICY_BRIEFS_AUTO_IMPORT", default=False
+)
+ACMAD_POLICY_BRIEFS_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_POLICY_BRIEFS_IMPORT_INTERVAL_HOURS", default=24
+)
+ACMAD_POLICY_BRIEFS_IMPORT_LIMIT = env.int(
+    "ACMAD_POLICY_BRIEFS_IMPORT_LIMIT", default=5
+)
+ACMAD_ATMOSPHERIC_ANALYSIS_AUTO_IMPORT = env.bool(
+    "ACMAD_ATMOSPHERIC_ANALYSIS_AUTO_IMPORT", default=False
+)
+ACMAD_ATMOSPHERIC_ANALYSIS_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_ATMOSPHERIC_ANALYSIS_IMPORT_INTERVAL_HOURS", default=6
+)
+ACMAD_HEAT_STRESS_AUTO_IMPORT = env.bool(
+    "ACMAD_HEAT_STRESS_AUTO_IMPORT", default=False
+)
+ACMAD_HEAT_STRESS_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_HEAT_STRESS_IMPORT_INTERVAL_HOURS", default=6
+)
+ACMAD_HEAT_STRESS_IMPORT_LIMIT = env.int(
+    "ACMAD_HEAT_STRESS_IMPORT_LIMIT", default=3
+)
+ACMAD_ITD_ITCZ_AUTO_IMPORT = env.bool(
+    "ACMAD_ITD_ITCZ_AUTO_IMPORT", default=False
+)
+ACMAD_ITD_ITCZ_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_ITD_ITCZ_IMPORT_INTERVAL_HOURS", default=6
+)
+ACMAD_ITD_ITCZ_IMPORT_LIMIT = env.int(
+    "ACMAD_ITD_ITCZ_IMPORT_LIMIT", default=3
+)
+ACMAD_NOWCASTING_AUTO_IMPORT = env.bool(
+    "ACMAD_NOWCASTING_AUTO_IMPORT", default=False
+)
+ACMAD_NOWCASTING_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_NOWCASTING_IMPORT_INTERVAL_HOURS", default=1
+)
+ACMAD_NOWCASTING_IMPORT_LIMIT = env.int(
+    "ACMAD_NOWCASTING_IMPORT_LIMIT", default=3
+)
+ACMAD_CLIMATE_HEALTH_AUTO_IMPORT = env.bool(
+    "ACMAD_CLIMATE_HEALTH_AUTO_IMPORT", default=False
+)
+ACMAD_CLIMATE_HEALTH_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_CLIMATE_HEALTH_IMPORT_INTERVAL_HOURS", default=24
+)
+ACMAD_CLIMATE_HEALTH_IMPORT_LIMIT = env.int(
+    "ACMAD_CLIMATE_HEALTH_IMPORT_LIMIT", default=5
+)
+ACMAD_SEASONAL_FORECAST_AUTO_IMPORT = env.bool(
+    "ACMAD_SEASONAL_FORECAST_AUTO_IMPORT", default=False
+)
+ACMAD_SEASONAL_FORECAST_IMPORT_INTERVAL_HOURS = env.int(
+    "ACMAD_SEASONAL_FORECAST_IMPORT_INTERVAL_HOURS", default=24
+)
+ACMAD_SEASONAL_FORECAST_IMPORT_LIMIT = env.int(
+    "ACMAD_SEASONAL_FORECAST_IMPORT_LIMIT", default=5
+)
+
 CELERY_APP = 'climweb.config.celery:app'
 
 CACHES = {
@@ -754,6 +984,15 @@ VUE_FRONTEND_STATIC_PATH = 'vue'
 WAGTAIL_NEWSLETTER_MAILCHIMP_API_KEY = env("WAGTAIL_NEWSLETTER_MAILCHIMP_API_KEY", default="")
 WAGTAIL_NEWSLETTER_FROM_NAME = env("WAGTAIL_NEWSLETTER_FROM_NAME", default="")
 WAGTAIL_NEWSLETTER_REPLY_TO = env("WAGTAIL_NEWSLETTER_REPLY_TO", default="")
+
+# ACMAD staff Shared Drive integration. The service-account key must be mounted
+# as a read-only deployment secret and must never be committed to source control.
+GOOGLE_DRIVE_ENABLED = env.bool("GOOGLE_DRIVE_ENABLED", default=False)
+GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE = env.str(
+    "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", default=""
+)
+GOOGLE_DRIVE_SHARED_DRIVE_ID = env.str("GOOGLE_DRIVE_SHARED_DRIVE_ID", default="")
+GOOGLE_DRIVE_ROOT_FOLDER_ID = env.str("GOOGLE_DRIVE_ROOT_FOLDER_ID", default="")
 
 MARKDOWNIFY = {
     "default": {

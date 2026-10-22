@@ -11,6 +11,7 @@ x-climweb-variables: &climweb-variables
   CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
   DATABASE_URL: postgis://${CMS_DB_USER:-climweb}:${CMS_DB_PASSWORD}@climweb_db_dev:5432/${CMS_DB_NAME:-climweb}
   REDIS_URL: redis://:${REDIS_PASSWORD}@climweb_redis_dev:6379/0
+  EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
   EMAIL_HOST: ${SMTP_EMAIL_HOST:-}
   EMAIL_PORT: ${SMTP_EMAIL_PORT:-}
   EMAIL_USE_TLS: ${SMTP_EMAIL_USE_TLS:-}
@@ -22,6 +23,14 @@ x-climweb-variables: &climweb-variables
   RECAPTCHA_PRIVATE_KEY: ${RECAPTCHA_PRIVATE_KEY:-}
   RECAPTCHA_DOMAIN: ${RECAPTCHA_DOMAIN:-www.google.com}
   RECAPTCHA_VERIFY_REQUEST_TIMEOUT: ${RECAPTCHA_VERIFY_REQUEST_TIMEOUT:-60}
+  PRODUCT_SUBSCRIPTION_RATE_LIMIT_IP: ${PRODUCT_SUBSCRIPTION_RATE_LIMIT_IP:-10}
+  PRODUCT_SUBSCRIPTION_RATE_LIMIT_EMAIL: ${PRODUCT_SUBSCRIPTION_RATE_LIMIT_EMAIL:-3}
+  PRODUCT_SUBSCRIPTION_RATE_LIMIT_WINDOW: ${PRODUCT_SUBSCRIPTION_RATE_LIMIT_WINDOW:-3600}
+  GOOGLE_MEET_SERVICE_ACCOUNT_FILE: ${GOOGLE_MEET_SERVICE_ACCOUNT_FILE:-}
+  GOOGLE_DRIVE_ENABLED: ${GOOGLE_DRIVE_ENABLED:-False}
+  GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE: /run/secrets/acmad-drive-service-account.json
+  GOOGLE_DRIVE_SHARED_DRIVE_ID: ${GOOGLE_DRIVE_SHARED_DRIVE_ID:-}
+  GOOGLE_DRIVE_ROOT_FOLDER_ID: ${GOOGLE_DRIVE_ROOT_FOLDER_ID:-}
   CMS_UPGRADE_HOOK_URL: ${CMS_UPGRADE_HOOK_URL:-}
   WAGTAILADMIN_BASE_URL: ${CMS_BASE_URL:-}
   LANGUAGE_CODE: ${CMS_DEFAULT_LANGUAGE_CODE:-en}
@@ -43,6 +52,66 @@ x-climweb-variables: &climweb-variables
   WAGTAIL_NEWSLETTER_MAILCHIMP_API_KEY: ${WAGTAIL_NEWSLETTER_MAILCHIMP_API_KEY:-}
   WAGTAIL_NEWSLETTER_FROM_NAME: ${WAGTAIL_NEWSLETTER_FROM_NAME:-}
   WAGTAIL_NEWSLETTER_REPLY_TO: ${WAGTAIL_NEWSLETTER_REPLY_TO:-}
+  ACMAD_MULTIHAZARD_AUTO_IMPORT: ${ACMAD_MULTIHAZARD_AUTO_IMPORT:-False}
+  ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS: ${ACMAD_MULTIHAZARD_IMPORT_INTERVAL_HOURS:-6}
+  ACMAD_MULTIHAZARD_IMPORT_LIMIT: ${ACMAD_MULTIHAZARD_IMPORT_LIMIT:-10}
+  ACMAD_RAINFALL_AUTO_IMPORT: ${ACMAD_RAINFALL_AUTO_IMPORT:-False}
+  ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS: ${ACMAD_RAINFALL_IMPORT_INTERVAL_HOURS:-6}
+  ACMAD_RAINFALL_IMPORT_LIMIT: ${ACMAD_RAINFALL_IMPORT_LIMIT:-7}
+  ACMAD_DEKADAL_AUTO_IMPORT: ${ACMAD_DEKADAL_AUTO_IMPORT:-False}
+  ACMAD_DEKADAL_IMPORT_INTERVAL_HOURS: ${ACMAD_DEKADAL_IMPORT_INTERVAL_HOURS:-24}
+  ACMAD_MONTHLY_CLIMATE_AUTO_IMPORT: ${ACMAD_MONTHLY_CLIMATE_AUTO_IMPORT:-False}
+  ACMAD_MONTHLY_CLIMATE_IMPORT_INTERVAL_HOURS: ${ACMAD_MONTHLY_CLIMATE_IMPORT_INTERVAL_HOURS:-24}
+  ACMAD_MONTHLY_CLIMATE_IMPORT_LIMIT: ${ACMAD_MONTHLY_CLIMATE_IMPORT_LIMIT:-2}
+  ACMAD_SEASON_ONSET_AUTO_IMPORT: ${ACMAD_SEASON_ONSET_AUTO_IMPORT:-False}
+  ACMAD_SEASON_ONSET_IMPORT_INTERVAL_HOURS: ${ACMAD_SEASON_ONSET_IMPORT_INTERVAL_HOURS:-24}
+  ACMAD_SEASON_ONSET_IMPORT_LIMIT: ${ACMAD_SEASON_ONSET_IMPORT_LIMIT:-3}
+  ACMAD_CLIMATE_CHANGE_AUTO_IMPORT: ${ACMAD_CLIMATE_CHANGE_AUTO_IMPORT:-False}
+  ACMAD_CLIMATE_CHANGE_IMPORT_INTERVAL_HOURS: ${ACMAD_CLIMATE_CHANGE_IMPORT_INTERVAL_HOURS:-168}
+  ACMAD_CLIMATE_CHANGE_IMPORT_LIMIT: ${ACMAD_CLIMATE_CHANGE_IMPORT_LIMIT:-5}
+  ACMAD_ANNUAL_CLIMATE_AUTO_IMPORT: ${ACMAD_ANNUAL_CLIMATE_AUTO_IMPORT:-False}
+  ACMAD_ANNUAL_CLIMATE_IMPORT_INTERVAL_HOURS: ${ACMAD_ANNUAL_CLIMATE_IMPORT_INTERVAL_HOURS:-168}
+  ACMAD_ANNUAL_CLIMATE_IMPORT_LIMIT: ${ACMAD_ANNUAL_CLIMATE_IMPORT_LIMIT:-5}
+  ACMAD_FIVE_DAY_RAINFALL_AUTO_IMPORT: ${ACMAD_FIVE_DAY_RAINFALL_AUTO_IMPORT:-False}
+  ACMAD_FIVE_DAY_RAINFALL_IMPORT_INTERVAL_HOURS: ${ACMAD_FIVE_DAY_RAINFALL_IMPORT_INTERVAL_HOURS:-24}
+  ACMAD_FIVE_DAY_RAINFALL_IMPORT_LIMIT: ${ACMAD_FIVE_DAY_RAINFALL_IMPORT_LIMIT:-3}
+  ACMAD_SEASONAL_VERIFICATION_AUTO_IMPORT: ${ACMAD_SEASONAL_VERIFICATION_AUTO_IMPORT:-False}
+  ACMAD_SEASONAL_VERIFICATION_IMPORT_INTERVAL_HOURS: ${ACMAD_SEASONAL_VERIFICATION_IMPORT_INTERVAL_HOURS:-168}
+  ACMAD_SEASONAL_VERIFICATION_IMPORT_LIMIT: ${ACMAD_SEASONAL_VERIFICATION_IMPORT_LIMIT:-3}
+  ACMAD_MODEL_PERFORMANCE_AUTO_IMPORT: ${ACMAD_MODEL_PERFORMANCE_AUTO_IMPORT:-False}
+  ACMAD_MODEL_PERFORMANCE_IMPORT_INTERVAL_HOURS: ${ACMAD_MODEL_PERFORMANCE_IMPORT_INTERVAL_HOURS:-168}
+  ACMAD_MODEL_PERFORMANCE_IMPORT_LIMIT: ${ACMAD_MODEL_PERFORMANCE_IMPORT_LIMIT:-3}
+  ACMAD_CLIMATE_WATCH_AUTO_IMPORT: ${ACMAD_CLIMATE_WATCH_AUTO_IMPORT:-False}
+  ACMAD_CLIMATE_WATCH_IMPORT_INTERVAL_HOURS: ${ACMAD_CLIMATE_WATCH_IMPORT_INTERVAL_HOURS:-168}
+  ACMAD_CLIMATE_WATCH_IMPORT_LIMIT: ${ACMAD_CLIMATE_WATCH_IMPORT_LIMIT:-5}
+  ACMAD_RAINFALL_EXCEEDANCE_AUTO_IMPORT: ${ACMAD_RAINFALL_EXCEEDANCE_AUTO_IMPORT:-False}
+  ACMAD_RAINFALL_EXCEEDANCE_IMPORT_INTERVAL_HOURS: ${ACMAD_RAINFALL_EXCEEDANCE_IMPORT_INTERVAL_HOURS:-168}
+  ACMAD_RAINFALL_EXCEEDANCE_IMPORT_LIMIT: ${ACMAD_RAINFALL_EXCEEDANCE_IMPORT_LIMIT:-3}
+  ACMAD_CRYOSPHERE_AUTO_IMPORT: ${ACMAD_CRYOSPHERE_AUTO_IMPORT:-False}
+  ACMAD_CRYOSPHERE_IMPORT_INTERVAL_HOURS: ${ACMAD_CRYOSPHERE_IMPORT_INTERVAL_HOURS:-720}
+  ACMAD_CRYOSPHERE_IMPORT_LIMIT: ${ACMAD_CRYOSPHERE_IMPORT_LIMIT:-5}
+  ACMAD_POLICY_BRIEFS_AUTO_IMPORT: ${ACMAD_POLICY_BRIEFS_AUTO_IMPORT:-False}
+  ACMAD_POLICY_BRIEFS_IMPORT_INTERVAL_HOURS: ${ACMAD_POLICY_BRIEFS_IMPORT_INTERVAL_HOURS:-24}
+  ACMAD_POLICY_BRIEFS_IMPORT_LIMIT: ${ACMAD_POLICY_BRIEFS_IMPORT_LIMIT:-5}
+  ACMAD_ATMOSPHERIC_ANALYSIS_AUTO_IMPORT: ${ACMAD_ATMOSPHERIC_ANALYSIS_AUTO_IMPORT:-False}
+  ACMAD_ATMOSPHERIC_ANALYSIS_IMPORT_INTERVAL_HOURS: ${ACMAD_ATMOSPHERIC_ANALYSIS_IMPORT_INTERVAL_HOURS:-6}
+  ACMAD_HEAT_STRESS_AUTO_IMPORT: ${ACMAD_HEAT_STRESS_AUTO_IMPORT:-False}
+  ACMAD_HEAT_STRESS_IMPORT_INTERVAL_HOURS: ${ACMAD_HEAT_STRESS_IMPORT_INTERVAL_HOURS:-6}
+  ACMAD_HEAT_STRESS_IMPORT_LIMIT: ${ACMAD_HEAT_STRESS_IMPORT_LIMIT:-3}
+  ACMAD_ITD_ITCZ_AUTO_IMPORT: ${ACMAD_ITD_ITCZ_AUTO_IMPORT:-False}
+  ACMAD_ITD_ITCZ_IMPORT_INTERVAL_HOURS: ${ACMAD_ITD_ITCZ_IMPORT_INTERVAL_HOURS:-6}
+  ACMAD_ITD_ITCZ_IMPORT_LIMIT: ${ACMAD_ITD_ITCZ_IMPORT_LIMIT:-3}
+  ACMAD_NOWCASTING_AUTO_IMPORT: ${ACMAD_NOWCASTING_AUTO_IMPORT:-False}
+  ACMAD_NOWCASTING_IMPORT_INTERVAL_HOURS: ${ACMAD_NOWCASTING_IMPORT_INTERVAL_HOURS:-1}
+  ACMAD_NOWCASTING_IMPORT_LIMIT: ${ACMAD_NOWCASTING_IMPORT_LIMIT:-3}
+  ACMAD_CLIMATE_HEALTH_AUTO_IMPORT: ${ACMAD_CLIMATE_HEALTH_AUTO_IMPORT:-False}
+  ACMAD_CLIMATE_HEALTH_IMPORT_INTERVAL_HOURS: ${ACMAD_CLIMATE_HEALTH_IMPORT_INTERVAL_HOURS:-24}
+  ACMAD_CLIMATE_HEALTH_IMPORT_LIMIT: ${ACMAD_CLIMATE_HEALTH_IMPORT_LIMIT:-5}
+  ACMAD_SEASONAL_FORECAST_AUTO_IMPORT: ${ACMAD_SEASONAL_FORECAST_AUTO_IMPORT:-False}
+  ACMAD_SEASONAL_FORECAST_IMPORT_INTERVAL_HOURS: ${ACMAD_SEASONAL_FORECAST_IMPORT_INTERVAL_HOURS:-24}
+  ACMAD_SEASONAL_FORECAST_IMPORT_LIMIT: ${ACMAD_SEASONAL_FORECAST_IMPORT_LIMIT:-5}
+  ACMAD_INITIAL_IMPORT_ON_STARTUP: ${ACMAD_INITIAL_IMPORT_ON_STARTUP:-False}
+  RCC_DATA_ROOT: /climweb/data/rcc
 
 # Same variables as above, but pointed at the prod-profile services (climweb_db_prod /
 # climweb_redis_prod) instead of the dev ones, and defaulting CLIMWEB_DEPLOYMENT_ENV to
@@ -95,15 +164,31 @@ services:
     environment:
       <<: *climweb-variables
       WAIT_HOSTS: climweb_db_dev:5432,climweb_redis_dev:6379
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import socket; s = socket.socket(); s.settimeout(2); s.connect(('127.0.0.1', 8000)); s.close()",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+      start_period: 30s
     volumes:
       - ./climweb:/climweb/web
+      - ${GOOGLE_DRIVE_SERVICE_ACCOUNT_HOST_FILE:-./secrets/acmad-drive-service-account.json}:/run/secrets/acmad-drive-service-account.json:ro
       - static:/climweb/web/src/climweb/static
       - media:/climweb/web/src/climweb/media
+      - private_exports:/climweb/web/src/climweb/private_exports
+      - ${RCC_DATA_VOLUME:-./cms/rcc-data}:/climweb/data/rcc
       - ${BACKUP_VOLUME:-./cms/backup}:/climweb/web/src/climweb/backup
 
   climweb_celery_worker_dev:
     image: climweb_dev
     container_name: climweb_celery_worker_dev
+    pull_policy: never
     command: celery-worker
     restart: no
     profiles: ["dev"]
@@ -112,13 +197,17 @@ services:
       WAIT_HOSTS: climweb_db_dev:5432,climweb_redis_dev:6379,climweb_dev:8000
     volumes:
       - ./climweb:/climweb/web
+      - ${GOOGLE_DRIVE_SERVICE_ACCOUNT_HOST_FILE:-./secrets/acmad-drive-service-account.json}:/run/secrets/acmad-drive-service-account.json:ro
       - static:/climweb/web/src/climweb/static
       - media:/climweb/web/src/climweb/media
+      - private_exports:/climweb/web/src/climweb/private_exports
+      - ${RCC_DATA_VOLUME:-./cms/rcc-data}:/climweb/data/rcc
       - ${BACKUP_VOLUME:-./cms/backup}:/climweb/web/src/climweb/backup
 
   climweb_celery_beat_dev:
     image: climweb_dev
     container_name: climweb_celery_beat_dev
+    pull_policy: never
     restart: no
     profiles: ["dev"]
     command: celery-beat
@@ -129,6 +218,8 @@ services:
       - ./climweb:/climweb/web
       - static:/climweb/web/src/climweb/static
       - media:/climweb/web/src/climweb/media
+      - private_exports:/climweb/web/src/climweb/private_exports
+      - ${RCC_DATA_VOLUME:-./cms/rcc-data}:/climweb/data/rcc
       - ${BACKUP_VOLUME:-./cms/backup}:/climweb/web/src/climweb/backup
 
   climweb_nginx:
@@ -201,7 +292,11 @@ services:
       <<: *climweb-variables-prod
     volumes:
       - static_prod:/climweb/web/src/climweb/static
+      - ${GOOGLE_DRIVE_SERVICE_ACCOUNT_HOST_FILE:-./secrets/acmad-drive-service-account.json}:/run/secrets/acmad-drive-service-account.json:ro
       - media_prod:/climweb/web/src/climweb/media
+      - private_exports_prod:/climweb/web/src/climweb/private_exports
+      - private_staff_reports_prod:/climweb/web/src/climweb/private_staff_reports
+      - ${RCC_DATA_VOLUME_PROD:-./cms/rcc-data-prod}:/climweb/data/rcc
       - ${BACKUP_VOLUME_PROD:-./cms/backup-prod}:/climweb/web/src/climweb/backup
     depends_on:
       climweb_db_prod:
@@ -224,8 +319,12 @@ services:
     environment:
       <<: *climweb-variables-prod
     volumes:
+      - ${GOOGLE_DRIVE_SERVICE_ACCOUNT_HOST_FILE:-./secrets/acmad-drive-service-account.json}:/run/secrets/acmad-drive-service-account.json:ro
       - static_prod:/climweb/web/src/climweb/static
       - media_prod:/climweb/web/src/climweb/media
+      - private_exports_prod:/climweb/web/src/climweb/private_exports
+      - private_staff_reports_prod:/climweb/web/src/climweb/private_staff_reports
+      - ${RCC_DATA_VOLUME_PROD:-./cms/rcc-data-prod}:/climweb/data/rcc
       - ${BACKUP_VOLUME_PROD:-./cms/backup-prod}:/climweb/web/src/climweb/backup
     depends_on:
       climweb_prod:
@@ -236,6 +335,24 @@ services:
     container_name: climweb_celery_beat_prod
     command: celery-beat
     restart: unless-stopped
+    profiles: ["prod"]
+    environment:
+      <<: *climweb-variables-prod
+    volumes:
+      - static_prod:/climweb/web/src/climweb/static
+      - media_prod:/climweb/web/src/climweb/media
+      - private_exports_prod:/climweb/web/src/climweb/private_exports
+      - ${RCC_DATA_VOLUME_PROD:-./cms/rcc-data-prod}:/climweb/data/rcc
+      - ${BACKUP_VOLUME_PROD:-./cms/backup-prod}:/climweb/web/src/climweb/backup
+    depends_on:
+      climweb_prod:
+        condition: service_healthy
+
+  climweb_acmad_seed_prod:
+    image: climweb_prod
+    container_name: climweb_acmad_seed_prod
+    command: manage bootstrap_acmad_products
+    restart: "no"
     profiles: ["prod"]
     environment:
       <<: *climweb-variables-prod
@@ -279,5 +396,8 @@ services:
 volumes:
   static:
   media:
+  private_exports:
   static_prod:
   media_prod:
+  private_exports_prod:
+  private_staff_reports_prod:

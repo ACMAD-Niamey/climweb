@@ -26,6 +26,8 @@ class ProductItemStructValue(StructValue):
     def p_image(self):
         if self.get("image"):
             return self.get("image")
+        if self.get("gif"):
+            return self.get("gif")
         if self.get("thumbnail"):
             return self.get("thumbnail")
         
@@ -132,7 +134,7 @@ class ProductItemDocumentContentBlock(blocks.StructBlock):
         # generate thumbnail from document if not provided
         document = result.get('document')
         auto_generate_thumbnail = result.get('auto_generate_thumbnail')
-        if document and auto_generate_thumbnail:
+        if document and auto_generate_thumbnail and not result.get("thumbnail"):
             thumbnail = document.get_thumbnail()
             if thumbnail:
                 result["thumbnail"] = thumbnail

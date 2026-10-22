@@ -22,9 +22,16 @@ from wagtail_color_panel.edit_handlers import NativeColorPanel
 from wagtail_color_panel.fields import ColorField
 from wagtailcache.cache import clear_cache
 
-from climweb.base.blocks import NavigationItemBlock, FooterNavigationItemBlock, LanguageItemBlock, SocialMediaBlock
+from climweb.base.blocks import (
+    FAQItemBlock,
+    FooterNavigationItemBlock,
+    HeaderUtilityLinkBlock,
+    LanguageItemBlock,
+    NavigationItemBlock,
+    SocialMediaBlock,
+)
 from climweb.base.constants import LANGUAGE_CHOICES, LANGUAGE_CHOICES_DICT, COUNTRY_CHOICES
-from climweb.base.utils import get_country_info
+from climweb.base.utils import get_country_info, mix_with_white
 
 
 @register_setting
@@ -218,15 +225,124 @@ class LanguageSettings(BaseSiteSetting):
 
 
 class Theme(models.Model):
+    FONT_CHOICES = (
+        ("open_sans", _("Open Sans")),
+        ("dm_sans", _("DM Sans")),
+        ("manrope", _("Manrope")),
+        ("system", _("System font")),
+    )
+
+    ACMAD_PORTAL_DEFAULTS = {
+        "primary_hover_color": "#087a5a",
+        "primary_color": "#132a35",
+        "secondary_color": "#f8f7f3",
+        "header_background_color": "#071f2e",
+        "heading_color": "#0b2b3d",
+        "secondary_dark_color": "#123e52",
+        "primary_hover_state_color": "#0b946b",
+        "primary_light_color": "#dff4eb",
+        "accent_color": "#f4c84a",
+        "accent_hover_color": "#f8d66f",
+        "info_background_color": "#e8f2f5",
+        "surface_color": "#ffffff",
+        "muted_text_color": "#61727b",
+        "border_color": "#dce4e5",
+        "danger_color": "#b93535",
+        "body_font": "dm_sans",
+        "heading_font": "manrope",
+        "shadow_sm": "0 8px 28px rgba(9, 42, 55, 0.08)",
+        "shadow_lg": "0 24px 70px rgba(2, 24, 35, 0.20)",
+        "border_radius": 5,
+        "box_shadow": 8,
+    }
+
+    CLIMWEB_DEFAULTS = {
+        "primary_hover_color": "#176c9c",
+        "primary_color": "#363636",
+        "secondary_color": "#ffffff",
+        "header_background_color": "#176c9c",
+        "heading_color": "#363636",
+        "secondary_dark_color": "#0c447c",
+        "primary_hover_state_color": "#0c447c",
+        "primary_light_color": "#e6f1fb",
+        "accent_color": "#3e8ed0",
+        "accent_hover_color": "#226296",
+        "info_background_color": "#e6f1fb",
+        "surface_color": "#ffffff",
+        "muted_text_color": "#5d6572",
+        "border_color": "#d3d3d3",
+        "danger_color": "#f14668",
+        "body_font": "open_sans",
+        "heading_font": "open_sans",
+        "shadow_sm": "0 1px 3px 0 rgba(0, 0, 0, 0.25)",
+        "shadow_lg": "0 4px 12px rgba(0, 0, 0, 0.15)",
+        "border_radius": 12,
+        "box_shadow": 6,
+    }
+
+    FONT_STACKS = {
+        "open_sans": '"Open Sans", "Noto Sans Arabic", Arial, sans-serif',
+        "dm_sans": '"DM Sans", "Noto Sans Arabic", Arial, sans-serif',
+        "manrope": '"Manrope", "Noto Sans Arabic", Arial, sans-serif',
+        "system": '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    }
+
     is_default = models.BooleanField(default=False, verbose_name=_("Is Default Theme"),
                                      help_text=_("Enable if this is the default theme"))
     name = models.CharField(blank=False, verbose_name=_("Theme Name"), max_length=250, null=True)
     primary_hover_color = ColorField(blank=True, null=True, default="#176c9c",
-                                     help_text=_("Primary Hover color (use color picker)"), verbose_name=_("Primary color"))
+                                     help_text=_("Main interactive and button color"),
+                                     verbose_name=_("Primary brand color"))
     primary_color = ColorField(blank=True, null=True, default="#363636",
-                               help_text=_("Primary color (use color picker)"), verbose_name=_("Headings color"))
+                               help_text=_("Default color for body copy"), verbose_name=_("Body text color"))
     secondary_color = ColorField(blank=True, null=True, default="#ffffff",
-                                 help_text=_("Secondary color (use color picker)"), verbose_name=_("Background color"))
+                                 help_text=_("Default page background"), verbose_name=_("Page background color"))
+    header_background_color = ColorField(
+        blank=True, null=True, verbose_name=_("Header and footer background")
+    )
+    heading_color = ColorField(blank=True, null=True, verbose_name=_("Heading and navigation color"))
+    secondary_dark_color = ColorField(blank=True, null=True, verbose_name=_("Secondary dark color"))
+    primary_hover_state_color = ColorField(
+        blank=True, null=True, verbose_name=_("Primary hover color")
+    )
+    primary_light_color = ColorField(blank=True, null=True, verbose_name=_("Primary light background"))
+    accent_color = ColorField(blank=True, null=True, verbose_name=_("Accent color"))
+    accent_hover_color = ColorField(blank=True, null=True, verbose_name=_("Accent hover color"))
+    info_background_color = ColorField(blank=True, null=True, verbose_name=_("Information background"))
+    surface_color = ColorField(blank=True, null=True, verbose_name=_("Card and navigation surface"))
+    muted_text_color = ColorField(blank=True, null=True, verbose_name=_("Muted text color"))
+    border_color = ColorField(blank=True, null=True, verbose_name=_("Border color"))
+    danger_color = ColorField(blank=True, null=True, verbose_name=_("Danger and error color"))
+    body_font = models.CharField(
+        max_length=20, choices=FONT_CHOICES, default="open_sans", verbose_name=_("Body font")
+    )
+    heading_font = models.CharField(
+        max_length=20, choices=FONT_CHOICES, default="open_sans", verbose_name=_("Heading font")
+    )
+    shadow_sm = models.CharField(
+        max_length=120,
+        blank=True,
+        default="",
+        verbose_name=_("Small shadow"),
+        help_text=_("CSS box-shadow used for cards and dropdowns."),
+    )
+    shadow_lg = models.CharField(
+        max_length=120,
+        blank=True,
+        default="",
+        verbose_name=_("Large shadow"),
+        help_text=_("CSS box-shadow used for overlays and featured panels."),
+    )
+    restore_acmad_portal_defaults = models.BooleanField(
+        default=False,
+        verbose_name=_("Restore ACMAD Portal defaults on save"),
+        help_text=_("Replace this theme's colors, fonts, radius, and shadows with the ACMAD Portal preset."),
+    )
+    restore_climweb_defaults = models.BooleanField(
+        default=False,
+        verbose_name=_("Restore ClimWeb defaults on save"),
+        help_text=_("Replace this theme's colors, fonts, radius, and shadows with the original ClimWeb preset."),
+    )
     border_radius = models.IntegerField(validators=[MinValueValidator(0),
                                                     MaxValueValidator(20)], verbose_name=_("Border radius (px)"),
                                         help_text=_("Minimum 0 and Maximum 20 pixels"), default=12)
@@ -241,14 +357,51 @@ class Theme(models.Model):
         ], heading=_("Information")),
         ObjectList([
             FieldRowPanel([
-                NativeColorPanel('primary_color'),
                 NativeColorPanel('primary_hover_color'),
+                NativeColorPanel('primary_hover_state_color'),
             ]),
-        ], heading=_("Theme Colors")),
+            FieldRowPanel([
+                NativeColorPanel('header_background_color'),
+                NativeColorPanel('secondary_dark_color'),
+            ]),
+            FieldRowPanel([
+                NativeColorPanel('heading_color'),
+                NativeColorPanel('primary_color'),
+            ]),
+            FieldRowPanel([
+                NativeColorPanel('accent_color'),
+                NativeColorPanel('accent_hover_color'),
+            ]),
+        ], heading=_("Brand Colors")),
+        ObjectList([
+            FieldRowPanel([
+                NativeColorPanel('secondary_color'),
+                NativeColorPanel('surface_color'),
+            ]),
+            FieldRowPanel([
+                NativeColorPanel('primary_light_color'),
+                NativeColorPanel('info_background_color'),
+            ]),
+            FieldRowPanel([
+                NativeColorPanel('muted_text_color'),
+                NativeColorPanel('border_color'),
+            ]),
+            NativeColorPanel('danger_color'),
+        ], heading=_("Supporting Colors")),
+        ObjectList([
+            FieldPanel('body_font'),
+            FieldPanel('heading_font'),
+        ], heading=_("Typography")),
         ObjectList([
             FieldPanel('border_radius'),
-            FieldPanel('box_shadow')],
+            FieldPanel('box_shadow'),
+            FieldPanel('shadow_sm'),
+            FieldPanel('shadow_lg')],
             heading=_("Borders and Box Shadow")),
+        ObjectList([
+            FieldPanel('restore_acmad_portal_defaults'),
+            FieldPanel('restore_climweb_defaults'),
+        ], heading=_("Defaults")),
     
     ])
     
@@ -257,9 +410,52 @@ class Theme(models.Model):
     
     def __str__(self) -> str:
         return self.name if not self.is_default else f"{self.name} (Default)"
+
+    def apply_acmad_portal_defaults(self):
+        for field, value in self.ACMAD_PORTAL_DEFAULTS.items():
+            setattr(self, field, value)
+
+    def apply_climweb_defaults(self):
+        for field, value in self.CLIMWEB_DEFAULTS.items():
+            setattr(self, field, value)
+
+    def as_tokens(self):
+        primary = self.primary_hover_color or "#0C447C"
+        text = self.primary_color or "#363636"
+        return {
+            "navy_950": self.header_background_color or primary,
+            "navy_900": self.heading_color or text,
+            "navy_800": self.secondary_dark_color or primary,
+            "green_700": primary,
+            "green_600": self.primary_hover_state_color or primary,
+            "green_100": self.primary_light_color or mix_with_white(primary, 0.80),
+            "yellow_400": self.accent_color or "#f4c84a",
+            "yellow_300": self.accent_hover_color or "#f8d66f",
+            "blue_100": self.info_background_color or mix_with_white(primary, 0.80),
+            "sand_50": self.secondary_color or "#ffffff",
+            "white": self.surface_color or "#ffffff",
+            "ink": text,
+            "muted": self.muted_text_color or "#61727b",
+            "line": self.border_color or "#dce4e5",
+            "danger": self.danger_color or "#b93535",
+            "shadow_sm": self.shadow_sm or "0 8px 28px rgba(9, 42, 55, 0.08)",
+            "shadow_lg": self.shadow_lg or "0 24px 70px rgba(2, 24, 35, 0.20)",
+            "body_font": self.FONT_STACKS.get(self.body_font, self.FONT_STACKS["open_sans"]),
+            "heading_font": self.FONT_STACKS.get(self.heading_font, self.FONT_STACKS["open_sans"]),
+            "border_radius": f"{self.border_radius * 0.06}em",
+            "box_shadow_elevation": str(self.box_shadow),
+        }
     
     def save(self, *args, **kwargs):
-        themes = Theme.objects.all().exclude(name=self.name)
+        if self.restore_acmad_portal_defaults:
+            self.apply_acmad_portal_defaults()
+            self.restore_acmad_portal_defaults = False
+
+        if self.restore_climweb_defaults:
+            self.apply_climweb_defaults()
+            self.restore_climweb_defaults = False
+
+        themes = Theme.objects.all().exclude(pk=self.pk)
         
         # when i default is enabled, disbale any other default theme
         if self.is_default:
@@ -275,18 +471,160 @@ class NavigationSettings(BaseSiteSetting):
     main_menu = StreamField([
         ("navigation_item", NavigationItemBlock()),
     ], use_json_field=True, blank=True, null=True)
+    rcc_main_menu = StreamField(
+        [("navigation_item", NavigationItemBlock())],
+        use_json_field=True,
+        blank=True,
+        null=True,
+        verbose_name=_("RCC main menu"),
+        help_text=_("Links shown in the main header while browsing RCC pages."),
+    )
+    climsa_main_menu = StreamField(
+        [("navigation_item", NavigationItemBlock())],
+        use_json_field=True,
+        blank=True,
+        null=True,
+        verbose_name=_("CLIMSA main menu"),
+        help_text=_("Links shown in the main header while browsing CLIMSA pages."),
+    )
+    header_utility_links = StreamField(
+        [("utility_link", HeaderUtilityLinkBlock())],
+        use_json_field=True,
+        blank=True,
+        null=True,
+        verbose_name=_("Header utility links"),
+        help_text=_("Add, reorder, enable, or disable links shown in the header utility bar."),
+    )
     footer_menu = StreamField([
         ("navigation_item", FooterNavigationItemBlock()),
     ], use_json_field=True, blank=True, null=True)
     
     panels = [
         FieldPanel("main_menu"),
+        FieldPanel("rcc_main_menu"),
+        FieldPanel("climsa_main_menu"),
+        FieldPanel("header_utility_links"),
         FieldPanel("footer_menu"),
     ]
     
     class Meta:
         verbose_name = _("Navigation Setting")
         verbose_name_plural = _("Navigation Settings")
+
+
+def default_faq_items():
+    return [
+        {
+            "type": "faq_item",
+            "value": {
+                "question": str(_("Where can I find the latest weather and climate products?")),
+                "answer": str(_(
+                    "<p>Use the Products menu to browse the latest forecasts, outlooks, "
+                    "bulletins, and maps. Product pages show their publication date and "
+                    "available downloads.</p>"
+                )),
+            },
+        },
+        {
+            "type": "faq_item",
+            "value": {
+                "question": str(_("How can I receive updates when new products are published?")),
+                "answer": str(_(
+                    "<p>Select Subscribe in the utility navigation, choose the product "
+                    "updates you want, and confirm your email address.</p>"
+                )),
+            },
+        },
+        {
+            "type": "faq_item",
+            "value": {
+                "question": str(_("How do I request climate data?")),
+                "answer": str(_(
+                    "<p>Open the data request page from the website menu and provide the "
+                    "location, period, variables, and intended use. The relevant team will "
+                    "review your request and contact you.</p>"
+                )),
+            },
+        },
+        {
+            "type": "faq_item",
+            "value": {
+                "question": str(_("What should I do when an alert is active?")),
+                "answer": str(_(
+                    "<p>Open the alert to review the affected area, severity, timing, and "
+                    "recommended actions. Always follow instructions from your national and "
+                    "local authorities.</p>"
+                )),
+            },
+        },
+        {
+            "type": "faq_item",
+            "value": {
+                "question": str(_("Who can help if I cannot find what I need?")),
+                "answer": str(_(
+                    "<p>Use the contact link below to send your question to the team. Include "
+                    "the page or product name so we can direct your request quickly.</p>"
+                )),
+            },
+        },
+    ]
+
+
+@register_setting(icon="help")
+class FAQSettings(BaseSiteSetting):
+    heading = models.CharField(
+        max_length=120,
+        default=_("Frequently asked questions"),
+        verbose_name=_("Panel heading"),
+    )
+    introduction = models.TextField(
+        blank=True,
+        default=_("Quick answers to common questions about our services and information."),
+        verbose_name=_("Panel introduction"),
+    )
+    items = StreamField(
+        [("faq_item", FAQItemBlock())],
+        use_json_field=True,
+        blank=True,
+        default=default_faq_items,
+        verbose_name=_("FAQ items"),
+        help_text=_("Add, edit, remove, and reorder the questions shown in the FAQ panel."),
+    )
+    support_link_label = models.CharField(
+        max_length=80,
+        blank=True,
+        default=_("Still need help? Contact us"),
+        verbose_name=_("Support link label"),
+    )
+    support_page = models.ForeignKey(
+        "wagtailcore.Page",
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Support page"),
+    )
+
+    panels = [
+        MultiFieldPanel(
+            [
+                FieldPanel("heading"),
+                FieldPanel("introduction"),
+            ],
+            heading=_("FAQ panel"),
+        ),
+        FieldPanel("items"),
+        MultiFieldPanel(
+            [
+                FieldPanel("support_link_label"),
+                PageChooserPanel("support_page"),
+            ],
+            heading=_("Support link"),
+        ),
+    ]
+
+    class Meta:
+        verbose_name = _("FAQ settings")
 
 
 @register_setting
@@ -366,6 +704,7 @@ class ImportantPages(BaseSiteSetting):
 @receiver(post_save, sender=LanguageSettings)
 @receiver(post_save, sender=Theme)
 @receiver(post_save, sender=NavigationSettings)
+@receiver(post_save, sender=FAQSettings)
 @receiver(post_save, sender=ImportantPages)
 def handle_clear_wagtail_cache(sender, **kwargs):
     logger.debug("[WAGTAIL_CACHE]: Clearing cache")
