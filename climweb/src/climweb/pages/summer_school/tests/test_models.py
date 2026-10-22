@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.test import RequestFactory
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sessions.backends.db import SessionStore
@@ -67,6 +69,52 @@ class TestSummerSchoolPages(WagtailPageTestCase):
 
     def test_cohorts_blank_by_default(self):
         self.assertEqual(len(self.edition1.cohorts), 0)
+
+    def test_daily_activities_and_reviews_blank_by_default(self):
+        self.assertEqual(len(self.edition1.daily_activities), 0)
+        self.assertEqual(len(self.edition1.reviews), 0)
+
+    def test_edition_renders_daily_activity_and_review_sections(self):
+        self.edition1.daily_activities = [
+            ("day", {
+                "date": date(2026, 7, 6),
+                "title": "Opening and climate foundations",
+                "summary": "<p>Participants met their facilitators and began the first module.</p>",
+                "media": [
+                    ("hosted_video", {
+                        "url": "https://video.example.org/day-1",
+                        "title": "Watch the day-one recap",
+                        "thumbnail": None,
+                    }),
+                ],
+            }),
+        ]
+        self.edition1.reviews = [
+            ("review", {
+                "quote": "The practical sessions changed how I approach climate services.",
+                "reviewer_name": "Programme participant",
+                "reviewer_details": "2026 cohort",
+                "source": "feedback_form",
+                "source_label": "",
+                "rating": 5,
+                "review_date": date(2026, 7, 10),
+                "source_url": "",
+                "screenshot": None,
+            }),
+        ]
+        self.edition1.save_revision().publish()
+
+        response = self.client.get(self.edition1.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Daily Activities")
+        self.assertContains(response, "Opening and climate foundations")
+        self.assertContains(response, 'class="ss-activity-toggle"')
+        self.assertContains(response, 'class="ss-activity-content has-media"')
+        self.assertContains(response, "Watch the day-one recap")
+        self.assertContains(response, "https://video.example.org/day-1")
+        self.assertContains(response, "Summer School Reviews")
+        self.assertContains(response, "The practical sessions changed how I approach climate services.")
 
     def test_application_page_default_validation_field(self):
         self.assertEqual(self.application_page.validation_field, "email_address")

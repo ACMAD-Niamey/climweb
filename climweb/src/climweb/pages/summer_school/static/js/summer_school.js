@@ -64,6 +64,35 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 /**
+ * Daily activity accordions. Content remains expanded when JavaScript is
+ * unavailable; once enhanced, the first day opens and the remaining days
+ * collapse so visitors can scan the diary quickly.
+ */
+document.addEventListener('DOMContentLoaded', function () {
+    var activities = Array.prototype.slice.call(document.querySelectorAll('.ss-activity'));
+
+    activities.forEach(function (activity, index) {
+        var toggle = activity.querySelector('.ss-activity-toggle');
+        var panel = activity.querySelector('.ss-activity-panel');
+        if (!toggle || !panel) {
+            return;
+        }
+
+        function setExpanded(expanded) {
+            toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            panel.hidden = !expanded;
+            activity.classList.toggle('is-collapsed', !expanded);
+        }
+
+        setExpanded(index === 0);
+
+        toggle.addEventListener('click', function () {
+            setExpanded(toggle.getAttribute('aria-expanded') !== 'true');
+        });
+    });
+});
+
+/**
  * Trainer card "view bio" popup — same open/close recipe used by
  * staff_page.html and dashboards/static/js/modal.js (Bulma's documented
  * modal pattern: toggle .is-active, driven by .js-modal-trigger /
