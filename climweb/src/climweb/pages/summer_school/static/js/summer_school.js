@@ -64,6 +64,73 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 /**
+ * Paginate each daily activity's media independently. A page is always two
+ * visual rows: six items in the three-column desktop grid and two items once
+ * the gallery becomes a single column on mobile. Without JavaScript all media
+ * remains visible as a progressive-enhancement fallback.
+ */
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.ss-activity').forEach(function (activity) {
+        var gallery = activity.querySelector('.ss-activity-media');
+        var pagination = activity.querySelector('.ss-activity-media-pagination');
+        if (!gallery || !pagination) {
+            return;
+        }
+
+        var items = Array.prototype.slice.call(gallery.querySelectorAll('.ss-activity-media-item'));
+        var previousButton = pagination.querySelector('.ss-media-page-previous');
+        var nextButton = pagination.querySelector('.ss-media-page-next');
+        var status = pagination.querySelector('.ss-media-page-status');
+        var currentPage = 0;
+        var pageSize = 0;
+
+        function getColumnCount() {
+            return window.matchMedia('(max-width: 768px)').matches ? 1 : 3;
+        }
+
+        function renderPage() {
+            var newPageSize = Math.max(1, getColumnCount()) * 2;
+            var totalPages = Math.max(1, Math.ceil(items.length / newPageSize));
+
+            if (newPageSize !== pageSize) {
+                pageSize = newPageSize;
+                currentPage = Math.min(currentPage, totalPages - 1);
+            }
+
+            var firstItem = currentPage * pageSize;
+            var lastItem = firstItem + pageSize;
+            items.forEach(function (item, index) {
+                item.hidden = index < firstItem || index >= lastItem;
+            });
+
+            pagination.hidden = totalPages <= 1;
+            previousButton.disabled = currentPage === 0;
+            nextButton.disabled = currentPage >= totalPages - 1;
+            status.textContent = pagination.dataset.pageLabel + ' ' + (currentPage + 1) + ' ' +
+                pagination.dataset.ofLabel + ' ' + totalPages;
+        }
+
+        previousButton.addEventListener('click', function () {
+            if (currentPage > 0) {
+                currentPage -= 1;
+                renderPage();
+            }
+        });
+
+        nextButton.addEventListener('click', function () {
+            var totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+            if (currentPage < totalPages - 1) {
+                currentPage += 1;
+                renderPage();
+            }
+        });
+
+        renderPage();
+        window.addEventListener('resize', renderPage);
+    });
+});
+
+/**
  * Daily activity accordions. Content remains expanded when JavaScript is
  * unavailable; once enhanced, the first day opens and the remaining days
  * collapse so visitors can scan the diary quickly.

@@ -539,7 +539,7 @@
     display: grid;
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
     align-items: start;
-    gap: 2rem;
+    column-gap: 2rem;
 }
 
 .ss-activity-summary {
@@ -558,6 +558,58 @@
     margin: 0;
     border-radius: 10px;
     background: #f4f6f8;
+}
+
+.ss-activity-media-item[hidden] {
+    display: none;
+}
+
+.ss-activity-media-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.ss-activity-content.has-media .ss-activity-media-pagination {
+    grid-column: 2;
+}
+
+.ss-activity-media-pagination[hidden] {
+    display: none;
+}
+
+.ss-media-page-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: max-content;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid var(--primary-color);
+    border-radius: 7px;
+    background: #fff;
+    color: var(--primary-color);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.ss-media-page-button:hover:not(:disabled) {
+    background: var(--primary-color-lightest, #eef4ff);
+}
+
+.ss-media-page-button:disabled {
+    border-color: #d5dae1;
+    color: #98a2b3;
+    cursor: not-allowed;
+}
+
+.ss-media-page-status {
+    color: #667085;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
 }
 
 .ss-activity-media-item img,
@@ -598,8 +650,8 @@
 
 .ss-reviews-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1.25rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
     margin-top: 1.5rem;
 }
 
@@ -620,7 +672,7 @@
 }
 
 .ss-review-body {
-    padding: 1.4rem;
+    padding: 1rem;
 }
 
 .ss-review-source {
@@ -642,10 +694,10 @@
 }
 
 .ss-review-card blockquote {
-    margin: 1rem 0;
+    margin: 0.75rem 0;
     color: #263244;
-    font-size: 17px;
-    line-height: 1.65;
+    font-size: 15px;
+    line-height: 1.55;
 }
 
 .ss-review-card footer {
@@ -666,6 +718,12 @@
     color: var(--primary-color);
     font-size: 13px;
     font-weight: 700;
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+    .ss-reviews-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 768px) {
@@ -696,6 +754,10 @@
 
     .ss-activity-media {
         margin-top: 1rem;
+    }
+
+    .ss-media-page-button {
+        padding: 0.5rem 0.65rem;
     }
 }
 

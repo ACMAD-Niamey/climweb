@@ -111,9 +111,14 @@ class TestSummerSchoolPages(WagtailPageTestCase):
         self.assertContains(response, "Opening and climate foundations")
         self.assertContains(response, 'class="ss-activity-toggle"')
         self.assertContains(response, 'class="ss-activity-content has-media"')
+        self.assertContains(response, 'class="ss-activity-media-pagination"')
+        self.assertContains(response, "Previous")
+        self.assertContains(response, "Next")
         self.assertContains(response, "Watch the day-one recap")
         self.assertContains(response, "https://video.example.org/day-1")
-        self.assertContains(response, "Summer School Reviews")
+        self.assertContains(response, "What participants say about the Summer School")
+        self.assertNotContains(response, "Summer School diary")
+        self.assertNotContains(response, "Participant voices")
         self.assertContains(response, "The practical sessions changed how I approach climate services.")
 
     def test_application_page_default_validation_field(self):

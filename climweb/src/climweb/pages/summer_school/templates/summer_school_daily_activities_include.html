@@ -1,7 +1,6 @@
 {% load i18n wagtailcore_tags wagtailimages_tags %}
 
 <div class="ss-section-header">
-    <p class="ss-section-eyebrow">{% translate "Summer School diary" %}</p>
     <h2 class="ss-section-heading">{% translate "Daily Activities" %}</h2>
     <p>{% translate "Follow each day through its key moments, photos, and videos." %}</p>
 </div>
@@ -60,6 +59,15 @@
                                 {% endif %}
                             {% endfor %}
                         </div>
+                        <nav class="ss-activity-media-pagination" aria-label="{% blocktranslate with number=forloop.counter %}Day {{ number }} gallery pagination{% endblocktranslate %}" data-page-label="{% translate 'Page' %}" data-of-label="{% translate 'of' %}" hidden>
+                            <button class="ss-media-page-button ss-media-page-previous" type="button">
+                                <span aria-hidden="true">&#8592;</span> {% translate "Previous" %}
+                            </button>
+                            <span class="ss-media-page-status" aria-live="polite"></span>
+                            <button class="ss-media-page-button ss-media-page-next" type="button">
+                                {% translate "Next" %} <span aria-hidden="true">&#8594;</span>
+                            </button>
+                        </nav>
                     {% endif %}
                 </div>
             </div>
