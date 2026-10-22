@@ -26,6 +26,32 @@
         {% endif %}
       </figure>
     {% endfor %}
+    {% for media in value.videos %}
+      {% if media.block_type == "video" %}
+        <figure class="ng-gallery-item ng-gallery-video">
+          <video class="ng-gallery-video-player" controls preload="metadata"{% if media.value.poster %}{% image media.value.poster fill-900x506 as poster %} poster="{{ poster.url }}"{% endif %}>
+            <source src="{{ media.value.video.url }}">
+            <a href="{{ media.value.video.url }}">{% translate "Download video" %}</a>
+          </video>
+          {% if media.value.caption %}
+            <figcaption class="ng-gallery-caption">{{ media.value.caption }}</figcaption>
+          {% endif %}
+        </figure>
+      {% else %}
+        <article class="ng-gallery-item ng-gallery-hosted-video">
+          {% if media.value.thumbnail %}
+            {% image media.value.thumbnail fill-900x506 as thumbnail %}
+            <img class="ng-gallery-img" src="{{ thumbnail.url }}" width="{{ thumbnail.width }}" height="{{ thumbnail.height }}" alt="" loading="lazy">
+          {% endif %}
+          <div class="ng-gallery-hosted-video-body">
+            <span class="ng-gallery-play-icon" aria-hidden="true">&#9654;</span>
+            <a href="{{ media.value.url }}" target="_blank" rel="noopener">
+              {% if media.value.title %}{{ media.value.title }}{% else %}{% translate "Watch video" %}{% endif %}
+            </a>
+          </div>
+        </article>
+      {% endif %}
+    {% endfor %}
   </div>
 
 </div>

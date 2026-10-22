@@ -173,7 +173,7 @@ class NewsPage(MetadataPageMixin, Page):
     
     media_gallery = StreamField([
         ('gallery', MosaicImageGalleryBlock()),
-    ], blank=True, null=True, use_json_field=True, verbose_name=_("Image Gallery"))
+    ], blank=True, null=True, use_json_field=True, verbose_name=_("Image and Video Gallery"))
 
     external_links = StreamField([
         ('link', ExternalLinkBlock())

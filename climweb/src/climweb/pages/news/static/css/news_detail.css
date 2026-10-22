@@ -282,7 +282,7 @@
 }
 
 /* ══════════════════════════════
-   IMAGE GALLERY (mosaic block)
+   IMAGE AND VIDEO GALLERY (mosaic block)
 ══════════════════════════════ */
 
 .nd-gallery-section {
@@ -366,6 +366,48 @@
   line-height: 1.4;
   background: #fff;
   border-top: 1px solid #f0f0f0;
+}
+
+.ng-gallery-video-player {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #111;
+  object-fit: contain;
+}
+
+.ng-gallery-hosted-video {
+  display: flex;
+  flex-direction: column;
+  min-height: 150px;
+}
+
+.ng-gallery-hosted-video-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 0.65rem;
+  padding: 1.25rem;
+  text-align: center;
+  background: #f4f4f4;
+}
+
+.ng-gallery-hosted-video-body a {
+  color: #1a1a1a;
+  font-weight: 700;
+}
+
+.ng-gallery-play-icon {
+  display: inline-grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 2rem;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #1f6b45;
+  font-size: 0.75rem;
 }
 
 /* ── RESPONSIVE ── */

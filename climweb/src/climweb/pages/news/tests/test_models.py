@@ -1,3 +1,5 @@
+from django.core.files.uploadedfile import SimpleUploadedFile
+import wagtail_factories
 from wagtail.test.utils import WagtailPageTestCase
 
 from climweb.base.seo_utils import get_html_meta_tags
@@ -26,6 +28,78 @@ class TestNewsPages(WagtailPageTestCase):
     def test_news_page_render(self):
         self.assertPageIsRenderable(self.news1)
         self.assertPageIsRenderable(self.news2)
+
+    def test_news_gallery_renders_images_and_videos(self):
+        image = wagtail_factories.ImageChooserBlockFactory()
+        video = wagtail_factories.DocumentFactory(
+            title="News recap",
+            file=SimpleUploadedFile(
+                "news-recap.mp4",
+                b"test video content",
+                content_type="video/mp4",
+            ),
+        )
+        self.news1.media_gallery = [
+            (
+                "gallery",
+                {
+                    "title": "Event highlights",
+                    "grid_style": "grid",
+                    "columns": "3",
+                    "images": [{"image": image, "caption": "Opening session"}],
+                    "videos": [
+                        (
+                            "video",
+                            {
+                                "video": video,
+                                "caption": "Uploaded event recap",
+                                "poster": None,
+                            },
+                        ),
+                        (
+                            "hosted_video",
+                            {
+                                "url": "https://video.example.org/event-recap",
+                                "title": "Watch the hosted recap",
+                                "thumbnail": None,
+                            },
+                        ),
+                    ],
+                },
+            ),
+        ]
+        self.news1.save_revision().publish()
+
+        response = self.client.get(self.news1.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Event highlights")
+        self.assertContains(response, "Opening session")
+        self.assertContains(response, "Uploaded event recap")
+        self.assertContains(response, video.url)
+        self.assertContains(response, "Watch the hosted recap")
+        self.assertContains(response, "https://video.example.org/event-recap")
+
+    def test_existing_image_only_gallery_still_renders(self):
+        image = wagtail_factories.ImageChooserBlockFactory()
+        self.news1.media_gallery = [
+            (
+                "gallery",
+                {
+                    "title": "Photo archive",
+                    "grid_style": "masonry",
+                    "columns": "3",
+                    "images": [{"image": image, "caption": "Archive photo"}],
+                },
+            ),
+        ]
+        self.news1.save_revision().publish()
+
+        response = self.client.get(self.news1.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Photo archive")
+        self.assertContains(response, "Archive photo")
     
     def test_news_page_meta_tags(self):
         resp = self.client.get(self.news1.get_url())
