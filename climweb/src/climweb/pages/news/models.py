@@ -24,7 +24,12 @@ from climweb.base.utils import (
     query_param_to_list,
     get_first_non_empty_p_string
 )
-from .blocks import ExternalLinkBlock, MosaicImageGalleryBlock
+from .blocks import (
+    ExternalLinkBlock,
+    GalleryHostedVideoBlock,
+    GalleryUploadedVideoBlock,
+    MosaicImageGalleryBlock,
+)
 
 NEWS_ALLOWED_RICHTEXT_FEATURES = ['bold', 'italic', 'h4', 'h5', 'h6', 'ol', 'ul', 'hr', 'link', 'image',
                                   'document-link', 'embed', ]
@@ -154,6 +159,20 @@ class NewsPage(MetadataPageMixin, Page):
     date = models.DateTimeField(_("Post date"), default=datetime.today)
     subtitle = models.TextField(blank=True, null=True, help_text=_("Optional subtitle"), verbose_name=_("Subtitle"))
     body = RichTextField(features=NEWS_ALLOWED_RICHTEXT_FEATURES, verbose_name=_("Body"))
+    body_videos = StreamField(
+        [
+            ("video", GalleryUploadedVideoBlock()),
+            ("hosted_video", GalleryHostedVideoBlock()),
+        ],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Body Videos"),
+        help_text=_(
+            "Add uploaded videos or hosted video links after the article body. "
+            "Use the Embed control in the Body editor to place a hosted video "
+            "within the rich text."
+        ),
+    )
     services = ParentalManyToManyField('base.ServiceCategory', blank=True, verbose_name=_("Relevant Services"), )
     projects = ParentalManyToManyField('projects.ProjectPage', blank=True, verbose_name=_("Relevant Projects"))
     is_featured = models.BooleanField(default=False, help_text=_("Should this news appear on the news landing "
@@ -186,6 +205,7 @@ class NewsPage(MetadataPageMixin, Page):
         FieldPanel('date'),
         FieldPanel('subtitle'),
         FieldPanel('body'),
+        FieldPanel('body_videos'),
         FieldPanel('media_gallery'),
         FieldPanel('services', widget=CheckboxSelectMultiple),
         FieldPanel('projects', widget=CheckboxSelectMultiple),

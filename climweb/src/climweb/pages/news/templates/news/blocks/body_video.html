@@ -1,0 +1,26 @@
+{% load i18n wagtailimages_tags %}
+
+{% if media.block_type == "video" %}
+  <figure class="nd-body-video">
+    <video class="nd-body-video-player" controls preload="metadata"{% if media.value.poster %}{% image media.value.poster fill-1200x675 as poster %} poster="{{ poster.url }}"{% endif %}>
+      <source src="{{ media.value.video.url }}">
+      <a href="{{ media.value.video.url }}">{% translate "Download video" %}</a>
+    </video>
+    {% if media.value.caption %}
+      <figcaption>{{ media.value.caption }}</figcaption>
+    {% endif %}
+  </figure>
+{% else %}
+  <article class="nd-body-hosted-video">
+    {% if media.value.thumbnail %}
+      {% image media.value.thumbnail fill-1200x675 as thumbnail %}
+      <img src="{{ thumbnail.url }}" width="{{ thumbnail.width }}" height="{{ thumbnail.height }}" alt="" loading="lazy">
+    {% endif %}
+    <div class="nd-body-hosted-video-content">
+      <span class="ng-gallery-play-icon" aria-hidden="true">&#9654;</span>
+      <a href="{{ media.value.url }}" target="_blank" rel="noopener">
+        {% if media.value.title %}{{ media.value.title }}{% else %}{% translate "Watch video" %}{% endif %}
+      </a>
+    </div>
+  </article>
+{% endif %}

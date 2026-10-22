@@ -5,6 +5,7 @@ from wagtail.test.utils import WagtailPageTestCase
 from climweb.base.seo_utils import get_html_meta_tags
 from climweb.base.test_utils import test_page_meta_tags
 from climweb.pages.home.tests.factories import get_or_create_homepage
+from climweb.pages.news.models import NEWS_ALLOWED_RICHTEXT_FEATURES
 from .factories import NewsIndexPageFactory, NewsPageFactory
 
 
@@ -100,6 +101,45 @@ class TestNewsPages(WagtailPageTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Photo archive")
         self.assertContains(response, "Archive photo")
+
+    def test_news_body_supports_uploaded_and_hosted_videos(self):
+        video = wagtail_factories.DocumentFactory(
+            title="Body recap",
+            file=SimpleUploadedFile(
+                "body-recap.mp4",
+                b"test video content",
+                content_type="video/mp4",
+            ),
+        )
+        self.news1.body_videos = [
+            (
+                "video",
+                {
+                    "video": video,
+                    "caption": "Video within the article body",
+                    "poster": None,
+                },
+            ),
+            (
+                "hosted_video",
+                {
+                    "url": "https://video.example.org/body-recap",
+                    "title": "Watch the full interview",
+                    "thumbnail": None,
+                },
+            ),
+        ]
+        self.news1.save_revision().publish()
+
+        response = self.client.get(self.news1.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="nd-body-videos"')
+        self.assertContains(response, "Video within the article body")
+        self.assertContains(response, video.url)
+        self.assertContains(response, "Watch the full interview")
+        self.assertContains(response, "https://video.example.org/body-recap")
+        self.assertIn("embed", NEWS_ALLOWED_RICHTEXT_FEATURES)
     
     def test_news_page_meta_tags(self):
         resp = self.client.get(self.news1.get_url())

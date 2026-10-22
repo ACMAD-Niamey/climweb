@@ -291,6 +291,51 @@
   gap: 2rem;
 }
 
+.nd-body-videos {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.nd-body-video,
+.nd-body-hosted-video {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid #e7e7e7;
+  border-radius: 10px;
+  background: #f4f4f4;
+}
+
+.nd-body-video-player,
+.nd-body-hosted-video img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  background: #111;
+}
+
+.nd-body-video figcaption {
+  padding: 0.7rem 0.9rem;
+  color: #666;
+  background: #fff;
+  font-size: 0.875rem;
+}
+
+.nd-body-hosted-video-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  min-height: 100px;
+  padding: 1.25rem;
+}
+
+.nd-body-hosted-video-content a {
+  color: #1a1a1a;
+  font-weight: 700;
+}
+
 .ng-gallery {
   width: 100%;
 }

@@ -45,6 +45,14 @@
                   {{ page.body|richtext }}
                 </div>
 
+                {% if page.body_videos %}
+                  <div class="nd-body-videos" aria-label="{% translate 'Article videos' %}">
+                    {% for media in page.body_videos %}
+                      {% include "news/blocks/body_video.html" with media=media %}
+                    {% endfor %}
+                  </div>
+                {% endif %}
+
                 <!-- IMAGE AND VIDEO GALLERY -->
                 {% if page.media_gallery %}
                   <div class="nd-gallery-section">
