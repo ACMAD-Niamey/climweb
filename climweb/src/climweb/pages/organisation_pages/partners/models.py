@@ -6,7 +6,7 @@ from wagtail.fields import RichTextField
 from wagtail.models import Page
 from wagtail.snippets.models import register_snippet
 
-from climweb.base.models import AbstractBannerWithIntroPage
+from climweb.base.models import AbstractBannerWithOptionalIntroPage
 from climweb.config.settings.base import SUMMARY_RICHTEXT_FEATURES
 
 
@@ -47,7 +47,7 @@ class Partner(models.Model):
     ]
 
 
-class PartnersPage(AbstractBannerWithIntroPage):
+class PartnersPage(AbstractBannerWithOptionalIntroPage):
     template = 'partners/partners.html'
     parent_page_types = ['organisation.OrganisationIndexPage']
     subpage_types = []
@@ -82,7 +82,7 @@ class PartnersPage(AbstractBannerWithIntroPage):
         related_name='+', verbose_name=_("Partners call to action page")
     )
     content_panels = Page.content_panels + [
-        *AbstractBannerWithIntroPage.content_panels,
+        *AbstractBannerWithOptionalIntroPage.content_panels,
         MultiFieldPanel(
             [
                 FieldPanel('partners_cta_title'),

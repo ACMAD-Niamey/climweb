@@ -145,10 +145,6 @@ class Command(MixedMediaImportCommand):
             )
             index.add_child(instance=product_page)
             product_page.save_revision().publish()
-        elif product_page.service_id != service.pk:
-            product_page.service = service
-            product_page.save_revision().publish()
-
         destinations = {}
         for asset in assets:
             if asset["key"] in destinations:

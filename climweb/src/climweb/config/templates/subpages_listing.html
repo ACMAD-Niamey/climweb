@@ -3,6 +3,9 @@
 
 {% block extra_css %}
 <link rel="stylesheet" type="text/css" href="{% static 'css/publication.css' %}">
+{% if page.is_products_index %}
+<link rel="stylesheet" type="text/css" href="{% static 'products/css/product.css' %}">
+{% endif %}
 {% endblock %}
 
 {% block body_class %}service_page{% endblock %}
@@ -10,6 +13,18 @@
 {% block content %}
 <main class="is-index">
   {% include 'hero.html' with page=page %}
+  {% if page.introduction_title or page.introduction_text or page.introduction_image or page.featured_product_page %}
+    <section class="nmhs-work intro-section">
+      <div class="work container">
+        {% if page.introduction_image or page.featured_product_page %}
+          {% include 'service_introduction.html' with page=page featured_product=page.featured_product_page %}
+        {% else %}
+          {% if page.introduction_title %}<h2 class="title is-3">{{ page.introduction_title }}</h2>{% endif %}
+          {% if page.introduction_text %}<div class="intro-description format-text">{{ page.introduction_text|richtext }}</div>{% endif %}
+        {% endif %}
+      </div>
+    </section>
+  {% endif %}
   <section class="spl-section">
     <div class="container">
 
@@ -96,7 +111,7 @@
                       {% image sub_page.specific.listing_image original as sub_img %}
                       <img class="progressive__img progressive--not-loaded pub-thumb-img"
                         data-progressive="{{ sub_img.url }}" src="{% lazy_image_url sub_img %}"
-                        alt="{{ sub_page.title }}" />
+                        alt="{{ sub_page.specific.display_title }}" />
                       {% else %}
                       <div class="pub-thumb-placeholder">
                         <span class="spl-card-ph-icon"
@@ -115,7 +130,7 @@
                         </span>
                         <span class="pub-tag">{{ category.name }}</span>
                       </div>
-                      <a href="{{ sub_page.url }}" class="pub-title">{{ sub_page.title }}</a>
+                      <a href="{{ sub_page.url }}" class="pub-title">{{ sub_page.specific.display_title }}</a>
                       {% if sub_page.specific.listing_summary %}
                       <p class="pub-snippet">{{ sub_page.specific.listing_summary }}</p>
                       {% endif %}
@@ -151,13 +166,13 @@
                     {% image sub_page.specific.listing_image original as sub_img %}
                     <img class="progressive__img progressive--not-loaded pub-thumb-img"
                       data-progressive="{{ sub_img.url }}" src="{% lazy_image_url sub_img %}"
-                      alt="{{ sub_page.title }}" />
+                      alt="{{ sub_page.specific.display_title }}" />
                     {% else %}
                     <div class="pub-thumb-placeholder"></div>
                     {% endif %}
                   </a>
                   <div class="pub-body">
-                    <a href="{{ sub_page.url }}" class="pub-title">{{ sub_page.title }}</a>
+                    <a href="{{ sub_page.url }}" class="pub-title">{{ sub_page.specific.display_title }}</a>
                     {% if sub_page.specific.listing_summary %}
                     <p class="pub-snippet">{{ sub_page.specific.listing_summary }}</p>
                     {% endif %}

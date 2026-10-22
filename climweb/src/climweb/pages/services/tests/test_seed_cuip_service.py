@@ -36,6 +36,9 @@ class TestSeedCuipServiceCommand(WagtailPageTestCase):
         )
         self.assertEqual(len(health["tor_documents"]), 1)
         self.assertIn("Secretariat provided by ACMAD", str(health["rules_of_procedure"]))
+        self.assertEqual(page.introduction_title, "Why CUIP matters")
+        self.assertIn("African economies and livelihoods", str(page.introduction_text))
+        self.assertIn("averaging 21%", str(page.rationale_text))
         agriculture = page.service_sectors[0].value
         self.assertEqual(len(agriculture["tor_documents"]), 2)
         self.assertIn("ConceptNoteUserInterfaceWorkshop.pdf", agriculture["tor_documents"][0]["url"])
@@ -46,6 +49,8 @@ class TestSeedCuipServiceCommand(WagtailPageTestCase):
         self.assertContains(response, "Air Quality Monitoring Map")
         self.assertContains(response, "Terms of Reference", count=4)
         self.assertContains(response, "TOR documents and adoption records", count=4)
+        self.assertContains(response, "Read full rationale")
+        self.assertContains(response, "Most African economies and livelihoods")
 
     def test_command_preserves_existing_dashboard_content(self):
         call_command("seed_cuip_service", stdout=StringIO())

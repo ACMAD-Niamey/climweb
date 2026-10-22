@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% load static i18n wagtailcore_tags wagtailimages_tags wagtailembeds_tags wagtailiconchooser_tags %}
+{% load static i18n wagtailcore_tags wagtailimages_tags wagtailembeds_tags wagtailiconchooser_tags bulma_tags %}
 
 {% block extra_css %}
     {{ block.super }}
-    <link rel="stylesheet" href="{% static 'css/on_the_job_training.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'css/on_the_job_training.css' %}?v=6">
     {% if page.show_participant_map %}{% include "base/includes/participant_map_css.html" %}{% endif %}
 {% endblock %}
 
@@ -86,7 +86,11 @@
                     <article><span>{{ forloop.counter }}</span><div><h3>{{ block.value.title }}</h3><div class="format-text">{{ block.value.description|richtext }}</div></div></article>
                 {% endfor %}
             </div>
-            <a class="ojt-button" href="mailto:{{ page.application_email }}">{% translate "Contact the programme" %}</a>
+            {% if page.show_training_proposal_form %}
+                <a class="ojt-button" href="#training-proposal-modal" data-proposal-open aria-controls="training-proposal-modal" aria-expanded="false" role="button">{% translate "Submit a training proposal" %}</a>
+            {% else %}
+                <a class="ojt-button" href="mailto:{{ page.application_email }}">{% translate "Contact the programme" %}</a>
+            {% endif %}
             {% if page.brochure %}<a class="ojt-button ojt-button--light" href="{{ page.brochure.url }}">{% translate "Download brochure" %}</a>{% endif %}
         </div>
     </section>
@@ -181,6 +185,70 @@
         </div>
     </section>
 
+    {% if page.show_training_proposal_form %}
+    <div id="training-proposal-modal"
+         class="modal ojt-proposal-modal{% if proposal_submitted or training_proposal_form.errors %} is-active{% endif %}"
+         data-proposal-modal
+         data-open-on-load="{% if proposal_submitted or training_proposal_form.errors %}true{% else %}false{% endif %}"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="training-proposal-title">
+        <a class="modal-background" href="#apply" data-proposal-close aria-label="{% translate 'Close' %}"></a>
+        <div class="modal-card ojt-proposal-modal__card">
+            <header class="modal-card-head ojt-proposal-modal__header">
+                <div>
+                    <p class="ojt-eyebrow">{% translate "Apply online" %}</p>
+                    <h2 id="training-proposal-title">{{ page.proposal_section_title }}</h2>
+                </div>
+                <a class="delete" href="#apply" data-proposal-close aria-label="{% translate 'Close' %}"></a>
+            </header>
+            <section class="modal-card-body ojt-proposal-modal__body">
+                {% if page.proposal_section_introduction %}
+                    <div class="format-text ojt-lead ojt-proposal-introduction">{{ page.proposal_section_introduction|richtext }}</div>
+                {% else %}
+                    <p class="ojt-lead ojt-proposal-introduction">{% translate "Complete the form below to submit your proposed training plan and supporting documents to ACMAD." %}</p>
+                {% endif %}
+                {% if proposal_submitted %}
+                    <div class="ojt-proposal-success" role="status">
+                        <h3>{% translate "Proposal received" %}</h3>
+                        <p>{% translate "Thank you. Your training proposal has been submitted successfully and will be reviewed by the ACMAD team." %}</p>
+                    </div>
+                {% else %}
+                    <form class="ojt-proposal-form" action="{{ page.url }}" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_id" value="training-proposal">
+                        {{ training_proposal_form.non_field_errors }}
+                        {{ training_proposal_form.website }}
+                        <div class="ojt-proposal-grid">
+                            {{ training_proposal_form.full_name|bulma }}
+                            {{ training_proposal_form.email|bulma }}
+                            {{ training_proposal_form.phone|bulma }}
+                            {{ training_proposal_form.organisation|bulma }}
+                            {{ training_proposal_form.job_title|bulma }}
+                            {{ training_proposal_form.programme_type|bulma }}
+                            {{ training_proposal_form.proposal_title|bulma }}
+                        </div>
+                        {{ training_proposal_form.professional_background|bulma }}
+                        {{ training_proposal_form.objectives|bulma }}
+                        {{ training_proposal_form.expected_outcomes|bulma }}
+                        <div class="ojt-proposal-date-row">
+                            {{ training_proposal_form.preferred_start_date|bulma }}
+                            {{ training_proposal_form.preferred_end_date|bulma }}
+                        </div>
+                        <div class="ojt-proposal-file-row">
+                            {{ training_proposal_form.nomination_letter|bulma }}
+                            {{ training_proposal_form.cv|bulma }}
+                            {{ training_proposal_form.supporting_document|bulma }}
+                        </div>
+                        {{ training_proposal_form.consent|bulma }}
+                        <button class="ojt-button" type="submit">{% translate "Submit training proposal" %}</button>
+                    </form>
+                {% endif %}
+            </section>
+        </div>
+    </div>
+    {% endif %}
+
     <div id="ojt-gallery-modal" class="modal ojt-gallery-modal" role="dialog" aria-modal="true" aria-label="{% translate 'Image Viewer' %}">
         <div class="modal-background" data-gallery-close></div>
         <div class="modal-content ojt-gallery-modal__content">
@@ -202,6 +270,7 @@
 
 {% block extra_js %}
     {{ block.super }}
-    <script defer src="{% static 'js/on_the_job_training.js' %}?v=1"></script>
+    <script src="{% static 'base/js/bulma-file.js' %}"></script>
+    <script defer src="{% static 'js/on_the_job_training.js' %}?v=3"></script>
     {% if page.show_participant_map %}{% include "base/includes/participant_map_js.html" %}{% endif %}
 {% endblock %}

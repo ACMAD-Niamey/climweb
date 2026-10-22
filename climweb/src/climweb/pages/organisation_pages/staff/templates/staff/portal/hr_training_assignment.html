@@ -1,0 +1,39 @@
+{% extends "staff/portal/base.html" %}
+{% block title %}{{ assignment.title }} · HR Dashboard{% endblock %}
+{% block page_name %}Activity assignment{% endblock %}
+{% block content %}
+<a class="portal-back" href="{% url 'staff_portal:hr_dashboard' %}#activities">← Back to HR dashboard</a>
+<div class="portal-page-heading"><div><p class="portal-eyebrow">{{ assignment.get_activity_type_display }} · {{ assignment.get_status_display }}</p><h1>{{ assignment.title }}</h1><p>{{ assignment.member.name }}</p></div>{% if assignment.report %}<a class="portal-secondary-button" href="{% url 'staff_portal:hr_review_training_report' assignment.report.pk %}">View report</a>{% endif %}</div>
+<div class="portal-grid">
+    <section class="portal-panel">
+        <h2>Assignment details</h2>
+        <dl class="portal-details">
+            <div><dt>Staff member</dt><dd>{{ assignment.member.name }}</dd></div>
+            <div><dt>Activity type</dt><dd>{{ assignment.get_activity_type_display }}</dd></div>
+            <div><dt>Organizer</dt><dd>{{ assignment.organizer|default:"Not specified" }}</dd></div>
+            <div><dt>Location</dt><dd>{{ assignment.location|default:"Not specified" }}</dd></div>
+            <div><dt>Dates</dt><dd>{{ assignment.start_date|date:"d M Y" }} – {{ assignment.end_date|date:"d M Y" }}</dd></div>
+            <div><dt>Report due</dt><dd>{{ assignment.report_due_date|date:"d M Y"|default:"Not specified" }}</dd></div>
+            <div><dt>Assigned by</dt><dd>{{ assignment.assigned_by|default:"Deleted administrator" }}</dd></div>
+        </dl>
+        {% if assignment.description %}<h3>Description</h3><p>{{ assignment.description|linebreaksbr }}</p>{% endif %}
+    </section>
+    <aside>
+        <section class="portal-panel">
+            <p class="portal-eyebrow">NOMINATION</p>
+            <h2>Manage nomination</h2>
+            {% if can_remove_nomination %}
+                <p>You can remove this staff nomination until the activity begins on {{ assignment.start_date|date:"d M Y" }}. The record will be retained as cancelled.</p>
+                <form method="post" action="{% url 'staff_portal:hr_remove_nomination' assignment.pk %}" onsubmit="return confirm('Remove this staff nomination?');">
+                    {% csrf_token %}
+                    <button class="portal-danger-button" type="submit">Remove nomination</button>
+                </form>
+            {% elif assignment.status == 'cancelled' %}
+                <div class="portal-status-banner"><strong>Nomination removed</strong><span>This assignment is retained for audit history.</span></div>
+            {% else %}
+                <p>This nomination can no longer be removed because the activity has started or is no longer active.</p>
+            {% endif %}
+        </section>
+    </aside>
+</div>
+{% endblock %}

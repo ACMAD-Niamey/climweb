@@ -5,6 +5,7 @@ from climweb.base.seo_utils import get_html_meta_tags
 from climweb.base.test_utils import test_page_meta_tags
 from climweb.pages.home.tests.factories import get_or_create_homepage
 from climweb.pages.organisation_pages.organisation.tests.factories import OrganisationIndexPageFactory
+from climweb.pages.organisation_pages.board.tests.factories import DirectorGeneralPageFactory
 from .factories import StaffPageFactory
 from ..models import Department, StaffMember, StaffPageSelection, StaffProfileAccess
 
@@ -15,11 +16,12 @@ class TestStaffPage(WagtailPageTestCase):
         home_page = get_or_create_homepage()
         organisation_page = OrganisationIndexPageFactory(parent=home_page)
         cls.page = StaffPageFactory(parent=organisation_page)
+        cls.director_general_page = DirectorGeneralPageFactory(parent=cls.page)
         department = Department.objects.create(name="Climate Services")
         cls.member = StaffMember.objects.create(
             page=cls.page,
             name="Dr. Team Member",
-            role="Climate Scientist",
+            role="Director General",
             department=department,
             photo=cls.page.banner_image,
             bio="<p>Works on climate information and early warning.</p>",
@@ -49,6 +51,9 @@ class TestStaffPage(WagtailPageTestCase):
         self.assertContains(response, f'data-staff-modal="staff-modal-{self.member.pk}"')
         self.assertContains(response, f'aria-labelledby="staff-modal-name-{self.member.pk}"')
         self.assertContains(response, 'aria-hidden="true" tabindex="-1"', count=2)
+        self.assertContains(response, 'data-staff-bio-toggle', count=1)
+        self.assertContains(response, 'aria-expanded="false"')
+        self.assertContains(response, "Read more", count=2)
         self.assertContains(response, "staff/css/staff_page.css")
         self.assertContains(response, "staff/js/staff_page.js")
 
@@ -86,6 +91,11 @@ class TestStaffPage(WagtailPageTestCase):
     def test_blank_contact_fields_hide_icons(self):
         response = self.client.get(self.page.get_url())
         self.assertNotContains(response, 'class="staff-profile-links"')
+
+    def test_director_general_modal_links_to_dedicated_page(self):
+        response = self.client.get(self.page.get_url())
+        self.assertContains(response, "View Director General's page")
+        self.assertContains(response, f'href="{self.director_general_page.url}"')
 
     def test_mailto_encodes_query_characters_in_email_local_part(self):
         account = get_user_model().objects.create_user(username="email-escaping", email="contact?subject=test@example.test")

@@ -164,6 +164,11 @@ class NewsPage(MetadataPageMixin, Page):
                                                  help_text=_("Should this appear in the homepage as"
                                                              " an alert/latest update ?"),
                                                  verbose_name=_("Is visible on homepage"))
+    is_el_nino_related = models.BooleanField(
+        default=False,
+        help_text=_("Show this news item in the ENSO related activities section."),
+        verbose_name=_("ENSO related activity"),
+    )
     extra_links_heading = models.CharField(max_length=255, blank=True, null=True, verbose_name=_("Extra links heading"))
     
     media_gallery = StreamField([
@@ -194,6 +199,7 @@ class NewsPage(MetadataPageMixin, Page):
         FieldPanel('is_featured'),
         FieldPanel('is_alert'),
         FieldPanel('is_visible_on_homepage'),
+        FieldPanel('is_el_nino_related'),
     ]
     
     api_fields = [
@@ -204,6 +210,7 @@ class NewsPage(MetadataPageMixin, Page):
         APIField('projects'),
         APIField('tags'),
         APIField('is_alert'),
+        APIField('is_el_nino_related'),
     ]
     
     class Meta:

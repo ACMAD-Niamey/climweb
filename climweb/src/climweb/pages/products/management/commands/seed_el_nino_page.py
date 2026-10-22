@@ -5,7 +5,7 @@ from climweb.pages.products.models import ElNinoPage, ProductIndexPage
 
 
 class Command(BaseCommand):
-    help = "Create the editable Africa-focused El Niño page and its monthly bulletin product structure."
+    help = "Create the editable Africa-focused ENSO page and its monthly bulletin product structure."
 
     def handle(self, *args, **options):
         index = ProductIndexPage.objects.live().first()
@@ -14,7 +14,7 @@ class Command(BaseCommand):
 
         existing = ElNinoPage.objects.filter(slug="el-nino-africa").first()
         if existing:
-            self.stdout.write(self.style.SUCCESS(f"El Niño page ready: {existing.url}"))
+            self.stdout.write(self.style.SUCCESS(f"ENSO page ready: {existing.url}"))
             return
 
         service = ServiceCategory.objects.filter(name="Seasonal and Long-Range Forecasts").first()
@@ -24,7 +24,7 @@ class Command(BaseCommand):
             raise CommandError("A seasonal forecasting or RCC service category was not found")
 
         product, _ = Product.objects.get_or_create(
-            name="El Niño Bulletin",
+            name="ENSO Bulletin",
             defaults={
                 "variable_name": "el-nino-bulletin",
                 "temporal_resolution": "monthly",
@@ -37,7 +37,7 @@ class Command(BaseCommand):
         )
         ProductItemType.objects.get_or_create(
             category=category,
-            name="El Niño Bulletin",
+            name="ENSO Bulletin",
             defaults={
                 "file_name_convention": "el_nino_bulletin_{yyyy}_{mm}",
                 "valid_for_days": 31,
@@ -45,23 +45,25 @@ class Command(BaseCommand):
         )
 
         page = ElNinoPage(
-            title="El Niño in Africa",
+            title="ENSO in Africa",
             slug="el-nino-africa",
             service=service,
             product=product,
-            introduction_title="Understanding El Niño and its implications for Africa",
+            introduction_title="Understanding ENSO and its implications for Africa",
             introduction_text=(
-                "<p>El Niño is a warming of the central and eastern tropical Pacific Ocean that can influence "
-                "weather patterns around the world. Across Africa, its effects are not uniform: the timing, "
-                "strength and location of rainfall and temperature changes differ between regions and seasons.</p>"
+                "<p>The El Niño–Southern Oscillation (ENSO) is a recurring variation in tropical Pacific Ocean "
+                "temperatures and atmospheric circulation. Its El Niño, La Niña and neutral phases can influence "
+                "weather patterns around the world.</p>"
+                "<p>Across Africa, ENSO effects are not uniform: the timing, strength and location of rainfall and "
+                "temperature changes differ between regions and seasons.</p>"
                 "<p>ACMAD provides a continental view that complements national and regional information, helping "
                 "decision-makers understand where conditions may create heightened risks or opportunities.</p>"
             ),
             products_per_page=12,
             search_description=(
-                "ACMAD El Niño monitoring, outlooks, impacts and monthly bulletins for Africa."
+                "ACMAD ENSO monitoring, outlooks, impacts and monthly bulletins for Africa."
             ),
         )
         index.add_child(instance=page)
         page.save_revision().publish()
-        self.stdout.write(self.style.SUCCESS(f"Created El Niño page: {page.url}"))
+        self.stdout.write(self.style.SUCCESS(f"Created ENSO page: {page.url}"))

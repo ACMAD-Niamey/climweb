@@ -39,6 +39,21 @@ from .models import (
     ProductSubscriber,
     ProductFamilyNotificationConfig,
 )
+from .subscription_security import get_client_ip, subscription_rate_limited
+
+
+def _subscription_pending_response(request):
+    return render(
+        request,
+        "products/subscription_status.html",
+        {
+            "status_title": "Check your email",
+            "status_message": (
+                "We sent a verification link if the address can receive mail. "
+                "Open it to activate product notifications."
+            ),
+        },
+    )
 
 
 def product_subscription_view(request):
@@ -52,6 +67,8 @@ def product_subscription_view(request):
     )
     if request.method == "POST" and form.is_valid():
         email = form.cleaned_data["email"].strip().lower()
+        if subscription_rate_limited(request, email):
+            return _subscription_pending_response(request)
         subscriber, _ = ProductSubscriber.objects.update_or_create(
             email=email,
             defaults={
@@ -59,12 +76,12 @@ def product_subscription_view(request):
                 "sector": form.cleaned_data["sector"],
                 "organization_type": form.cleaned_data["organization_type"],
                 "organization_name": form.cleaned_data.get("organization_name", "").strip(),
-                "status": ProductSubscriber.STATUS_ACTIVE,
+                "status": ProductSubscriber.STATUS_PENDING,
                 "confirmation_token": uuid.uuid4(),
                 "consented_at": timezone.now(),
-                "confirmed_at": timezone.now(),
+                "confirmed_at": None,
                 "unsubscribed_at": None,
-                "consent_ip": request.META.get("REMOTE_ADDR") or None,
+                "consent_ip": get_client_ip(request) or None,
                 "consent_user_agent": request.META.get(
                     "HTTP_USER_AGENT", ""
                 )[:500],
@@ -81,34 +98,27 @@ def product_subscription_view(request):
         )
         from .tasks import send_product_subscription_confirmation
 
-        send_product_subscription_confirmation.delay(subscriber.pk)
-        return render(
-            request,
-            "products/subscription_status.html",
-            {
-                "status_title": "Subscription Successful",
-                "status_message": (
-                    "You will now receive notifications for your selected ACMAD "
-                    "products."
-                ),
-            },
+        transaction.on_commit(
+            lambda: send_product_subscription_confirmation.delay(subscriber.pk)
         )
+        return _subscription_pending_response(request)
     return render(request, "products/subscription_form.html", {"form": form})
 
 
 def product_subscription_confirm_view(request, token):
     subscriber = get_object_or_404(ProductSubscriber, confirmation_token=token)
-    subscriber.status = ProductSubscriber.STATUS_ACTIVE
-    subscriber.confirmed_at = timezone.now()
-    subscriber.unsubscribed_at = None
-    subscriber.save(
-        update_fields=[
-            "status",
-            "confirmed_at",
-            "unsubscribed_at",
-            "updated_at",
-        ]
-    )
+    if subscriber.status == ProductSubscriber.STATUS_PENDING:
+        subscriber.status = ProductSubscriber.STATUS_ACTIVE
+        subscriber.confirmed_at = timezone.now()
+        subscriber.unsubscribed_at = None
+        subscriber.save(
+            update_fields=[
+                "status",
+                "confirmed_at",
+                "unsubscribed_at",
+                "updated_at",
+            ]
+        )
     return render(
         request,
         "products/subscription_status.html",
@@ -236,6 +246,15 @@ def _record_importer_audit(importer, action, actor, changes=None):
         actor=actor,
         changes=changes or {},
     )
+
+
+def _set_importer_product_category(product_page_id, category):
+    """Publish an editor-selected category on an importer's destination page."""
+    product_page = ProductPage.objects.select_for_update().get(pk=product_page_id)
+    if product_page.service_id == category.pk:
+        return
+    product_page.service = category
+    product_page.save_revision().publish()
 
 
 def _queue_product_import(request, run, label, *, retry=False):
@@ -517,6 +536,10 @@ def configured_product_importer_create_view(request):
                         importer.default_source_config = form.source_values
                         importer.created_by = request.user
                         importer.save()
+                        _set_importer_product_category(
+                            importer.product_page_id,
+                            form.cleaned_data["product_category"],
+                        )
                         _record_importer_audit(
                             importer,
                             ConfiguredProductImporterAuditEvent.ACTION_CREATED,
@@ -524,6 +547,9 @@ def configured_product_importer_create_view(request):
                             {
                                 "status": importer.status,
                                 "destination_product_page": importer.product_page.title,
+                                "product_category": form.cleaned_data[
+                                    "product_category"
+                                ].name,
                                 "destination_product_type": str(
                                     importer.product_item_type
                                 ),
@@ -647,6 +673,7 @@ def configured_product_importer_edit_view(request, family_key):
                     old_values = {
                         "label": original.label,
                         "product_page": original.product_page_id,
+                        "product_category": original.product_page.service_id,
                         "product_item_type": original.product_item_type_id,
                         "status": original.status,
                         "default_interval_hours": original.default_interval_hours,
@@ -656,6 +683,10 @@ def configured_product_importer_edit_view(request, family_key):
                         importer = form.save(commit=False)
                         importer.default_source_config = form.source_values
                         importer.save()
+                        _set_importer_product_category(
+                            importer.product_page_id,
+                            form.cleaned_data["product_category"],
+                        )
                         ProductImportSourceConfig.objects.update_or_create(
                             product_family=importer.key,
                             defaults={
@@ -677,6 +708,9 @@ def configured_product_importer_edit_view(request, family_key):
                         new_values = {
                             "label": importer.label,
                             "product_page": importer.product_page_id,
+                            "product_category": form.cleaned_data[
+                                "product_category"
+                            ].pk,
                             "product_item_type": importer.product_item_type_id,
                             "status": importer.status,
                             "default_interval_hours": importer.default_interval_hours,
@@ -1251,15 +1285,15 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
 from wagtail.admin.auth import user_passes_test
 from .models import ProductSubscriber
-from .product_notifications import send_welcome_email
+from .product_notifications import send_subscription_confirmation_email
 
 @user_passes_test(lambda u: u.is_superuser or u.has_perm('wagtailadmin.access_admin'))
 def product_subscriber_resend_verification_view(request, subscriber_id):
     subscriber = get_object_or_404(ProductSubscriber, pk=subscriber_id)
-    if subscriber.status == ProductSubscriber.STATUS_ACTIVE:
+    if subscriber.status == ProductSubscriber.STATUS_PENDING:
         try:
-            send_welcome_email(subscriber)
-            messages.success(request, f"Welcome email sent to {subscriber.email}.")
+            send_subscription_confirmation_email(subscriber)
+            messages.success(request, f"Verification email sent to {subscriber.email}.")
         except Exception as e:
             messages.error(request, f"Failed to send email to {subscriber.email}: {e}")
     else:

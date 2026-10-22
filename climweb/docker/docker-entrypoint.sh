@@ -82,6 +82,10 @@ run_setup_commands_if_configured() {
     echo "python /climweb/web/src/climweb/manage.py seed_met_services --create-page"
     /climweb/web/src/climweb/manage.py seed_met_services --create-page
 
+    # Keep the dashboard-managed Regional Climate Centres directory available.
+    echo "python /climweb/web/src/climweb/manage.py seed_rcc_directory --create-page"
+    /climweb/web/src/climweb/manage.py seed_rcc_directory --create-page
+
     # Create the editable CUIP service page after products have been restored or
     # imported. Existing dashboard content is never overwritten.
     echo "python /climweb/web/src/climweb/manage.py seed_cuip_service --download-documents"

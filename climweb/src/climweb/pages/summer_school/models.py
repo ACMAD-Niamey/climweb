@@ -28,8 +28,8 @@ from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin,
 from climweb.base.models import FormFileSubmission
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import get_duplicates, generate_title_from_filename, query_param_to_list, paginate
-from .blocks import (CohortBlock, DailyActivityBlock, ScheduleSessionBlock,
-                     SummerSchoolPartnerBlock, SummerSchoolReviewBlock, TrainerBlock)
+from .blocks import (CohortBlock, ScheduleSessionBlock, SummerSchoolGalleryImageBlock,
+                     SummerSchoolPartnerBlock, TrainerBlock)
 
 SUMMARY_RICHTEXT_FEATURES = getattr(settings, "SUMMARY_RICHTEXT_FEATURES")
 
@@ -265,6 +265,19 @@ class SummerSchoolPage(MetadataPageMixin, Page):
     key_info_certificate = models.CharField(max_length=255, blank=True, verbose_name=_("Certificate"))
     key_info_contact = models.CharField(max_length=255, blank=True, verbose_name=_("Contact"))
     apply_button_text = models.CharField(max_length=60, default="Apply", verbose_name=_("Apply Button Text"))
+    online_meeting_url = models.URLField(
+        blank=True,
+        verbose_name=_("Online meeting URL"),
+        help_text=_(
+            "When provided, the featured Summer School buttons link to the live online event. "
+            "Clear this field when online participation is no longer available."
+        ),
+    )
+    online_meeting_button_text = models.CharField(
+        max_length=60,
+        default="Join Summer School Online",
+        verbose_name=_("Online meeting button text"),
+    )
 
     # --- Index card display ---
     card_icon = models.CharField(max_length=100, null=True, blank=True, verbose_name=_("Card Icon"),
@@ -323,17 +336,13 @@ class SummerSchoolPage(MetadataPageMixin, Page):
         ('cohort', CohortBlock()),
     ], blank=True, use_json_field=True, verbose_name=_("Cohorts"))
 
-    # --- Daily Activities ---
-    daily_activities = StreamField([
-        ('day', DailyActivityBlock()),
-    ], blank=True, use_json_field=True, verbose_name=_("Daily Activities"),
-       help_text=_("Add one entry per day, with its summary, photos, and videos."))
-
-    # --- Reviews ---
-    reviews = StreamField([
-        ('review', SummerSchoolReviewBlock()),
-    ], blank=True, use_json_field=True, verbose_name=_("Summer School Reviews"),
-       help_text=_("Publish reviews collected from social platforms and feedback forms."))
+    # --- Image Gallery ---
+    gallery_title = models.CharField(max_length=255, default="Gallery", verbose_name=_("Gallery Title"))
+    gallery_intro = RichTextField(blank=True, features=SUMMARY_RICHTEXT_FEATURES,
+                                  verbose_name=_("Gallery Introduction"))
+    gallery_images = StreamField([
+        ('image', SummerSchoolGalleryImageBlock()),
+    ], blank=True, use_json_field=True, verbose_name=_("Gallery Images"))
 
     # --- Concept Note ---
     concept_note_title = models.CharField(max_length=255, default="Concept Note",
@@ -417,6 +426,8 @@ class SummerSchoolPage(MetadataPageMixin, Page):
             FieldPanel('key_info_certificate'),
             FieldPanel('key_info_contact'),
             FieldPanel('apply_button_text'),
+            FieldPanel('online_meeting_url'),
+            FieldPanel('online_meeting_button_text'),
         ], heading=_("Key Info")),
         MultiFieldPanel([
             FieldPanel('card_icon', widget=IconChooserWidget),
@@ -446,11 +457,10 @@ class SummerSchoolPage(MetadataPageMixin, Page):
             FieldPanel('cohorts'),
         ], heading=_("Cohorts")),
         MultiFieldPanel([
-            FieldPanel('daily_activities'),
-        ], heading=_("Daily Activities")),
-        MultiFieldPanel([
-            FieldPanel('reviews'),
-        ], heading=_("Reviews")),
+            FieldPanel('gallery_title'),
+            FieldPanel('gallery_intro'),
+            FieldPanel('gallery_images'),
+        ], heading=_("Image Gallery")),
         MultiFieldPanel([
             FieldPanel('concept_note_title'),
             FieldPanel('concept_note_thumbnail'),

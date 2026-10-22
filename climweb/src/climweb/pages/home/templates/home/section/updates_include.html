@@ -8,9 +8,9 @@
       <p class="is-uppercase has-text-weight-bold is-size-8 mb-1" style="color:var(--primary-color); letter-spacing:0.08em;">
         {% translate "Latest Updates" %}
       </p>
-      <h2 class="title is-3">{% translate "News, Events and Publications" %}</h2>
+      <h2 class="title is-3">{% translate "News and Events" %}</h2>
       <p class="subtitle is-6 has-text-grey">
-        {% translate "Stay informed thanks to our latest news, events, and publications" %}
+        {% translate "Stay informed with the latest updates from this service." %}
       </p>
     </div>
 
@@ -26,17 +26,17 @@
       <div class="column is-narrow">
         {% if settings.base.ImportantPages.all_news_page %}
          
-          <a class="more-partners" href="{{ settings.base.ImportantPages.all_partners_page.url }}">
+          <a class="more-partners" href="{{ settings.base.ImportantPages.all_news_page.url }}">
             {% translate "All News" %}
             </a>
         {% endif %}
         
       </div>
       <div class="column is-narrow">
-        {% if settings.base.ImportantPages.all_publications_page %}
+        {% if settings.base.ImportantPages.all_events_page %}
          
-          <a class="more-partners" href="{{ settings.base.ImportantPages.all_partners_page.url }}">
-            {% translate "All Publications" %}
+          <a class="more-partners" href="{{ settings.base.ImportantPages.all_events_page.url }}">
+            {% translate "All Events" %}
             </a>
         {% endif %}
       </div>

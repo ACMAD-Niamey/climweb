@@ -4,10 +4,12 @@ import wagtail_factories
 from django.utils import timezone
 from wagtail.test.utils import WagtailPageTestCase
 
+from climweb.base.models import Application
 from climweb.base.seo_utils import get_html_meta_tags
 from climweb.base.test_utils import test_page_meta_tags
 from climweb.pages.home.tests.factories import get_or_create_homepage
 from .factories import (
+    ElNinoPageFactory,
     ProductIndexPageFactory,
     ProductPageFactory,
     ProductItemPageFactory,
@@ -36,6 +38,31 @@ class TestProductPages(WagtailPageTestCase):
     
     def test_products_index_page_render(self):
         self.assertPageIsRenderable(self.index_page)
+
+    def test_products_index_renders_selected_featured_product(self):
+        self.index_page.featured_product = self.product2_page
+        self.index_page.save_revision().publish()
+
+        response = self.client.get(self.index_page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Featured product")
+        self.assertContains(response, self.product2_page.title)
+        self.assertContains(response, self.product2_page.url)
+
+    def test_products_index_feature_falls_back_to_first_live_product(self):
+        self.assertEqual(
+            self.index_page.featured_product_page.pk,
+            self.product1_page.pk,
+        )
+
+    def test_products_index_uses_special_enso_bulletin_title(self):
+        enso_page = ElNinoPageFactory(parent=self.index_page)
+
+        response = self.client.get(self.index_page.url)
+
+        self.assertContains(response, "El-nino Special Bulletin")
+        self.assertContains(response, enso_page.url)
     
     def test_products_index_page_meta_tags(self):
         resp = self.client.get(self.index_page.get_url())
@@ -46,6 +73,22 @@ class TestProductPages(WagtailPageTestCase):
     def test_product_page_render(self):
         self.assertPageIsRenderable(self.product1_page)
         self.assertPageIsRenderable(self.product2_page)
+
+    def test_product_page_shows_gis_application_in_intro_media_position(self):
+        application = Application.objects.create(
+            title="Observed Daily Rainfall",
+            url="https://example.com/observed-rainfall",
+        )
+        self.product1_page.gis_application = application
+        self.product1_page.save_revision().publish()
+
+        response = self.client.get(self.product1_page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="app-card app-card--intro"')
+        self.assertContains(response, application.title)
+        self.assertContains(response, application.url)
+        self.assertNotContains(response, 'class="intro-figure"')
     
     def test_product_pages_meta_tags(self):
         resp = self.client.get(self.product1_page.get_url())

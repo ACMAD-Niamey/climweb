@@ -22,4 +22,4 @@ class SeedElNinoPageTests(WagtailPageTestCase):
         self.assertTrue(page.live)
         self.assertEqual(ElNinoPage.objects.count(), 1)
         self.assertEqual(page.product.temporal_resolution, "monthly")
-        self.assertEqual(page.product.product_item_types[0][1], "Monthly Bulletin - El Niño Bulletin")
+        self.assertEqual(page.product.product_item_types[0][1], "Monthly Bulletin - ENSO Bulletin")

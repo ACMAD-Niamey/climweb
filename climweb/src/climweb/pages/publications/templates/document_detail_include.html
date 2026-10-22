@@ -20,22 +20,25 @@
     <div class="pd-dl-box">
       <p class="pd-dl-label">{% translate "Download" %}</p>
 
-      {% if card.card_file %}
-        <a class="pd-dl-btn"
-           href="{{ card.card_file.url }}"
-           {% if card.card_file.size > 10000000 %}download="{{ card.card_title }}"{% endif %}
-           title="{{ card.card_title }}"
-           data-ga-action="download"
-           data-ga-event-category="Document Downloads"
-           data-ga-event-label="{{ card.card_ga_label }}"
-           data-ga-value="{{ card.card_title }}">
-          <span class="icon">{% svg_icon name="download" %}</span>
-          <span>
-            {% blocktranslate with file_size=card.card_file.size|filesizeformat trimmed %}
-              Download — {{ file_size }}
-            {% endblocktranslate %}
-          </span>
-        </a>
+      {% if card.card_files %}
+        <div class="pd-dl-list">
+          {% for file in card.card_files %}
+            <a class="pd-dl-btn"
+               href="{{ file.url }}"
+               {% if file.size > 10000000 %}download="{{ card.card_title }} - {{ file.language }}"{% endif %}
+               title="{{ file.title }}"
+               data-ga-action="download"
+               data-ga-event-category="Document Downloads"
+               data-ga-event-label="{{ card.card_ga_label }} - {{ file.language }}"
+               data-ga-value="{{ card.card_title }} - {{ file.language }}">
+              <span class="icon">{% svg_icon name="download" %}</span>
+              <span class="pd-dl-copy">
+                <strong>{{ file.language }}</strong>
+                <small>{{ file.size|filesizeformat }}</small>
+              </span>
+            </a>
+          {% endfor %}
+        </div>
       {% elif card.card_external_publication_url %}
         <a class="pd-dl-btn pd-dl-btn--external"
            href="{{ card.card_external_publication_url }}"
@@ -57,13 +60,13 @@
         </div>
       {% endif %}
 
-      {% if card.card_file %}
+      {% if card.card_files %}
         <div class="pd-stat">
           <div class="pd-stat-left">
             <span class="pd-stat-icon">{% svg_icon name="download" %}</span>
             <span>{% translate "Downloads" %}</span>
           </div>
-          <strong class="pd-stat-val">{{ card.card_file.downloads }}</strong>
+          <strong class="pd-stat-val">{{ card.card_downloads }}</strong>
         </div>
       {% endif %}
 
@@ -152,7 +155,11 @@
            data-ga-event-label="{{ card.card_ga_label }}"
            data-ga-value="{{ card.card_title }}">
           <span class="icon share-icon">{% svg_icon name="download" %}</span>
-          <span class="share-button-title">{% translate "Download document" %}</span>
+          <span class="share-button-title">
+            {% blocktranslate with language=card.card_file.language trimmed %}
+              Download document ({{ language }})
+            {% endblocktranslate %}
+          </span>
         </a>
       {% elif card.card_external_publication_url %}
         <a class="pd-action-dl"

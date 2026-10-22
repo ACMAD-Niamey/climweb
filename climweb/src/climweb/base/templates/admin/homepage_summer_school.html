@@ -1,0 +1,11 @@
+{% load i18n wagtailadmin_tags %}
+
+{% if homepage %}
+    <section class="panel nice-padding">
+        <h2>{% translate "Homepage Summer School section" %}</h2>
+        <p>{% translate "Choose the featured edition and edit its homepage title, description, image and button." %}</p>
+        <a class="button button-secondary" href="{% url 'wagtailadmin_pages:edit' homepage.pk %}">
+            {% icon name="edit" %} {% translate "Edit Summer School homepage section" %}
+        </a>
+    </section>
+{% endif %}

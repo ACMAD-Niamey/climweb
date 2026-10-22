@@ -96,6 +96,19 @@ class CohortBlock(blocks.StructBlock):
         label = "Cohort"
 
 
+class SummerSchoolGalleryImageBlock(blocks.StructBlock):
+    image = ImageChooserBlock(help_text="Select or upload a gallery image")
+    caption = blocks.CharBlock(
+        max_length=255,
+        required=False,
+        help_text="Optional caption or photo credit",
+    )
+
+    class Meta:
+        icon = "image"
+        label = "Gallery image"
+
+
 class SummerSchoolPartnerBlock(blocks.StructBlock):
     ROLE_CHOICES = (
         ("sponsor", "Sponsor"),

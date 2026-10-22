@@ -28,6 +28,7 @@
         <div class="product-subscribe-form-column">
             <form method="post">
                 {% csrf_token %}
+                {{ form.contact_url }}
 
                 {% if form.non_field_errors %}
                     <div class="product-subscribe-errors" role="alert">
@@ -116,6 +117,10 @@
                         </label>
                         {{ form.consent.errors }}
                     </div>
+                    <div class="field product-subscribe-captcha">
+                        {{ form.wagtailcaptcha }}
+                        {{ form.wagtailcaptcha.errors }}
+                    </div>
                 {% endif %}
 
                 <div class="field product-subscribe-submit-field">
@@ -127,7 +132,7 @@
                         {% endif %}
                     </button>
                     {% if not managing_preferences %}
-                        <p class="help">{% translate "You will receive an email confirming your subscription." %}</p>
+                        <p class="help">{% translate "You must verify your email address before notifications begin." %}</p>
                     {% endif %}
                 </div>
 

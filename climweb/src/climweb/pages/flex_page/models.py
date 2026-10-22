@@ -25,6 +25,7 @@ class FlexPage(AbstractBannerPage):
             ("accordion", blocks.AccordionBlock()),
             ("table", blocks.TableInfoBlock()),
             ("met_services_directory", blocks.MetServicesDirectoryBlock()),
+            ("rcc_directory", blocks.RCCDirectoryBlock()),
             ("participant_map", blocks.ParticipantMapBlock()),
 
         ],

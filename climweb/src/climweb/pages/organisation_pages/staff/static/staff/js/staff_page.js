@@ -14,6 +14,28 @@
         activeTrigger = null;
     }
 
+    function resetBiography(modal) {
+        const bio = modal.querySelector('[data-staff-bio]');
+        const toggle = modal.querySelector('[data-staff-bio-toggle]');
+        if (!bio || !toggle) return;
+
+        bio.classList.add('is-collapsed');
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.textContent = toggle.dataset.readMore;
+        toggle.hidden = bio.scrollHeight <= bio.clientHeight + 1;
+    }
+
+    document.querySelectorAll('[data-staff-bio-toggle]').forEach((toggle) => {
+        const bio = document.getElementById(toggle.getAttribute('aria-controls'));
+        if (!bio) return;
+        toggle.addEventListener('click', () => {
+            const willExpand = bio.classList.contains('is-collapsed');
+            bio.classList.toggle('is-collapsed', !willExpand);
+            toggle.setAttribute('aria-expanded', String(willExpand));
+            toggle.textContent = willExpand ? toggle.dataset.readLess : toggle.dataset.readMore;
+        });
+    });
+
     document.querySelectorAll('[data-staff-modal]').forEach((trigger) => {
         const modal = document.getElementById(trigger.dataset.staffModal);
         if (!modal) return;
@@ -25,6 +47,7 @@
             modal.classList.add('is-active');
             modal.setAttribute('aria-hidden', 'false');
             document.documentElement.classList.add('is-clipped');
+            resetBiography(modal);
             modal.querySelector('.modal-close').focus();
         });
         modal.querySelectorAll('[data-staff-close]').forEach((control) => {
