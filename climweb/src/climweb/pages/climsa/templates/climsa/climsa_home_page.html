@@ -5,7 +5,11 @@
 
 {% block content %}
 <main class="climsa-main">
-  <section class="climsa-hero">
+  {% static 'climsa/images/climsa-climate-services-hero.png' as default_climsa_hero %}
+  {% if page.hero_image %}
+    {% image page.hero_image width-1800 as climsa_hero_background %}
+  {% endif %}
+  <section class="climsa-hero" style="--climsa-hero-image: url('{% if climsa_hero_background %}{{ climsa_hero_background.url }}{% else %}{{ default_climsa_hero }}{% endif %}');">
     <div class="container climsa-hero__layout">
       <div class="climsa-hero__content">
         <h1>{{ page.hero_heading }}</h1>
@@ -15,16 +19,6 @@
           <a class="climsa-button climsa-button--outline-light" href="#climsa-products">{% translate "Explore products" %}</a>
         </div>
       </div>
-      {% if page.hero_image %}
-        {% image page.hero_image fill-900x680 as hero_image %}
-        <figure class="climsa-hero__media">
-          <img src="{{ hero_image.url }}" alt="{{ page.hero_heading }}">
-        </figure>
-      {% else %}
-        <figure class="climsa-hero__media">
-          <img src="{% static 'climsa/images/climsa-climate-services-hero.png' %}" alt="{% translate 'African climate professionals reviewing climate information' %}">
-        </figure>
-      {% endif %}
     </div>
   </section>
 

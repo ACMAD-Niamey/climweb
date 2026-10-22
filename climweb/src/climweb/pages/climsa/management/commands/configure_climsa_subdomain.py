@@ -3,7 +3,7 @@ from django.db.models import Q
 from wagtail.images import get_image_model
 from wagtail.models import Site
 
-from climweb.pages.climsa.models import ClimsaHomePage
+from climweb.pages.climsa.models import ClimsaAboutPage, ClimsaHomePage
 from climweb.pages.home.models import HomePage
 
 
@@ -39,6 +39,18 @@ class Command(BaseCommand):
             raise CommandError(
                 "The live CLIMSA home page was not found. Create it in Wagtail or rerun with --create."
             )
+
+        about_page = ClimsaAboutPage.objects.child_of(climsa_page).first()
+        about_created = False
+        if not about_page and options["create"]:
+            about_page = ClimsaAboutPage(title="About Us", slug="about")
+            climsa_page.add_child(instance=about_page)
+            about_page.save_revision().publish()
+            about_created = True
+
+        if about_page and climsa_page.about_page_id != about_page.pk:
+            climsa_page.about_page = about_page
+            climsa_page.save_revision().publish()
 
         if not climsa_page.climsa_logo_id:
             Image = get_image_model()
@@ -80,7 +92,12 @@ class Command(BaseCommand):
         site.full_clean()
         site.save()
 
-        page_action = "Created CLIMSA home page and " if page_created else ""
+        created_pages = []
+        if page_created:
+            created_pages.append("CLIMSA home page")
+        if about_created:
+            created_pages.append("About Us page")
+        page_action = f"Created {' and '.join(created_pages)} and " if created_pages else ""
         site_action = "created" if site_created else "updated"
         self.stdout.write(
             self.style.SUCCESS(
