@@ -31,8 +31,10 @@ from .blocks import (
     MosaicImageGalleryBlock,
 )
 
-NEWS_ALLOWED_RICHTEXT_FEATURES = ['bold', 'italic', 'h4', 'h5', 'h6', 'ol', 'ul', 'hr', 'link', 'image',
-                                  'document-link', 'embed', ]
+NEWS_ALLOWED_RICHTEXT_FEATURES = [
+    'bold', 'italic', 'blockquote', 'h4', 'h5', 'h6', 'ol', 'ul', 'hr',
+    'link', 'image', 'document-link', 'embed',
+]
 
 
 @register_snippet

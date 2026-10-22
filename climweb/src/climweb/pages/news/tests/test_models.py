@@ -1,5 +1,6 @@
 from django.core.files.uploadedfile import SimpleUploadedFile
 import wagtail_factories
+from wagtail.rich_text import RichText
 from wagtail.test.utils import WagtailPageTestCase
 
 from climweb.base.seo_utils import get_html_meta_tags
@@ -140,6 +141,23 @@ class TestNewsPages(WagtailPageTestCase):
         self.assertContains(response, "Watch the full interview")
         self.assertContains(response, "https://video.example.org/body-recap")
         self.assertIn("embed", NEWS_ALLOWED_RICHTEXT_FEATURES)
+
+    def test_news_body_supports_quotes(self):
+        self.news1.body = RichText(
+            "<p>Article introduction.</p>"
+            "<blockquote>Climate information must reach every community.</blockquote>"
+        )
+        self.news1.save_revision().publish()
+
+        response = self.client.get(self.news1.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            "<blockquote>Climate information must reach every community.</blockquote>",
+            html=True,
+        )
+        self.assertIn("blockquote", NEWS_ALLOWED_RICHTEXT_FEATURES)
     
     def test_news_page_meta_tags(self):
         resp = self.client.get(self.news1.get_url())
