@@ -2,6 +2,7 @@
 {% load wagtailuserbar wagtailadmin_tags wagtailcore_tags %}
 {% get_settings use_default_site=True %}
 {% wagtail_site as current_site %}
+{% section_navigation as section_nav %}
 
 {% get_current_language as LANGUAGE_CODE %}
 {% get_current_language_bidi as LANGUAGE_BIDI %}
@@ -149,12 +150,15 @@
         {% endif %}
     {% endif %}
 
+    {% if section_nav.kind == "climsa" %}
+        <link rel="stylesheet" type="text/css" href="{% static 'css/climsa.css' %}">
+    {% endif %}
     {% block extra_css %}
         {# Override this in templates to add extra stylesheets #}
     {% endblock %}
 </head>
 
-<body class="{% block body_class %}{% endblock %}">
+<body class="section-{{ section_nav.kind|default:'main' }} {% block body_class %}{% endblock %}">
 {% wagtailuserbar %}
 
 {% block navbar %}

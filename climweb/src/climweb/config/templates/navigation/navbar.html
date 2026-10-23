@@ -1,16 +1,37 @@
 {% load i18n wagtailcore_tags static wagtailimages_tags wagtailiconchooser_tags nmhs_cms_tags %}
 {% url 'wagtailadmin_home' as wagtail_admin_url %}
 {% wagtail_site as current_site %}
+{% section_navigation as section_nav %}
 {% rcc_navigation as rcc_nav %}
 
-<header class="site-header">
+<header class="site-header{% if section_nav %} site-header--{{ section_nav.kind }}{% endif %}">
 
   <!-- ── TOP UTILITY BAR ── -->
   <div class="site-header-top">
     <div class="container site-header-top-inner">
 
-      {% utility_product_updates as utility_products %}
-      {% if utility_products %}
+      {% if section_nav.kind == "climsa" %}
+      <div class="climsa-utility-search">
+        <div class="util-search-input" id="search-input" style="display:none;">
+          <form action="{% url 'search' %}">
+            <label class="is-sr-only" for="input-el">{% translate "Search" %}</label>
+            <input id="input-el"
+                   class="util-search-field"
+                   type="text"
+                   name="query"
+                   value="{{ request.GET.query }}"
+                   placeholder="{% translate 'Search' %}">
+          </form>
+        </div>
+        <button class="site-nav-search" id="search-trigger" type="button"
+                aria-label="{% translate 'Search' %}">
+          <span class="util-icon">{% svg_icon name="search" %}</span>
+          <span class="climsa-search-label">{% translate "Search" %}</span>
+        </button>
+      </div>
+      {% else %}
+        {% utility_product_updates as utility_products %}
+        {% if utility_products %}
       <div class="site-header-context site-header-products"
            aria-label="{% translate 'Latest products' %}">
         <span class="site-header-product-label">{% translate "Latest product" %}</span>
@@ -25,6 +46,7 @@
           {% endfor %}
         </div>
       </div>
+        {% endif %}
       {% endif %}
 
       <!-- UTILITY LINKS -->
@@ -71,32 +93,40 @@
 
       <!-- MOBILE BRAND -->
       <div class="site-nav-brand">
-        <a class="mobile-logo" data-main-site-logo href="{% if main_site_logo_url %}{{ main_site_logo_url }}{% elif rcc_nav %}{{ rcc_nav.main_site_url }}{% else %}{{ current_site.root_url }}{% endif %}">
-          {% if settings.base.OrganisationSetting.country_flag %}
+        <a class="mobile-logo" data-main-site-logo href="{% if section_nav %}{{ section_nav.main_site_url }}{% elif main_site_logo_url %}{{ main_site_logo_url }}{% elif rcc_nav %}{{ rcc_nav.main_site_url }}{% else %}{{ current_site.root_url }}{% endif %}">
+          {% if section_nav.kind != "climsa" and settings.base.OrganisationSetting.country_flag %}
             {% image settings.base.OrganisationSetting.country_flag original as country_flag %}
             <img src="{{ country_flag.url }}" alt="Flag" style="height:32px;">
           {% endif %}
           {% if settings.base.OrganisationSetting.logo %}
             {% image settings.base.OrganisationSetting.logo original as logo %}
-            <img src="{{ logo.url }}" alt="Logo" style="height:54px;">
+            <img src="{{ logo.url }}" alt="{{ settings.base.OrganisationSetting.name|default:'ACMAD' }}" style="height:54px;">
           {% endif %}
         </a>
-        <button id="navBurger"
-                class="nav-burger navbar-burger"
-                data-target="mainNav"
-                aria-label="Toggle navigation">
-        <span></span>
-        <span></span>
-        <span></span>
-        </button>
+        <div class="site-nav-brand-actions">
+          {% if section_nav.kind == "climsa" and section_nav.logo %}
+            {% image section_nav.logo original as climsa_mobile_logo %}
+            <a class="climsa-logo climsa-logo--mobile" href="{{ section_nav.home_url }}" aria-label="{% translate 'CLIMSA home' %}">
+              <img src="{{ climsa_mobile_logo.url }}" alt="CLIMSA">
+            </a>
+          {% endif %}
+          <button id="navBurger"
+                  class="nav-burger navbar-burger"
+                  data-target="mainNav"
+                  aria-label="Toggle navigation">
+          <span></span>
+          <span></span>
+          <span></span>
+          </button>
+        </div>
       </div>
 
       <!-- DESKTOP BRAND -->
-      <a class="site-logo site-logo--desktop" data-main-site-logo href="{% if main_site_logo_url %}{{ main_site_logo_url }}{% elif rcc_nav %}{{ rcc_nav.main_site_url }}{% else %}{{ current_site.root_url }}{% endif %}"
+      <a class="site-logo site-logo--desktop" data-main-site-logo href="{% if section_nav %}{{ section_nav.main_site_url }}{% elif main_site_logo_url %}{{ main_site_logo_url }}{% elif rcc_nav %}{{ rcc_nav.main_site_url }}{% else %}{{ current_site.root_url }}{% endif %}"
          aria-label="{{ settings.base.OrganisationSetting.name|default:'ACMAD' }}">
         {% if settings.base.OrganisationSetting.logo %}
           {% image settings.base.OrganisationSetting.logo original as logo %}
-          <img src="{{ logo.url }}" alt="Logo" class="site-logo-img">
+          <img src="{{ logo.url }}" alt="{{ settings.base.OrganisationSetting.name|default:'ACMAD' }}" class="site-logo-img">
         {% else %}
           <span class="site-logo-text">CLIMWEB</span>
         {% endif %}
@@ -118,7 +148,15 @@
             </button>
         </div>
         <div class="navbar-start">
-          {% if rcc_nav %}
+          {% if section_nav.kind == "climsa" %}
+            {% if settings.base.NavigationSettings.climsa_main_menu %}
+              {% for block in settings.base.NavigationSettings.climsa_main_menu %}
+                {% include_block block %}
+              {% endfor %}
+            {% else %}
+              {% include "navigation/climsa_main_menu.html" %}
+            {% endif %}
+          {% elif section_nav.kind == "rcc" %}
             {% if settings.base.NavigationSettings.rcc_main_menu %}
               {% for block in settings.base.NavigationSettings.rcc_main_menu %}
                 {% include_block block %}
@@ -147,6 +185,16 @@
 
       <!-- DESKTOP NAV ACTIONS -->
       <div class="site-nav-actions">
+        {% if section_nav.kind == "climsa" %}
+          {% if section_nav.logo %}
+            {% image section_nav.logo original as climsa_logo %}
+            <a class="climsa-logo climsa-logo--desktop" href="{{ section_nav.home_url }}" aria-label="{% translate 'CLIMSA home' %}">
+              <img src="{{ climsa_logo.url }}" alt="CLIMSA">
+            </a>
+          {% else %}
+            <a class="climsa-logo climsa-logo--text" href="{{ section_nav.home_url }}">CLIMSA</a>
+          {% endif %}
+        {% else %}
         <div class="util-search-input" id="search-input" style="display:none;">
           <form action="{% url 'search' %}">
             <input id="input-el"
@@ -161,6 +209,7 @@
                 aria-label="{% translate 'Search' %}">
           <span class="util-icon">{% svg_icon name="search" %}</span>
         </button>
+        {% endif %}
       </div>
 
     </div>

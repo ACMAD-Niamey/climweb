@@ -28,8 +28,9 @@ from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin,
 from climweb.base.models import FormFileSubmission
 from climweb.base.seo_utils import get_homepage_meta_image, get_homepage_meta_description
 from climweb.base.utils import get_duplicates, generate_title_from_filename, query_param_to_list, paginate
-from .blocks import (CohortBlock, ScheduleSessionBlock, SummerSchoolGalleryImageBlock,
-                     SummerSchoolPartnerBlock, TrainerBlock)
+from .blocks import (CohortBlock, DailyActivityBlock, ScheduleSessionBlock,
+                     SummerSchoolGalleryImageBlock, SummerSchoolPartnerBlock,
+                     SummerSchoolReviewBlock, TrainerBlock)
 
 SUMMARY_RICHTEXT_FEATURES = getattr(settings, "SUMMARY_RICHTEXT_FEATURES")
 
@@ -336,6 +337,20 @@ class SummerSchoolPage(MetadataPageMixin, Page):
         ('cohort', CohortBlock()),
     ], blank=True, use_json_field=True, verbose_name=_("Cohorts"))
 
+    # --- Daily Activities ---
+    daily_activities = StreamField([
+        ('day', DailyActivityBlock()),
+    ], blank=True, use_json_field=True, verbose_name=_("Daily Activities"),
+       help_text=_("Add one entry per day, with its summary, photos, and videos."))
+
+    # --- Reviews ---
+    reviews = StreamField([
+        ('review', SummerSchoolReviewBlock()),
+    ], blank=True, use_json_field=True, verbose_name=_("Summer School Reviews"),
+       help_text=_("Publish reviews collected from social platforms and feedback forms."))
+
+    # Legacy gallery fields are retained so existing content is not deleted.
+    # Daily Activities replaces the old gallery in the editor and front end.
     # --- Image Gallery ---
     gallery_title = models.CharField(max_length=255, default="Gallery", verbose_name=_("Gallery Title"))
     gallery_intro = RichTextField(blank=True, features=SUMMARY_RICHTEXT_FEATURES,
@@ -457,10 +472,11 @@ class SummerSchoolPage(MetadataPageMixin, Page):
             FieldPanel('cohorts'),
         ], heading=_("Cohorts")),
         MultiFieldPanel([
-            FieldPanel('gallery_title'),
-            FieldPanel('gallery_intro'),
-            FieldPanel('gallery_images'),
-        ], heading=_("Image Gallery")),
+            FieldPanel('daily_activities'),
+        ], heading=_("Daily Activities")),
+        MultiFieldPanel([
+            FieldPanel('reviews'),
+        ], heading=_("Reviews")),
         MultiFieldPanel([
             FieldPanel('concept_note_title'),
             FieldPanel('concept_note_thumbnail'),

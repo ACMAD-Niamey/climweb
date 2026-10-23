@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "climweb.base",
     
     "climweb.pages.home",
+    "climweb.pages.climsa",
     "climweb.pages.services",
     "climweb.pages.products",
     "climweb.pages.mediacenter",
@@ -683,7 +684,11 @@ CAP_ALLOW_EDITING = env.bool("CAP_ALLOW_EDITING", default=False)
 DEFAULT_WAGTAILIMAGES_EXTENSIONS = ['png', 'jpg', 'avif', 'gif', 'jpeg', 'webp']
 WAGTAILIMAGES_EXTENSIONS = env.list("WAGTAILIMAGES_EXTENSIONS", default=DEFAULT_WAGTAILIMAGES_EXTENSIONS)
 
-DEFAULT_WAGTAILDOCS_EXTENSIONS = ['pdf', 'docx', 'xlsx', 'pptx', 'csv', 'odt', 'rtf', 'txt', 'key', 'zip', 'doc']
+DEFAULT_WAGTAILDOCS_EXTENSIONS = [
+    'pdf', 'docx', 'xlsx', 'pptx', 'csv', 'odt', 'rtf', 'txt', 'key', 'zip', 'doc',
+    # Summer School daily activities can include uploaded video alongside photos.
+    'mp4', 'webm', 'mov', 'm4v',
+]
 WAGTAILDOCS_EXTENSIONS = env.list("WAGTAILDOCS_EXTENSIONS", default=DEFAULT_WAGTAILDOCS_EXTENSIONS)
 
 REDIS_HOST = env.str("REDIS_HOST", "redis")
