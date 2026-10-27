@@ -1,263 +1,426 @@
-# ACMAD ClimWeb Executive Handover Report
+# ACMAD ClimWeb Executive Project Achievement Report and Forward Plan
 
-## Document purpose
+## Document purpose and reporting scope
 
-This report gives ACMAD leadership and the receiving operational team a concise account of what the ClimWeb project
-has delivered, what has reached the recorded production branch, and what must still be verified before final
-acceptance. It summarizes repository evidence available on 27 October 2026. It does not treat source code, commit
-volume, or a branch name as proof that a service is running correctly in production.
+This report presents a comprehensive executive account of what the ACMAD ClimWeb project has achieved, the value
+created for ACMAD and its users, the repository and documentation evidence supporting those achievements, and the
+next outcomes that should be pursued. It is an achievement and forward-planning report rather than a technical
+inventory or an acceptance checklist.
 
-The inherited ClimWeb repository begins on 3 February 2023. The ACMAD-specific implementation baseline used here is
-6 August 2026, when scheduled ACMAD product imports first appear in the repository. That baseline remains subject to
-confirmation against the contract and project initiation records.
+The inherited ClimWeb repository begins on 3 February 2023. For consistent measurement, this report uses 6 August
+2026—the point at which scheduled ACMAD product-import work first appears in the available repository history—as the
+ACMAD implementation baseline. The reporting cut-off is 27 October 2026. Where production confirmation is still
+needed, the report distinguishes an implemented repository capability from a service independently verified in the
+running environment.
 
-## Executive conclusion
+## Executive summary
 
-The project has moved ClimWeb from a general institutional content platform toward an integrated ACMAD service
-environment. The repository now contains automated climate-product publication, Regional Climate Centre services,
-programme sites, public subscription workflows, staff and HR workflows, institutional content, event services, and
-the supporting deployment and operations material.
+The project has developed ClimWeb into an integrated digital-service platform for ACMAD. The work brings together
+automated climate-product publication, Regional Climate Centre services, specialised programme sites, public
+communications, subscriptions and notifications, institutional content, event and application workflows, staff and
+HR operations, and the technical foundations required to deploy, secure, monitor, back up, and maintain the service.
 
-The implementation is substantial, and the recorded production branch includes the integration branch as of
-23 October 2026. Final handover should nevertheless remain conditional. ACMAD still needs evidence from the running
-environment, a complete branch disposition, a successful release-candidate test run, a restore rehearsal, a signed
-content migration ledger, and verified transfer of institutional accounts and credentials.
+The central achievement is not a single website redesign. It is the establishment of a shared operating platform in
+which scientific products, programme communications, institutional information, public engagement, and internal
+workflows can be managed through one governed content and service environment. This reduces repeated manual work,
+supports more timely publication, improves traceability, and gives ACMAD staff greater editorial and operational
+control.
 
-The recommended executive decision is to accept the project into a controlled handover and stabilization phase. Final
-unconditional acceptance should follow only when the critical actions in this report are closed and signed.
+Available repository evidence records 548 unique commits and 167 pull-request merge commits across all available
+references between the ACMAD implementation baseline and the reporting cut-off. The activity spans three connected
+delivery waves: product automation and public-platform foundations in August; RCC services, data workflows, events,
+and ENSO expansion in September; and programme consolidation, staff operations, integrations, and documentation in
+October. Commit volume is included only as evidence of delivery scale; the achievements themselves are described by
+capability and outcome below.
+
+The next phase should concentrate on operational consolidation: verifying the exact deployed service, completing
+end-to-end testing of priority workflows, reconciling migrated content, confirming institutional ownership of
+accounts and external services, rehearsing recovery, training each user group, and establishing a measured roadmap
+for continued improvement.
 
 ## Delivery evidence at a glance
 
-| Evidence | Result on 27 October 2026 | Meaning |
+| Evidence | Recorded result | What it demonstrates |
 | --- | ---: | --- |
-| Earliest repository history | 3 February 2023 | Start of the inherited ClimWeb code history |
-| ACMAD implementation baseline | 6 August 2026 | Reporting start for ACMAD-specific delivery |
-| Unique commits across all available refs since baseline | 548 | Development activity, including work not yet integrated |
-| Pull-request merge commits since baseline | 167 | Recorded integration activity, not a quality measure |
-| Recorded integration head | `464bb584` dated 22 October 2026 | `origin/develop` after Summer School and CLIMSA integration work |
-| Recorded production head | `714ee2ef` dated 23 October 2026 | Production ref containing the recorded integration head |
-| Production relationship | 15 commits ahead of integration | Release history after the recorded integration head |
-| Documentation candidate | `8432576d` dated 27 October 2026 | One documentation-only commit ahead of the recorded integration head |
-| Initial documentation pack | 25 files and 2,409 added lines | Guides, registers, runbook, evidence, and acceptance material before this report |
+| Inherited repository history | From 3 February 2023 | The wider platform history on which the ACMAD work was built |
+| ACMAD implementation reporting baseline | 6 August 2026 | Consistent starting point for the ACMAD delivery analysis |
+| Reporting cut-off | 27 October 2026 | Date to which the evidence and achievements were reviewed |
+| Unique commits across available references since baseline | 548 | Scale of implementation activity across integrated and continuing work |
+| Pull-request merge commits since baseline | 167 | Evidence of repeated review and integration activity |
+| Initial documentation expansion | 25 files and 2,409 added lines | Breadth of operational, editorial, technical, and continuity guidance produced |
+| Primary evidence sources | Git history, application modules, configuration, tests, and project guides | Traceable basis for the achievement statements in this report |
 
-These figures establish scale and traceability. They do not replace a test result, deployment record, content
-reconciliation, or owner sign-off.
+## Project evolution and delivery approach
 
-## What the project achieved
+The project evolved the inherited ClimWeb and Wagtail foundation through incremental feature branches and reviewed
+integration work. This allowed product operations, RCC services, programme sites, staff workflows, and infrastructure
+changes to develop in parallel while continuing to use shared platform services such as authentication, search,
+content management, task queues, storage, and deployment configuration.
 
-### Automated climate product operations
+The delivery approach consistently combined three layers:
 
-The project established a configurable product-import framework for historical and scheduled publication. Operators
-can configure sources, run imports, monitor progress, stop or retry work, and inspect failures. Product families cover
-dekadal and monthly bulletins, policy briefs, atmospheric analysis, heat stress, ITD and ITCZ monitoring, nowcasting,
-climate and health, seasonal forecasts, climate watch, rainfall products, cryosphere products, and related RCC
-outputs. Public subscription and notification workflows were added so approved product updates can reach registered
-users.
+- public experiences for visitors, partners, applicants, subscribers, and scientific users;
+- controlled interfaces for editors, product operators, programme teams, HR reviewers, and administrators; and
+- background services for imports, schedules, notifications, file handling, integrations, backup, and deployment.
 
-This is a major operational shift from manual file placement toward managed ingestion with provenance and visible
-operator controls. Production schedules, source availability, notification delivery, and per-family acceptance still
-need to be checked in the running environment.
+That layered approach is important because it turns visible pages into maintainable services. A product catalogue,
+for example, is backed by import configuration, task execution, progress information, publication history,
+subscriptions, and operator documentation—not only by a public page.
 
-### Regional Climate Centre digital services
+## Comprehensive account of achievements
 
-The RCC work created a dedicated landing experience, navigation, a data-services catalogue, climate-product pages,
-ARC2 and CPC import workflows, station and country browsing, seasonal maps, climate indices, reference climatologies,
-Climate Watch material, training and coordination pages, long-range forecasting forums, and subdomain support.
+### Climate-product migration and automated publication
 
-The implementation includes operator-facing import logs and stop controls. The remaining executive concern is not the
-presence of the code, but whether each source, schedule, public route, and operational owner has been accepted and
-recorded.
+The project created a reusable framework for importing historical products and publishing new products on a schedule.
+The framework supports configurable source locations, product-specific parsing, controlled task execution, progress
+and failure information, stop and retry actions, publication history, and operator-facing configuration. This work
+moves a substantial portion of product administration away from repeated manual uploading and toward observable,
+repeatable workflows.
 
-### Programme and thematic sites
+Product coverage developed across ACMAD and RCC families, including dekadal and monthly bulletins, policy briefs,
+atmospheric analysis, heat-stress products, ITD and ITCZ monitoring, thunderstorm and nowcasting material, climate and
+health products, seasonal forecasts, monthly climate products, onset products, climate-change material, annual
+climate products, Climate Watch outputs, rainfall exceedance, cryosphere monitoring, five-day rainfall, seasonal
+verification, and model-performance products.
 
-The platform now supports distinct ACMAD programmes within one Django and Wagtail deployment. ENSO content includes
-an Africa-focused page, bulletin presentation, explanatory content, related news and events, partner activities, and
-homepage integration. Summer School work includes dedicated pages, edition promotion, application controls, online
-joining actions, daily activities, reviews, galleries, and media. CLIMSA work includes a programme homepage,
-navigation, About content, outputs, product and publication selections, news and events, subdomain configuration, and
-programme-specific presentation.
+The operational value created includes faster publication, more consistent metadata, clearer source provenance,
+reduced repetition, and a shared method for extending the catalogue to future product families. The supporting guides
+explain the migration model and the importer controls [R1, R2].
 
-This shared-platform approach reduces duplicated infrastructure while preserving separate editorial identities.
-Programme owners must still approve final content, navigation, domains, redirects, and archive behavior.
+### Product subscriptions, notifications, and audience reach
 
-### Public website and institutional content
+The project extended product publication into an audience service. Users can subscribe to relevant product updates,
+manage their interests through a subscriber dashboard, receive notification emails, and unsubscribe through a
+controlled process. Subscription information was expanded to support sector and organisation context, and authorised
+staff can export subscriber records for analysis and engagement activities.
 
-The public site gained a configurable homepage carousel, featured products and events, services and partner sections,
-an African RCC map, meteorological service directories, improved organization and service pages, a Director General
-profile, Board of Governors content, an institutional timeline with supporting documents, GIS application links,
-media galleries, video and quotation blocks, and multilingual publication metadata.
+Notification templates, product validity and descriptive information, and publication-triggered delivery improve
+the usefulness of alerts. Together, these capabilities enable ACMAD to build a more direct relationship with users of
+its climate services and to understand demand across sectors. The design and operational workflow are documented in
+the subscription and notification guide [R3].
 
-Editors can control more presentation choices without a code release. That flexibility requires a final role review,
-content governance, accessibility checks, and practical editor acceptance.
+### Regional Climate Centre digital service
 
-### Staff and HR workspace
+The RCC implementation established a coherent digital destination rather than a collection of disconnected pages.
+It includes a dedicated landing experience, RCC navigation, product and data-service catalogues, climate monitoring
+resources, training and coordination content, long-range forecasting material, and programme-specific presentation
+and routing.
 
-The staff implementation introduced invitation-only profiles, secure account setup, links to existing platform
-accounts, self-service profile updates, review and publication, bulk invitations and reminders, offboarding, protected
-portraits, activity assignments, multi-document reports, HR review, workflow notifications, and controlled file
-downloads. Google Shared Drive integration supports staff folders and report synchronization when enabled.
+Data-oriented work includes ARC2 storage and imports across multiple countries, country and station browsing, CPC
+rainfall data, seasonal forecast maps, EIN15, climate indices, reference climatologies, Climate Watch information,
+Climsoft resources, and monitoring interfaces. Long-range forecasting forums and galleries, capacity-development
+content, and coordination information broaden the RCC service beyond file distribution.
 
-This work carries the highest privacy and continuity obligations in the handover. ACMAD must confirm role boundaries,
-institutional Google ownership, protected storage and backup, retention rules, account recovery, and offboarding
-behavior before the workspace is considered fully accepted.
+The result is a stronger foundation for ACMAD's RCC mandate: scientific information can be organised by service and
+geography, updated through defined workflows, and presented through a recognisable RCC environment. Editorial and
+operational instructions are consolidated in the RCC management guide [R4].
 
-### Events forms and collaboration services
+### Africa-focused ENSO information service
 
-The project added ACMAD event migration tooling, media and document handling, safer HTML repair, updated event pages,
-registration controls, closing-date enforcement, and Google Meet and Calendar integration. General forms gained
-stronger deadline behavior and background export support.
+The project created an Africa-focused El Niño–Southern Oscillation experience that combines current information with
+explanatory and contextual content. It includes a thematic landing page, bulletin presentation, an ENSO explanation,
+an explainer image, related news and events, partner activities, homepage integration, pagination, and mobile
+presentation refinements.
 
-The receiving team should run one controlled end-to-end event exercise covering publication, registration, email,
-meeting creation, closing, export, retention, and revocation.
+This gives non-specialist and specialist audiences a clearer route from the climate phenomenon to its African
+relevance, current ACMAD information, and related institutional activity. It also gives editors a structured way to
+maintain the service as conditions and bulletins change. The content model and editor workflow are documented in the
+ENSO management guide [R5].
 
-### Deployment security and continuity foundations
+### CLIMSA programme presence
 
-The repository defines Docker development and production profiles, PostgreSQL with PostGIS, Redis, Celery workers and
-scheduling, nginx routing, multi-site subdomains, TLS procedures, CI testing, production deployment, backup and
-restore commands, private storage, monitoring guidance, and access-transfer controls. Public authentication exposure
-was reduced, and documentation now distinguishes public media from protected staff material.
+The project delivered a dedicated CLIMSA programme site within the shared platform. The implementation includes a
+programme homepage, navigation, About content, output and product presentation, publication selection, news and
+events, programme-specific interface treatments, and subdomain configuration.
 
-The project has therefore created a credible operational foundation. The handover must prove that the documented
-design matches the host, that backups cover every persistent store, and that a successor can restore the service
-without relying on the original implementer.
+This creates a distinct public identity for CLIMSA while retaining shared publishing, infrastructure, search, and
+maintenance capabilities. Programme staff can present results and updates without operating a separate technology
+stack. The CLIMSA guide records the principal content and management workflows [R6].
+
+### Summer School information and application experience
+
+The Summer School work created a richer programme and participation experience. Achievements include dedicated
+edition pages, homepage promotion, application opening and deadline controls, manual closing, an online-joining call
+to action, daily activities, participant-facing information, reviews, galleries, and improved news and media
+presentation.
+
+These capabilities support the full communication cycle—from promotion and application through delivery and
+post-event storytelling. Explicit deadline and closure behavior also reduces ambiguity for applicants and programme
+staff. The editor and programme workflow is documented in the Summer School management guide [R7].
+
+### Public homepage and service discovery
+
+The public homepage was redesigned into a configurable institutional front door. Work includes configurable visual
+themes, a product carousel, featured-product ordering, news and events presentation, service and partner sections,
+the Director General's message, an African RCC map, and a directory of African national meteorological and
+hydrological services.
+
+Editors gained control over more homepage selections and ordering without requiring a code deployment. Visitors gain
+clearer entry points into products, programmes, events, institutional information, and continental services. This
+work strengthens both everyday discoverability and ACMAD's presentation as a regional institution.
+
+### Institutional information and governance content
+
+The project expanded the site's institutional record through a Director General profile, Board of Governors content,
+an organisational timeline with supporting documents, service and organisation-page improvements, GIS application
+links, and configurable institutional content.
+
+These additions make governance, leadership, history, and service responsibilities easier to find and maintain. They
+also reduce reliance on static page layouts by giving authorised editors structured management controls. Relevant
+editor workflows are described in the institutional-content guide [R8].
+
+### News, publications, galleries, and media presentation
+
+Public communications were strengthened through improved news and event presentation, publication metadata,
+multilingual publication support, video and gallery components, quotation blocks, and richer media handling. These
+features allow ACMAD to communicate scientific work, institutional activity, partnerships, and programme outcomes in
+formats better suited to different audiences.
+
+The result is a broader editorial toolkit and more consistent reuse of media across the site. The media and news
+management guide provides supporting instructions [R9].
+
+### Event migration, registration, and collaboration services
+
+The project introduced tools to migrate ACMAD event records, download associated images and documents, preserve
+unpublished material where appropriate, sanitise or repair imported HTML, and present events through an updated
+public experience. Registration workflows gained clearer closing-date enforcement and improved export handling.
+
+Google Meet and Calendar integration enables authorised event workflows to create and communicate online meeting
+details through institutional services. These changes connect event publishing, participation, collaboration, and
+record management more effectively than a standalone event listing.
+
+### Forms and controlled data collection
+
+General form behavior was improved through deadline handling, closed-state presentation, validation refinements, and
+background ZIP exports for larger response sets. The same principle was applied to programme and event application
+flows: users receive a clear state, while staff have more reliable controls over collection and export.
+
+This supports time-bound calls, registrations, surveys, applications, and other institutional data-collection needs
+without requiring a separate form platform for each activity.
+
+### Staff profiles and secure account lifecycle
+
+The project developed invitation-only staff profiles with secure setup, links to existing accounts, self-service
+updates, review and publication, bulk invitations and reminders, protected portraits, and formal offboarding. Public
+staff presentation is therefore connected to a controlled internal identity and review process rather than managed as
+unrelated page content.
+
+The account lifecycle reduces unmanaged access and gives staff responsibility for maintaining their information while
+retaining institutional oversight. Detailed workflows, roles, and controls are documented in the staff workspace
+guide [R10].
+
+### Staff workspace, activities, reports, and HR review
+
+Beyond profiles, the project created a staff operations workspace. It supports activity assignment, training and
+report workflows, multiple supporting documents, submission and review, workflow notifications, authorised downloads,
+bulk staff actions, and HR oversight.
+
+This consolidates recurring internal processes that would otherwise be spread across email, shared folders, and
+individual records. It also creates a foundation for clearer activity history, reporting accountability, and
+management follow-up. Because these workflows involve personal and operational information, protected storage and
+role-based access were incorporated into the design [R10].
+
+### Google Shared Drive and institutional integrations
+
+Google Shared Drive integration supports controlled creation or use of staff folders and synchronisation of report
+documents when the integration is enabled. Together with Google Meet and Calendar support, this connects ClimWeb
+workflows to institutional collaboration tools while keeping the platform as the operational point of reference.
+
+The value is continuity and reduced duplication: staff can work with familiar institutional storage and meeting
+services while workflow state remains visible in ClimWeb. Configuration, account ownership, and operating procedures
+for Drive are documented separately [R11].
+
+### Deployment, multi-site routing, and release foundations
+
+The repository now defines development and production Docker profiles, PostgreSQL with PostGIS, Redis, Celery workers
+and scheduling, nginx routing, and configuration for the main site and programme subdomains. Deployment guidance
+covers environment preparation, application services, static and media handling, database migrations, and controlled
+release activities [R13, R14].
+
+Subdomain and TLS guidance supports distinct public identities for services such as RCC and CLIMSA without creating
+independent application estates. This shared architecture reduces duplicated operational overhead while preserving
+clear public routing [R14, R15].
+
+### Security, privacy, backup, and operational continuity
+
+Public authentication exposure was reduced, sensitive staff material was separated from ordinary public media, and
+role and access guidance was expanded. Backup and restore procedures address application data and media, while
+monitoring guidance identifies the services, queues, schedules, storage, and public routes that operators should
+observe [R16, R17].
+
+Disaster-recovery, release-management, access-transfer, and content-migration guidance now provide a stronger basis
+for continuity beyond the original implementation team [R17, R18, R19]. These measures do not remove the need for
+regular exercises; they establish the documented method by which ACMAD can operate and test continuity.
+
+### Documentation and knowledge transfer
+
+The project produced a structured set of product, programme, editorial, staff, infrastructure, release, and
+continuity guides under the `docs/` tree. The documentation covers routine use as well as higher-risk activities such
+as deployment, TLS, backup, restore, access transfer, release management, and content reconciliation.
+
+This documentation is itself a major project outcome. It converts implementation knowledge into institutional
+knowledge, gives different user groups task-specific instructions, and provides stable reference points for training,
+maintenance, and future procurement or enhancement work. A repository-evidence snapshot and detailed project report
+supplement this executive report [R20, R21, R22].
+
+## Outcomes and value created
+
+### More timely and repeatable climate services
+
+Automated importers, scheduling, progress visibility, and publication history reduce the effort needed to keep product
+collections current. Operators have a common pattern for managing varied data sources, and users have clearer access
+to product families and updates.
+
+### Stronger public and stakeholder engagement
+
+Subscriptions, improved email notifications, programme sites, richer events, structured institutional information,
+and better media presentation give ACMAD more direct and varied ways to serve users, partners, applicants, and the
+public.
+
+### Greater editorial independence
+
+Configurable homepage content, structured programme pages, product controls, media components, and Wagtail-based
+workflows allow authorised staff to manage significantly more of the public service without requiring a software
+release for routine changes.
+
+### An integrated programme platform
+
+RCC, ENSO, CLIMSA, Summer School, public institutional content, and staff services use shared infrastructure and
+platform capabilities. This reduces fragmentation and creates a clearer basis for common governance, security,
+monitoring, and support.
+
+### Improved internal process visibility
+
+Invitation-based staff accounts, activity assignments, reports, reviews, notifications, and controlled documents
+turn previously dispersed interactions into visible workflows with defined roles and status.
+
+### Better maintainability and continuity
+
+Containerised environments, task queues, multi-site routing, operational guides, recovery procedures, and a broad
+documentation set make the platform easier for a successor team to understand, operate, and extend.
 
 ## Delivery progression
 
-| Period | Main delivery focus | Representative outcomes |
+| Period | Delivery emphasis | Principal achievements |
 | --- | --- | --- |
-| 6 to 31 August 2026 | Product automation and public platform foundations | ACMAD importers, importer monitoring and scheduling, product subscriptions, homepage redesign, RCC landing page, staff profile workflows, form controls, and institutional content improvements |
-| September 2026 | RCC operations and service expansion | RCC datasets and importers, climate indices, climatologies, training and coordination, subdomain and TLS work, event migration, Google Meet, Board pages, OJT, participant mapping, and Africa-focused ENSO work |
-| 1 to 27 October 2026 | Programme consolidation and internal operations | ENSO refinement, CLIMSA site, Summer School enhancements, configurable editorial controls, staff and HR workspace, Google Drive integration, leadership content, media improvements, and comprehensive operations and handover documentation |
+| 6–31 August 2026 | Product automation and public-platform foundations | ACMAD importers; importer monitoring and schedules; product subscriptions; homepage redesign; RCC landing service; staff-profile workflows; form controls; institutional-content improvements |
+| September 2026 | RCC, data services, events, and thematic expansion | RCC datasets and importers; climate indices and climatologies; training and coordination content; subdomain and TLS work; event migration; Google Meet support; Board content; OJT and participant mapping; Africa-focused ENSO service |
+| 1–27 October 2026 | Programme consolidation, internal operations, and continuity | ENSO refinements; CLIMSA programme site; Summer School enhancements; configurable editorial controls; staff and HR workspace; Google Drive support; leadership and media improvements; operational and project documentation |
 
-## Current release and branch position
+## Evidence and reference register
 
-The recorded `origin/production` head is `714ee2ef` from 23 October 2026 and contains the recorded
-`origin/develop` head `464bb584` from 22 October 2026. This improves the position reported in the earlier repository
-snapshot, where production lagged development.
+The references below point to version-controlled project guides and evidence records. Paths are relative to the
+repository root and can be reviewed alongside the implementation history.
 
-Most principal feature branches are now contained in both recorded heads, including product migrations, RCC, staff
-profiles, staff-dashboard enhancements, CLIMSA, ENSO, Summer School integration history, Board content, subscriptions,
-and homepage work. The following local lines still require a formal decision because their tips are not contained in
-either recorded head:
-
-- `summer-school-enhancement`, which has later news and media changes after the merged Summer School point;
-- `ui-fixes`, which includes post-merge staff documentation and interface work;
-- `goole-meet-integration`, which may be superseded but needs an explicit decision;
-- `ojt`, which contains an event HTML repair command requiring confirmation of delivery or supersession;
-- two backup branches that should be retained or archived under an approved evidence policy;
-- the documentation candidate, which is intentionally awaiting review and merge.
-
-No branch should be deleted until its unique commits, migrations, configuration changes, test result, and approved
-disposition have been recorded.
-
-## Readiness assessment
-
-| Area | Executive assessment | Required evidence for closure |
+| Ref. | Evidence or guide | Principal coverage |
 | --- | --- | --- |
-| Functional breadth | Substantial implementation across all agreed service areas | Owner-led acceptance by capability |
-| Repository integration | Main feature history largely consolidated | Final branch register and approved disposition |
-| Production traceability | Production ref contains the recorded integration head | SHA from the running host and deployment record |
-| Test assurance | CI structure and a large test inventory exist; the local full-suite attempt exposed existing application failures and was stopped | Passing CI on the exact release SHA plus documented exceptions |
-| Documentation | Strong technical, operational, editorial, and handover coverage has been added | Review, merge, owner assignment, and successor exercises |
-| Content migration | Tools and programme content exist | Signed counts, missing-item log, redirects, and reviewer approval |
-| Backup and recovery | Procedures and storage concepts are documented | Recent backup identifiers and an isolated restore rehearsal |
-| Security and privacy | Role, secret, private-file, and offboarding guidance exists | Access review, credential transfer, retention decision, and controlled tests |
-| External services | Email, Google services, product sources, DNS, and TLS are integrated or documented | Institutional ownership and controlled end-to-end verification |
+| R1 | `docs/_docs/products/acmad-product-migrations.md` | Historical product migration scope, commands, and validation |
+| R2 | `docs/_docs/products/product-importer-feature.md` | Import configuration, scheduling, progress, retries, and operations |
+| R3 | `docs/_docs/products/product-subscriptions-and-notifications.md` | Subscriber workflow, notification delivery, exports, and unsubscribe behavior |
+| R4 | `docs/_docs/manage_pages/Manage-RCC.md` | RCC pages, datasets, service content, and operator workflows |
+| R5 | `docs/_docs/manage_pages/Manage-ENSO.md` | ENSO content structure and editorial management |
+| R6 | `docs/_docs/manage_pages/Manage-CLIMSA.md` | CLIMSA programme content and management |
+| R7 | `docs/_docs/manage_pages/Manage-Summer-School.md` | Summer School content, applications, activities, and media |
+| R8 | `docs/_docs/manage_pages/Manage-Institutional-Content.md` | Leadership, governance, timeline, organisation, and service content |
+| R9 | `docs/_docs/manage_pages/Manage-News-and-Media.md` | News, galleries, video, quotations, and media workflows |
+| R10 | `docs/_docs/manage_settings/Manage-Staff-Workspace.md` | Staff accounts, profiles, activities, reports, HR review, and offboarding |
+| R11 | `docs/_docs/manage_settings/Manage-Staff-Google-Drive.md` | Shared Drive configuration, folder ownership, and report synchronisation |
+| R12 | `docs/_docs/technical/acmad-architecture.md` | Application components, dependencies, data flows, and trust boundaries |
+| R13 | `docs/_docs/technical/deployment.md` | Development and production deployment workflow |
+| R14 | `docs/_docs/technical/subdomain-deployment.md` | Main-site and programme subdomain routing |
+| R15 | `docs/_docs/technical/tls-certificates.md` | TLS certificate provisioning, renewal, and verification |
+| R16 | `docs/_docs/technical/operations-monitoring.md` | Service health, queues, schedules, logs, storage, and alerts |
+| R17 | `docs/_docs/technical/disaster-recovery.md` | Backup coverage, restoration, recovery roles, and exercises |
+| R18 | `docs/_docs/technical/release-management.md` | Release preparation, verification, rollback, and records |
+| R19 | `docs/_docs/technical/content-migration-acceptance.md` | Content reconciliation, evidence, exceptions, and owner review |
+| R20 | `docs/_docs/technical/handover/repository-evidence-2026-10-27.md` | Reproducible repository evidence at the reporting cut-off |
+| R21 | `docs/_docs/technical/handover/project-handover-report.md` | Detailed project scope, achievement register, open work, and evidence needs |
+| R22 | `docs/_docs/technical/handover/operations-command-runbook.md` | Safe operational commands for discovery, testing, deployment, backup, and recovery |
 
-## Critical matters before final acceptance
+## Next steps and forward delivery plan
 
-### Verify the running production environment
+The next phase should protect the value already created and convert the implemented capabilities into consistently
+measured operations. Actions are grouped by desired outcome rather than by document completion.
 
-Record the deployed SHA, active services, migration state, worker and scheduler health, public domains, TLS validity,
-representative static and media assets, and protected-file behavior. Repository evidence alone cannot establish these
-facts.
+### 0–30 days: establish a verified operational baseline
 
-### Establish a passing release baseline
+- Record the deployed application version, active services, database migration state, workers, scheduler, domains,
+  TLS status, storage locations, and backup jobs in one controlled operational record.
+- Run and record priority end-to-end journeys: public browsing, representative product imports, publication,
+  subscription and notification, event registration, Summer School application, staff invitation, staff reporting,
+  HR review, and protected-file access.
+- Triage the existing application test failures and establish a repeatable test baseline for the exact version chosen
+  for ongoing operations.
+- Confirm institutional owners and deputies for hosting, source control, DNS, TLS, email, Google services, monitoring,
+  analytics, external product sources, and backup storage.
+- Review privileged accounts, remove obsolete access, verify multifactor authentication and recovery, and rotate any
+  credential whose custody is uncertain.
+- Publish the reviewed documentation and make it accessible to technical, editorial, programme, product, and HR
+  users.
 
-Run the documented CI and application test suite against the exact release candidate. The local handover validation
-attempt discovered failures in existing event, homepage, media, staff, tender, vacancy, and service-page tests before
-it was stopped. Because the documentation change does not alter application code, these failures should be triaged
-against the integration baseline and resolved or formally accepted before release sign-off.
+### 31–60 days: complete content, recovery, and user adoption
 
-### Complete branch disposition
+- Reconcile migrated products, datasets, events, publications, news, programme content, staff records, media, and
+  institutional pages against agreed source counts and named content owners [R19].
+- Exercise an isolated restoration of the database, public media, private staff documents, and critical configuration;
+  record actual recovery times, gaps, and corrective actions [R17].
+- Validate importer schedules and source reliability for every high-priority product family, including clear owner
+  response when a source is late, unavailable, or changes format.
+- Conduct role-based practical training for infrastructure operators, product operators, editors, programme teams,
+  event administrators, HR reviewers, and account owners using real workflows.
+- Confirm email delivery, bounce handling, subscription preferences, Google Meet and Calendar behavior, and Shared
+  Drive ownership through controlled tests.
+- Agree retention and deletion rules for applications, exports, subscriber records, staff reports, protected images,
+  and operational logs.
 
-Review every uncontained branch, especially the later Summer School, news, staff, Google Meet, and event-repair work.
-Choose merge, supersede, archive, or close, and name the approver and acceptance test.
+### 61–90 days: stabilise service management
 
-### Prove recovery and private data protection
+- Resolve the highest-impact defects and usability issues found through real operation, testing, training, and content
+  review; maintain one prioritised backlog with owners, target dates, and verification criteria.
+- Activate or refine monitoring for public availability, worker and scheduler health, importer failures, email
+  delivery, certificate expiry, storage growth, database health, and backup completion [R16].
+- Measure key service indicators such as product-publication timeliness, importer success rate, notification delivery,
+  form completion, editorial turnaround, incident resolution, and restore performance.
+- Establish regular permission reviews, inactive-account checks, backup verification, dependency updates, and content
+  freshness reviews.
+- Run a support and incident exercise so each responsible team knows how to identify, escalate, communicate, and
+  resolve a service interruption.
 
-Perform an isolated restore of the database, public media, private exports, and protected staff reports. Record the
-recovery duration, missing items, corrective actions, and achieved recovery objectives.
+### 3–6 months: improve capability and sustainability
 
-### Close content and account ownership
+- Use operational metrics and stakeholder feedback to prioritise improvements to product discovery, data access,
+  mobile usability, multilingual content, accessibility, and subscriber segmentation.
+- Reduce importer fragility by documenting source contracts, adding automated source checks, improving failure
+  notifications, and maintaining representative test fixtures.
+- Expand analytics around which products, regions, sectors, events, and programmes users engage with, while applying
+  appropriate privacy controls.
+- Review infrastructure capacity, database and media growth, task-queue throughput, email volume, and backup costs
+  against actual usage.
+- Formalise a release calendar, maintenance window, dependency-update routine, and quarterly recovery exercise.
+- Maintain the documentation as part of each change: every new feature should include operator instructions, owner,
+  monitoring expectations, test evidence, and recovery implications.
 
-Complete a migration ledger for products, RCC resources, events, Summer School, CLIMSA, staff, publications, news,
-services, and institutional pages. Transfer GitHub, hosting, DNS, TLS, email, Google Workspace, source-server,
-monitoring, analytics, and backup access to named institutional owners with MFA and recovery verified.
+### Strategic opportunities beyond six months
 
-## Handover package
+- Develop a prioritised API and open-data roadmap for products that can be safely and sustainably provided to
+  partners and researchers.
+- Strengthen interoperability with regional and national climate-service systems through agreed metadata,
+  identifiers, and exchange formats.
+- Introduce service-level objectives for high-value product families and programme services once reliable baseline
+  measurements are available.
+- Use the shared platform to onboard future ACMAD programmes through reusable page types, governance standards, and
+  common operational services rather than separate web estates.
+- Establish a recurring user-research programme with national meteorological services, sector users, partners,
+  applicants, and staff to guide evidence-based improvements.
 
-The receiving team should approve the following as one controlled package:
+## Conclusion
 
-1. This executive report and the detailed project handover report.
-2. The architecture, deployment, monitoring, recovery, release, and access guides.
-3. Product migration and importer documentation.
-4. RCC, ENSO, CLIMSA, Summer School, institutional content, media, staff workspace, and Google Drive guides.
-5. The release and branch register.
-6. The content migration and acceptance ledger.
-7. The environment, domain, service, storage, and external-integration inventories.
-8. Test, deployment, backup, restore, training, and access-transfer evidence.
-9. A known-issues and maintenance backlog with owners and dates.
-10. A signed acceptance record listing every exception.
+The ACMAD ClimWeb project has delivered a broad and connected digital capability. Its achievements span scientific
+product operations, RCC data and services, thematic and programme communication, public engagement, institutional
+content, event and application workflows, internal staff processes, external collaboration tools, and the
+infrastructure and documentation needed to sustain them.
 
-## First 90 days after handover
-
-### First 30 days
-
-- Confirm the production SHA, services, domains, TLS, migrations, workers, schedules, and backup jobs.
-- Merge and publish the reviewed documentation pack.
-- Complete branch disposition and protect the agreed release branches.
-- Transfer institutional access and rotate shared or exposed credentials.
-- Run critical smoke tests for public pages, importers, subscriptions, staff workflows, and protected files.
-
-### Days 31 to 60
-
-- Complete the migration ledger and programme-owner content acceptance.
-- Resolve or formally disposition the release-candidate test failures.
-- Conduct the isolated restore and rollback exercises.
-- Run role-specific training for infrastructure, editors, product operators, HR reviewers, and account owners.
-- Establish monitoring alerts, retention, support escalation, and a maintenance rota.
-
-### Days 61 to 90
-
-- Close high-priority defects and documentation corrections found during real operation.
-- Review source reliability, importer schedules, email delivery, Google integrations, and storage growth.
-- Audit permissions, inactive accounts, private files, backups, and recovery contacts.
-- Approve the steady-state maintenance backlog, service levels, and quarterly review calendar.
-- Sign final acceptance or record the remaining exceptions with owners and target dates.
-
-## Executive acceptance conditions
-
-Final acceptance should be signed when all of the following are true:
-
-- the contractual baseline and delivered scope are approved;
-- the production SHA and service state are verified;
-- the exact release candidate has a passing or formally accepted test record;
-- all branches have an approved disposition;
-- content migration is reconciled and accepted;
-- backups have been restored successfully in isolation;
-- institutional access and recovery ownership are transferred;
-- protected staff and personal data controls are approved;
-- operational and editorial successors have completed practical exercises;
-- open issues have owners, priorities, dates, and acceptance tests.
-
-## Sign off
-
-| Role | Name | Decision and conditions | Signature and date |
-| --- | --- | --- | --- |
-| Project executive |  |  |  |
-| Project coordinator |  |  |  |
-| Receiving technical lead |  |  |  |
-| Editorial and operations lead |  |  |  |
-| Information security and account owner |  |  |  |
-| Reporting expert | Yusuf Habu YUSUF |  |  |
+The most important next step is consolidation, not reinvention. ACMAD should verify the service as operated, embed
+clear institutional ownership, complete content and recovery exercises, train each user group, measure performance,
+and direct future development through a prioritised evidence-based roadmap. Doing so will turn the implementation
+already achieved into a dependable and continuously improving institutional service.

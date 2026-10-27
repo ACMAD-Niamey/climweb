@@ -17,8 +17,8 @@ different start date, update every report period and metric consistently.
 
 ## Handover documents
 
-1. [Executive handover report](executive-handover-report.md) — leadership summary, delivery outcomes, readiness,
-   acceptance conditions, and the first 90 days after handover.
+1. [Executive project achievement report](executive-handover-report.md) — comprehensive delivery achievements,
+   supporting references, value created, and the forward delivery plan.
 2. [Comprehensive project handover report](project-handover-report.md) — objectives, achievements, current state,
    risks, outstanding work, and evidence requirements.
 3. [Operations command runbook](operations-command-runbook.md) — safe discovery, development, test, deployment,
