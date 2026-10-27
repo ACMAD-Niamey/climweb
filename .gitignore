@@ -197,6 +197,7 @@ backup/
 .vscode/
 node_modules/
 tmp/
+output/
 .claude/
 climweb_dump.dump
 # Local runtime data (docker bind mounts)
