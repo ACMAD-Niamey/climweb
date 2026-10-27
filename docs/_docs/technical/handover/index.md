@@ -17,17 +17,19 @@ different start date, update every report period and metric consistently.
 
 ## Handover documents
 
-1. [Comprehensive project handover report](project-handover-report.md) — objectives, achievements, current state,
+1. [Executive handover report](executive-handover-report.md) — leadership summary, delivery outcomes, readiness,
+   acceptance conditions, and the first 90 days after handover.
+2. [Comprehensive project handover report](project-handover-report.md) — objectives, achievements, current state,
    risks, outstanding work, and evidence requirements.
-2. [Operations command runbook](operations-command-runbook.md) — safe discovery, development, test, deployment,
+3. [Operations command runbook](operations-command-runbook.md) — safe discovery, development, test, deployment,
    monitoring, backup, restoration, and release commands.
-3. [Release and branch register](release-and-branch-register.md) — branch classification and the evidence needed to
+4. [Release and branch register](release-and-branch-register.md) — branch classification and the evidence needed to
    promote, retain, archive, or close each code line.
-4. [Feature documentation register](feature-documentation-register.md) — documentation coverage, gaps, owners, and
+5. [Feature documentation register](feature-documentation-register.md) — documentation coverage, gaps, owners, and
    completion criteria.
-5. [Access transfer and acceptance](access-and-acceptance-checklists.md) — account transfer, knowledge transfer,
+6. [Access transfer and acceptance](access-and-acceptance-checklists.md) — account transfer, knowledge transfer,
    operational verification, and signatures.
-6. [Repository evidence snapshot](repository-evidence-2026-10-27.md) — reproducible facts collected from locally
+7. [Repository evidence snapshot](repository-evidence-2026-10-27.md) — reproducible facts collected from locally
    available Git refs and repository configuration on the audit date.
 
 ## Rules for maintaining the pack
@@ -45,6 +47,7 @@ different start date, update every report period and metric consistently.
 ---
 maxdepth: 1
 ---
+executive-handover-report
 project-handover-report
 operations-command-runbook
 release-and-branch-register
