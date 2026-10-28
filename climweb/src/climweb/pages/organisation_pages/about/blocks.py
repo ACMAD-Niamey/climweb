@@ -16,7 +16,14 @@ class TimelineBlock(blocks.StructBlock):
             ('description', blocks.TextBlock(help_text=_("Describe the milestone"), required=False)),
             ('document', DocumentChooserBlock(
                 required=False,
-                help_text=_("Optional supporting document for this milestone"),
+                label=_("Featured supporting document"),
+                help_text=_("The milestone title opens this document"),
+            )),
+            ('additional_documents', blocks.ListBlock(
+                DocumentChooserBlock(),
+                required=False,
+                label=_("Additional supporting documents"),
+                help_text=_("Add as many additional documents as needed"),
             )),
         ]))
 

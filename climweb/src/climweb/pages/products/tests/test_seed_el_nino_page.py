@@ -1,3 +1,5 @@
+from io import StringIO
+
 from django.core.management import call_command
 from wagtail.test.utils import WagtailPageTestCase
 
@@ -23,3 +25,13 @@ class SeedElNinoPageTests(WagtailPageTestCase):
         self.assertEqual(ElNinoPage.objects.count(), 1)
         self.assertEqual(page.product.temporal_resolution, "monthly")
         self.assertEqual(page.product.product_item_types[0][1], "Monthly Bulletin - ENSO Bulletin")
+
+
+class SeedElNinoPageDeferredTests(WagtailPageTestCase):
+    def test_command_defers_when_products_index_does_not_exist(self):
+        stderr = StringIO()
+
+        call_command("seed_el_nino_page", stderr=stderr)
+
+        self.assertIn("page creation was deferred", stderr.getvalue())
+        self.assertFalse(ElNinoPage.objects.exists())

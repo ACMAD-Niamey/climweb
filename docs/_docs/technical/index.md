@@ -68,6 +68,17 @@ retry, source/schema configuration, and the complete lifecycle for dashboard-cre
 The product subscriptions guide documents the public subscription flow, subscriber dashboard, per-product notification
 controls, automatic and manual safety rules, SMTP/Mailgun deployment, testing, privacy, and troubleshooting.
 
+### ACMAD Project Handover
+
+The handover section records the ACMAD implementation baseline, delivered capabilities, release and branch state,
+operational commands, documentation gaps, access-transfer controls, and formal acceptance checks. It is the canonical
+starting point for transferring the project to a new technical, operational, or editorial team.
+
+### ACMAD Operations and Governance
+
+The ACMAD-specific architecture, monitoring, access/secret ownership, disaster recovery, release management, and
+content-migration guides define how the customized multi-site deployment is operated and accepted safely.
+
 ```{toctree}
 ---
 maxdepth: 1
@@ -83,4 +94,11 @@ extending-climweb/index
 deployment
 subdomain-deployment
 tls-certificates
+acmad-architecture
+operations-monitoring
+access-and-secrets-management
+disaster-recovery
+release-management
+content-migration-acceptance
+handover/index
 ```

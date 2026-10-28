@@ -15,9 +15,10 @@
 
 {% block content %}
 <main class="is-index">
+    {% include 'products/product_category_header.html' with page=page %}
     <section class="is-desktop">
         <div class="container">
-            {% include 'service_introduction.html' with page=page what_we_do=False show_subscribe_button=True %}
+            {% include 'service_introduction.html' with page=page what_we_do=False show_subscribe_button=True show_product_partners=True %}
         </div>
     </section>
     <section class="listing-section">

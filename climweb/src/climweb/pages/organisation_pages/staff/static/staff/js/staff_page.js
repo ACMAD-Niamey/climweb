@@ -4,14 +4,32 @@
     let wasClipped = false;
     const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-    function closeModal() {
+    function closeModal(clearHash = true) {
         if (!activeModal) return;
         activeModal.classList.remove('is-active');
         activeModal.setAttribute('aria-hidden', 'true');
         if (!wasClipped) document.documentElement.classList.remove('is-clipped');
-        activeTrigger.focus();
+        if (activeTrigger) activeTrigger.focus();
         activeModal = null;
         activeTrigger = null;
+        if (clearHash && window.location.hash.startsWith('#staff-')) {
+            window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+        }
+    }
+
+    function openModal(modal, trigger, updateHash = true) {
+        closeModal(false);
+        activeModal = modal;
+        activeTrigger = trigger;
+        wasClipped = document.documentElement.classList.contains('is-clipped');
+        modal.classList.add('is-active');
+        modal.setAttribute('aria-hidden', 'false');
+        document.documentElement.classList.add('is-clipped');
+        resetBiography(modal);
+        modal.querySelector('.modal-close').focus();
+        if (updateHash && window.location.hash !== `#${modal.id}`) {
+            window.history.pushState(null, '', `#${modal.id}`);
+        }
     }
 
     function resetBiography(modal) {
@@ -39,16 +57,9 @@
     document.querySelectorAll('[data-staff-modal]').forEach((trigger) => {
         const modal = document.getElementById(trigger.dataset.staffModal);
         if (!modal) return;
-        trigger.addEventListener('click', () => {
-            closeModal();
-            activeModal = modal;
-            activeTrigger = trigger;
-            wasClipped = document.documentElement.classList.contains('is-clipped');
-            modal.classList.add('is-active');
-            modal.setAttribute('aria-hidden', 'false');
-            document.documentElement.classList.add('is-clipped');
-            resetBiography(modal);
-            modal.querySelector('.modal-close').focus();
+        trigger.addEventListener('click', (event) => {
+            event.preventDefault();
+            openModal(modal, trigger);
         });
         modal.querySelectorAll('[data-staff-close]').forEach((control) => {
             control.addEventListener('click', closeModal);
@@ -74,4 +85,19 @@
             }
         }
     });
+
+    function openModalFromHash() {
+        const modalId = window.location.hash.slice(1);
+        if (!modalId.startsWith('staff-')) {
+            if (activeModal) closeModal(false);
+            return;
+        }
+        const trigger = Array.from(document.querySelectorAll('[data-staff-modal]'))
+            .find((candidate) => candidate.dataset.staffModal === modalId);
+        const modal = document.getElementById(modalId);
+        if (trigger && modal) openModal(modal, trigger, false);
+    }
+
+    window.addEventListener('hashchange', openModalFromHash);
+    openModalFromHash();
 })();

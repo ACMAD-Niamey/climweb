@@ -8,6 +8,7 @@ from climweb.base.models import Application
 from climweb.base.seo_utils import get_html_meta_tags
 from climweb.base.test_utils import test_page_meta_tags
 from climweb.pages.home.tests.factories import get_or_create_homepage
+from climweb.pages.organisation_pages.partners.tests.factories import PartnerFactory
 from .factories import (
     ElNinoPageFactory,
     ProductIndexPageFactory,
@@ -89,6 +90,20 @@ class TestProductPages(WagtailPageTestCase):
         self.assertContains(response, application.title)
         self.assertContains(response, application.url)
         self.assertNotContains(response, 'class="intro-figure"')
+
+    def test_product_category_header_and_introduction_partner_logos(self):
+        partner = PartnerFactory(name="Climate Partner")
+        self.product1_page.header_title = "Custom Product Header"
+        self.product1_page.header_subtitle = "Custom product subtitle"
+        self.product1_page.product_partners.add(partner)
+        self.product1_page.save_revision().publish()
+
+        response = self.client.get(self.product1_page.get_url())
+
+        self.assertContains(response, "Custom Product Header")
+        self.assertContains(response, "Custom product subtitle")
+        self.assertContains(response, "Climate Partner")
+        self.assertContains(response, f'href="{partner.link}"')
     
     def test_product_pages_meta_tags(self):
         resp = self.client.get(self.product1_page.get_url())

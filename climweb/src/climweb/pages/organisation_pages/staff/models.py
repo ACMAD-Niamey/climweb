@@ -1,7 +1,6 @@
 from django.conf import settings
-from django.db import models
 from django.core.files.storage import FileSystemStorage
-from django.db.models import Count
+from django.db import models
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 from modelcluster.fields import ParentalKey
@@ -61,6 +60,12 @@ class StaffPage(AbstractBannerPage):
             FieldPanel('introduction_title'),
             FieldPanel('introduction_text'),
         ], heading=_('Introduction Section')),
+        InlinePanel(
+            'selected_departments',
+            heading=_("Department order"),
+            label=_("Department"),
+            help_text=_("Add departments and drag them into the order in which they should appear."),
+        ),
         InlinePanel('selected_staff', heading=_("Staff shown on this page"), label=_("Staff selection"), help_text=_("Select and order existing staff. Manage their details under Staff Profiles.")),
     ]
 
@@ -78,13 +83,35 @@ class StaffPage(AbstractBannerPage):
 
     @cached_property
     def all_departments(self):
-        # Annotate the queryset with the count of employees per department
-        departments_with_staff_count = self.current_staffmembers.order_by().values('department__name').annotate(
-            staffmembers_count=Count('department')).order_by('department__order')
-        # Filter departments with at least one employee
-        departments_with_staff = departments_with_staff_count.filter(staffmembers_count__gt=0)
+        department_ids = list(
+            self.current_staffmembers.order_by()
+            .exclude(department_id=None)
+            .values_list('department_id', flat=True)
+            .distinct()
+        )
+        if not department_ids:
+            return Department.objects.none()
 
-        return departments_with_staff
+        selected_ids = [
+            selection.department_id
+            for selection in self.selected_departments.all()
+            if selection.department_id in department_ids
+        ]
+        remaining_ids = list(
+            Department.objects.filter(pk__in=department_ids)
+            .exclude(pk__in=selected_ids)
+            .order_by('order', 'pk')
+            .values_list('pk', flat=True)
+        )
+        ordered_ids = selected_ids + remaining_ids
+
+        from django.db.models import Case, IntegerField, When
+        return Department.objects.filter(pk__in=ordered_ids).order_by(
+            Case(
+                *[When(pk=pk, then=position) for position, pk in enumerate(ordered_ids)],
+                output_field=IntegerField(),
+            )
+        )
 
     @cached_property
     def director_general_page(self):
@@ -165,6 +192,27 @@ class StaffPageSelection(Orderable):
 
     class Meta:
         ordering = ["sort_order", "pk"]
+
+
+class StaffPageDepartmentSelection(Orderable):
+    page = ParentalKey(StaffPage, on_delete=models.CASCADE, related_name="selected_departments")
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.CASCADE,
+        related_name="staff_page_selections",
+        verbose_name=_("Department"),
+    )
+
+    panels = [FieldPanel("department")]
+
+    class Meta:
+        ordering = ["sort_order", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["page", "department"],
+                name="unique_staff_page_department",
+            )
+        ]
 
 
 class StaffEmployment(models.Model):

@@ -45,14 +45,14 @@
             <div class="container">
                 {% for department in page.all_departments.all %}
                     <div class="pb-6 mb-6">
-                        <h3 class="has-text-centered pb-6">{{ department.department__name }}</h3>
+                        <h3 class="has-text-centered pb-6">{{ department.name }}</h3>
                         <div class="columns is-multiline is-centered staff-grid">
                             {% for staffmember in page.current_staffmembers.all %}
-                                {% if department.department__name == staffmember.department.name %}
+                                {% if department.pk == staffmember.department_id %}
                                     <div class="column is-one-quarter-desktop is-half-tablet is-full-mobile">
                                         <article class="staff-card">
-                                        <button type="button" class="staff-card-trigger" data-staff-modal="staff-modal-{{ staffmember.pk }}"
-                                                aria-haspopup="dialog" aria-controls="staff-modal-{{ staffmember.pk }}"
+                                        <a href="#staff-{{ staffmember.name|slugify }}-{{ staffmember.pk }}" class="staff-card-trigger" data-staff-modal="staff-{{ staffmember.name|slugify }}-{{ staffmember.pk }}"
+                                                aria-haspopup="dialog" aria-controls="staff-{{ staffmember.name|slugify }}-{{ staffmember.pk }}"
                                                 aria-labelledby="staff-name-{{ staffmember.pk }}">
                                             <span class="staff-figure">
                                                 {% if staffmember.photo %}
@@ -66,10 +66,10 @@
                                             <span class="staff-position">{{ staffmember.role }}</span>
                                             <span class="staff-badge">{{ staffmember.department.name }}</span>
                                             <span class="staff-view-bio">{% if staffmember.bio %}{% translate "View bio" %}{% else %}{% translate "View profile" %}{% endif %}</span>
-                                        </button>
+                                        </a>
                                         {% include "staff/includes/profile_links.html" with member=staffmember %}
                                         </article>
-                                        <div id="staff-modal-{{ staffmember.pk }}" class="modal staff-modal" role="dialog"
+                                        <div id="staff-{{ staffmember.name|slugify }}-{{ staffmember.pk }}" class="modal staff-modal" role="dialog"
                                              aria-modal="true" aria-labelledby="staff-modal-name-{{ staffmember.pk }}" aria-hidden="true" tabindex="-1">
                                             <div class="modal-background" data-staff-close></div>
                                             <div class="modal-content staff-modal-content">
@@ -127,5 +127,5 @@
 
 {% block extra_js %}
     {{ block.super }}
-    <script src="{% static 'staff/js/staff_page.js' %}?v=2" defer></script>
+    <script src="{% static 'staff/js/staff_page.js' %}?v=3" defer></script>
 {% endblock extra_js %}

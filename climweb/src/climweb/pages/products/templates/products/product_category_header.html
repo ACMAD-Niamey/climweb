@@ -1,0 +1,17 @@
+{% load wagtailimages_tags i18n %}
+
+{% if page.category_header_image %}
+  {% image page.category_header_image original as category_header_image %}
+  <section class="page-hero product-category-hero" style="background-image: url('{{ category_header_image.url }}');">
+{% else %}
+  <section class="page-hero product-category-hero product-category-hero--plain">
+{% endif %}
+    <div class="page-hero-overlay"></div>
+    <div class="page-hero-body">
+      <div class="container">
+        <span class="page-hero-badge">{% translate "Products" %}</span>
+        <h1 class="page-hero-title">{{ page.category_header_title }}</h1>
+        {% if page.category_header_subtitle %}<p class="page-hero-subtitle">{{ page.category_header_subtitle }}</p>{% endif %}
+      </div>
+    </div>
+  </section>
