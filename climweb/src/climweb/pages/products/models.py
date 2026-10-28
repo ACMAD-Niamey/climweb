@@ -153,6 +153,36 @@ class BaseProductPage(AbstractIntroPage):
     parent_page_types = ['products.ProductIndexPage']
     subpage_types = ['products.ProductItemPage']
     show_in_menus_default = True
+
+    header_title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name=_("Header title"),
+        help_text=_("Leave blank to use the page title."),
+    )
+    header_subtitle = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name=_("Header subtitle"),
+    )
+    header_image = models.ForeignKey(
+        'wagtailimages.Image',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        verbose_name=_("Header image"),
+        help_text=_("Leave blank to use the main Products page banner image."),
+    )
+    product_partners = ParentalManyToManyField(
+        'partners.Partner',
+        blank=True,
+        related_name='+',
+        verbose_name=_("Introduction partners"),
+        help_text=_("Selected partner logos appear below the introduction text."),
+    )
     
     service = models.ForeignKey(ServiceCategory, on_delete=models.PROTECT, verbose_name=_("Primary Service"))
     gis_application = models.ForeignKey(
@@ -187,6 +217,24 @@ class BaseProductPage(AbstractIntroPage):
     
     class Meta:
         abstract = True
+
+    @property
+    def category_header_title(self):
+        return self.header_title or self.title
+
+    @property
+    def category_header_subtitle(self):
+        return self.header_subtitle
+
+    @cached_property
+    def category_header_image(self):
+        if self.header_image:
+            return self.header_image
+        for ancestor in self.get_ancestors().reverse().specific():
+            banner_image = getattr(ancestor, 'banner_image', None)
+            if banner_image:
+                return banner_image
+        return None
     
     @cached_property
     def listing_image(self):
@@ -280,8 +328,20 @@ class ProductPage(BaseProductPage):
         FieldPanel('service'),
         FieldPanel('other_services', widget=forms.CheckboxSelectMultiple),
         FieldPanel('product'),
+        MultiFieldPanel(
+            [
+                FieldPanel('header_image'),
+                FieldPanel('header_title'),
+                FieldPanel('header_subtitle'),
+            ],
+            heading=_("Category Header"),
+        ),
         *AbstractIntroPage.content_panels,
         FieldPanel('gis_application'),
+        MultiFieldPanel(
+            [FieldPanel('product_partners', widget=forms.CheckboxSelectMultiple)],
+            heading=_("Introduction Partner Logos"),
+        ),
         MultiFieldPanel(
             [
                 FieldPanel('products_per_page'),
@@ -1591,8 +1651,20 @@ class SubNationalProductPage(BaseProductPage):
         FieldPanel('region'),
         FieldPanel('service'),
         FieldPanel('product'),
+        MultiFieldPanel(
+            [
+                FieldPanel('header_image'),
+                FieldPanel('header_title'),
+                FieldPanel('header_subtitle'),
+            ],
+            heading=_("Category Header"),
+        ),
         *AbstractIntroPage.content_panels,
         FieldPanel('gis_application'),
+        MultiFieldPanel(
+            [FieldPanel('product_partners', widget=forms.CheckboxSelectMultiple)],
+            heading=_("Introduction Partner Logos"),
+        ),
         MultiFieldPanel(
             [
                 FieldPanel('products_per_page'),

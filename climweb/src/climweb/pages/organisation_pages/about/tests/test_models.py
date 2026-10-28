@@ -24,8 +24,10 @@ class TestAboutPage(WagtailPageTestCase):
         
         test_page_meta_tags(self, self.page, meta_tags, request=resp.wsgi_request)
 
-    def test_timeline_milestone_title_links_to_supporting_document(self):
-        document = wagtail_factories.DocumentFactory(title="ACMAD founding document")
+    def test_timeline_milestone_supports_multiple_documents(self):
+        featured_document = wagtail_factories.DocumentFactory(title="ACMAD founding document")
+        charter = wagtail_factories.DocumentFactory(title="ACMAD charter")
+        agreement = wagtail_factories.DocumentFactory(title="Host agreement")
         self.page.timeline = [
             (
                 "nmhs_timeline",
@@ -35,7 +37,8 @@ class TestAboutPage(WagtailPageTestCase):
                         {
                             "period": "December",
                             "description": "ACMAD was established",
-                            "document": document,
+                            "document": featured_document,
+                            "additional_documents": [charter, agreement],
                         }
                     ],
                 },
@@ -46,5 +49,7 @@ class TestAboutPage(WagtailPageTestCase):
         response = self.client.get(self.page.get_url())
 
         self.assertContains(response, "ACMAD was established")
-        self.assertContains(response, f'href="{document.url}"')
+        for document in [featured_document, charter, agreement]:
+            self.assertContains(response, f'href="{document.url}"')
+            self.assertContains(response, document.title)
         self.assertContains(response, 'target="_blank" rel="noopener noreferrer"')

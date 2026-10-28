@@ -19,6 +19,10 @@
 
       {% include "services/rationale_details.html" with page=page rationale_control=True %}
 
+      {% if show_product_partners %}
+        {% include 'products/product_partner_logos.html' with page=page %}
+      {% endif %}
+
       {% if show_subscribe_button %}
         <div class="mb-5" style="margin-top: 1rem;">
             <a class="button is-primary" href="{% url 'product_subscription' %}">

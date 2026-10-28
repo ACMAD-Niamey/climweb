@@ -11,16 +11,17 @@
 
 {% block content %}
 <main>
-  <section class="enso-hero{% if page.introduction_image %} enso-hero--image{% endif %}">
-    {% if page.introduction_image %}
-      {% image page.introduction_image fill-1800x760 as hero_image %}
+  {% translate "ENSO monitoring, outlooks and impact information for Africa" as default_enso_subtitle %}
+  <section class="enso-hero{% if page.category_header_image %} enso-hero--image{% endif %}">
+    {% if page.category_header_image %}
+      {% image page.category_header_image fill-1800x760 as hero_image %}
       <div class="enso-hero__image" style="background-image:url('{{ hero_image.url }}')"></div>
     {% endif %}
     <div class="container enso-hero__content enso-hero__layout">
       <div class="enso-hero__copy">
         <p class="enso-kicker">{% translate "ACMAD climate intelligence" %}</p>
-        <h1>{{ page.title }}</h1>
-        <p>{% translate "ENSO monitoring, outlooks and impact information for Africa" %}</p>
+        <h1>{{ page.category_header_title }}</h1>
+        <p>{{ page.category_header_subtitle|default:default_enso_subtitle }}</p>
       </div>
 
       <aside class="enso-hero-bulletin{% if not latest_bulletin %} enso-hero-bulletin--empty{% endif %}" aria-label="{% translate 'Latest El Niño Bulletin' %}">
@@ -67,6 +68,7 @@
         <div class="enso-intro-copy">
           {% if page.introduction_title %}<h2>{{ page.introduction_title }}</h2>{% endif %}
           {% if page.introduction_text %}<div class="enso-prose">{{ page.introduction_text|richtext }}</div>{% endif %}
+          {% include 'products/product_partner_logos.html' with page=page %}
           <div class="enso-intro-details">
             {% if page.enso_explanation %}<div class="enso-prose">{{ page.enso_explanation|richtext }}</div>{% endif %}
           </div>

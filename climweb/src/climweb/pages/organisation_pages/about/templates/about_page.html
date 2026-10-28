@@ -195,10 +195,18 @@
                                 <p class="tl-desc">
                                     {% if milestone.document %}
                                         <a class="tl-desc-link" href="{{ milestone.document.url }}" target="_blank" rel="noopener noreferrer">{{ milestone.description }} <span aria-hidden="true">&#8599;</span></a>
+                                    {% elif milestone.additional_documents %}
+                                        <a class="tl-desc-link" href="{{ milestone.additional_documents.0.url }}" target="_blank" rel="noopener noreferrer">{{ milestone.description }} <span aria-hidden="true">&#8599;</span></a>
                                     {% else %}
                                         {{ milestone.description }}
                                     {% endif %}
                                 </p>
+                                {% if milestone.document or milestone.additional_documents %}
+                                    <ul class="tl-documents" aria-label="{% translate 'Supporting documents' %}">
+                                        {% if milestone.document %}<li><a href="{{ milestone.document.url }}" target="_blank" rel="noopener noreferrer">{{ milestone.document.title }}</a></li>{% endif %}
+                                        {% for document in milestone.additional_documents %}<li><a href="{{ document.url }}" target="_blank" rel="noopener noreferrer">{{ document.title }}</a></li>{% endfor %}
+                                    </ul>
+                                {% endif %}
                             </div>
                             </div>
                         {% else %}
@@ -209,10 +217,18 @@
                                 <p class="tl-desc">
                                     {% if milestone.document %}
                                         <a class="tl-desc-link" href="{{ milestone.document.url }}" target="_blank" rel="noopener noreferrer">{{ milestone.description }} <span aria-hidden="true">&#8599;</span></a>
+                                    {% elif milestone.additional_documents %}
+                                        <a class="tl-desc-link" href="{{ milestone.additional_documents.0.url }}" target="_blank" rel="noopener noreferrer">{{ milestone.description }} <span aria-hidden="true">&#8599;</span></a>
                                     {% else %}
                                         {{ milestone.description }}
                                     {% endif %}
                                 </p>
+                                {% if milestone.document or milestone.additional_documents %}
+                                    <ul class="tl-documents" aria-label="{% translate 'Supporting documents' %}">
+                                        {% if milestone.document %}<li><a href="{{ milestone.document.url }}" target="_blank" rel="noopener noreferrer">{{ milestone.document.title }}</a></li>{% endif %}
+                                        {% for document in milestone.additional_documents %}<li><a href="{{ document.url }}" target="_blank" rel="noopener noreferrer">{{ document.title }}</a></li>{% endfor %}
+                                    </ul>
+                                {% endif %}
                             </div>
                             <div class="tl-node">
                                 <div class="tl-dot"></div>

@@ -1,0 +1,22 @@
+{% load wagtailimages_tags i18n %}
+
+{% with partners=page.product_partners.all %}
+  {% if partners %}
+    <div class="product-intro-partners" aria-label="{% translate 'Product partners' %}">
+      {% for partner in partners %}
+        {% if partner.logo %}
+          {% image partner.logo max-180x80 as partner_logo %}
+          {% if partner.link %}
+            <a href="{{ partner.link }}" target="_blank" rel="noopener noreferrer" title="{{ partner.name }}">
+              <img src="{{ partner_logo.url }}" alt="{{ partner.name }}" width="{{ partner_logo.width }}" height="{{ partner_logo.height }}">
+            </a>
+          {% else %}
+            <span title="{{ partner.name }}">
+              <img src="{{ partner_logo.url }}" alt="{{ partner.name }}" width="{{ partner_logo.width }}" height="{{ partner_logo.height }}">
+            </span>
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
