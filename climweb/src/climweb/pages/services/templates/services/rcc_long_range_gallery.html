@@ -4,7 +4,7 @@
 {% block extra_css %}
     {{ block.super }}
     <link rel="stylesheet" type="text/css" href="{% static 'css/services_rcc.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_long_range_gallery.css' %}?v=1">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_long_range_gallery.css' %}?v=5">
 {% endblock %}
 
 {% block body_class %}rcc-service-page rcc-long-range-gallery-page{% endblock %}
@@ -21,81 +21,130 @@
 
     <section class="rcc-lrg-section">
         <div class="container">
-            <nav class="rcc-lrg-breadcrumb" aria-label="{% translate 'Breadcrumb' %}">
-                {% if long_range_page %}<a href="{{ long_range_page.url }}">{% translate "Long-range Forecasting" %}</a><span>/</span>{% endif %}
-                <span>{{ title }}</span>
-            </nav>
+            {% if not is_seasonal_forecast %}
+                <nav class="rcc-lrg-breadcrumb" aria-label="{% translate 'Breadcrumb' %}">
+                    {% if long_range_page %}<a href="{{ long_range_page.url }}">{% translate "Long-range Forecasting" %}</a><span>/</span>{% endif %}
+                    <span>{{ title }}</span>
+                </nav>
 
-            <header class="rcc-lrg-heading">
-                <div>
-                    <p class="rcc-eyebrow">{{ eyebrow }}</p>
-                    <h2>{% translate "Explore the archive" %}</h2>
-                </div>
-                <p>{{ intro }}</p>
-            </header>
+                <header class="rcc-lrg-heading">
+                    <div>
+                        <p class="rcc-eyebrow">{{ eyebrow }}</p>
+                        <h2>{% translate "Explore the archive" %}</h2>
+                    </div>
+                    <p>{{ intro }}</p>
+                </header>
+            {% endif %}
 
-            <form class="rcc-lrg-filters" method="get" aria-label="{% translate 'Filter archive' %}">
-                <div>
-                    <label for="type-filter">{% translate "Product type" %}</label>
-                    <select id="type-filter" name="type">
-                        <option value="">{% translate "All product types" %}</option>
-                        {% for category in category_options %}<option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>{{ category }}</option>{% endfor %}
-                    </select>
-                </div>
-                <div>
-                    <label for="product-filter">{% translate "Product or model" %}</label>
-                    <select id="product-filter" name="product">
-                        <option value="">{% translate "All products and models" %}</option>
-                        {% for product in product_options %}<option value="{{ product }}" {% if selected_product == product %}selected{% endif %}>{{ product }}</option>{% endfor %}
-                    </select>
-                </div>
-                <div>
-                    <label for="year-filter">{% translate "Year" %}</label>
-                    <select id="year-filter" name="year">
-                        <option value="">{% translate "All years" %}</option>
-                        {% for year in year_options %}<option value="{{ year }}" {% if selected_year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>{% endfor %}
-                    </select>
-                </div>
-                <button type="submit">{% translate "Apply filters" %}</button>
-                {% if selected_category or selected_product or selected_year %}<a href="{{ request.path }}">{% translate "Clear" %}</a>{% endif %}
-            </form>
+            {% if is_seasonal_forecast %}
+                <form class="rcc-lrg-filters rcc-forecast-filters" method="get" aria-label="{% translate 'Select a seasonal forecast map' %}">
+                    <div>
+                        <label for="variable-filter">{% translate "Variable" %}</label>
+                        <select id="variable-filter" name="variable">
+                            {% for value, label in variable_options %}<option value="{{ value }}" {% if selected_map.variable == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="season-filter">{% translate "Forecast season" %}</label>
+                        <select id="season-filter" name="season">
+                            {% for value, label in season_options %}<option value="{{ value }}" {% if selected_map.season == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="issue-filter">{% translate "Issue date" %}</label>
+                        <select id="issue-filter" name="issue">
+                            {% for value, label in issue_options %}<option value="{{ value }}" {% if selected_map.issue == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit">{% translate "Show forecast" %}</button>
+                </form>
 
-            <div class="rcc-lrg-count">{% blocktranslate count count=total_assets %}{{ count }} archive item{% plural %}{{ count }} archive items{% endblocktranslate %}</div>
+                <div class="rcc-forecast-layout">
+                    <section class="rcc-forecast-map" aria-label="{{ selected_map.title }}">
+                        <img src="{% static selected_map.asset_path %}" alt="{{ selected_map.title }} for Africa" width="1653" height="1921">
+                    </section>
 
-            {% if cards %}
-                <div class="rcc-lrg-grid">
-                    {% for card in cards %}
-                        <article class="rcc-lrg-card">
-                            {% if card.kind == "image" %}
-                                {% image card.image fill-720x480 as preview_image %}
-                                {% image card.image original as full_image %}
-                                <a class="rcc-lrg-card__media" href="{{ full_image.url }}" target="_blank" rel="noopener">
-                                    <img src="{{ preview_image.url }}" alt="{{ card.name }}" loading="lazy" width="720" height="480">
-                                </a>
-                            {% else %}
-                                <a class="rcc-lrg-card__media rcc-lrg-card__media--document" href="{{ card.document.url }}" target="_blank" rel="noopener">
-                                    {% if card.thumbnail %}
-                                        {% image card.thumbnail fill-720x480 as document_thumbnail %}
-                                        <img src="{{ document_thumbnail.url }}" alt="{{ card.name }}" loading="lazy" width="720" height="480">
-                                    {% else %}
-                                        <span aria-hidden="true">PDF</span>
-                                    {% endif %}
-                                </a>
-                            {% endif %}
-                            <div class="rcc-lrg-card__body">
-                                <p>{{ card.category }}</p>
-                                <h3>{{ card.name }}</h3>
-                                <div><time datetime="{{ card.date|date:'Y-m-d' }}">{{ card.date|date:"F Y" }}</time>
-                                    {% if card.kind == "image" %}<a href="{{ full_image.url }}" target="_blank" rel="noopener">{% translate "View map" %} &#8599;</a>{% else %}<a href="{{ card.document.url }}" target="_blank" rel="noopener">{% translate "View report" %} &#8599;</a>{% endif %}</div>
-                            </div>
-                        </article>
-                    {% endfor %}
+                    <aside class="rcc-forecast-guidance" aria-label="{% translate 'Forecast overview' %}">
+                        <section>
+                            <p class="rcc-eyebrow">{% translate "About the product" %}</p>
+                            <h2>{% translate "Overview" %}</h2>
+                            <p>{{ overview }}</p>
+                            <a class="rcc-forecast-report" href="{% static reference_document_path %}" target="_blank" rel="noopener">
+                                {% translate "Read the full forecast report" %} <span aria-hidden="true">&#8599;</span>
+                            </a>
+                        </section>
+                    </aside>
                 </div>
+
+                <section class="rcc-forecast-discussion" aria-labelledby="forecast-discussion-title">
+                    <p class="rcc-eyebrow">{% translate "Selected outlook" %}</p>
+                    <h2 id="forecast-discussion-title">{% translate "Discussion" %}</h2>
+                    <p>{{ selected_map.discussion }}</p>
+                </section>
             {% else %}
-                <div class="rcc-lrg-empty">
-                    <h3>{% if total_assets %}{% translate "No items match these filters" %}{% else %}{% translate "Archive items are being prepared" %}{% endif %}</h3>
-                    <p>{% if total_assets %}{% translate "Try another product type or year." %}{% else %}{% translate "Validated maps, graphs and reports will appear here after import." %}{% endif %}</p>
-                </div>
+                <form class="rcc-lrg-filters" method="get" aria-label="{% translate 'Filter archive' %}">
+                    <div>
+                        <label for="type-filter">{% translate "Product type" %}</label>
+                        <select id="type-filter" name="type">
+                            <option value="">{% translate "All product types" %}</option>
+                            {% for category in category_options %}<option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>{{ category }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="product-filter">{% translate "Product or model" %}</label>
+                        <select id="product-filter" name="product">
+                            <option value="">{% translate "All products and models" %}</option>
+                            {% for product in product_options %}<option value="{{ product }}" {% if selected_product == product %}selected{% endif %}>{{ product }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="year-filter">{% translate "Year" %}</label>
+                        <select id="year-filter" name="year">
+                            <option value="">{% translate "All years" %}</option>
+                            {% for year in year_options %}<option value="{{ year }}" {% if selected_year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit">{% translate "Apply filters" %}</button>
+                    {% if selected_category or selected_product or selected_year %}<a href="{{ request.path }}">{% translate "Clear" %}</a>{% endif %}
+                </form>
+
+                <div class="rcc-lrg-count">{% blocktranslate count count=total_assets %}{{ count }} archive item{% plural %}{{ count }} archive items{% endblocktranslate %}</div>
+
+                {% if cards %}
+                    <div class="rcc-lrg-grid">
+                        {% for card in cards %}
+                            <article class="rcc-lrg-card">
+                                {% if card.kind == "image" %}
+                                    {% image card.image fill-720x480 as preview_image %}
+                                    {% image card.image original as full_image %}
+                                    <a class="rcc-lrg-card__media" href="{{ full_image.url }}" target="_blank" rel="noopener">
+                                        <img src="{{ preview_image.url }}" alt="{{ card.name }}" loading="lazy" width="720" height="480">
+                                    </a>
+                                {% else %}
+                                    <a class="rcc-lrg-card__media rcc-lrg-card__media--document" href="{{ card.document.url }}" target="_blank" rel="noopener">
+                                        {% if card.thumbnail %}
+                                            {% image card.thumbnail fill-720x480 as document_thumbnail %}
+                                            <img src="{{ document_thumbnail.url }}" alt="{{ card.name }}" loading="lazy" width="720" height="480">
+                                        {% else %}
+                                            <span aria-hidden="true">PDF</span>
+                                        {% endif %}
+                                    </a>
+                                {% endif %}
+                                <div class="rcc-lrg-card__body">
+                                    <p>{{ card.category }}</p>
+                                    <h3>{{ card.name }}</h3>
+                                    <div><time datetime="{{ card.date|date:'Y-m-d' }}">{{ card.date|date:"F Y" }}</time>
+                                        {% if card.kind == "image" %}<a href="{{ full_image.url }}" target="_blank" rel="noopener">{% translate "View map" %} &#8599;</a>{% else %}<a href="{{ card.document.url }}" target="_blank" rel="noopener">{% translate "View report" %} &#8599;</a>{% endif %}</div>
+                                </div>
+                            </article>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="rcc-lrg-empty">
+                        <h3>{% if total_assets %}{% translate "No items match these filters" %}{% else %}{% translate "Archive items are being prepared" %}{% endif %}</h3>
+                        <p>{% if total_assets %}{% translate "Try another product type or year." %}{% else %}{% translate "Validated maps, graphs and reports will appear here after import." %}{% endif %}</p>
+                    </div>
+                {% endif %}
             {% endif %}
         </div>
     </section>

@@ -1138,12 +1138,11 @@ class RCCLongRangeForecastingPage(AbstractBannerWithIntroPage):
             "key": "maps",
             "slug": "seasonal-forecast-maps",
             "gallery_url_name": "rcc_tailored_forecast_gallery",
-            "label": _("Tailored forecast maps"),
-            "title": _("Tailored Precipitation and Temperature Forecasts"),
+            "label": _("Seasonal forecast maps"),
+            "title": _("Seasonal Forecasts"),
             "summary": _(
-                "Regional and sub-regional precipitation and temperature "
-                "forecast maps tailored to upcoming seasons and climate "
-                "outlook regions."
+                "Objective seasonal rainfall and temperature forecast maps "
+                "for Africa."
             ),
             "topics": (_("Precipitation maps"), _("Temperature maps")),
         },

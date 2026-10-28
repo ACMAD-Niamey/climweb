@@ -37,12 +37,12 @@ EIN15_FAMILIES = ("ATM", "RAD", "SAV", "SRF", "STS")
 LONG_RANGE_GALLERIES = {
     "tailored-forecasts": {
         "slug": "seasonal-forecast-maps",
-        "badge": "RCC tailored forecasts",
-        "title": "Tailored precipitation and temperature forecasts",
-        "eyebrow": "Seasonal forecast maps",
+        "badge": "RCC seasonal outlook",
+        "title": "Seasonal Forecasts",
+        "eyebrow": "Seasonal rainfall and temperature outlooks",
         "intro": (
-            "Explore locally managed regional and sub-regional forecast maps "
-            "by year and product type."
+            "Explore the latest objective seasonal rainfall and temperature "
+            "forecasts for Africa."
         ),
     },
     "model-performance": {
@@ -66,6 +66,215 @@ LONG_RANGE_GALLERIES = {
         ),
     },
 }
+
+
+SEASONAL_FORECAST_MAPS = (
+    {
+        "key": "prcp-djf-2026",
+        "variable": "precipitation",
+        "variable_label": "Rainfall",
+        "season": "DJF",
+        "season_label": "December-February 2026/27",
+        "issue": "2026-10",
+        "issue_label": "October 2026",
+        "title": "Seasonal rainfall forecast: December-February 2026/27",
+        "asset_path": (
+            "images/seasonal_forecasts/"
+            "ACMAD_objective_forecast_PRCP_DJF_2026_map.png"
+        ),
+        "discussion": (
+            "Above-normal rainfall is most likely over equatorial East Africa, "
+            "with probabilities of 60-70% over Kenya, southern Somalia, "
+            "northern Tanzania and Uganda. Below-normal rainfall is most likely "
+            "over much of southern Africa, including Botswana, Zimbabwe, "
+            "Namibia, the South African interior, southern Angola and southern "
+            "Mozambique. Below-normal rainfall is also favoured over Cameroon, "
+            "Gabon and the Congo coast. White land areas indicate either no "
+            "dominant category above 40% or no skill in the 1991-2020 hindcast."
+        ),
+    },
+    {
+        "key": "prcp-ndj-2026",
+        "variable": "precipitation",
+        "variable_label": "Rainfall",
+        "season": "NDJ",
+        "season_label": "November-January 2026/27",
+        "issue": "2026-10",
+        "issue_label": "October 2026",
+        "title": "Seasonal rainfall forecast: November-January 2026/27",
+        "asset_path": (
+            "images/seasonal_forecasts/"
+            "ACMAD_objective_forecast_PRCP_NDJ_2026_map.png"
+        ),
+        "discussion": (
+            "The East African wet signal is strongest in this season. "
+            "Above-normal rainfall reaches 70-90% over Kenya, Tanzania and "
+            "Uganda, with a regional average of 72% across retained cells. "
+            "Below-normal rainfall remains favoured over southern Africa, "
+            "where the regional average is 54%. White land areas indicate "
+            "either no dominant category above 40% or no skill in the "
+            "1991-2020 hindcast."
+        ),
+    },
+    {
+        "key": "prcp-jfm-2027",
+        "variable": "precipitation",
+        "variable_label": "Rainfall",
+        "season": "JFM",
+        "season_label": "January-March 2027",
+        "issue": "2026-10",
+        "issue_label": "October 2026",
+        "title": "Seasonal rainfall forecast: January-March 2027",
+        "asset_path": (
+            "images/seasonal_forecasts/"
+            "ACMAD_objective_forecast_PRCP_JFM_2027_map.png"
+        ),
+        "discussion": (
+            "The East African wet signal weakens by January-March: the "
+            "regional above-normal average falls to 43%, and 43% of the box is "
+            "white for lack of hindcast skill. Much of southern Africa weakens "
+            "to a 40-50% below-normal signal, while Botswana and Zimbabwe retain "
+            "the clearest below-normal lean. White land areas indicate either "
+            "no dominant category above 40% or no skill in the hindcast."
+        ),
+    },
+    {
+        "key": "t2m-djf-2026",
+        "variable": "temperature",
+        "variable_label": "Temperature",
+        "season": "DJF",
+        "season_label": "December-February 2026/27",
+        "issue": "2026-10",
+        "issue_label": "October 2026",
+        "title": "Seasonal temperature forecast: December-February 2026/27",
+        "asset_path": (
+            "images/seasonal_forecasts/"
+            "ACMAD_objective_forecast_T2M_DJF_2026_map.png"
+        ),
+        "discussion": (
+            "Above-normal 2 m temperature is the most likely outcome over "
+            "almost the whole continent. Probabilities reach 80-90% over "
+            "Angola, Madagascar, Mozambique, Somalia, Tanzania, Zambia, the "
+            "Congo basin and the Ethiopian highlands. No category reaches 50% "
+            "in parts of the Nile valley and Lake Victoria basin, while "
+            "below-normal temperature leads at 40-50% over northern Sudan and "
+            "around Lake Victoria."
+        ),
+    },
+    {
+        "key": "t2m-ndj-2026",
+        "variable": "temperature",
+        "variable_label": "Temperature",
+        "season": "NDJ",
+        "season_label": "November-January 2026/27",
+        "issue": "2026-10",
+        "issue_label": "October 2026",
+        "title": "Seasonal temperature forecast: November-January 2026/27",
+        "asset_path": (
+            "images/seasonal_forecasts/"
+            "ACMAD_objective_forecast_T2M_NDJ_2026_map.png"
+        ),
+        "discussion": (
+            "Above-normal temperature dominates most of Africa. Across the "
+            "cells retained by the skill criterion, the average probability of "
+            "above-normal conditions is 61% for the continent, 59% for East "
+            "Africa and 74% for southern Africa. The forecast retains 85% of "
+            "land cells; white areas indicate no dominant category above 40% "
+            "or no skill in the hindcast."
+        ),
+    },
+    {
+        "key": "t2m-jfm-2027",
+        "variable": "temperature",
+        "variable_label": "Temperature",
+        "season": "JFM",
+        "season_label": "January-March 2027",
+        "issue": "2026-10",
+        "issue_label": "October 2026",
+        "title": "Seasonal temperature forecast: January-March 2027",
+        "asset_path": (
+            "images/seasonal_forecasts/"
+            "ACMAD_objective_forecast_T2M_JFM_2027_map.png"
+        ),
+        "discussion": (
+            "Above-normal temperature remains the dominant signal across most "
+            "of Africa. West Africa and the western Sahel reach the 60-70% "
+            "probability band, while the East African area without a dominant "
+            "category contracts. The above-normal averages are 62% for the "
+            "continent, 66% for East Africa, 64% for southern Africa and 58% "
+            "for the Sahel across retained cells."
+        ),
+    },
+)
+
+
+SEASONAL_FORECAST_OVERVIEW = (
+    "These objective seasonal forecasts show the probability of the dominant "
+    "tercile for rainfall and 2 m temperature across Africa. They combine "
+    "twelve seasonal prediction systems from the North American Multi-Model "
+    "Ensemble and the Copernicus Climate Change Service. Rainfall is verified "
+    "against CHIRPS v2 and temperature against ERA5 on a 0.5 degree grid. "
+    "The 1991-2020 period defines the tercile categories and is also used for "
+    "cross-validated skill assessment. A category is shown only where its "
+    "probability is at least 40% and the forecast performs at least as well as "
+    "climatology; white land areas can therefore mean either no dominant "
+    "category or insufficient hindcast skill."
+)
+
+
+def _seasonal_forecast_context(request, config):
+    issue = (request.GET.get("issue") or "").strip()
+    variable = (request.GET.get("variable") or "").strip()
+    season = (request.GET.get("season") or "").strip()
+
+    latest_map = max(
+        SEASONAL_FORECAST_MAPS,
+        key=lambda item: (
+            item["issue"],
+            item["variable"] == "precipitation" and item["season"] == "DJF",
+        ),
+    )
+    selected_map = next(
+        (
+            forecast_map
+            for forecast_map in SEASONAL_FORECAST_MAPS
+            if forecast_map["issue"] == issue
+            and forecast_map["variable"] == variable
+            and forecast_map["season"] == season
+        ),
+        latest_map,
+    )
+
+    return {
+        **config,
+        "is_seasonal_forecast": True,
+        "selected_map": selected_map,
+        "variable_options": tuple(
+            dict.fromkeys(
+                (item["variable"], item["variable_label"])
+                for item in SEASONAL_FORECAST_MAPS
+            )
+        ),
+        "season_options": (
+            ("NDJ", "November-January 2026/27"),
+            ("DJF", "December-February 2026/27"),
+            ("JFM", "January-March 2027"),
+        ),
+        "issue_options": tuple(
+            sorted(
+                dict.fromkeys(
+                    (item["issue"], item["issue_label"])
+                    for item in SEASONAL_FORECAST_MAPS
+                ),
+                reverse=True,
+            )
+        ),
+        "overview": SEASONAL_FORECAST_OVERVIEW,
+        "reference_document_path": (
+            "documents/seasonal_forecasts/ACMAD-RCOF-Forecast.pdf"
+        ),
+        "long_range_page": RCCLongRangeForecastingPage.objects.live().first(),
+    }
 
 
 def rcc_consensus_forums(request):
@@ -100,6 +309,13 @@ def rcc_long_range_gallery(request, gallery):
     config = LONG_RANGE_GALLERIES.get(gallery)
     if not config:
         raise Http404("This long-range forecast gallery does not exist.")
+
+    if gallery == "tailored-forecasts":
+        return render(
+            request,
+            "services/rcc_long_range_gallery.html",
+            _seasonal_forecast_context(request, config),
+        )
 
     product_page = ProductPage.objects.live().filter(slug=config["slug"]).first()
     cards = []
