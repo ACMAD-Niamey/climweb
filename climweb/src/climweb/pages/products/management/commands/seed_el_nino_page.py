@@ -1,4 +1,4 @@
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 
 from climweb.base.models import Product, ProductCategory, ProductItemType, ServiceCategory
 from climweb.pages.products.models import ElNinoPage, ProductIndexPage
@@ -10,7 +10,10 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         index = ProductIndexPage.objects.live().first()
         if not index:
-            raise CommandError("A live ProductIndexPage was not found")
+            self.stderr.write(
+                "A live Products index was not found; El Niño page creation was deferred."
+            )
+            return
 
         existing = ElNinoPage.objects.filter(slug="el-nino-africa").first()
         if existing:
@@ -21,7 +24,11 @@ class Command(BaseCommand):
         if not service:
             service = ServiceCategory.objects.filter(name="Regional Climate Center").first()
         if not service:
-            raise CommandError("A seasonal forecasting or RCC service category was not found")
+            self.stderr.write(
+                "A seasonal forecasting or RCC service category was not found; "
+                "El Niño page creation was deferred."
+            )
+            return
 
         product, _ = Product.objects.get_or_create(
             name="ENSO Bulletin",

@@ -7,7 +7,13 @@ from climweb.pages.home.tests.factories import get_or_create_homepage
 from climweb.pages.organisation_pages.organisation.tests.factories import OrganisationIndexPageFactory
 from climweb.pages.organisation_pages.board.tests.factories import DirectorGeneralPageFactory
 from .factories import StaffPageFactory
-from ..models import Department, StaffMember, StaffPageSelection, StaffProfileAccess
+from ..models import (
+    Department,
+    StaffMember,
+    StaffPageDepartmentSelection,
+    StaffPageSelection,
+    StaffProfileAccess,
+)
 
 
 class TestStaffPage(WagtailPageTestCase):
@@ -63,12 +69,42 @@ class TestStaffPage(WagtailPageTestCase):
         self.assertContains(response, "View bio", count=1)
         self.assertContains(response, "View profile", count=1)
 
+    def test_staff_cards_have_shareable_modal_links(self):
+        response = self.client.get(self.page.get_url())
+        self.assertContains(
+            response,
+            f'href="#staff-modal-{self.member.pk}" class="staff-card-trigger"',
+        )
+
+    def test_departments_follow_page_specific_drag_order(self):
+        leadership = Department.objects.create(name="Leadership", order=99)
+        leader = StaffMember.objects.create(
+            page=self.page,
+            name="Team Lead",
+            role="Director",
+            department=leadership,
+        )
+        StaffPageSelection.objects.create(page=self.page, member=leader, sort_order=2)
+        StaffPageDepartmentSelection.objects.create(
+            page=self.page,
+            department=leadership,
+            sort_order=0,
+        )
+        StaffPageDepartmentSelection.objects.create(
+            page=self.page,
+            department=self.member.department,
+            sort_order=1,
+        )
+
+        html = self.client.get(self.page.get_url()).content.decode()
+        self.assertLess(html.index("Leadership"), html.index("Climate Services"))
+
     def test_photo_fallback_and_descriptive_alt_text(self):
         response = self.client.get(self.page.get_url())
         self.assertContains(response, 'alt="Dr. Team Member"', count=2)
         self.assertContains(response, "images/person.svg", count=2)
 
-    def test_contact_icons_render_on_card_and_modal_outside_trigger_button(self):
+    def test_contact_icons_render_on_card_and_modal_outside_profile_trigger(self):
         self.member.website = "https://example.test/profile"
         self.member.linkedin = "https://www.linkedin.com/in/test"
         self.member.github = "https://github.com/test"
@@ -81,10 +117,10 @@ class TestStaffPage(WagtailPageTestCase):
             self.assertContains(response, f'href="{url}"', count=2)
         for label in ["Website", "LinkedIn", "GitHub", "Publications", "Email"]:
             self.assertContains(response, f'aria-label="{label} — {self.member.name}"', count=2)
-        # Links are siblings of the trigger, never invalid nested controls.
+        # Contact links are siblings of the profile trigger, never nested links.
         html = response.content.decode()
-        for button in html.split('class="staff-card-trigger"')[1:]:
-            self.assertNotIn("<a ", button.split("</button>")[0])
+        for trigger in html.split('class="staff-card-trigger"')[1:]:
+            self.assertNotIn("<a ", trigger.split("</a>")[0])
         for url in [self.member.website, self.member.linkedin, self.member.github, self.member.publications]:
             self.assertContains(response, f'href="{url}" target="_blank" rel="noopener noreferrer"', count=2)
 
