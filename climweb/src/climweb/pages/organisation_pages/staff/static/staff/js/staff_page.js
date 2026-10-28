@@ -12,7 +12,7 @@
         if (activeTrigger) activeTrigger.focus();
         activeModal = null;
         activeTrigger = null;
-        if (clearHash && window.location.hash.startsWith('#staff-modal-')) {
+        if (clearHash && window.location.hash.startsWith('#staff-')) {
             window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
         }
     }
@@ -88,7 +88,7 @@
 
     function openModalFromHash() {
         const modalId = window.location.hash.slice(1);
-        if (!modalId.startsWith('staff-modal-')) {
+        if (!modalId.startsWith('staff-')) {
             if (activeModal) closeModal(false);
             return;
         }

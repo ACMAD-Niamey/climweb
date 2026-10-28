@@ -1,5 +1,6 @@
 from wagtail.test.utils import WagtailPageTestCase
 from django.contrib.auth import get_user_model
+from django.utils.text import slugify
 
 from climweb.base.seo_utils import get_html_meta_tags
 from climweb.base.test_utils import test_page_meta_tags
@@ -52,9 +53,10 @@ class TestStaffPage(WagtailPageTestCase):
 
     def test_trainer_style_cards_and_accessible_modals(self):
         response = self.client.get(self.page.get_url())
+        member_anchor = f"staff-{slugify(self.member.name)}-{self.member.pk}"
         self.assertContains(response, 'class="staff-card"', count=2)
         self.assertContains(response, 'class="modal staff-modal" role="dialog"', count=2)
-        self.assertContains(response, f'data-staff-modal="staff-modal-{self.member.pk}"')
+        self.assertContains(response, f'data-staff-modal="{member_anchor}"')
         self.assertContains(response, f'aria-labelledby="staff-modal-name-{self.member.pk}"')
         self.assertContains(response, 'aria-hidden="true" tabindex="-1"', count=2)
         self.assertContains(response, 'data-staff-bio-toggle', count=1)
@@ -71,9 +73,10 @@ class TestStaffPage(WagtailPageTestCase):
 
     def test_staff_cards_have_shareable_modal_links(self):
         response = self.client.get(self.page.get_url())
+        member_anchor = f"staff-{slugify(self.member.name)}-{self.member.pk}"
         self.assertContains(
             response,
-            f'href="#staff-modal-{self.member.pk}" class="staff-card-trigger"',
+            f'href="#{member_anchor}" class="staff-card-trigger"',
         )
 
     def test_departments_follow_page_specific_drag_order(self):
