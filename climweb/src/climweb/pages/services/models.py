@@ -1129,8 +1129,26 @@ class RCCLongRangeForecastingPage(AbstractBannerWithIntroPage):
     max_count_per_parent = 1
     show_in_menus_default = True
 
+    seasonal_forecast_overview = RichTextField(
+        blank=True,
+        verbose_name=_("Seasonal forecast overview"),
+        help_text=_(
+            "Overview displayed beside the selected seasonal forecast map."
+        ),
+    )
+
     content_panels = Page.content_panels + [
         *AbstractBannerWithIntroPage.content_panels,
+        FieldPanel("seasonal_forecast_overview"),
+        InlinePanel(
+            "seasonal_outlook_discussions",
+            label=_("Seasonal outlook discussion"),
+            heading=_("Seasonal outlook discussions"),
+            help_text=_(
+                "Add one discussion for each forecast map. The outlook key "
+                "identifies the map whose discussion is displayed."
+            ),
+        ),
     ]
 
     outlook_product_definitions = (
@@ -1266,6 +1284,47 @@ class RCCLongRangeForecastingPage(AbstractBannerWithIntroPage):
 
     class Meta:
         verbose_name = _("RCC Long-range Forecasting Page")
+
+
+class RCCSeasonalOutlookDiscussion(Orderable):
+    OUTLOOK_CHOICES = (
+        ("prcp-ndj-2026", _("Rainfall · NDJ 2026/27")),
+        ("prcp-djf-2026", _("Rainfall · DJF 2026/27")),
+        ("prcp-jfm-2027", _("Rainfall · JFM 2027")),
+        ("t2m-ndj-2026", _("Temperature · NDJ 2026/27")),
+        ("t2m-djf-2026", _("Temperature · DJF 2026/27")),
+        ("t2m-jfm-2027", _("Temperature · JFM 2027")),
+    )
+
+    page = ParentalKey(
+        RCCLongRangeForecastingPage,
+        on_delete=models.CASCADE,
+        related_name="seasonal_outlook_discussions",
+    )
+    outlook_key = models.CharField(
+        max_length=30,
+        choices=OUTLOOK_CHOICES,
+        verbose_name=_("Outlook"),
+    )
+    discussion = RichTextField(
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Discussion"),
+    )
+
+    panels = [
+        FieldPanel("outlook_key"),
+        FieldPanel("discussion"),
+    ]
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("page", "outlook_key"),
+                name="unique_seasonal_outlook_discussion_per_page",
+            )
+        ]
+        verbose_name = _("Seasonal outlook discussion")
+        verbose_name_plural = _("Seasonal outlook discussions")
 
 
 class RCCTrainingPage(AbstractBannerWithIntroPage):

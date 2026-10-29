@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% load static i18n wagtailimages_tags %}
+{% load static i18n wagtailcore_tags wagtailimages_tags %}
 
 {% block extra_css %}
     {{ block.super }}
     <link rel="stylesheet" type="text/css" href="{% static 'css/services_rcc.css' %}">
-    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_long_range_gallery.css' %}?v=5">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/rcc_long_range_gallery.css' %}?v=7">
 {% endblock %}
 
 {% block body_class %}rcc-service-page rcc-long-range-gallery-page{% endblock %}
@@ -13,14 +13,14 @@
 <main>
     <section class="page-hero rcc-simple-hero rcc-lrg-hero">
         <div class="page-hero-overlay"></div>
-        <div class="page-hero-body"><div class="container">
+        <div class="page-hero-body"><div class="container rcc-lrg-container">
             <span class="page-hero-badge">{{ badge }}</span>
             <h1 class="page-hero-title">{{ title }}</h1>
         </div></div>
     </section>
 
     <section class="rcc-lrg-section">
-        <div class="container">
+        <div class="container rcc-lrg-container">
             {% if not is_seasonal_forecast %}
                 <nav class="rcc-lrg-breadcrumb" aria-label="{% translate 'Breadcrumb' %}">
                     {% if long_range_page %}<a href="{{ long_range_page.url }}">{% translate "Long-range Forecasting" %}</a><span>/</span>{% endif %}
@@ -51,9 +51,15 @@
                         </select>
                     </div>
                     <div>
-                        <label for="issue-filter">{% translate "Issue date" %}</label>
-                        <select id="issue-filter" name="issue">
-                            {% for value, label in issue_options %}<option value="{{ value }}" {% if selected_map.issue == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                        <label for="issue-month-filter">{% translate "Issue month" %}</label>
+                        <select id="issue-month-filter" name="issue_month">
+                            {% for value, label in issue_month_options %}<option value="{{ value }}" {% if selected_map.issue|slice:"5:7" == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="issue-year-filter">{% translate "Issue year" %}</label>
+                        <select id="issue-year-filter" name="issue_year">
+                            {% for year in issue_year_options %}<option value="{{ year }}" {% if selected_map.issue|slice:":4" == year %}selected{% endif %}>{{ year }}</option>{% endfor %}
                         </select>
                     </div>
                     <button type="submit">{% translate "Show forecast" %}</button>
@@ -68,7 +74,7 @@
                         <section>
                             <p class="rcc-eyebrow">{% translate "About the product" %}</p>
                             <h2>{% translate "Overview" %}</h2>
-                            <p>{{ overview }}</p>
+                            <div class="rcc-forecast-richtext">{{ overview|richtext }}</div>
                             <a class="rcc-forecast-report" href="{% static reference_document_path %}" target="_blank" rel="noopener">
                                 {% translate "Read the full forecast report" %} <span aria-hidden="true">&#8599;</span>
                             </a>
@@ -79,7 +85,7 @@
                 <section class="rcc-forecast-discussion" aria-labelledby="forecast-discussion-title">
                     <p class="rcc-eyebrow">{% translate "Selected outlook" %}</p>
                     <h2 id="forecast-discussion-title">{% translate "Discussion" %}</h2>
-                    <p>{{ selected_map.discussion }}</p>
+                    <div class="rcc-forecast-richtext">{{ selected_map.discussion|richtext }}</div>
                 </section>
             {% else %}
                 <form class="rcc-lrg-filters" method="get" aria-label="{% translate 'Filter archive' %}">

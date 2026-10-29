@@ -223,7 +223,14 @@ SEASONAL_FORECAST_OVERVIEW = (
 
 
 def _seasonal_forecast_context(request, config):
-    issue = (request.GET.get("issue") or "").strip()
+    legacy_issue = (request.GET.get("issue") or "").strip()
+    issue_month = (request.GET.get("issue_month") or "").strip()
+    issue_year = (request.GET.get("issue_year") or "").strip()
+    issue = (
+        f"{issue_year}-{issue_month}"
+        if issue_year and issue_month
+        else legacy_issue
+    )
     variable = (request.GET.get("variable") or "").strip()
     season = (request.GET.get("season") or "").strip()
 
@@ -245,6 +252,26 @@ def _seasonal_forecast_context(request, config):
         latest_map,
     )
 
+    long_range_page = RCCLongRangeForecastingPage.objects.live().first()
+    editable_discussions = {
+        item.outlook_key: item.discussion
+        for item in (
+            long_range_page.seasonal_outlook_discussions.all()
+            if long_range_page
+            else ()
+        )
+    }
+    selected_map = {
+        **selected_map,
+        "discussion": editable_discussions.get(
+            selected_map["key"], selected_map["discussion"]
+        ),
+    }
+    month_labels = {
+        f"{month:02d}": datetime(2000, month, 1).strftime("%B")
+        for month in range(1, 13)
+    }
+
     return {
         **config,
         "is_seasonal_forecast": True,
@@ -260,20 +287,33 @@ def _seasonal_forecast_context(request, config):
             ("DJF", "December-February 2026/27"),
             ("JFM", "January-March 2027"),
         ),
-        "issue_options": tuple(
+        "issue_month_options": tuple(
             sorted(
                 dict.fromkeys(
-                    (item["issue"], item["issue_label"])
+                    (
+                        item["issue"].split("-")[1],
+                        month_labels[item["issue"].split("-")[1]],
+                    )
                     for item in SEASONAL_FORECAST_MAPS
                 ),
                 reverse=True,
             )
         ),
-        "overview": SEASONAL_FORECAST_OVERVIEW,
+        "issue_year_options": tuple(
+            sorted(
+                {item["issue"].split("-")[0] for item in SEASONAL_FORECAST_MAPS},
+                reverse=True,
+            )
+        ),
+        "overview": (
+            long_range_page.seasonal_forecast_overview
+            if long_range_page and long_range_page.seasonal_forecast_overview
+            else SEASONAL_FORECAST_OVERVIEW
+        ),
         "reference_document_path": (
             "documents/seasonal_forecasts/ACMAD-RCOF-Forecast.pdf"
         ),
-        "long_range_page": RCCLongRangeForecastingPage.objects.live().first(),
+        "long_range_page": long_range_page,
     }
 
 

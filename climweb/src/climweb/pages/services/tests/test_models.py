@@ -22,6 +22,7 @@ from climweb.pages.services.models import (
     RCCClimateProductsPage,
     RCCCoordinationPage,
     RCCLongRangeForecastingPage,
+    RCCSeasonalOutlookDiscussion,
 )
 from .factories import (
     RCCClimateMonitoringPageFactory,
@@ -593,6 +594,9 @@ class TestServicesPages(WagtailPageTestCase):
         )
         self.assertNotContains(response, 'class="rcc-lrg-card"')
         self.assertNotContains(response, 'name="region"')
+        self.assertContains(response, 'name="issue_month"')
+        self.assertContains(response, 'name="issue_year"')
+        self.assertNotContains(response, 'name="issue"')
 
         selected_response = self.client.get(
             url,
@@ -624,6 +628,40 @@ class TestServicesPages(WagtailPageTestCase):
             url,
             status_code=301,
             fetch_redirect_response=False,
+        )
+
+    def test_seasonal_forecast_copy_is_editable_on_long_range_page(self):
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center seasonal forecast copy",
+            service__name="Regional Climate Center",
+        )
+        forecasting_page = RCCLongRangeForecastingPageFactory(
+            parent=rcc_page,
+            seasonal_forecast_overview="<p>Editor supplied overview.</p>",
+        )
+        RCCSeasonalOutlookDiscussion.objects.create(
+            page=forecasting_page,
+            outlook_key="t2m-jfm-2027",
+            discussion="<p>Editor supplied outlook discussion.</p>",
+        )
+
+        response = self.client.get(
+            reverse("rcc_tailored_forecast_gallery"),
+            {
+                "variable": "temperature",
+                "season": "JFM",
+                "issue_month": "10",
+                "issue_year": "2026",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Editor supplied overview.")
+        self.assertContains(response, "Editor supplied outlook discussion.")
+        self.assertContains(
+            response,
+            "ACMAD_objective_forecast_T2M_JFM_2027_map.png",
         )
 
     def test_long_range_forecasting_seed_links_existing_menu_item(self):
