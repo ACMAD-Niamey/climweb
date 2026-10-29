@@ -14,6 +14,12 @@ Manage-Services
 Manage-News
 Manage-Publications
 Manage-Flex
+Manage-RCC
+Manage-ENSO
+Manage-CLIMSA
+Manage-Summer-School
+Manage-Institutional-Content
+Manage-News-and-Media
 ```
 
 ## Creating new pages

@@ -14,9 +14,10 @@
 
 {% block content %}
     <main class="is-index">
+        {% include 'products/product_category_header.html' with page=page %}
             <section class="nmhs-work is-desktop">
                 <div class="work container">
-                    {% include 'service_introduction.html' with page=page what_we_do=False %}
+                    {% include 'service_introduction.html' with page=page what_we_do=False show_product_partners=True %}
                 </div>
             </section>
         <section class="listing-section">

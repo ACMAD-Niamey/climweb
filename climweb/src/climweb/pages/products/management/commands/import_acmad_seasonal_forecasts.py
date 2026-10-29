@@ -551,9 +551,6 @@ class Command(BaseCommand):
                 )
                 index.add_child(instance=product_page)
                 product_page.save_revision().publish()
-            elif product_page.service_id != service.pk:
-                product_page.service = service
-                product_page.save_revision().publish()
             product_pages[product_name] = product_page
             category, _ = ProductCategory.objects.get_or_create(
                 product=product_page.product,

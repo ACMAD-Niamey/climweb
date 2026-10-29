@@ -11,12 +11,15 @@ from wagtail.admin import messages
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 from django.core.mail import get_connection
+from django.db import transaction
 from django.db.models import Avg
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from wagtail.contrib.forms.models import FormMixin
 from wagtail.contrib.forms.utils import get_forms_for_user
+from wagtail.admin.auth import user_passes_test
 from wagtail.models import Page
+from wagtailcache.cache import clear_cache
 
 from climweb import __version__
 from climweb.base.mail import send_mail
@@ -25,7 +28,32 @@ from climweb.base.utils import get_latest_cms_release, send_upgrade_command, sen
 from climweb.utils.version import check_version_greater_than_current, get_main_version
 from .forms import CMSUpgradeForm, effective_clean_name
 from .models import (Theme, OrganisationSetting, FormFileSubmission, SubmissionReview, SubmissionEmailLog,
-                     SubmissionExportJob)
+                     SubmissionExportJob, ServiceCategory)
+
+
+@user_passes_test(lambda user: user.is_superuser or user.has_perm("base.change_servicecategory"))
+def update_product_category_order(request):
+    if request.method != "POST":
+        return redirect("wagtailadmin_home")
+
+    categories = list(ServiceCategory.objects.all())
+    updates = []
+    for category in categories:
+        raw_order = request.POST.get(f"order-{category.pk}", "").strip()
+        try:
+            category.order = int(raw_order) if raw_order else None
+        except ValueError:
+            messages.error(request, _("Category order values must be whole numbers."))
+            return redirect("wagtailadmin_home")
+        updates.append(category)
+
+    with transaction.atomic():
+        ServiceCategory.objects.bulk_update(updates, ["order"])
+
+    clear_cache()
+    cache.clear()
+    messages.success(request, _("Product category order updated."))
+    return redirect("wagtailadmin_home")
 
 
 def handler500(request):

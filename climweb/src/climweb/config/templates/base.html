@@ -2,6 +2,7 @@
 {% load wagtailuserbar wagtailadmin_tags wagtailcore_tags %}
 {% get_settings use_default_site=True %}
 {% wagtail_site as current_site %}
+{% section_navigation as section_nav %}
 
 {% get_current_language as LANGUAGE_CODE %}
 {% get_current_language_bidi as LANGUAGE_BIDI %}
@@ -60,7 +61,7 @@
     <link rel="stylesheet" type="text/css" href="{% static 'css/faq-panel.css' %}?v=1.0">
     <link rel="stylesheet" type="text/css" href="{% static 'css/cms_style.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'css/base.css' %}?v=2.0">
-    <link rel="stylesheet" type="text/css" href="{% static 'css/components.css' %}?v=2.0">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/components.css' %}?v=2.1">
     <link rel="stylesheet" type="text/css" href="{% static 'css/footer.css' %}?v=2.0">
     <link rel="stylesheet" type="text/css" href="{% static 'css/sections.css' %}">
     <link rel="stylesheet" href="{% static 'css/services_common.css' %}">
@@ -149,12 +150,15 @@
         {% endif %}
     {% endif %}
 
+    {% if section_nav.kind == "climsa" %}
+        <link rel="stylesheet" type="text/css" href="{% static 'css/climsa.css' %}">
+    {% endif %}
     {% block extra_css %}
         {# Override this in templates to add extra stylesheets #}
     {% endblock %}
 </head>
 
-<body class="{% block body_class %}{% endblock %}">
+<body class="section-{{ section_nav.kind|default:'main' }} {% block body_class %}{% endblock %}">
 {% wagtailuserbar %}
 
 {% block navbar %}

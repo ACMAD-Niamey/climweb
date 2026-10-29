@@ -13,6 +13,10 @@
 
 {% block body_class %}summer-school-page{% endblock %}
 
+{% block navbar %}
+    {% include 'navigation/navbar.html' with main_site_logo_url='https://acmad.org/' summer_school_home_url=page.get_parent.url %}
+{% endblock navbar %}
+
 {% block content %}
     <!-- {% include 'breadcrumbs_include.html' with page=page %} -->
 
@@ -53,6 +57,18 @@
             {% if page.cohorts %}
                 <section id="previous-schools">
                     {% include 'summer_school_cohorts_include.html' %}
+                </section>
+            {% endif %}
+
+            {% if page.daily_activities %}
+                <section id="daily-activities">
+                    {% include 'summer_school_daily_activities_include.html' %}
+                </section>
+            {% endif %}
+
+            {% if page.reviews %}
+                <section id="reviews">
+                    {% include 'summer_school_reviews_include.html' %}
                 </section>
             {% endif %}
 

@@ -227,6 +227,43 @@
     margin-bottom: 0.25rem !important;
 }
 
+.product-category-hero--plain {
+    background: linear-gradient(135deg, var(--theme-header-dark, #0a192f), var(--primary-color, #307461));
+}
+
+.product-intro-partners {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-top: 1.25rem;
+}
+
+.product-intro-partners a,
+.product-intro-partners > span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 112px;
+    height: 64px;
+    padding: 8px;
+    border: 1px solid var(--theme-border, #e4e9ee);
+    border-radius: var(--border-radius, 5px);
+    background: #fff;
+}
+
+.product-intro-partners a:hover,
+.product-intro-partners a:focus-visible {
+    border-color: var(--primary-color, #307461);
+    box-shadow: 0 5px 16px rgba(15, 23, 42, 0.1);
+}
+
+.product-intro-partners img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
 @media (max-width: 768px) {
     .product-page .intro-section {
         padding: 0.5rem 0 0 !important;
@@ -241,4 +278,54 @@
         object-fit: contain;
         border-radius: 12px;
     }
+}
+/* Featured product displayed beside the Products page introduction. */
+.products-featured-card {
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 14px;
+    box-shadow: 0 14px 36px rgba(23, 42, 66, 0.12);
+}
+
+.products-featured-card-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: var(--primary-color-lightest, #edf6f2);
+}
+
+.products-featured-card-image img,
+.products-featured-card-placeholder {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.products-featured-card-body {
+    padding: 1.35rem 1.5rem 1.5rem;
+}
+
+.products-featured-card-label {
+    display: inline-block;
+    margin-bottom: 0.45rem;
+    color: var(--primary-color);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.products-featured-card h3 {
+    margin: 0 0 0.6rem;
+    font-size: 1.35rem;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.products-featured-card h3 a {
+    color: var(--text-color, #1a1a1a);
 }

@@ -1,27 +1,92 @@
 import hashlib
 import logging
 from functools import wraps
+from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.conf import settings
-from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth import logout as auth_logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
 from django.contrib.auth.views import LoginView, PasswordResetView, PasswordResetConfirmView
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
-from django.http import HttpResponse
+from django.db.models import Q
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.html import strip_tags
 from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 
-from .forms import StaffAuthenticationForm, StaffCreateForm, StaffEditForm, StaffInvitationForm, StaffLinkUserForm, StaffOffboardingForm, StaffReactivationForm, StaffPasswordResetForm, StaffProfileForm, StaffReviewForm
-from .models import StaffEmploymentEvent, StaffMember, StaffProfileAccess, StaffProfileUpdate
-from .services import change_staff_employment, create_staff_member, edit_staff_member, invitation_valid, invite_staff, link_existing_staff_user, member_fingerprint, review_update
+from .forms import (
+    StaffAuthenticationForm,
+    StaffCreateForm,
+    StaffDriveMoveForm,
+    StaffDriveRenameForm,
+    StaffDriveUploadForm,
+    StaffEditForm,
+    StaffLinkUserForm,
+    StaffOffboardingForm,
+    StaffPasswordResetForm,
+    StaffProfileForm,
+    StaffReactivationForm,
+    StaffReviewForm,
+    StaffTrainingAssignmentForm,
+    StaffTrainingReportForm,
+    StaffTrainingReportReviewForm,
+)
+from .models import (
+    StaffEmploymentEvent,
+    StaffDriveAudit,
+    StaffMember,
+    StaffProfileAccess,
+    StaffProfileEmailLog,
+    StaffProfileUpdate,
+    StaffTrainingAssignment,
+    StaffTrainingReport,
+    StaffTrainingReportDocument,
+)
+from .google_drive import (
+    FOLDER_MIME_TYPE,
+    StaffDriveConfigurationError,
+    StaffDriveOperationError,
+    assert_within_root,
+    breadcrumbs,
+    download_item,
+    drive_is_configured,
+    ensure_staff_folder,
+    get_drive_service,
+    get_item,
+    list_folder_tree,
+    list_items,
+    move_item,
+    record_audit,
+    rename_item,
+    trash_item,
+    upload_file,
+)
+from .notifications import (
+    queue_nomination_removed_notification,
+    queue_report_submitted_notifications,
+    queue_training_assigned_notifications,
+)
+from .services import (
+    change_staff_employment,
+    create_staff_member,
+    edit_staff_member,
+    invitation_valid,
+    invite_staff,
+    link_existing_staff_user,
+    member_fingerprint,
+    review_training_report_submission,
+    review_update,
+    send_profile_update_reminder,
+)
+from .tasks import queue_report_document_drive_sync
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +125,16 @@ class StaffPasswordResetView(PasswordResetView):
             if count > 5:
                 return redirect(self.success_url)
         return super().form_valid(form)
+
+
+@never_cache
+@require_http_methods(["GET", "POST"])
+def staff_logout(request):
+    """Offer a safe direct logout URL while keeping session changes POST-only."""
+    if request.method == "POST":
+        auth_logout(request)
+        return redirect("staff_portal:login")
+    return render(request, "staff/portal/logout_confirm.html")
 
 
 class StaffPasswordResetConfirmView(PasswordResetConfirmView):
@@ -134,6 +209,260 @@ def profile_initial(member, update):
 
 
 @staff_required
+@require_http_methods(["GET"])
+def staff_dashboard(request):
+    assignments = StaffTrainingAssignment.objects.filter(member=request.staff_access.member).select_related("report")
+    open_assignments = assignments.exclude(status=StaffTrainingAssignment.Status.CANCELLED)
+    return render(request, "staff/portal/dashboard.html", {
+        "member": request.staff_access.member,
+        "assignments": assignments[:6],
+        "training_count": open_assignments.count(),
+        "reports_due": open_assignments.filter(
+            Q(report__isnull=True) | Q(report__status__in=[StaffTrainingReport.Status.DRAFT, StaffTrainingReport.Status.CHANGES_REQUESTED])
+        ).count(),
+        "approved_count": assignments.filter(report__status=StaffTrainingReport.Status.APPROVED).count(),
+        "drive_enabled": drive_is_configured(),
+    })
+
+
+def _drive_access(request):
+    service = get_drive_service()
+    if request.user.has_perm("staff.review_staff_profiles"):
+        return service, settings.GOOGLE_DRIVE_ROOT_FOLDER_ID, None
+    member = request.staff_access.member
+    return service, ensure_staff_folder(service, member, request.user), member
+
+
+def _drive_redirect(folder_id):
+    url = reverse("staff_portal:drive_files")
+    return redirect(f"{url}?{urlencode({'folder': folder_id})}")
+
+
+@staff_required
+@require_http_methods(["GET"])
+def staff_drive_files(request):
+    if not drive_is_configured():
+        return render(request, "staff/portal/drive_files.html", {
+            "integration_error": "Google Drive is not configured for this environment.",
+        }, status=503)
+    try:
+        service, allowed_root, _ = _drive_access(request)
+        folder_id = request.GET.get("folder") or allowed_root
+        folder = assert_within_root(service, folder_id, allowed_root)
+        if folder.get("mimeType") != FOLDER_MIME_TYPE:
+            raise PermissionDenied("The requested item is not a folder.")
+        search = request.GET.get("q", "").strip()[:100]
+        items, next_page_token = list_items(
+            service,
+            folder_id,
+            search=search,
+            page_token=request.GET.get("page_token"),
+        )
+        return render(request, "staff/portal/drive_files.html", {
+            "folder": folder,
+            "folder_id": folder_id,
+            "allowed_root": allowed_root,
+            "breadcrumbs": breadcrumbs(service, folder_id, allowed_root),
+            "items": items,
+            "next_page_token": next_page_token,
+            "search": search,
+            "upload_form": StaffDriveUploadForm(initial={"folder_id": folder_id}),
+            "is_drive_manager": request.user.has_perm("staff.review_staff_profiles"),
+        })
+    except (StaffDriveConfigurationError, StaffDriveOperationError) as exc:
+        logger.warning("Staff Drive listing failed: %s", exc)
+        return render(request, "staff/portal/drive_files.html", {"integration_error": str(exc)}, status=503)
+
+
+@staff_required
+@require_POST
+def staff_drive_upload(request):
+    form = StaffDriveUploadForm(request.POST, request.FILES)
+    if not form.is_valid():
+        messages.error(request, "Upload failed: " + " ".join(error for errors in form.errors.values() for error in errors))
+        return _drive_redirect(request.POST.get("folder_id", settings.GOOGLE_DRIVE_ROOT_FOLDER_ID))
+    service = get_drive_service()
+    member = request.staff_access.member
+    folder_id = ensure_staff_folder(service, member, request.user)
+    folder = assert_within_root(service, folder_id, folder_id)
+    if folder.get("mimeType") != FOLDER_MIME_TYPE:
+        raise PermissionDenied("The upload destination is not a folder.")
+    for upload in form.cleaned_data["uploads"]:
+        item = upload_file(service, folder_id, upload)
+        record_audit(request.user, member, StaffDriveAudit.Action.FILE_UPLOADED, item, parent_id=folder_id)
+    messages.success(request, f"{len(form.cleaned_data['uploads'])} file(s) uploaded.")
+    return _drive_redirect(folder_id)
+
+
+@staff_required
+@require_POST
+def staff_drive_rename(request, file_id):
+    form = StaffDriveRenameForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "The item could not be renamed.")
+        return _drive_redirect(request.POST.get("folder_id", settings.GOOGLE_DRIVE_ROOT_FOLDER_ID))
+    service, allowed_root, member = _drive_access(request)
+    if file_id == allowed_root:
+        raise PermissionDenied("The workspace root cannot be renamed.")
+    original = assert_within_root(service, file_id, allowed_root)
+    item = rename_item(service, file_id, form.cleaned_data["name"])
+    record_audit(request.user, member, StaffDriveAudit.Action.ITEM_RENAMED, item, old_name=original.get("name", ""))
+    messages.success(request, "Item renamed.")
+    return _drive_redirect(form.cleaned_data["folder_id"])
+
+
+@staff_required
+@require_http_methods(["GET", "POST"])
+def staff_drive_move(request, file_id):
+    service, allowed_root, member = _drive_access(request)
+    if file_id == allowed_root:
+        raise PermissionDenied("The workspace root cannot be moved.")
+    item = assert_within_root(service, file_id, allowed_root)
+    choices = [(allowed_root, "Workspace root"), *list_folder_tree(service, allowed_root)]
+    choices = [(value, label) for value, label in choices if value != file_id]
+    form = StaffDriveMoveForm(
+        request.POST or None,
+        initial={"return_folder_id": request.GET.get("folder") or (item.get("parents") or [allowed_root])[0]},
+        folder_choices=choices,
+    )
+    if request.method == "POST" and form.is_valid():
+        destination_id = form.cleaned_data["destination_id"]
+        destination = assert_within_root(service, destination_id, allowed_root)
+        if destination.get("mimeType") != FOLDER_MIME_TYPE:
+            raise PermissionDenied("The selected destination is not a folder.")
+        moved = move_item(service, file_id, destination_id, item.get("parents") or [])
+        record_audit(request.user, member, StaffDriveAudit.Action.ITEM_MOVED, moved, destination_id=destination_id)
+        messages.success(request, "Item moved.")
+        return _drive_redirect(form.cleaned_data["return_folder_id"])
+    return render(request, "staff/portal/drive_move.html", {"item": item, "form": form})
+
+
+@staff_required
+@require_POST
+def staff_drive_trash(request, file_id):
+    service, allowed_root, member = _drive_access(request)
+    if file_id == allowed_root:
+        raise PermissionDenied("The workspace root cannot be removed.")
+    assert_within_root(service, file_id, allowed_root)
+    item = trash_item(service, file_id)
+    record_audit(request.user, member, StaffDriveAudit.Action.ITEM_TRASHED, item)
+    messages.success(request, f"“{item.get('name', 'Item')}” moved to trash.")
+    return _drive_redirect(request.POST.get("folder_id") or allowed_root)
+
+
+@staff_required
+@require_http_methods(["GET"])
+def staff_drive_download(request, file_id):
+    service, allowed_root, member = _drive_access(request)
+    assert_within_root(service, file_id, allowed_root)
+    buffer, filename, content_type, item = download_item(service, file_id)
+    record_audit(request.user, member, StaffDriveAudit.Action.FILE_DOWNLOADED, item)
+    return FileResponse(buffer, as_attachment=True, filename=filename, content_type=content_type)
+
+
+@staff_required
+@reviewer_required
+@require_http_methods(["GET"])
+def staff_hr_dashboard(request):
+    assignments = StaffTrainingAssignment.objects.select_related("member", "report", "assigned_by")
+    submitted_reports = StaffTrainingReport.objects.filter(
+        status=StaffTrainingReport.Status.SUBMITTED,
+    ).select_related("assignment__member")
+    assignment_count = assignments.count()
+    awaiting_review_count = submitted_reports.count()
+    return render(request, "staff/portal/hr_dashboard.html", {
+        "training_assignments": Paginator(assignments, 5).get_page(request.GET.get("assignments_page")),
+        "submitted_reports": Paginator(submitted_reports, 5).get_page(request.GET.get("reports_page")),
+        "assignment_count": assignment_count,
+        "awaiting_review_count": awaiting_review_count,
+        "approved_count": StaffTrainingReport.objects.filter(status=StaffTrainingReport.Status.APPROVED).count(),
+    })
+
+
+@staff_required
+@reviewer_required
+@require_http_methods(["GET", "POST"])
+def staff_hr_assign_training(request):
+    form = StaffTrainingAssignmentForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            assignments = form.save(request.user)
+            queue_training_assigned_notifications(assignments)
+        messages.success(request, f"{len(assignments)} staff member(s) were assigned to {assignments[0].title}.")
+        return redirect("staff_portal:hr_dashboard")
+    return render(request, "staff/portal/hr_assign_training.html", {"form": form})
+
+
+@staff_required
+@reviewer_required
+@require_http_methods(["GET"])
+def staff_hr_training_assignment(request, assignment_id):
+    assignment = get_object_or_404(
+        StaffTrainingAssignment.objects.select_related("member", "assigned_by", "report"),
+        pk=assignment_id,
+    )
+    can_remove_nomination = (
+        assignment.start_date > timezone.localdate()
+        and assignment.status in {
+            StaffTrainingAssignment.Status.NOMINATED,
+            StaffTrainingAssignment.Status.CONFIRMED,
+        }
+    )
+    return render(request, "staff/portal/hr_training_assignment.html", {
+        "assignment": assignment,
+        "can_remove_nomination": can_remove_nomination,
+    })
+
+
+@staff_required
+@reviewer_required
+@require_POST
+def staff_hr_remove_nomination(request, assignment_id):
+    with transaction.atomic():
+        assignment = get_object_or_404(
+            StaffTrainingAssignment.objects.select_for_update(),
+            pk=assignment_id,
+        )
+        can_remove_nomination = (
+            assignment.start_date > timezone.localdate()
+            and assignment.status in {
+                StaffTrainingAssignment.Status.NOMINATED,
+                StaffTrainingAssignment.Status.CONFIRMED,
+            }
+        )
+        if not can_remove_nomination:
+            messages.error(request, "This nomination can no longer be removed because the activity has started or is no longer active.")
+        else:
+            assignment.status = StaffTrainingAssignment.Status.CANCELLED
+            assignment.save(update_fields=["status", "updated_at"])
+            queue_nomination_removed_notification(assignment)
+            messages.success(request, f"{assignment.member.name}'s nomination for {assignment.title} was removed.")
+    return redirect("staff_portal:hr_training_assignment", assignment_id=assignment.pk)
+
+
+@staff_required
+@reviewer_required
+@require_http_methods(["GET", "POST"])
+def staff_hr_review_training_report(request, report_id):
+    report = get_object_or_404(StaffTrainingReport.objects.select_related("assignment__member"), pk=report_id)
+    form = StaffTrainingReportReviewForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            report, message = review_training_report_submission(
+                report.pk,
+                request.user,
+                form.cleaned_data["action"],
+                form.cleaned_data["comment"],
+            )
+        except ValidationError as exc:
+            form.add_error(None, exc)
+        else:
+            messages.success(request, message)
+            return redirect("staff_portal:hr_dashboard")
+    return render(request, "staff/portal/hr_review_training_report.html", {"report": report, "form": form})
+
+
+@staff_required
 @require_http_methods(["GET", "POST"])
 def profile(request):
     access = request.staff_access
@@ -193,6 +522,80 @@ def password_change(request):
     return render(request, "staff/portal/form.html", {"form": form, "title": "Change password", "button_label": "Change password"})
 
 
+@staff_required
+@require_http_methods(["GET", "POST"])
+def training_report(request, assignment_id):
+    assignment = get_object_or_404(
+        StaffTrainingAssignment.objects.select_related("member"),
+        pk=assignment_id,
+        member=request.staff_access.member,
+    )
+    if assignment.status == StaffTrainingAssignment.Status.CANCELLED:
+        raise PermissionDenied("A report cannot be submitted for a cancelled assignment.")
+    report = StaffTrainingReport.objects.filter(assignment=assignment).first()
+    locked = bool(report and report.status in [StaffTrainingReport.Status.SUBMITTED, StaffTrainingReport.Status.APPROVED])
+    form = StaffTrainingReportForm(request.POST or None, request.FILES or None, instance=report)
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if locked:
+            messages.error(request, "This report is locked while it is awaiting review or after approval.")
+            return redirect("staff_portal:training_report", assignment_id=assignment.pk)
+        if action not in {"save", "submit"}:
+            return HttpResponse("Unknown action", status=400)
+        if form.is_valid():
+            with transaction.atomic():
+                report = form.save(commit=False)
+                report.assignment = assignment
+                report.status = StaffTrainingReport.Status.SUBMITTED if action == "submit" else StaffTrainingReport.Status.DRAFT
+                report.submitted_at = timezone.now() if action == "submit" else None
+                report.reviewer_comment = "" if action == "submit" else report.reviewer_comment
+                report.save()
+                documents = form.save_documents(report)
+                queue_report_document_drive_sync(documents, request.user)
+                if action == "submit":
+                    queue_report_submitted_notifications(report)
+            messages.success(request, "Report submitted to HR for approval." if action == "submit" else "Report draft saved.")
+            return redirect("staff_portal:training_report", assignment_id=assignment.pk)
+    return render(request, "staff/portal/training_report.html", {
+        "assignment": assignment,
+        "report": report,
+        "form": form,
+        "locked": locked,
+    })
+
+
+@never_cache
+def training_report_download(request, document_id):
+    document = get_object_or_404(
+        StaffTrainingReportDocument.objects.select_related("report__assignment__member"),
+        pk=document_id,
+    )
+    report = document.report
+    owns_report = (
+        request.user.is_authenticated
+        and hasattr(request.user, "staff_profile_access")
+        and request.user.staff_profile_access.member_id == report.assignment.member_id
+        and report.assignment.member.is_current_staff
+    )
+    if not owns_report and not (
+        request.user.is_authenticated
+        and request.user.is_active
+        and request.user.has_perm("staff.review_staff_profiles")
+    ):
+        raise PermissionDenied
+    try:
+        response = FileResponse(
+            document.file.open("rb"),
+            as_attachment=True,
+            filename=document.original_name,
+            content_type="application/octet-stream",
+        )
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
+    except FileNotFoundError as exc:
+        raise Http404 from exc
+
+
 @never_cache
 def photo_preview(request, update_id):
     update = get_object_or_404(StaffProfileUpdate.objects.select_related("access"), pk=update_id)
@@ -208,35 +611,138 @@ def photo_preview(request, update_id):
 
 
 @reviewer_required
-@require_http_methods(["GET", "POST"])
+@require_http_methods(["GET"])
 def dashboard(request):
-    form = StaffInvitationForm(request.POST or None, initial={"member": request.GET.get("member")})
-    if request.method == "POST":
-        # Creating accounts is deliberately reserved for superusers in this pilot.
-        if not request.user.is_superuser:
-            raise PermissionDenied
-        if form.is_valid():
-            try:
-                invite_staff(form.cleaned_data["member"], form.cleaned_data["email"], request)
-            except ValidationError as exc:
-                form.add_error(None, exc)
-            except IntegrityError:
-                form.add_error(None, "An account or invitation already exists. Reload and check the account list.")
-            except Exception:
-                # Never expose an invitation token or SMTP credentials in the UI.
-                logger.warning("Staff invitation delivery failed; administrator should check SMTP configuration.")
-                form.add_error(None, "The invitation could not be sent. Check SMTP configuration, then resend using the same staff member and email.")
-            else:
-                messages.success(request, "Invitation sent. The staff member will choose their own password.")
-                return redirect("staff_profile_dashboard")
     members = StaffMember.objects.select_related("department", "profile_access__user", "profile_access__linked_by", "employment").order_by("name", "pk")
+    bulk_invite_candidates = list(profile_update_invitation_candidates()) if request.user.is_superuser else []
     return render(request, "staff/admin/dashboard.html", {
-        "form": form,
         "staff_members": members,
         "console_email": settings.EMAIL_BACKEND == "django.core.mail.backends.console.EmailBackend",
         "submissions": StaffProfileUpdate.objects.filter(status="submitted").select_related("access__member"),
         "recent": StaffProfileUpdate.objects.filter(status__in=["approved", "changes_requested", "withdrawn"]).select_related("access__member", "reviewed_by")[:20],
+        "bulk_invite_candidates": bulk_invite_candidates,
+        "profile_email_logs": StaffProfileEmailLog.objects.select_related("actor", "member")[:50]
+        if request.user.is_superuser else [],
+        "unlinked_current_staff_count": members.filter(profile_access__isnull=True).exclude(
+            employment__status__in=["retired", "left"]
+        ).count(),
     })
+
+
+def profile_update_invitation_candidates():
+    """Active staff accounts without a submitted or approved profile update."""
+    return (
+        StaffProfileAccess.objects.select_related("member", "user")
+        .filter(user__is_active=True)
+        .exclude(user__email="")
+        .exclude(member__employment__status__in=["retired", "left"])
+        .exclude(updates__status__in=[StaffProfileUpdate.Status.SUBMITTED, StaffProfileUpdate.Status.APPROVED])
+        .order_by("member__name", "pk")
+        .distinct()
+    )
+
+
+@reviewer_required
+@require_POST
+def bulk_invite_profile_updates(request):
+    if not request.user.is_superuser:
+        raise PermissionDenied
+    if request.POST.get("confirm") != "yes":
+        messages.error(request, "Confirm that you want to email all eligible staff members.")
+        return redirect("staff_profile_dashboard")
+
+    selected_ids = request.POST.getlist("access_ids")
+    if not selected_ids:
+        messages.error(request, "Select at least one staff member to receive an invitation or reminder.")
+        return redirect("staff_profile_dashboard")
+
+    selected_candidates = list(profile_update_invitation_candidates().filter(pk__in=selected_ids))
+    if not selected_candidates:
+        messages.error(request, "The selected staff accounts are no longer eligible. Reload the page and try again.")
+        return redirect("staff_profile_dashboard")
+
+    invitation_count = 0
+    reminder_count = 0
+    failure_count = 0
+    for access in selected_candidates:
+        is_invitation = not access.accepted_at and not access.linked_at and not access.user.has_usable_password()
+        event = (
+            StaffProfileEmailLog.Event.INVITATION
+            if is_invitation
+            else StaffProfileEmailLog.Event.PROFILE_REMINDER
+        )
+        try:
+            if is_invitation:
+                invite_staff(access.member, access.user.email, request)
+                invitation_count += 1
+            else:
+                send_profile_update_reminder(access, request)
+                reminder_count += 1
+        except Exception as exc:
+            failure_count += 1
+            StaffProfileEmailLog.objects.create(
+                actor=request.user,
+                member=access.member,
+                recipient=access.user.email,
+                event=event,
+                status=StaffProfileEmailLog.Status.FAILED,
+                error=str(exc)[:1000],
+            )
+            logger.warning("Bulk staff profile invitation failed for access id %s", access.pk, exc_info=True)
+        else:
+            StaffProfileEmailLog.objects.create(
+                actor=request.user,
+                member=access.member,
+                recipient=access.user.email,
+                event=event,
+                status=StaffProfileEmailLog.Status.SENT,
+            )
+
+    sent_count = invitation_count + reminder_count
+    if sent_count:
+        messages.success(
+            request,
+            f"Sent {invitation_count} invitation(s) and {reminder_count} profile reminder(s).",
+        )
+    else:
+        messages.info(request, "No eligible staff profile invitations or reminders were sent.")
+    if failure_count:
+        messages.warning(request, f"{failure_count} message(s) could not be sent. Check the email configuration and try again.")
+    return redirect("staff_profile_dashboard")
+
+
+@reviewer_required
+@require_http_methods(["GET", "POST"])
+def assign_training(request):
+    form = StaffTrainingAssignmentForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            assignments = form.save(request.user)
+            queue_training_assigned_notifications(assignments)
+        messages.success(request, f"{len(assignments)} staff member(s) were assigned to {assignments[0].title}.")
+        return redirect("staff_profile_dashboard")
+    return render(request, "staff/admin/assign_training.html", {"form": form})
+
+
+@reviewer_required
+@require_http_methods(["GET", "POST"])
+def review_training_report(request, report_id):
+    report = get_object_or_404(StaffTrainingReport.objects.select_related("assignment__member"), pk=report_id)
+    form = StaffTrainingReportReviewForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            report, message = review_training_report_submission(
+                report.pk,
+                request.user,
+                form.cleaned_data["action"],
+                form.cleaned_data["comment"],
+            )
+        except ValidationError as exc:
+            form.add_error(None, exc)
+        else:
+            messages.success(request, message)
+            return redirect("staff_profile_dashboard")
+    return render(request, "staff/admin/review_training_report.html", {"report": report, "form": form})
 
 
 @reviewer_required
@@ -329,13 +835,28 @@ def create_member(request):
             messages.success(request, f"{member.name} was added and published on the Our Team page.")
             if form.cleaned_data["send_invitation"]:
                 try:
-                    invite_staff(member, form.cleaned_data["email"], request)
+                    access = invite_staff(member, form.cleaned_data["email"], request)
                 except ValidationError as exc:
                     messages.error(request, "The staff record was saved, but no invitation was sent: " + " ".join(exc.messages))
-                except Exception:
+                except Exception as exc:
                     logger.warning("Invitation delivery failed after staff creation; administrator should check SMTP configuration.")
+                    StaffProfileEmailLog.objects.create(
+                        actor=request.user,
+                        member=member,
+                        recipient=form.cleaned_data["email"],
+                        event=StaffProfileEmailLog.Event.INVITATION,
+                        status=StaffProfileEmailLog.Status.FAILED,
+                        error=str(exc)[:1000],
+                    )
                     messages.error(request, "The staff record was saved, but the invitation could not be sent. Check email settings and resend from the invitation form below. Do not add the staff member again.")
                 else:
+                    StaffProfileEmailLog.objects.create(
+                        actor=request.user,
+                        member=access.member,
+                        recipient=access.user.email,
+                        event=StaffProfileEmailLog.Event.INVITATION,
+                        status=StaffProfileEmailLog.Status.SENT,
+                    )
                     messages.success(request, "Invitation sent. The staff member will choose their own password.")
             return redirect(reverse("staff_profile_dashboard") + f"?member={member.pk}")
     return render(request, "staff/admin/create.html", {

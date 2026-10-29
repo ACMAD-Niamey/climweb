@@ -183,18 +183,12 @@ class EventIndexPage(MetadataPageMixin, Page):
         
         return {'event_types': event_types, 'year': years}
     
-    def get_featured_event(self):
-        
-        queryset = self.all_events.filter(is_archived=False)
-        
-        featured_event = queryset.filter(featured=True).first()
-        
-        if featured_event:
-            return featured_event
-        else:
-            featured_event = queryset.first()
-        
-        return featured_event
+    def get_featured_events(self):
+        return self.all_events.filter(
+            models.Q(date_to__gte=timezone.now())
+            | models.Q(date_to__isnull=True, date_from__gte=timezone.now()),
+            is_archived=False,
+        ).order_by('date_from')[:3]
     
     def filter_events(self, request):
         events = self.all_events
@@ -236,7 +230,7 @@ class EventIndexPage(MetadataPageMixin, Page):
         context = super(EventIndexPage, self).get_context(
             request, *args, **kwargs)
         
-        context['featured_event'] = self.get_featured_event()
+        context['featured_events'] = self.get_featured_events()
         
         context['events'] = self.filter_and_paginate_events(request)
         
@@ -319,6 +313,12 @@ class EventPage(MetadataPageMixin, Page):
     is_visible_on_homepage = models.BooleanField(
         default=False,
         help_text=_("Show this event on the homepage ?"), verbose_name=_("Is visible on homepage"))
+
+    is_el_nino_related = models.BooleanField(
+        default=False,
+        help_text=_("Show this event in the ENSO related activities section."),
+        verbose_name=_("ENSO related activity"),
+    )
     
     panelists = StreamField([
         ('panelist', PanelistBlock()),
@@ -376,6 +376,7 @@ class EventPage(MetadataPageMixin, Page):
         FieldPanel('featured'),
         FieldPanel('is_hidden'),
         FieldPanel('is_visible_on_homepage'),
+        FieldPanel('is_el_nino_related'),
         FieldPanel('sponsors'),
         # FieldPanel('youtube_video_id'),
     ]

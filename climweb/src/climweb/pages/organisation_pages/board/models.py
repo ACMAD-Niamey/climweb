@@ -157,3 +157,78 @@ class BoardPresidentPage(AbstractBannerPage):
 
     class Meta:
         verbose_name = _("Board President Page")
+
+
+class DirectorGeneralPage(AbstractBannerPage):
+    template = "board/director_general_page.html"
+    parent_page_types = ["staff.StaffPage"]
+    subpage_types = []
+    show_in_menus_default = True
+    max_count = 1
+
+    photo_caption = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_("Portrait caption"),
+        help_text=_("Displayed directly below the Director General's photograph."),
+    )
+    inaugural_speech_title = models.CharField(
+        max_length=150,
+        blank=True,
+        default=_("Inaugural Speech"),
+        verbose_name=_("Inaugural speech heading"),
+    )
+    inaugural_speech = RichTextField(
+        features=SUMMARY_RICHTEXT_FEATURES,
+        blank=True,
+        verbose_name=_("Inaugural speech"),
+    )
+    inaugural_speech_document = models.ForeignKey(
+        "base.CustomDocumentModel",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Inaugural speech document"),
+        help_text=_("Optional downloadable version of the inaugural speech."),
+    )
+    video_url = models.URLField(
+        blank=True,
+        verbose_name=_("Video URL"),
+        help_text=_("Paste a YouTube or Vimeo URL. It will be embedded on the page."),
+    )
+    video_title = models.CharField(
+        max_length=150,
+        blank=True,
+        default=_("A message from the Director General"),
+        verbose_name=_("Video heading"),
+    )
+    video_caption = models.TextField(blank=True, verbose_name=_("Video caption"))
+
+    content_panels = Page.content_panels + [
+        *AbstractBannerPage.content_panels,
+        FieldPanel("photo_caption"),
+        MultiFieldPanel(
+            [
+                FieldPanel("inaugural_speech_title"),
+                FieldPanel("inaugural_speech"),
+                FieldPanel("inaugural_speech_document"),
+            ],
+            heading=_("Director General's inaugural speech"),
+        ),
+        MultiFieldPanel(
+            [FieldPanel("video_title"), FieldPanel("video_url"), FieldPanel("video_caption")],
+            heading=_("Director General's video"),
+        ),
+    ]
+
+    @cached_property
+    def director_general(self):
+        staff_page = self.get_parent().specific
+        return next(
+            (member for member in staff_page.current_staffmembers if member.is_director_general),
+            None,
+        )
+
+    class Meta:
+        verbose_name = _("Director General Page")

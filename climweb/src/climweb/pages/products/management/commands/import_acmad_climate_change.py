@@ -253,10 +253,6 @@ class Command(BaseCommand):
             )
             index.add_child(instance=product_page)
             product_page.save_revision().publish()
-        elif product_page.service_id != service.pk:
-            product_page.service = service
-            product_page.save_revision().publish()
-
         item_types = {}
         for spec in REPORT_SPECS.values():
             category, _ = ProductCategory.objects.get_or_create(

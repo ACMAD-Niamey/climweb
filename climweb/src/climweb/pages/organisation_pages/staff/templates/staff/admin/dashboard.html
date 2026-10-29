@@ -3,21 +3,39 @@
 {% block titletag %}Staff Profiles{% endblock %}
 {% block extra_css %}
     {{ block.super }}
-    <link rel="stylesheet" href="{% static 'staff/css/portal.css' %}">
-    <link rel="stylesheet" href="{% static 'staff/css/admin.css' %}">
+    <link rel="stylesheet" href="{% static 'staff/css/portal.css' %}?v=20261014">
+    <link rel="stylesheet" href="{% static 'staff/css/admin.css' %}?v=20261015">
 {% endblock %}
 {% block content %}
 {% include "wagtailadmin/shared/header.html" with title="Staff Profiles" icon="user" %}
 <div class="nice-padding staff-admin">
-    {% if user.is_superuser %}<p><a href="{% url 'staff_profile_create' %}" class="button">Add staff member</a></p>{% endif %}
-    <p>Invite staff to their own profile portal. Review changes before publishing them on the Our Team page.</p>
+    <p><a href="{% url 'staff_training_assign' %}" class="button button-secondary">Assign activity</a>{% if user.is_superuser %} <a href="{% url 'staff_profile_create' %}" class="button">Add staff member</a>{% endif %}</p>
+    <p>Invite staff to their portal, assign learning activities, track reports and review profile changes.</p>
     {% if console_email %}<div class="portal-notice">Local console email mode is enabled. Invitations are printed in the application terminal, not delivered to an inbox. Configure the SMTP email backend before inviting real staff.</div>{% endif %}
     {% if user.is_superuser %}
-    <section class="portal-panel" id="staff-invitation">
-        <h2>Invite a staff member / resend a pending invitation</h2>
-        <p>The account uses their work email as the login. They choose their own password through a single-use link valid for 48 hours. Resending invalidates the previous invitation.</p>
-        <p>Already registered on the platform? Use <strong>Link existing user</strong> beside their name below. This preserves their existing password and permissions.</p>
-        <form method="post">{% csrf_token %}{{ form.as_p }}<button class="button" type="submit">Send invitation</button></form>
+    <section class="portal-panel" id="bulk-profile-invitations">
+        <h2>Bulk profile invitations</h2>
+        {% if bulk_invite_candidates %}
+        <p><strong>{{ bulk_invite_candidates|length }} staff member{{ bulk_invite_candidates|length|pluralize }}</strong> with active work-email accounts have not submitted or completed a profile update.</p>
+        <p>Select the recipients below. Pending accounts receive a fresh 48-hour invitation; activated or linked accounts receive a reminder.</p>
+        <form method="post" action="{% url 'staff_profile_bulk_invite' %}" class="portal-bulk-form">
+            {% csrf_token %}
+            <div class="portal-recipient-list">{% for access in bulk_invite_candidates %}<label><input name="access_ids" value="{{ access.pk }}" type="checkbox"> <span><strong>{{ access.member.name }}</strong><small>{{ access.user.email }} · {% if not access.accepted_at and not access.linked_at and not access.user.has_usable_password %}Invitation{% else %}Profile reminder{% endif %}</small></span></label>{% endfor %}</div>
+            <label for="bulk-invite-confirm"><input id="bulk-invite-confirm" name="confirm" value="yes" type="checkbox" required> I confirm that the selected staff should receive an email now.</label>
+            <button class="button" type="submit">Send selected emails</button>
+        </form>
+        {% else %}
+        <p>Everyone with an active staff portal account has submitted or completed a profile update.</p>
+        {% endif %}
+        {% if unlinked_current_staff_count %}<p class="portal-help">{{ unlinked_current_staff_count }} current staff member{{ unlinked_current_staff_count|pluralize }} cannot be included because they do not yet have a linked work-email account. Link them to an existing account from the staff list below.</p>{% endif %}
+    </section>
+    <section class="portal-panel" id="profile-email-log">
+        <h2>Profile email activity</h2>
+        <p>Recent invitations and profile-update reminders, including who initiated each email.</p>
+        <div class="portal-table"><table class="listing"><thead><tr><th>Date and time</th><th>Initiated by</th><th>Staff member</th><th>Recipient</th><th>Email</th><th>Status</th></tr></thead><tbody>
+        {% for entry in profile_email_logs %}<tr><td>{{ entry.created_at }}</td><td>{% if entry.actor %}{{ entry.actor.get_full_name|default:entry.actor.get_username }}{% else %}Deleted user{% endif %}</td><td>{{ entry.member|default:"Deleted staff member" }}</td><td>{{ entry.recipient }}</td><td>{{ entry.get_event_display }}</td><td>{{ entry.get_status_display }}{% if entry.error %}<br><small>Delivery error recorded</small>{% endif %}</td></tr>
+        {% empty %}<tr><td colspan="6">No profile invitation or reminder emails have been recorded yet.</td></tr>{% endfor %}
+        </tbody></table></div>
     </section>
     {% endif %}
     <section class="portal-panel">
@@ -45,7 +63,7 @@
                 {% if member.employment.status == "retired" or member.employment.status == "left" %}
                     <a href="{% url 'staff_profile_reactivate' member.pk %}">Reactivate / history</a>
                 {% else %}
-                    {% if not account %}<a href="{% url 'staff_profile_dashboard' %}?member={{ member.pk }}#staff-invitation">Invite</a><br><a href="{% url 'staff_profile_link_user' member.pk %}">Link existing user</a><br>{% endif %}
+                    {% if not account %}<a href="{% url 'staff_profile_link_user' member.pk %}">Link existing user</a><br>{% endif %}
                     <a href="{% url 'staff_profile_offboard' member.pk %}">Offboard / history</a>
                 {% endif %}
             </td>{% endif %}

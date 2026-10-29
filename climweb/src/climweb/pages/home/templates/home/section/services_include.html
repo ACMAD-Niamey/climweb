@@ -53,6 +53,8 @@
 </section>
 {% endif %}
 
+{% include 'home/section/enso_feature.html' %}
+
 {% if page.show_dg_message %}
 <section class="section dg-message-section" aria-labelledby="dg-message-title">
   <div class="container">
@@ -64,10 +66,12 @@
         </div>
         <span class="dg-message-quote-mark" aria-hidden="true">“</span>
         <div class="dg-message-body">{{ page.dg_message|richtext }}</div>
-        {% if page.dg_message_closing %}
-        <footer>
-          <span aria-hidden="true"></span>
-          {{ page.dg_message_closing }}
+        {% if director_general_page %}
+        <footer class="dg-message-action">
+          <a class="dg-profile-page-link" href="{{ director_general_page.url }}">
+            {% translate "Read the Inaugural Speech of the DG" %}
+            <span aria-hidden="true">&#8594;</span>
+          </a>
         </footer>
         {% endif %}
       </blockquote>
@@ -75,7 +79,7 @@
       <aside class="dg-message-profile" aria-label="{% translate 'Director General profile' %}">
         <div class="dg-profile-photo">
           {% if dg_staff_member.photo %}
-          {% image dg_staff_member.photo fill-420x440 as dg_profile_image %}
+          {% image dg_staff_member.photo width-840 as dg_profile_image %}
           <img src="{{ dg_profile_image.url }}" alt="{{ dg_staff_member.name }}">
           {% else %}
           <span role="img" aria-label="{% translate 'Director General photograph placeholder' %}">
@@ -128,7 +132,7 @@
             <polyline points="22 4 12 14.01 9 11.01" />
           </svg> Decision support for climate-sensitive sectors</li>
       </ul>
-      <a href="https://new-rcc.acmad.org" class="button button-light"
+      <a href="{% if rcc_directory_page %}{{ rcc_directory_page.url }}{% else %}/regional-climate-centres/{% endif %}" class="button button-light"
         style="margin-top: 30px; display: inline-flex; align-items: center; gap: 8px; background: white; color: var(--navy-900, #0a192f); border: none; padding: 12px 24px; border-radius: 5px; font-weight: 700; font-size: 0.85rem;">
         Discover RCC Africa
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"

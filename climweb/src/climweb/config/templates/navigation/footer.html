@@ -30,6 +30,11 @@
                                 &copy; {{ settings.base.OrganisationSetting.name }} {% now 'Y' %}
                             </p>
                             {% endif %}
+                            {% if settings.base.OrganisationSetting.address %}
+                            <div class="footer-address">
+                                {{ settings.base.OrganisationSetting.address|richtext }}
+                            </div>
+                            {% endif %}
                             <a class="footer-powered" href="https://github.com/wmo-raf/nmhs-cms" target="_blank"
                                 rel="noopener noreferrer">
                                 {% translate "Powered by Climweb" %} v{% cms_version %}

@@ -118,6 +118,18 @@ class FeatureBlock(blocks.StructBlock):
         label = _("Feature Block")
 
 
+class MediaFeatureBlock(FeatureBlock):
+    video_url = blocks.URLBlock(
+        required=False,
+        help_text=_("YouTube or Vimeo URL used when the figure type is Video."),
+    )
+
+    class Meta:
+        template = "streams/feature_block.html"
+        icon = "media"
+        label = _("Media Feature Block")
+
+
 class CollapsibleBlock(blocks.StructBlock):
     heading = blocks.CharBlock()
     description = blocks.RichTextBlock(features=SUMMARY_RICHTEXT_FEATURES)
@@ -179,6 +191,37 @@ class MetServicesDirectoryBlock(blocks.StructBlock):
         template = "streams/met_services_directory.html"
         icon = "globe"
         label = _("Meteorological Services Directory")
+
+
+class RCCDirectoryBlock(blocks.StructBlock):
+    heading = blocks.CharBlock(
+        max_length=120,
+        default=_("African Regional Climate Centres"),
+        label=_("Section heading"),
+    )
+    introduction = blocks.RichTextBlock(
+        required=False,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        label=_("Introduction"),
+        default=_(
+            "Explore the Regional Climate Centres coordinating climate services across Africa."
+        ),
+    )
+    show_search = blocks.BooleanBlock(default=True, required=False, label=_("Show directory search"))
+
+    def get_context(self, value, parent_context=None):
+        context = super().get_context(value, parent_context=parent_context)
+        from climweb.pages.home.models import RegionalClimateCentre
+
+        context["regional_climate_centres"] = RegionalClimateCentre.objects.filter(
+            is_active=True
+        ).select_related("logo").prefetch_related("additional_map_nodes")
+        return context
+
+    class Meta:
+        template = "streams/rcc_directory.html"
+        icon = "globe"
+        label = _("Regional Climate Centres Directory")
 
 
 class ParticipantMapBlock(blocks.StructBlock):
