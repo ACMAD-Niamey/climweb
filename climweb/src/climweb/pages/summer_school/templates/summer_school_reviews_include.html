@@ -1,0 +1,45 @@
+{% load i18n wagtailimages_tags %}
+
+<div class="ss-section-header">
+    <h2 class="ss-section-heading">{% translate "What participants say about the Summer School" %}</h2>
+    <p>{% translate "Experiences shared by participants through feedback forms and social platforms." %}</p>
+</div>
+
+<div class="ss-reviews-grid">
+    {% for item in page.reviews %}
+        {% with review=item.value %}
+            <article class="ss-review-card">
+                {% if review.screenshot %}
+                    {% image review.screenshot fill-720x480 as review_image %}
+                    <img class="ss-review-image" src="{{ review_image.url }}" width="{{ review_image.width }}" height="{{ review_image.height }}" alt="{% translate 'Review screenshot' %}" loading="lazy">
+                {% endif %}
+                <div class="ss-review-body">
+                    <div class="ss-review-source">
+                        {% if review.source == "feedback_form" %}{% translate "Feedback form" %}
+                        {% elif review.source == "x" %}X / Twitter
+                        {% elif review.source == "facebook" %}Facebook
+                        {% elif review.source == "instagram" %}Instagram
+                        {% elif review.source == "linkedin" %}LinkedIn
+                        {% elif review.source == "youtube" %}YouTube
+                        {% elif review.source == "other" %}{% if review.source_label %}{{ review.source_label }}{% else %}{% translate "Review" %}{% endif %}
+                        {% endif %}
+                    </div>
+                    {% if review.rating %}
+                        <div class="ss-review-rating" aria-label="{% blocktranslate with rating=review.rating %}{{ rating }} out of 5 stars{% endblocktranslate %}">
+                            {% for star in "12345" %}<span{% if forloop.counter <= review.rating %} class="is-filled"{% endif %} aria-hidden="true">&#9733;</span>{% endfor %}
+                        </div>
+                    {% endif %}
+                    <blockquote>{{ review.quote|linebreaksbr }}</blockquote>
+                    <footer>
+                        {% if review.reviewer_name %}<strong>{{ review.reviewer_name }}</strong>{% endif %}
+                        {% if review.reviewer_details %}<span>{{ review.reviewer_details }}</span>{% endif %}
+                        {% if review.review_date %}<time datetime="{{ review.review_date|date:'Y-m-d' }}">{{ review.review_date|date:"j F Y" }}</time>{% endif %}
+                    </footer>
+                    {% if review.source_url %}
+                        <a class="ss-review-link" href="{{ review.source_url }}" target="_blank" rel="noopener">{% translate "View original review" %} &#8599;</a>
+                    {% endif %}
+                </div>
+            </article>
+        {% endwith %}
+    {% endfor %}
+</div>

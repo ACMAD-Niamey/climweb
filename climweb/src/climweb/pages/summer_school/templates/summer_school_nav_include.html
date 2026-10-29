@@ -37,6 +37,16 @@
                     <a class="ss-nav-link" href="#previous-schools">{% translate "Previous Schools" %}</a>
                 </li>
             {% endif %}
+            {% if page.daily_activities %}
+                <li>
+                    <a class="ss-nav-link" href="#daily-activities">{% translate "Daily Activities" %}</a>
+                </li>
+            {% endif %}
+            {% if page.reviews %}
+                <li>
+                    <a class="ss-nav-link" href="#reviews">{% translate "Reviews" %}</a>
+                </li>
+            {% endif %}
             <li>
                 <a class="ss-nav-link" href="#concept-note">{% translate "Concept Note" %}</a>
             </li>

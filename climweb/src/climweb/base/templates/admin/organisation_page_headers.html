@@ -1,0 +1,26 @@
+{% load i18n wagtailadmin_tags %}
+
+{% if organisation_header_pages %}
+    <section class="panel nice-padding">
+        <h2>{% translate "Organisation page headers" %}</h2>
+        <p>{% translate "Edit the banner image, title, subtitle and call-to-action shown at the top of each page." %}</p>
+        <ul class="listing">
+            {% for item in organisation_header_pages %}
+                <li>
+                    <div class="row row-flush">
+                        <div class="title">
+                            <h3><a href="{% url 'wagtailadmin_pages:edit' item.page.pk %}">{{ item.label }}</a></h3>
+                        </div>
+                        <ul class="actions">
+                            <li>
+                                <a class="button button-small button-secondary" href="{% url 'wagtailadmin_pages:edit' item.page.pk %}">
+                                    {% icon name="edit" %} {% translate "Edit header" %}
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    </section>
+{% endif %}

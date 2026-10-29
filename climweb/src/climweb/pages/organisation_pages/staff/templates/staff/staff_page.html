@@ -3,39 +3,56 @@
 
 {% block extra_css %}
     {{ block.super }}
-    <link rel="stylesheet" href="{% static 'staff/css/staff_page.css' %}">
+    <link rel="stylesheet" href="{% static 'staff/css/staff_page.css' %}?v=3">
 {% endblock extra_css %}
 
 {% block content %}
     <main class="is-index staff-page">
-        {% include 'hero.html' with page=page %}
+        {% include 'hero.html' with page=page show_fallback=True %}
 
-        {% if page.introduction_title and page.introduction_heading and page.introduction_text %}
-            <section class="nmhs-work is-desktop">
-                <div class="work container">
-                    <div class="columns is-centered has-text-centered intro-section-wrapper">
-                        <div class="column is-7 has-text-centered">
-                            <p class="subtitle">{{ page.introduction_heading }}</p>
-                            <h2 class="title is-3">{{ page.introduction_title }}</h2>
-                            <div class="intro-description format-text">{{ page.introduction_text|richtext }}</div>
-                        </div>
-                    </div>
+        <section class="values-section">
+            <div class="container">
+                <div class="values-heading has-text-centered">
+                    <p class="values-eyebrow">{% translate "What guides us" %}</p>
+                    <h2 class="title is-3">{% translate "Our Values" %}</h2>
                 </div>
-            </section>
-        {% endif %}
+                <div class="values-grid">
+                    <article class="value-card">
+                        <span class="value-number">01</span>
+                        <h3>{% translate "Transparency and Accountability" %}</h3>
+                        <p>{% translate "ACMAD is committed to building trust between stakeholders by enforcing transparency and accountability for service delivery." %}</p>
+                    </article>
+                    <article class="value-card">
+                        <span class="value-number">02</span>
+                        <h3>{% translate "Partnership and Cooperation" %}</h3>
+                        <p>{% translate "ACMAD believes in cooperation and partnership to ensure continental complementarity, subsidiarity and delivery." %}</p>
+                    </article>
+                    <article class="value-card">
+                        <span class="value-number">03</span>
+                        <h3>{% translate "Inclusiveness, Diversity and Gender" %}</h3>
+                        <p>{% translate "We value the diversity of African cultures, knowledge and experiences, ensuring that our services are accessible to all. Women and youth are at the heart of our recruitment, capacity building and opportunities." %}</p>
+                    </article>
+                    <article class="value-card">
+                        <span class="value-number">04</span>
+                        <h3>{% translate "Knowledge Management" %}</h3>
+                        <p>{% translate "We are committed to using the best available scientific data, methods and best practices to improve our services and inform our decisions." %}</p>
+                    </article>
+                </div>
+            </div>
+        </section>
 
         <section class="staff-section">
             <div class="container">
                 {% for department in page.all_departments.all %}
                     <div class="pb-6 mb-6">
-                        <h3 class="has-text-centered pb-6">{{ department.department__name }}</h3>
+                        <h3 class="has-text-centered pb-6">{{ department.name }}</h3>
                         <div class="columns is-multiline is-centered staff-grid">
                             {% for staffmember in page.current_staffmembers.all %}
-                                {% if department.department__name == staffmember.department.name %}
+                                {% if department.pk == staffmember.department_id %}
                                     <div class="column is-one-quarter-desktop is-half-tablet is-full-mobile">
                                         <article class="staff-card">
-                                        <button type="button" class="staff-card-trigger" data-staff-modal="staff-modal-{{ staffmember.pk }}"
-                                                aria-haspopup="dialog" aria-controls="staff-modal-{{ staffmember.pk }}"
+                                        <a href="#staff-{{ staffmember.name|slugify }}-{{ staffmember.pk }}" class="staff-card-trigger" data-staff-modal="staff-{{ staffmember.name|slugify }}-{{ staffmember.pk }}"
+                                                aria-haspopup="dialog" aria-controls="staff-{{ staffmember.name|slugify }}-{{ staffmember.pk }}"
                                                 aria-labelledby="staff-name-{{ staffmember.pk }}">
                                             <span class="staff-figure">
                                                 {% if staffmember.photo %}
@@ -49,10 +66,10 @@
                                             <span class="staff-position">{{ staffmember.role }}</span>
                                             <span class="staff-badge">{{ staffmember.department.name }}</span>
                                             <span class="staff-view-bio">{% if staffmember.bio %}{% translate "View bio" %}{% else %}{% translate "View profile" %}{% endif %}</span>
-                                        </button>
+                                        </a>
                                         {% include "staff/includes/profile_links.html" with member=staffmember %}
                                         </article>
-                                        <div id="staff-modal-{{ staffmember.pk }}" class="modal staff-modal" role="dialog"
+                                        <div id="staff-{{ staffmember.name|slugify }}-{{ staffmember.pk }}" class="modal staff-modal" role="dialog"
                                              aria-modal="true" aria-labelledby="staff-modal-name-{{ staffmember.pk }}" aria-hidden="true" tabindex="-1">
                                             <div class="modal-background" data-staff-close></div>
                                             <div class="modal-content staff-modal-content">
@@ -73,9 +90,24 @@
                                                             <p class="staff-position">{{ staffmember.role }}</p>
                                                             <span class="staff-badge">{{ staffmember.department.name }}</span>
                                                             {% if staffmember.bio %}
-                                                                <div class="staff-bio format-text">{{ staffmember.bio|richtext }}</div>
+                                                                <div class="staff-bio-wrapper">
+                                                                    <div id="staff-bio-{{ staffmember.pk }}" class="staff-bio format-text is-collapsed" data-staff-bio>{{ staffmember.bio|richtext }}</div>
+                                                                    <button type="button"
+                                                                            class="staff-bio-toggle"
+                                                                            data-staff-bio-toggle
+                                                                            data-read-more="{% translate 'Read more' %}"
+                                                                            data-read-less="{% translate 'Read less' %}"
+                                                                            aria-controls="staff-bio-{{ staffmember.pk }}"
+                                                                            aria-expanded="false"
+                                                                            hidden>{% translate "Read more" %}</button>
+                                                                </div>
                                                             {% endif %}
                                                             {% include "staff/includes/profile_links.html" with member=staffmember %}
+                                                            {% if staffmember.is_director_general and page.director_general_page %}
+                                                                <a class="button is-primary staff-dg-profile-link" href="{{ page.director_general_page.url }}">
+                                                                    {% translate "View Director General's page" %}
+                                                                </a>
+                                                            {% endif %}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -95,5 +127,5 @@
 
 {% block extra_js %}
     {{ block.super }}
-    <script src="{% static 'staff/js/staff_page.js' %}" defer></script>
+    <script src="{% static 'staff/js/staff_page.js' %}?v=3" defer></script>
 {% endblock extra_js %}

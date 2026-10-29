@@ -244,7 +244,8 @@
    .wwd-icon rule (copied rather than @extended since this project has no Sass
    build step), scaled slightly down and re-themed for a light card background
    instead of .wwd-icon's dark-card context. */
-.ss-icon-badge {
+.ss-icon-badge,
+.ss-key-info-item > .ss-icon-badge {
     width: 40px;
     height: 40px;
     border-radius: 10px;
@@ -412,10 +413,351 @@
     margin-bottom: 0;
 }
 
+/* ------------------------------------------------------------
+   DAILY ACTIVITIES — one chronological card per programme day
+   ------------------------------------------------------------ */
+
+.ss-section-header > p {
+    max-width: 720px;
+    color: #5e6673;
+}
+
+.ss-section-eyebrow {
+    margin: 0 0 0.35rem;
+    color: var(--primary-color) !important;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+}
+
+.ss-activities {
+    display: grid;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.ss-activity {
+    overflow: hidden;
+    border: 1px solid #e4e8ee;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(24, 39, 75, 0.06);
+}
+
+.ss-activity-header {
+    background: var(--primary-color-lightest, #eef4ff);
+}
+
+.ss-activity-toggle {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    padding: 1.25rem 1.5rem;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.ss-activity-toggle:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--primary-color) 45%, transparent);
+    outline-offset: -3px;
+}
+
+.ss-activity-day {
+    flex: 0 0 auto;
+    padding: 0.55rem 0.8rem;
+    border-radius: 999px;
+    background: var(--primary-color);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.ss-activity-heading {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.ss-activity-title {
+    display: block;
+    color: var(--text-color, #14213d);
+    font-size: 20px;
+    font-weight: 800;
+}
+
+.ss-activity-header time {
+    display: block;
+    margin-top: 0.25rem;
+    color: #667085;
+    font-size: 13px;
+}
+
+.ss-activity-toggle-icon {
+    position: relative;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #fff;
+}
+
+.ss-activity-toggle-icon::before,
+.ss-activity-toggle-icon::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 12px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--primary-color);
+    content: "";
+    transform: translate(-50%, -50%);
+    transition: transform 0.18s ease;
+}
+
+.ss-activity-toggle-icon::after {
+    transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.ss-activity-toggle[aria-expanded="true"] .ss-activity-toggle-icon::after {
+    transform: translate(-50%, -50%) rotate(0deg);
+}
+
+.ss-activity-panel[hidden] {
+    display: none;
+}
+
+.ss-activity-content {
+    padding: 1.5rem;
+}
+
+.ss-activity-content.has-media {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items: start;
+    column-gap: 2rem;
+}
+
+.ss-activity-summary {
+    min-width: 0;
+}
+
+.ss-activity-media {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    min-width: 0;
+}
+
+.ss-activity-media-item {
+    overflow: hidden;
+    margin: 0;
+    border-radius: 10px;
+    background: #f4f6f8;
+}
+
+.ss-activity-media-item[hidden] {
+    display: none;
+}
+
+.ss-activity-media-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.ss-activity-content.has-media .ss-activity-media-pagination {
+    grid-column: 2;
+}
+
+.ss-activity-media-pagination[hidden] {
+    display: none;
+}
+
+.ss-media-page-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: max-content;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid var(--primary-color);
+    border-radius: 7px;
+    background: #fff;
+    color: var(--primary-color);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.ss-media-page-button:hover:not(:disabled) {
+    background: var(--primary-color-lightest, #eef4ff);
+}
+
+.ss-media-page-button:disabled {
+    border-color: #d5dae1;
+    color: #98a2b3;
+    cursor: not-allowed;
+}
+
+.ss-media-page-status {
+    color: #667085;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.ss-activity-media-item img,
+.ss-activity-media-item video {
+    display: block;
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+}
+
+.ss-activity-video video,
+.ss-hosted-video-card img {
+    aspect-ratio: 16 / 9;
+    background: #111827;
+}
+
+.ss-activity-media-item figcaption,
+.ss-hosted-video-card-body {
+    padding: 0.75rem 0.9rem;
+    color: #4b5563;
+    font-size: 13px;
+}
+
+.ss-hosted-video-card-body {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.ss-hosted-video-card-body a {
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+/* ------------------------------------------------------------
+   REVIEWS — feedback forms and attributed social posts
+   ------------------------------------------------------------ */
+
+.ss-reviews-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.ss-review-card {
+    overflow: hidden;
+    border: 1px solid #e4e8ee;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(24, 39, 75, 0.06);
+}
+
+.ss-review-image {
+    display: block;
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+    border-bottom: 1px solid #e4e8ee;
+}
+
+.ss-review-body {
+    padding: 1rem;
+}
+
+.ss-review-source {
+    color: var(--primary-color);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.ss-review-rating {
+    margin-top: 0.6rem;
+    color: #d4d8de;
+    letter-spacing: 0.08em;
+}
+
+.ss-review-rating .is-filled {
+    color: #f4b740;
+}
+
+.ss-review-card blockquote {
+    margin: 0.75rem 0;
+    color: #263244;
+    font-size: 15px;
+    line-height: 1.55;
+}
+
+.ss-review-card footer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    color: #667085;
+    font-size: 13px;
+}
+
+.ss-review-card footer strong {
+    color: var(--text-color, #14213d);
+}
+
+.ss-review-link {
+    display: inline-block;
+    margin-top: 1rem;
+    color: var(--primary-color);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+    .ss-reviews-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 @media (max-width: 768px) {
     .ss-main-container > section {
         padding: 0;
         margin-bottom: 1.5rem;
+    }
+
+    .ss-activity-header {
+        align-items: stretch;
+    }
+
+    .ss-activity-toggle {
+        align-items: flex-start;
+        padding: 1rem;
+    }
+
+    .ss-activity-content,
+    .ss-activity-content.has-media {
+        display: block;
+        padding: 1rem;
+    }
+
+    .ss-activity-media,
+    .ss-reviews-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ss-activity-media {
+        margin-top: 1rem;
+    }
+
+    .ss-media-page-button {
+        padding: 0.5rem 0.65rem;
     }
 }
 
@@ -994,6 +1336,102 @@
 }
 
 /* ------------------------------------------------------------
+   IMAGE GALLERY
+   ------------------------------------------------------------ */
+
+.ss-gallery-intro {
+    color: #555;
+    line-height: 1.65;
+    margin: -0.4rem 0 1.4rem;
+    max-width: 760px;
+}
+
+.ss-gallery-grid {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ss-gallery-item {
+    background: #fff;
+    border: 1px solid #e8ecea;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgb(21 47 58 / 7%);
+    margin: 0;
+    overflow: hidden;
+}
+
+.ss-gallery-link {
+    display: block;
+    overflow: hidden;
+    position: relative;
+}
+
+.ss-gallery-image {
+    aspect-ratio: 3 / 2;
+    display: block;
+    height: auto;
+    object-fit: cover;
+    transition: transform .25s ease;
+    width: 100%;
+}
+
+.ss-gallery-view {
+    background: rgb(0 0 0 / 68%);
+    border-radius: 999px;
+    bottom: .8rem;
+    color: #fff;
+    font-size: .75rem;
+    font-weight: 700;
+    opacity: 0;
+    padding: .35rem .75rem;
+    position: absolute;
+    right: .8rem;
+    transform: translateY(4px);
+    transition: opacity .2s ease, transform .2s ease;
+}
+
+.ss-gallery-link:hover .ss-gallery-image,
+.ss-gallery-link:focus-visible .ss-gallery-image {
+    transform: scale(1.035);
+}
+
+.ss-gallery-link:hover .ss-gallery-view,
+.ss-gallery-link:focus-visible .ss-gallery-view {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.ss-gallery-link:focus-visible {
+    outline: 3px solid var(--primary-color-light);
+    outline-offset: -3px;
+}
+
+.ss-gallery-caption {
+    color: #555;
+    font-size: .875rem;
+    line-height: 1.5;
+    padding: .85rem 1rem 1rem;
+}
+
+@media (max-width: 900px) {
+    .ss-gallery-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .ss-gallery-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ss-gallery-view {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* ------------------------------------------------------------
    CONCEPT NOTE
    ------------------------------------------------------------ */
 
@@ -1180,6 +1618,8 @@
 }
 
 .ss-partner-card {
+    position: relative;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1207,9 +1647,34 @@ a.ss-partner-card:hover {
 }
 
 .ss-partner-card-name {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-color, #1a1a1a);
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    height: 72%;
+    padding: 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 900;
+    color: #64df9e;
+    line-height: 1.3;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+    background: linear-gradient(to top, rgba(8, 18, 28, 0.97), rgba(8, 18, 28, 0.84), rgba(8, 18, 28, 0.52));
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(4px);
+    transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+}
+
+.ss-partner-card:hover .ss-partner-card-name,
+.ss-partner-card:focus-visible .ss-partner-card-name,
+.ss-partner-card:focus-within .ss-partner-card-name {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
 }
 
 @media (max-width: 768px) {

@@ -29,6 +29,20 @@ class TestVacancyPages(WagtailPageTestCase):
     def test_vacancy_detail_page_renderable(self):
         self.assertPageIsRenderable(self.vacancy_page1)
         self.assertPageIsRenderable(self.vacancy_page2)
+
+    def test_additional_job_description_documents_render(self):
+        from wagtail_factories import DocumentFactory
+
+        extra_document = DocumentFactory(title="Terms of reference")
+        self.vacancy_page1.additional_documents = [
+            ("document", {"title": "Terms of reference", "document": extra_document})
+        ]
+        self.vacancy_page1.save_revision().publish()
+
+        response = self.client.get(self.vacancy_page1.url)
+
+        self.assertContains(response, "Terms of reference")
+        self.assertContains(response, extra_document.url)
     
     def test_vacancy_detail_page_meta_tags(self):
         resp = self.client.get(self.vacancy_page1.get_url())

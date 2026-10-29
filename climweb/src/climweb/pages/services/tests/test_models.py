@@ -1,12 +1,14 @@
 from datetime import date
 from io import StringIO
+from pathlib import Path
 
+import wagtail_factories
 from django.core.management import call_command
 from django.urls import reverse
 from wagtail.models import Site
 from wagtail.test.utils import WagtailPageTestCase
 
-from climweb.base.models import NavigationSettings
+from climweb.base.models import Application, NavigationSettings
 from climweb.base.seo_utils import get_html_meta_tags
 from climweb.base.test_utils import test_page_meta_tags
 from climweb.pages.home.tests.factories import get_or_create_homepage
@@ -23,6 +25,7 @@ from climweb.pages.services.models import (
     RCCCoordinationPage,
     RCCLongRangeForecastingPage,
     RCCSeasonalOutlookDiscussion,
+    ServiceApplication,
 )
 from .factories import (
     RCCClimateMonitoringPageFactory,
@@ -71,6 +74,23 @@ class TestServicesPages(WagtailPageTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, '<h2 class="intro-title"></h2>', html=True)
+
+    def test_service_applications_render_as_grid(self):
+        application = Application.objects.create(
+            title="Observed Daily Rainfall",
+            url="https://example.com/observed-rainfall",
+        )
+        ServiceApplication.objects.create(
+            page=self.service1_page,
+            application=application,
+        )
+
+        response = self.client.get(self.service1_page.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="app-grid"')
+        self.assertNotContains(response, 'class="app-scroll"')
+        self.assertContains(response, application.title)
 
     def test_rcc_page_creation_forms_include_required_page_title(self):
         page_types = (
@@ -191,6 +211,24 @@ class TestServicesPages(WagtailPageTestCase):
 
         self.assertTemplateUsed(response, "services/service_page.html")
         self.assertTemplateNotUsed(response, "services/rcc_service_page.html")
+
+    def test_service_product_cards_use_listing_image_fallback(self):
+        product_index = ProductIndexPageFactory(parent=get_or_create_homepage())
+        default_thumbnail = wagtail_factories.ImageFactory(
+            title="Service product fallback thumbnail",
+        )
+        ProductPageFactory(
+            parent=product_index,
+            title="Product without introduction image",
+            service=self.service1_page.service,
+            introduction_image=None,
+            default_listing_thumbnail=default_thumbnail,
+        )
+
+        response = self.client.get(self.service1_page.get_url())
+
+        self.assertContains(response, "Product without introduction image")
+        self.assertContains(response, Path(default_thumbnail.file.name).stem)
 
     def test_rcc_page_displays_featured_partners(self):
         rcc_page = ServicePageFactory(

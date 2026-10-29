@@ -6,8 +6,9 @@ For the complete administrator and deployment guide, see
 ## Implemented foundation
 
 - Store subscribers, consent metadata, confirmation state and product-family preferences in ClimWeb/PostgreSQL.
-- Provide public subscribe, preference-management and unsubscribe routes. The current public flow activates subscribers
-  immediately; enforcing double opt-in remains a follow-up if required by ACMAD policy.
+- Provide public subscribe, preference-management and unsubscribe routes with double opt-in email verification.
+- Protect subscription submissions with CAPTCHA on the managed Wagtail page, a hidden honeypot, markup/entity validation,
+  and shared Redis rate limits per client IP and email address.
 - Send through Django's email backend, allowing production to use Mailgun SMTP without coupling application data to Mailgun.
 - Create notification events only after scheduled automatic importer commands complete successfully.
 - Deduplicate automatic notifications by imported source record.

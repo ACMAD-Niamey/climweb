@@ -8,7 +8,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django_celery_beat.models import IntervalSchedule, PeriodicTask
 
-from climweb.base.models import Product
+from climweb.base.models import Product, ServiceCategory
 from climweb.pages.products.import_monitoring import (
     build_import_monitor_rows,
     build_import_monitor_summary,
@@ -973,6 +973,7 @@ class TestConfiguredProductImporterCreation(TestCase):
             "label": "New RCC Bulletin",
             "key": "new-rcc-bulletin",
             "product_page": self.product_page.pk,
+            "product_category": self.product_page.service_id,
             "product_item_type": self.item_type.pk,
             "status": "draft",
             "default_interval_hours": 24,
@@ -1074,6 +1075,7 @@ class TestConfiguredProductImporterCreation(TestCase):
             reverse("product_import_family", kwargs={"family_key": importer.key}),
         )
         self.assertEqual(importer.product_page, self.product_page)
+        self.assertEqual(importer.product_page.service, self.product_page.service)
         self.assertEqual(importer.product_item_type, self.item_type)
         self.assertEqual(importer.status, ConfiguredProductImporter.STATUS_DRAFT)
         self.assertEqual(importer.created_by, self.user)
@@ -1086,6 +1088,34 @@ class TestConfiguredProductImporterCreation(TestCase):
         self.assertEqual(config.allowed_extensions, [".pdf"])
         schedule = ProductImportSchedule.objects.get(product_family=importer.key)
         self.assertFalse(schedule.enabled_override)
+
+    @patch("climweb.pages.products.import_sources.inspect_product_import_source")
+    def test_admin_can_choose_product_category_when_creating_importer(
+        self, inspect_source
+    ):
+        inspect_source.return_value = {
+            "archive_count": 1,
+            "discovered_count": 1,
+            "issues": [{
+                "date": date(2026, 8, 10),
+                "source_url": "https://data.example.com/bulletin_20260810.pdf",
+            }],
+        }
+        category = ServiceCategory.objects.create(
+            name="Climate Monitoring", icon="cloud-sun-rain"
+        )
+
+        response = self.client.post(
+            reverse("configured_product_importer_create"),
+            self.form_data(
+                action="create_importer",
+                product_category=category.pk,
+            ),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.product_page.refresh_from_db()
+        self.assertEqual(self.product_page.service, category)
 
     def test_creation_rejects_pattern_without_named_date_group(self):
         response = self.client.post(

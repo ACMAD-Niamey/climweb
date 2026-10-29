@@ -185,14 +185,19 @@ dump.rdb
 docker/volumes
 climweb/src/climweb/static
 climweb/src/climweb/media
+climweb/src/climweb/private_staff_reports/
 .env.local
 .env.dev
 .claude/settings.local.json
+
+# Local credential files; never commit service-account private keys.
+secrets/
 
 backup/
 .vscode/
 node_modules/
 tmp/
+output/
 .claude/
 climweb_dump.dump
 # Local runtime data (docker bind mounts)

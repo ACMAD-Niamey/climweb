@@ -1,5 +1,4 @@
-from datetime import timedelta
-
+from datetime import date, timedelta
 from django.test import RequestFactory
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sessions.backends.db import SessionStore
@@ -70,6 +69,57 @@ class TestSummerSchoolPages(WagtailPageTestCase):
 
     def test_cohorts_blank_by_default(self):
         self.assertEqual(len(self.edition1.cohorts), 0)
+
+    def test_daily_activities_and_reviews_blank_by_default(self):
+        self.assertEqual(len(self.edition1.daily_activities), 0)
+        self.assertEqual(len(self.edition1.reviews), 0)
+
+    def test_edition_renders_daily_activity_and_review_sections(self):
+        self.edition1.daily_activities = [
+            ("day", {
+                "date": date(2026, 7, 6),
+                "title": "Opening and climate foundations",
+                "summary": "<p>Participants met their facilitators and began the first module.</p>",
+                "media": [
+                    ("hosted_video", {
+                        "url": "https://video.example.org/day-1",
+                        "title": "Watch the day-one recap",
+                        "thumbnail": None,
+                    }),
+                ],
+            }),
+        ]
+        self.edition1.reviews = [
+            ("review", {
+                "quote": "The practical sessions changed how I approach climate services.",
+                "reviewer_name": "Programme participant",
+                "reviewer_details": "2026 cohort",
+                "source": "feedback_form",
+                "source_label": "",
+                "rating": 5,
+                "review_date": date(2026, 7, 10),
+                "source_url": "",
+                "screenshot": None,
+            }),
+        ]
+        self.edition1.save_revision().publish()
+
+        response = self.client.get(self.edition1.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Daily Activities")
+        self.assertContains(response, "Opening and climate foundations")
+        self.assertContains(response, 'class="ss-activity-toggle"')
+        self.assertContains(response, 'class="ss-activity-content has-media"')
+        self.assertContains(response, 'class="ss-activity-media-pagination"')
+        self.assertContains(response, "Previous")
+        self.assertContains(response, "Next")
+        self.assertContains(response, "Watch the day-one recap")
+        self.assertContains(response, "https://video.example.org/day-1")
+        self.assertContains(response, "What participants say about the Summer School")
+        self.assertNotContains(response, "Summer School diary")
+        self.assertNotContains(response, "Participant voices")
+        self.assertContains(response, "The practical sessions changed how I approach climate services.")
 
     def test_application_page_default_validation_field(self):
         self.assertEqual(self.application_page.validation_field, "email")
@@ -340,6 +390,20 @@ class TestSummerSchoolApplyButtonClosedState(WagtailPageTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Applications closed")
 
+    def test_edition_hero_offers_online_join_link_when_applications_closed(self):
+        meeting_url = "https://meet.example.com/summer-school"
+        button_text = "Join the live sessions"
+        self.edition.application_open = False
+        self.edition.online_meeting_url = meeting_url
+        self.edition.online_meeting_button_text = button_text
+        self.edition.save()
+
+        response = self.client.get(self.edition.url)
+
+        self.assertContains(response, meeting_url)
+        self.assertContains(response, button_text)
+        self.assertNotContains(response, "Applications closed")
+
     def test_index_page_featured_card_shows_apply_button_when_open(self):
         response = self.client.get(self.index_page.url)
 
@@ -355,6 +419,32 @@ class TestSummerSchoolApplyButtonClosedState(WagtailPageTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Applications closed")
+
+    def test_index_page_featured_card_offers_online_join_link_when_applications_closed(self):
+        meeting_url = "https://meet.example.com/summer-school"
+        button_text = "Join the live sessions"
+        self.edition.application_open = False
+        self.edition.online_meeting_url = meeting_url
+        self.edition.online_meeting_button_text = button_text
+        self.edition.save()
+
+        response = self.client.get(self.index_page.url)
+
+        self.assertContains(response, meeting_url)
+        self.assertContains(response, button_text)
+        self.assertNotContains(response, "Applications closed")
+
+    def test_summer_school_navigation_uses_acmad_logo_and_school_home(self):
+        for page in (self.index_page, self.edition, self.application_page):
+            with self.subTest(page=page):
+                response = self.client.get(page.url)
+
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, 'data-main-site-logo href="https://acmad.org/"')
+                self.assertContains(
+                    response,
+                    f'href="{self.index_page.url}">Home</a>',
+                )
 
 
 class TestFormCleanNameFallback(WagtailPageTestCase):

@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "climweb.base",
     
     "climweb.pages.home",
+    "climweb.pages.climsa",
     "climweb.pages.services",
     "climweb.pages.products",
     "climweb.pages.mediacenter",
@@ -454,6 +455,12 @@ STORAGES = {
             "location": env.str("RCC_DATA_ROOT", os.path.join(BASE_DIR, "rcc_data")),
         },
     },
+    "staff_reports": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {
+            "location": os.path.join(BASE_DIR, "private_staff_reports"),
+        },
+    },
 }
 
 # Hosts that RCC administrators may use for editable ARC2 THREDDS catalogue URLs.
@@ -490,6 +497,7 @@ MEDIA_URL = env.str("FORCE_SCRIPT_NAME", "") + "/media/"
 # download_submission_export_view in climweb.base.views, which checks the
 # same form-management permission as the submissions list itself.
 PRIVATE_EXPORTS_ROOT = os.path.join(BASE_DIR, "private_exports")
+PRIVATE_STAFF_REPORTS_ROOT = os.path.join(BASE_DIR, "private_staff_reports")
 SUBMISSION_EXPORT_RETENTION_HOURS = 48
 
 # Wagtail settings
@@ -525,6 +533,18 @@ RECAPTCHA_PUBLIC_KEY = env.str('RECAPTCHA_PUBLIC_KEY', '')
 RECAPTCHA_PRIVATE_KEY = env.str('RECAPTCHA_PRIVATE_KEY', '')
 # RECAPTCHA_DOMAIN = env.str('RECAPTCHA_DOMAIN', 'www.google.com')
 RECAPTCHA_VERIFY_REQUEST_TIMEOUT = env.str('RECAPTCHA_VERIFY_REQUEST_TIMEOUT', "60")
+
+# Public product-subscription abuse controls. Counts are shared through the
+# default Redis cache, so limits apply consistently across web workers.
+PRODUCT_SUBSCRIPTION_RATE_LIMIT_IP = env.int(
+    "PRODUCT_SUBSCRIPTION_RATE_LIMIT_IP", default=10
+)
+PRODUCT_SUBSCRIPTION_RATE_LIMIT_EMAIL = env.int(
+    "PRODUCT_SUBSCRIPTION_RATE_LIMIT_EMAIL", default=3
+)
+PRODUCT_SUBSCRIPTION_RATE_LIMIT_WINDOW = env.int(
+    "PRODUCT_SUBSCRIPTION_RATE_LIMIT_WINDOW", default=3600
+)
 
 # Google Calendar / Meet integration. This must point to a service-account JSON
 # key mounted as a deployment secret; credentials are never stored in Wagtail.
@@ -664,7 +684,11 @@ CAP_ALLOW_EDITING = env.bool("CAP_ALLOW_EDITING", default=False)
 DEFAULT_WAGTAILIMAGES_EXTENSIONS = ['png', 'jpg', 'avif', 'gif', 'jpeg', 'webp']
 WAGTAILIMAGES_EXTENSIONS = env.list("WAGTAILIMAGES_EXTENSIONS", default=DEFAULT_WAGTAILIMAGES_EXTENSIONS)
 
-DEFAULT_WAGTAILDOCS_EXTENSIONS = ['pdf', 'docx', 'xlsx', 'pptx', 'csv', 'odt', 'rtf', 'txt', 'key', 'zip', 'doc']
+DEFAULT_WAGTAILDOCS_EXTENSIONS = [
+    'pdf', 'docx', 'xlsx', 'pptx', 'csv', 'odt', 'rtf', 'txt', 'key', 'zip', 'doc',
+    # Summer School daily activities can include uploaded video alongside photos.
+    'mp4', 'webm', 'mov', 'm4v',
+]
 WAGTAILDOCS_EXTENSIONS = env.list("WAGTAILDOCS_EXTENSIONS", default=DEFAULT_WAGTAILDOCS_EXTENSIONS)
 
 REDIS_HOST = env.str("REDIS_HOST", "redis")
@@ -960,6 +984,15 @@ VUE_FRONTEND_STATIC_PATH = 'vue'
 WAGTAIL_NEWSLETTER_MAILCHIMP_API_KEY = env("WAGTAIL_NEWSLETTER_MAILCHIMP_API_KEY", default="")
 WAGTAIL_NEWSLETTER_FROM_NAME = env("WAGTAIL_NEWSLETTER_FROM_NAME", default="")
 WAGTAIL_NEWSLETTER_REPLY_TO = env("WAGTAIL_NEWSLETTER_REPLY_TO", default="")
+
+# ACMAD staff Shared Drive integration. The service-account key must be mounted
+# as a read-only deployment secret and must never be committed to source control.
+GOOGLE_DRIVE_ENABLED = env.bool("GOOGLE_DRIVE_ENABLED", default=False)
+GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE = env.str(
+    "GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", default=""
+)
+GOOGLE_DRIVE_SHARED_DRIVE_ID = env.str("GOOGLE_DRIVE_SHARED_DRIVE_ID", default="")
+GOOGLE_DRIVE_ROOT_FOLDER_ID = env.str("GOOGLE_DRIVE_ROOT_FOLDER_ID", default="")
 
 MARKDOWNIFY = {
     "default": {

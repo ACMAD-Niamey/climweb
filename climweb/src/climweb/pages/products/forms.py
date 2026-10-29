@@ -3,19 +3,24 @@ import re
 from datetime import datetime
 
 from django import forms
+from django_recaptcha.fields import ReCaptchaField
 from wagtail import blocks
 from wagtail.admin.forms import WagtailAdminModelForm
 
+from climweb.base.models import ServiceCategory
 from climweb.pages.products.models import (
     ConfiguredProductImporter,
     ProductImportSourceConfig,
     ProductPage,
     ProductSubscriber,
 )
+from climweb.pages.products.subscription_security import validate_subscription_text
 
 
 class ProductSubscriptionForm(forms.Form):
-    name = forms.CharField(max_length=255, required=False)
+    name = forms.CharField(
+        max_length=255, required=False, validators=[validate_subscription_text]
+    )
     email = forms.EmailField()
     sector = forms.ChoiceField(
         choices=ProductSubscriber.Sector.choices,
@@ -32,6 +37,7 @@ class ProductSubscriptionForm(forms.Form):
         label="Name of Organisation",
         max_length=255,
         required=False,
+        validators=[validate_subscription_text],
     )
     product_families = forms.MultipleChoiceField(
         label="Products",
@@ -40,6 +46,12 @@ class ProductSubscriptionForm(forms.Form):
     )
     consent = forms.BooleanField(
         label="I agree to receive ACMAD product notifications by email."
+    )
+    wagtailcaptcha = ReCaptchaField(label="")
+    contact_url = forms.CharField(
+        required=False,
+        label="Leave this field empty",
+        widget=forms.HiddenInput,
     )
 
     def __init__(self, *args, **kwargs):
@@ -52,9 +64,15 @@ class ProductSubscriptionForm(forms.Form):
             if not definition.get("is_archived")
         ]
 
-def clean_email(self):
-    email = self.cleaned_data.get("email")
-    return email.strip().lower() if email else email
+    def clean_email(self):
+        email = self.cleaned_data.get("email")
+        return email.strip().lower() if email else email
+
+    def clean_contact_url(self):
+        value = self.cleaned_data.get("contact_url", "")
+        if value:
+            raise forms.ValidationError("Invalid submission.")
+        return value
 
 
 class ProductSubscriptionPreferencesForm(ProductSubscriptionForm):
@@ -249,6 +267,14 @@ class ProductImportSourceConfigForm(forms.ModelForm):
 
 
 class ConfiguredProductImporterForm(forms.ModelForm):
+    product_category = forms.ModelChoiceField(
+        queryset=ServiceCategory.objects.all(),
+        label="Product category",
+        help_text=(
+            "Primary category assigned to the destination product page. "
+            "Automatic imports will preserve this selection."
+        ),
+    )
     source_type = forms.ChoiceField(
         choices=ProductImportSourceConfig.SOURCE_TYPE_CHOICES,
         label="Source type",
@@ -299,12 +325,32 @@ class ConfiguredProductImporterForm(forms.ModelForm):
 
     def __init__(self, *args, source_config=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.order_fields(
+            (
+                "label",
+                "key",
+                "product_page",
+                "product_category",
+                "product_item_type",
+                "status",
+                "default_interval_hours",
+                "source_type",
+                "source_url",
+                "source_system",
+                "allowed_extensions",
+                "filename_pattern",
+                "date_format",
+                "history_url_pattern",
+                "request_headers",
+            )
+        )
         self.fields["status"].choices = [
             choice
             for choice in ConfiguredProductImporter.STATUS_CHOICES
             if choice[0] != ConfiguredProductImporter.STATUS_ARCHIVED
         ]
         if self.instance and self.instance.pk:
+            self.initial["product_category"] = self.instance.product_page.service_id
             self.fields["key"].disabled = True
             self.fields["key"].help_text = (
                 "The importer key is permanent because import history and schedules use it."

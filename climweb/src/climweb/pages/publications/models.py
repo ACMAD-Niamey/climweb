@@ -11,10 +11,10 @@ from django.contrib.contenttypes.models import ContentType
 from modelcluster.contrib.taggit import ClusterTaggableManager
 from modelcluster.fields import ParentalManyToManyField, ParentalKey
 from taggit.models import TaggedItemBase
-from wagtail.admin.panels import (FieldPanel, MultiFieldPanel)
+from wagtail.admin.panels import FieldPanel, InlinePanel, MultiFieldPanel
 from wagtail.api import APIField
 from wagtail.fields import RichTextField
-from wagtail.models import Page
+from wagtail.models import Orderable, Page
 from wagtail.snippets.models import register_snippet
 from wagtailiconchooser.widgets import IconChooserWidget
 
@@ -259,6 +259,39 @@ class PublicationPageTag(TaggedItemBase):
                                  related_name='publications_tags', )
 
 
+class PublicationDocument(Orderable):
+    publication = ParentalKey(
+        'publications.PublicationPage',
+        on_delete=models.CASCADE,
+        related_name='additional_documents',
+    )
+    language = models.CharField(
+        max_length=100,
+        verbose_name=_("Language"),
+        help_text=_("Language of this document, for example English, French or Arabic."),
+    )
+    document = models.ForeignKey(
+        'base.CustomDocumentModel',
+        on_delete=models.PROTECT,
+        related_name='+',
+        verbose_name=_("Document or File"),
+        help_text=_("Upload the version of this publication in the language specified above."),
+    )
+
+    panels = [
+        FieldPanel('language'),
+        FieldPanel('document'),
+    ]
+
+    api_fields = [
+        APIField('language'),
+        APIField('document'),
+    ]
+
+    def __str__(self):
+        return f"{self.language}: {self.document.title}"
+
+
 class PublicationPage(MetadataPageMixin, Page):
     template = 'publication_page.html'
     parent_page_types = ['publications.PublicationsIndexPage']
@@ -311,6 +344,12 @@ class PublicationPage(MetadataPageMixin, Page):
         verbose_name=_("Document or File"),
         help_text=_("Here you can upload pdfs, word documents, powerpoints, zip files or any other file")
     )
+    document_language = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name=_("Primary document language"),
+        help_text=_("Optional language label for the primary document, for example English."),
+    )
     external_publication_url = models.URLField(max_length=500, blank=True, null=True,
                                                verbose_name=_(
                                                    "External Url - *Only If published/hosted somewhere else"),
@@ -323,7 +362,15 @@ class PublicationPage(MetadataPageMixin, Page):
         FieldPanel('categories', widget=CheckboxSelectMultiple),
         FieldPanel('projects', widget=CheckboxSelectMultiple),
         FieldPanel('publication_date'),
-        FieldPanel('document'),
+        MultiFieldPanel([
+            FieldPanel('document'),
+            FieldPanel('document_language'),
+            InlinePanel(
+                'additional_documents',
+                label=_("Additional language version"),
+                heading=_("Additional language versions"),
+            ),
+        ], heading=_("Publication documents")),
         FieldPanel('auto_generate_thumbnail'),
         FieldPanel('thumbnail'),
         FieldPanel('external_publication_url'),
@@ -344,6 +391,8 @@ class PublicationPage(MetadataPageMixin, Page):
         APIField('thumbnail'),
         APIField('publication_date'),
         APIField('document'),
+        APIField('document_language'),
+        APIField('additional_documents'),
         APIField('summary'),
     ]
     
@@ -377,6 +426,15 @@ class PublicationPage(MetadataPageMixin, Page):
             return PageView.objects.filter(content_type=content_type, object_id=self.pk).count()
         except Exception:
             return 0
+
+    @cached_property
+    def total_download_count(self):
+        total = (self.document.download_count or 0) if self.document else 0
+        total += sum(
+            item.document.download_count or 0
+            for item in self.additional_documents.select_related('document').all()
+        )
+        return total
     
     def record_view(self, request=None, **kwargs):
         """Record a view of this publication page"""
@@ -395,14 +453,28 @@ class PublicationPage(MetadataPageMixin, Page):
     
     @cached_property
     def card_props(self):
-        card_file = None
-        
+        card_files = []
+
         if self.document:
-            card_file = {
+            card_files.append({
+                "language": self.document_language or str(_("Default")),
+                "title": self.document.title,
                 "size": self.document.file_size,
                 "url": self.document.url,
                 "downloads": self.document.download_count
-            }
+            })
+
+        for publication_document in self.additional_documents.select_related('document').all():
+            document = publication_document.document
+            card_files.append({
+                "language": publication_document.language,
+                "title": document.title,
+                "size": document.file_size,
+                "url": document.url,
+                "downloads": document.download_count,
+            })
+
+        card_file = card_files[0] if card_files else None
         
         card_tags = self.tags.all()
         
@@ -416,6 +488,8 @@ class PublicationPage(MetadataPageMixin, Page):
             "card_more_link": self.url,
             "card_tag": "Publication",
             "card_file": card_file,
+            "card_files": card_files,
+            "card_downloads": sum(file["downloads"] or 0 for file in card_files),
             "card_external_publication_url": self.external_publication_url,
             "card_tags": card_tags,
             "card_views": self.view_count,

@@ -3,6 +3,10 @@
 
 {% block body_class %}summer_school_application_page{% endblock %}
 
+{% block navbar %}
+    {% include 'navigation/navbar.html' with main_site_logo_url='https://acmad.org/' summer_school_home_url=page.get_parent.get_parent.url %}
+{% endblock navbar %}
+
 {% block extra_css %}
     {# cache-bust: see summer_school_page.html for why #}
     <link rel="stylesheet" type="text/css" href="{% static 'css/summer_school.css' %}?v={% now 'U' %}">

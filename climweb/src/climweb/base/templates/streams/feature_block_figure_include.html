@@ -1,4 +1,4 @@
-{% load wagtailimages_tags lazyimages_tags %}
+{% load wagtailimages_tags wagtailembeds_tags lazyimages_tags %}
 
 {% if value.figure_type == 'image' and value.image %}
   <figure class="fb-figure-img">
@@ -8,6 +8,16 @@
          src="{% lazy_image_url img %}"
          alt="{{ value.title }}" />
   </figure>
+{% endif %}
+
+{% if value.figure_type == 'video' %}
+  <div class="fb-video-embed">
+    {% if value.video_url %}
+      {% embed value.video_url %}
+    {% elif value.action_link_external %}
+      {% embed value.action_link_external %}
+    {% endif %}
+  </div>
 {% endif %}
 
 {% if value.figure_type == 'imageofchange' and value.image_of_change %}

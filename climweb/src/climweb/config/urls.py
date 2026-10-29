@@ -61,7 +61,6 @@ urlpatterns = [
     path("humans.txt", humans),
     
     path("search/", search_views.search, name="search"),
-    path('auth/', include('allauth.urls')),
     
     path('api/v2/', api_router.urls, name="wagtailapi"),
     

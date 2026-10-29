@@ -29,3 +29,7 @@
     </section>
 </div>
 {% endblock %}
+{% block extra_js %}
+    {{ block.super }}
+    <script src="{% static 'staff/js/photo_preview.js' %}" defer></script>
+{% endblock %}

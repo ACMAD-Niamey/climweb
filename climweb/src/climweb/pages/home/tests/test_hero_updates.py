@@ -4,11 +4,23 @@ from unittest.mock import patch
 from django.template.loader import render_to_string
 from django.test import override_settings
 from django.utils import timezone
+import wagtail_factories
 from wagtail.models import PageViewRestriction
 from wagtail.test.utils import WagtailPageTestCase
 
+from climweb.pages.events.models import EventPage
 from climweb.pages.events.tests.factories import EventIndexPageFactory, EventPageFactory
+from climweb.pages.news.models import NewsPage
 from climweb.pages.news.tests.factories import NewsIndexPageFactory, NewsPageFactory
+from climweb.pages.products.tests.factories import (
+    ElNinoPageFactory,
+    ProductIndexPageFactory,
+    ProductItemPageFactory,
+)
+from climweb.pages.summer_school.tests.factories import (
+    SummerSchoolIndexPageFactory,
+    SummerSchoolPageFactory,
+)
 from .factories import get_or_create_homepage
 
 
@@ -31,16 +43,17 @@ class HeroUpdatesTests(WagtailPageTestCase):
     def manual(self, *pages):
         self.home.hero_updates_mode = "manual"
         self.home.hero_featured_updates = [
-            ("news" if hasattr(page, "date") else "event", page) for page in pages
+            ("event" if isinstance(page, EventPage) else "news", page)
+            for page in pages
         ]
 
-    def test_automatic_prioritises_nearest_event_then_newest_news_and_caps_at_three(self):
+    def test_automatic_uses_only_the_newest_news_as_the_lead_slide(self):
         self.event(20)
-        event = self.event(2)
+        self.event(2)
         older = self.news(-2)
         newest = self.news(-1)
         self.news(-5)
-        self.assertEqual(self.ids(), [event.pk, newest.pk, older.pk])
+        self.assertEqual(self.ids(), [newest.pk])
 
     def test_excludes_past_events_and_future_dated_news(self):
         self.event(-2)
@@ -48,22 +61,24 @@ class HeroUpdatesTests(WagtailPageTestCase):
         self.news(1)
         self.assertEqual(self.ids(), [])
 
-    def test_includes_ongoing_events(self):
-        ongoing = self.event(-1, date_to=timezone.now() + timedelta(days=1))
-        upcoming = self.event(2)
-        self.assertEqual(self.ids(), [ongoing.pk, upcoming.pk])
+    def test_automatic_does_not_use_events(self):
+        self.event(-1, date_to=timezone.now() + timedelta(days=1))
+        self.event(2)
+        self.assertEqual(self.ids(), [])
 
-    def test_single_day_event_is_included_for_its_whole_day(self):
+    def test_manual_mode_can_still_use_an_event_as_the_lead(self):
         event = EventPageFactory(parent=self.events_index, date_from=timezone.now().replace(hour=0, minute=0))
+        self.manual(event)
         self.assertEqual(self.ids(), [event.pk])
 
-    def test_news_only_fills_available_slots(self):
+    def test_news_only_uses_the_newest_item(self):
         news = [self.news(-days) for days in range(1, 5)]
-        self.assertEqual(self.ids(), [page.pk for page in news[:3]])
+        self.assertEqual(self.ids(), [news[0].pk])
 
-    def test_events_only_fill_three_slots_in_start_date_order(self):
-        events = [self.event(days) for days in range(1, 5)]
-        self.assertEqual(self.ids(), [page.pk for page in events[:3]])
+    def test_events_only_do_not_create_an_automatic_lead(self):
+        for days in range(1, 5):
+            self.event(days)
+        self.assertEqual(self.ids(), [])
 
     def test_manual_configuration_survives_publishing(self):
         news = self.news(-1)
@@ -74,15 +89,14 @@ class HeroUpdatesTests(WagtailPageTestCase):
         self.assertEqual(self.home.hero_updates_mode, "manual")
         self.assertEqual(self.ids(), [news.pk, event.pk])
 
-    def test_dashboard_panel_exposes_only_new_hero_fields_and_limits_selection(self):
-        from wagtail.blocks import StreamBlockValidationError
+    def test_dashboard_panel_exposes_manual_selectors_and_programme_toggles(self):
         form = type(self.home).get_edit_handler().get_form_class()
         self.assertIn("hero_updates_mode", form.base_fields)
         self.assertIn("hero_featured_updates", form.base_fields)
+        self.assertIn("hero_show_el_nino", form.base_fields)
+        self.assertIn("hero_show_summer_school", form.base_fields)
         self.assertIn("hero_featured_products", form.base_fields)
-        self.manual(*(self.news(-day) for day in range(1, 5)))
-        with self.assertRaises(StreamBlockValidationError):
-            self.home.hero_featured_updates.stream_block.clean(self.home.hero_featured_updates)
+        self.assertIn("show_enso_section", form.base_fields)
 
     def test_excludes_drafts_and_inherited_private_pages(self):
         self.news(-1, live=False)
@@ -93,11 +107,41 @@ class HeroUpdatesTests(WagtailPageTestCase):
         PageViewRestriction.objects.create(page=self.events_index, restriction_type="login")
         self.assertEqual(self.ids(), [])
 
-    def test_manual_preserves_order_and_deduplicates(self):
-        older = self.news(-2)
-        newest = self.news(-1)
-        self.manual(older, newest, older)
-        self.assertEqual(self.ids(), [older.pk, newest.pk])
+    def test_manual_uses_editor_defined_order(self):
+        event = self.event(1)
+        news = self.news(-1)
+        self.manual(event, news)
+        self.assertEqual(self.ids(), [event.pk, news.pk])
+
+    def test_manual_supports_any_five_news_and_events(self):
+        first_news = self.news(-2)
+        second_news = self.news(-1)
+        first_event = self.event(1)
+        second_event = self.event(2)
+        third_news = self.news(-3)
+        self.manual(first_event, first_news, second_event, second_news, third_news)
+
+        self.assertEqual(
+            self.ids(),
+            [first_event.pk, first_news.pk, second_event.pk, second_news.pk, third_news.pk],
+        )
+
+    def test_manual_uses_editor_defined_slide_order(self):
+        news = self.news(-1)
+        event = self.event(1)
+        product_index = ProductIndexPageFactory(parent=self.home)
+        el_nino_page = ElNinoPageFactory(parent=product_index)
+        summer_school_index = SummerSchoolIndexPageFactory(parent=self.home)
+        self.manual(event, news)
+
+        slides = self.home.get_hero_updates()
+
+        self.assertEqual(
+            [slide["kind"] for slide in slides],
+            ["event", "news", "el_nino", "summer_school"],
+        )
+        self.assertEqual(slides[3]["url"], summer_school_index.url)
+        self.assertEqual(slides[2]["url"], el_nino_page.url)
 
     def test_manual_skips_unpublished_or_private_selected_pages(self):
         news = self.news(-1)
@@ -143,9 +187,139 @@ class HeroUpdatesTests(WagtailPageTestCase):
         self.assertNotContains(response, "Pause updates")
         self.assertNotContains(response, "hero-updates-heading")
         self.assertNotContains(response, "hero-update-summary")
-        self.assertContains(response, "Next update")
+        self.assertNotContains(response, "Next update")
         self.assertNotContains(response, 'id="hero-product-carousel"')
 
     def test_empty_widget_has_no_markup(self):
         html = render_to_string("home/section/hero_updates_widget.html", {"hero_updates": []})
         self.assertEqual(html.strip(), "")
+
+    def test_enso_slide_button_links_directly_to_latest_bulletin(self):
+        product_index = ProductIndexPageFactory(parent=self.home)
+        el_nino_page = ElNinoPageFactory(parent=product_index)
+        enso_intro_image = wagtail_factories.ImageFactory(title="ENSO introduction image")
+        el_nino_page.explainer_image = enso_intro_image
+        el_nino_page.save(update_fields=["explainer_image"])
+        older = ProductItemPageFactory(parent=el_nino_page, title="El Niño Bulletin — July")
+        bulletin_thumbnail = wagtail_factories.ImageFactory(title="El Niño bulletin thumbnail")
+        latest = ProductItemPageFactory(
+            parent=el_nino_page,
+            title="El Niño Bulletin — August",
+            products__0__document_product__date=timezone.localdate(),
+            products__0__document_product__thumbnail=bulletin_thumbnail,
+            products__0__document_product__auto_generate_thumbnail=False,
+        )
+        type(older).objects.filter(pk=older.pk).update(date=timezone.localdate() - timedelta(days=35))
+        type(latest).objects.filter(pk=latest.pk).update(date=timezone.localdate())
+        document_url = next(
+            block.value.get("document").url
+            for block in latest.products
+            if block.block_type == "document_product"
+        )
+
+        slides = self.home.get_hero_updates()
+
+        self.assertEqual(slides[0]["kind"], "el_nino")
+        self.assertEqual(slides[0]["title"], "El-nino Special Bulletin")
+        self.assertEqual(slides[0]["url"], el_nino_page.url)
+        self.assertEqual(slides[0]["cta_url"], document_url)
+        self.assertEqual(slides[0]["cta_label"], "View Bulletin")
+        self.assertEqual(slides[0]["image"], bulletin_thumbnail)
+        self.assertNotEqual(slides[0]["image"], enso_intro_image)
+
+    def test_carousel_order_is_news_el_nino_then_summer_school(self):
+        latest_news = self.news(-1)
+        product_index = ProductIndexPageFactory(parent=self.home)
+        el_nino_page = ElNinoPageFactory(parent=product_index)
+        ProductItemPageFactory(parent=el_nino_page)
+        summer_school_index = SummerSchoolIndexPageFactory(parent=self.home)
+        summer_school = SummerSchoolPageFactory(parent=summer_school_index)
+
+        slides = self.home.get_hero_updates()
+
+        self.assertEqual(
+            [slide["kind"] for slide in slides],
+            ["news", "el_nino", "summer_school"],
+        )
+        self.assertEqual(slides[0]["id"], latest_news.pk)
+        self.assertEqual(slides[1]["url"], el_nino_page.url)
+        self.assertEqual(slides[2]["url"], summer_school_index.url)
+        self.assertEqual(slides[2]["cta_url"], "https://summerschool.acmad.org/")
+        self.assertEqual(slides[2]["title"], summer_school.hero_heading)
+
+    def test_summer_school_slide_links_to_online_meeting_when_configured(self):
+        summer_school_index = SummerSchoolIndexPageFactory(parent=self.home)
+        meeting_url = "https://meet.example.com/summer-school"
+        button_text = "Join the live sessions"
+        SummerSchoolPageFactory(
+            parent=summer_school_index,
+            online_meeting_url=meeting_url,
+            online_meeting_button_text=button_text,
+        )
+
+        slide = self.home.get_hero_updates()[0]
+
+        self.assertEqual(slide["kind"], "summer_school")
+        self.assertEqual(slide["cta_label"], button_text)
+        self.assertEqual(slide["cta_url"], meeting_url)
+
+    def test_programme_toggles_hide_el_nino_and_summer_school(self):
+        product_index = ProductIndexPageFactory(parent=self.home)
+        ElNinoPageFactory(parent=product_index)
+        SummerSchoolIndexPageFactory(parent=self.home)
+        self.home.hero_show_el_nino = False
+        self.home.hero_show_summer_school = False
+
+        slides = self.home.get_hero_updates()
+
+        self.assertEqual(slides, [])
+
+    @override_settings(IS_METEOROLOGICAL=True)
+    def test_homepage_renders_enso_feature_before_dg_message(self):
+        product_index = ProductIndexPageFactory(parent=self.home)
+        enso_page = ElNinoPageFactory(parent=product_index)
+        explainer_image = wagtail_factories.ImageFactory(title="ENSO introduction image")
+        enso_page.explainer_image = explainer_image
+        enso_page.save(update_fields=["explainer_image"])
+        bulletin_thumbnail = wagtail_factories.ImageFactory(title="Homepage bulletin thumbnail")
+        ProductItemPageFactory(
+            parent=enso_page,
+            products__0__document_product__thumbnail=bulletin_thumbnail,
+            products__0__document_product__auto_generate_thumbnail=False,
+        )
+        summer_school_index = SummerSchoolIndexPageFactory(parent=self.home)
+        SummerSchoolPageFactory(
+            parent=summer_school_index,
+            featured=True,
+            is_visible_on_homepage=True,
+        )
+
+        response = self.client.get(self.home.url)
+
+        self.assertContains(response, 'id="home-enso-title"')
+        self.assertContains(response, "ENSO in Africa")
+        self.assertContains(response, "Explore ENSO in Africa")
+        self.assertContains(response, "View Bulletin")
+        self.assertContains(
+            response,
+            explainer_image.get_rendition("fill-900x680").url,
+        )
+        self.assertNotContains(
+            response,
+            bulletin_thumbnail.get_rendition("fill-900x680").url,
+        )
+        self.assertContains(response, enso_page.url)
+        self.assertLess(
+            response.content.index(b'id="home-enso-title"'),
+            response.content.index(b'class="section dg-message-section"'),
+        )
+
+    @override_settings(IS_METEOROLOGICAL=True)
+    def test_homepage_enso_feature_can_be_hidden(self):
+        product_index = ProductIndexPageFactory(parent=self.home)
+        ElNinoPageFactory(parent=product_index)
+        type(self.home).objects.filter(pk=self.home.pk).update(show_enso_section=False)
+
+        response = self.client.get(self.home.url)
+
+        self.assertNotContains(response, 'id="home-enso-title"')

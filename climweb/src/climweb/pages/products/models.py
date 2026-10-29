@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from adminboundarymanager.models import AdminBoundarySettings
 from django import forms
@@ -16,10 +17,10 @@ from modelcluster.fields import ParentalKey, ParentalManyToManyField
 from taggit.models import TaggedItemBase
 from wagtail import blocks
 from wagtail.admin.forms import WagtailAdminPageForm
-from wagtail.admin.panels import (FieldPanel, MultiFieldPanel, FieldRowPanel, InlinePanel)
+from wagtail.admin.panels import (FieldPanel, MultiFieldPanel, FieldRowPanel, InlinePanel, PageChooserPanel)
 from wagtail.api.v2.utils import get_full_url
 from wagtail.fields import StreamField, RichTextField
-from wagtail.models import Page
+from wagtail.models import Orderable, Page
 from wagtail.rich_text import RichText
 from wagtail.snippets.models import register_snippet
 from wagtail.contrib.forms.models import AbstractFormField
@@ -27,13 +28,14 @@ from wagtailcaptcha.forms import remove_captcha_field
 from wagtailcaptcha.models import WagtailCaptchaEmailForm
 
 from climweb.base.choosers import register_searchable_chooser
+from climweb.config.settings.base import SUMMARY_RICHTEXT_FEATURES
 
 from climweb.base.blocks import UUIDModelChooserBlock
 from climweb.base.mixins import (MetadataPageMixin, FormPageReviewSettingsMixin,
                                  FormPageClosingDateMixin, FormPageManualCloseMixin,
                                  FormFieldMaxLengthMixin, FormCleanNameFallbackMixin)
 from climweb.base.models import Product, ProductItemType
-from climweb.base.models import ServiceCategory, AbstractIntroPage
+from climweb.base.models import ServiceCategory, AbstractIntroPage, AbstractBannerWithOptionalIntroPage
 from climweb.base.utils import paginate, query_param_to_list, get_first_non_empty_p_string, get_duplicates
 from climweb.base.forms import CustomWagtailCaptchaFormBuilder
 from climweb.pages.publications.models import PageView
@@ -43,13 +45,18 @@ from .blocks import (
     ProductItemGifContentBlock,
     ProductItemStreamContentBlock
 )
+from .subscription_security import (
+    get_client_ip,
+    subscription_rate_limited,
+    validate_honeypot,
+    validate_subscription_text,
+)
 
-from climweb.base.models.abstracts import AbstractBannerPage
-
-class ProductIndexPage(AbstractBannerPage):
+class ProductIndexPage(AbstractBannerWithOptionalIntroPage):
     parent_page_types = ['home.HomePage']
     subpage_types = [
         'products.ProductPage',
+        'products.ElNinoPage',
         'products.SubNationalProductsLandingPage',
         'products.ProductSubscriptionPage',
     ]
@@ -61,8 +68,18 @@ class ProductIndexPage(AbstractBannerPage):
     listing_heading = models.CharField(max_length=255, default="Explore our Products",
                                        verbose_name=_("Products listing Heading"))
     group_menu_items_by_service = models.BooleanField(default=True, verbose_name=_("Group menu items by service"))
+    featured_product = models.ForeignKey(
+        'wagtailcore.Page',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        verbose_name=_("Featured product"),
+        help_text=_("Product shown beside the introduction on the Products page."),
+    )
     
-    content_panels = AbstractBannerPage.content_panels + [
+    content_panels = AbstractBannerWithOptionalIntroPage.content_panels + [
+        PageChooserPanel("featured_product", "products.ProductPage"),
         FieldPanel("listing_heading"),
         FieldPanel("group_menu_items_by_service")
     ]
@@ -75,7 +92,9 @@ class ProductIndexPage(AbstractBannerPage):
     def service_categories(self):
         product_service = set(ProductPage.objects.all().live().values_list('service', flat=True))
         
-        unique_services = ServiceCategory.objects.filter(id__in=list(product_service))
+        unique_services = ServiceCategory.objects.filter(
+            id__in=list(product_service)
+        ).order_by(models.F("order").asc(nulls_last=True), "name")
         
         return unique_services
     
@@ -94,6 +113,13 @@ class ProductIndexPage(AbstractBannerPage):
         subnational_products = SubNationalProductPage.objects.live().descendant_of(self).order_by('menu_order')
         
         return list(products) + list(subnational_products)
+
+    @cached_property
+    def featured_product_page(self):
+        if self.featured_product and self.featured_product.live:
+            return self.featured_product.specific
+
+        return ProductPage.objects.child_of(self).live().order_by('menu_order', 'path').first()
     
 
     
@@ -127,8 +153,49 @@ class BaseProductPage(AbstractIntroPage):
     parent_page_types = ['products.ProductIndexPage']
     subpage_types = ['products.ProductItemPage']
     show_in_menus_default = True
+
+    header_title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name=_("Header title"),
+        help_text=_("Leave blank to use the page title."),
+    )
+    header_subtitle = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name=_("Header subtitle"),
+    )
+    header_image = models.ForeignKey(
+        'wagtailimages.Image',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+',
+        verbose_name=_("Header image"),
+        help_text=_("Leave blank to use the main Products page banner image."),
+    )
+    product_partners = ParentalManyToManyField(
+        'partners.Partner',
+        blank=True,
+        related_name='+',
+        verbose_name=_("Introduction partners"),
+        help_text=_("Selected partner logos appear below the introduction text."),
+    )
     
     service = models.ForeignKey(ServiceCategory, on_delete=models.PROTECT, verbose_name=_("Primary Service"))
+    gis_application = models.ForeignKey(
+        "base.Application",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("GIS application"),
+        help_text=_(
+            "Optional GIS application shown in place of the introduction image."
+        ),
+    )
     
     products_per_page = models.PositiveIntegerField(default=6, validators=[
         MinValueValidator(6),
@@ -150,6 +217,24 @@ class BaseProductPage(AbstractIntroPage):
     
     class Meta:
         abstract = True
+
+    @property
+    def category_header_title(self):
+        return self.header_title or self.title
+
+    @property
+    def category_header_subtitle(self):
+        return self.header_subtitle
+
+    @cached_property
+    def category_header_image(self):
+        if self.header_image:
+            return self.header_image
+        for ancestor in self.get_ancestors().reverse().specific():
+            banner_image = getattr(ancestor, 'banner_image', None)
+            if banner_image:
+                return banner_image
+        return None
     
     @cached_property
     def listing_image(self):
@@ -213,6 +298,10 @@ class ProductPage(BaseProductPage):
     parent_page_types = ['products.ProductIndexPage']
     subpage_types = ['products.ProductItemPage']
     show_in_menus_default = True
+
+    @property
+    def display_title(self):
+        return self.title
     
     product = models.OneToOneField(Product, on_delete=models.PROTECT, verbose_name=_("Product"))
     other_services = ParentalManyToManyField(ServiceCategory, blank=True, verbose_name=_("Other relevant Services"),
@@ -239,7 +328,20 @@ class ProductPage(BaseProductPage):
         FieldPanel('service'),
         FieldPanel('other_services', widget=forms.CheckboxSelectMultiple),
         FieldPanel('product'),
+        MultiFieldPanel(
+            [
+                FieldPanel('header_image'),
+                FieldPanel('header_title'),
+                FieldPanel('header_subtitle'),
+            ],
+            heading=_("Category Header"),
+        ),
         *AbstractIntroPage.content_panels,
+        FieldPanel('gis_application'),
+        MultiFieldPanel(
+            [FieldPanel('product_partners', widget=forms.CheckboxSelectMultiple)],
+            heading=_("Introduction Partner Logos"),
+        ),
         MultiFieldPanel(
             [
                 FieldPanel('products_per_page'),
@@ -335,6 +437,302 @@ class ProductPage(BaseProductPage):
         return super().serve(request, *args, **kwargs)
 
 
+class ElNinoPageForm(ProductPageForm):
+    """Allow the shared introduction fields to be blank on the ENSO page only."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["introduction_title"].required = False
+        self.fields["introduction_text"].required = False
+
+
+class ElNinoPage(ProductPage):
+    """Africa-focused ENSO information hub backed by monthly product issues."""
+
+    template = "products/el_nino_page.html"
+    parent_page_types = ["products.ProductIndexPage"]
+    subpage_types = ["products.ProductItemPage"]
+    max_count = 1
+    base_form_class = ElNinoPageForm
+
+    @property
+    def display_title(self):
+        return _("El-nino Special Bulletin")
+
+    enso_explanation = RichTextField(
+        features=SUMMARY_RICHTEXT_FEATURES,
+        blank=True,
+       default=(
+              "<p>ENSO links changes in the tropical Pacific Ocean with the atmosphere. El Niño is the warm phase, "
+              "La Niña the cool phase, and neutral conditions occur between them.</p>"
+              "<p>These phases can influence rainfall and temperature across Africa, but their effects vary by "
+              "region and season and must be considered alongside other climate drivers.</p>"
+          ),
+        verbose_name=_("ENSO explanation"),
+        help_text=_("Use this single section for ENSO phases, African impacts and bulletin context."),
+    )
+    explainer_image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("ENSO explainer image"),
+        help_text=_("Upload the image or infographic that explains ENSO and its phases."),
+    )
+    explainer_image_caption = models.CharField(
+        max_length=500,
+        blank=True,
+        verbose_name=_("ENSO explainer image caption"),
+        help_text=_("Optional caption displayed directly below the ENSO explainer image."),
+    )
+    secondary_section_title = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_("Additional section title"),
+    )
+    secondary_section_text = RichTextField(
+        features=SUMMARY_RICHTEXT_FEATURES,
+        blank=True,
+        verbose_name=_("Additional section text"),
+    )
+    secondary_section_image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Additional section image"),
+        help_text=_("Displayed on the right side of the additional ENSO content section."),
+    )
+    secondary_section_image_caption = models.CharField(
+        max_length=500,
+        blank=True,
+        verbose_name=_("Additional section image caption"),
+        help_text=_("Optional caption displayed directly below the image."),
+    )
+
+    content_panels = ProductPage.content_panels + [
+        MultiFieldPanel(
+            [
+                FieldPanel("enso_explanation"),
+                FieldPanel("explainer_image"),
+                FieldPanel("explainer_image_caption"),
+            ],
+            heading=_("ENSO page content"),
+        ),
+        MultiFieldPanel(
+            [
+                FieldPanel("secondary_section_title"),
+                FieldPanel("secondary_section_text"),
+                FieldPanel("secondary_section_image"),
+                FieldPanel("secondary_section_image_caption"),
+            ],
+            heading=_("Additional ENSO content section"),
+        ),
+        InlinePanel(
+            "partner_activities",
+            heading=_("Partner activities"),
+            label=_("Partner activity"),
+            help_text=_("Add lightweight external ENSO activities hosted by partner organisations."),
+        ),
+    ]
+
+    class Meta:
+        verbose_name = _("ENSO Page")
+        verbose_name_plural = _("ENSO Pages")
+
+    @cached_property
+    def latest_bulletin(self):
+        return self.all_products.first()
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        from climweb.pages.events.models import EventPage
+        from climweb.pages.news.models import NewsPage
+
+        latest_bulletin = self.latest_bulletin
+        archive = self.all_products
+        if latest_bulletin:
+            archive = archive.exclude(pk=latest_bulletin.pk)
+        context["latest_bulletin"] = latest_bulletin
+        context["latest_bulletin_document_url"] = None
+        if latest_bulletin:
+            for product_block in latest_bulletin.products:
+                if product_block.block_type == "document_product":
+                    document = product_block.value.get("document")
+                    if document:
+                        context["latest_bulletin_document_url"] = document.url
+                        break
+        now = timezone.now()
+        events = EventPage.objects.live().public().descendant_of(
+            self.get_site().root_page
+        ).filter(
+            locale_id=self.locale_id,
+            is_el_nino_related=True,
+            is_hidden=False,
+        )
+        upcoming_filter = models.Q(date_from__gte=now) | models.Q(date_to__gte=now)
+        upcoming_events = list(events.filter(upcoming_filter).order_by("date_from", "pk"))
+        past_events = list(events.exclude(upcoming_filter).order_by("-date_from", "-pk"))
+        news_items = list(
+            NewsPage.objects.live().public().descendant_of(
+                self.get_site().root_page
+            ).filter(
+                locale_id=self.locale_id,
+                is_el_nino_related=True,
+            ).order_by("-date", "-pk")
+        )
+
+        def activity_item(page, activity_date, image, kind_label, type_label, cta_label):
+            return {
+                "page": page,
+                "title": page.title,
+                "url": page.url,
+                "is_external": False,
+                "is_partner_activity": False,
+                "host_organisation": "",
+                "date": activity_date,
+                "image": image,
+                "summary": page.listing_summary,
+                "kind_label": kind_label,
+                "type_label": type_label,
+                "cta_label": cta_label,
+            }
+
+        def partner_activity_item(activity):
+            return {
+                "page": activity,
+                "title": activity.title,
+                "url": activity.external_url,
+                "is_external": True,
+                "is_partner_activity": True,
+                "host_organisation": activity.host_organisation,
+                "date": activity.date,
+                "image": activity.image,
+                "summary": "",
+                "kind_label": "",
+                "type_label": activity.get_activity_type_display(),
+                "cta_label": _("View activity"),
+            }
+
+        upcoming_updates = [
+            activity_item(
+                event,
+                event.date_from,
+                event.image,
+                _("Event"),
+                event.event_type,
+                _("View event"),
+            )
+            for event in upcoming_events
+        ]
+        recent_updates = [
+            activity_item(
+                event,
+                event.date_from,
+                event.image,
+                _("Event"),
+                event.event_type,
+                _("View event"),
+            )
+            for event in past_events
+        ] + [
+            activity_item(
+                news_item,
+                news_item.date,
+                news_item.get_meta_image(),
+                _("News"),
+                news_item.news_type,
+                _("Read news"),
+            )
+            for news_item in news_items
+        ]
+        partner_activities = list(self.partner_activities.all())
+        upcoming_updates.extend(
+            partner_activity_item(activity)
+            for activity in partner_activities
+            if activity.date >= now.date()
+        )
+        recent_updates.extend(
+            partner_activity_item(activity)
+            for activity in partner_activities
+            if activity.date < now.date()
+        )
+
+        def update_sort_date(item):
+            value = item["date"]
+            return value.date() if isinstance(value, datetime) else value
+
+        dated_updates = upcoming_updates + recent_updates
+        dated_updates.sort(key=update_sort_date, reverse=True)
+        context["el_nino_updates"] = paginate(
+            dated_updates,
+            request.GET.get("updates_page"),
+            3,
+        )
+        context["products"] = paginate(archive, request.GET.get("page"), self.products_per_page)
+        return context
+
+
+class ENSOPartnerActivity(Orderable):
+    ACTIVITY_TYPE_CHOICES = (
+        ("event", _("Event")),
+        ("news", _("News")),
+        ("briefing", _("Briefing")),
+        ("workshop", _("Workshop")),
+        ("other", _("Other")),
+    )
+
+    page = ParentalKey(
+        ElNinoPage,
+        on_delete=models.CASCADE,
+        related_name="partner_activities",
+    )
+    title = models.CharField(max_length=255, verbose_name=_("Title"))
+    date = models.DateField(default=timezone.localdate, verbose_name=_("Date"))
+    activity_type = models.CharField(
+        max_length=20,
+        choices=ACTIVITY_TYPE_CHOICES,
+        default="event",
+        verbose_name=_("Activity type"),
+    )
+    host_organisation = models.CharField(
+        max_length=255,
+        verbose_name=_("Hosting organisation"),
+    )
+    external_url = models.URLField(
+        max_length=1000,
+        verbose_name=_("External activity URL"),
+    )
+    image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Image"),
+    )
+
+    panels = [
+        FieldPanel("title"),
+        FieldRowPanel([
+            FieldPanel("date"),
+            FieldPanel("activity_type"),
+        ]),
+        FieldPanel("host_organisation"),
+        FieldPanel("external_url"),
+        FieldPanel("image"),
+    ]
+
+    class Meta(Orderable.Meta):
+        verbose_name = _("ENSO partner activity")
+        verbose_name_plural = _("ENSO partner activities")
+
+    def __str__(self):
+        return self.title
+
+
 register_searchable_chooser(RasterFileLayer)
 
 
@@ -366,7 +764,7 @@ class ProductItemPageForm(WagtailAdminPageForm):
 
 class ProductItemPage(MetadataPageMixin, Page):
     template = 'products/product_detail.html'
-    parent_page_types = ['products.ProductPage', 'products.SubNationalProductPage']
+    parent_page_types = ['products.ProductPage', 'products.ElNinoPage', 'products.SubNationalProductPage']
     subpage_types = []
     base_form_class = ProductItemPageForm
     
@@ -394,7 +792,7 @@ class ProductItemPage(MetadataPageMixin, Page):
     def __str__(self):
         parent_page = self.get_parent().specific
         return f"{parent_page.title} - {self.title}"
-    
+
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
 
@@ -1253,7 +1651,20 @@ class SubNationalProductPage(BaseProductPage):
         FieldPanel('region'),
         FieldPanel('service'),
         FieldPanel('product'),
+        MultiFieldPanel(
+            [
+                FieldPanel('header_image'),
+                FieldPanel('header_title'),
+                FieldPanel('header_subtitle'),
+            ],
+            heading=_("Category Header"),
+        ),
         *AbstractIntroPage.content_panels,
+        FieldPanel('gis_application'),
+        MultiFieldPanel(
+            [FieldPanel('product_partners', widget=forms.CheckboxSelectMultiple)],
+            heading=_("Introduction Partner Logos"),
+        ),
         MultiFieldPanel(
             [
                 FieldPanel('products_per_page'),
@@ -1388,6 +1799,15 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
             label=_("I agree to receive ACMAD product notifications by email."),
             required=True
         )
+        form.fields['contact_url'] = forms.CharField(
+            required=False,
+            label=_("Leave this field empty"),
+            widget=forms.HiddenInput,
+            validators=[validate_honeypot],
+        )
+        for field_name in ("name", "organization_name"):
+            if field_name in form.fields:
+                form.fields[field_name].validators.append(validate_subscription_text)
         return form
 
     def serve(self, request, *args, **kwargs):
@@ -1409,8 +1829,30 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
                 import logging
                 logger = logging.getLogger(__name__)
 
+                email = form.cleaned_data.get("email", "").strip().lower()
+                if subscription_rate_limited(request, email):
+                    return django.shortcuts.render(
+                        request,
+                        self.landing_page_template,
+                        {
+                            "status_title": _("Check your email"),
+                            "status_message": _(
+                                "We sent a verification link if the address can receive mail. "
+                                "Open it to activate product notifications."
+                            ),
+                        },
+                    )
+
                 try:
-                    duplicate_fields = get_duplicates(form.cleaned_data)
+                    duplicate_fields = get_duplicates(
+                        {
+                            key: value
+                            for key, value in form.cleaned_data.items()
+                            if isinstance(value, str)
+                            and value.strip()
+                            and key not in {"wagtailcaptcha", "contact_url"}
+                        }
+                    )
                 except Exception as e:
                     logger.warning("[PRODUCT_SUBSCRIPTION_PAGE] Error checking for duplicate fields: {}".format(e))
                     duplicate_fields = []
@@ -1422,8 +1864,11 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
                         request,
                         self.landing_page_template,
                         {
-                            "status_title": _("Subscription Successful"),
-                            "status_message": _("You will now receive notifications for your selected ACMAD products."),
+                            "status_title": _("Check your email"),
+                            "status_message": _(
+                                "We sent a verification link if the address can receive mail. "
+                                "Open it to activate product notifications."
+                            ),
                         },
                     )
                 else:
@@ -1432,8 +1877,11 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
                         request,
                         self.landing_page_template,
                         {
-                            "status_title": _("Subscription Successful"),
-                            "status_message": _("You will now receive notifications for your selected ACMAD products."),
+                            "status_title": _("Check your email"),
+                            "status_message": _(
+                                "We sent a verification link if the address can receive mail. "
+                                "Open it to activate product notifications."
+                            ),
                         },
                     )
         else:
@@ -1466,6 +1914,7 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
         product_families = cleaned_data.pop("product_families", [])
         cleaned_data.pop("consent", None)
         cleaned_data.pop("wagtailcaptcha", None)
+        cleaned_data.pop("contact_url", None)
 
         # Any other custom fields are saved into extra_data
         extra_data = cleaned_data
@@ -1478,12 +1927,12 @@ class ProductSubscriptionPage(MetadataPageMixin, FormCleanNameFallbackMixin, For
                 "organization_type": organization_type,
                 "organization_name": organization_name,
                 "extra_data": extra_data,
-                "status": ProductSubscriber.STATUS_ACTIVE,
+                "status": ProductSubscriber.STATUS_PENDING,
                 "confirmation_token": uuid.uuid4(),
                 "consented_at": timezone.now(),
-                "confirmed_at": timezone.now(),
+                "confirmed_at": None,
                 "unsubscribed_at": None,
-                "consent_ip": request.META.get("REMOTE_ADDR") if request else None,
+                "consent_ip": get_client_ip(request) if request else None,
                 "consent_user_agent": request.META.get("HTTP_USER_AGENT", "")[:500] if request else "",
             },
         )

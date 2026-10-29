@@ -35,7 +35,9 @@
                 {% endif %}
 
                 {% for field in form %}
-                    {% if field.name == 'wagtailcaptcha' %}
+                    {% if field.is_hidden %}
+                        {{ field }}
+                    {% elif field.name == 'wagtailcaptcha' %}
                         <div class="field">
                             {{ field }}
                             {{ field.errors }}
@@ -91,7 +93,7 @@
                     <button type="submit" class="button product-subscribe-submit has-no-border">
                         {% translate "Subscribe" %}
                     </button>
-                    <p class="help">{% translate "You will receive an email confirming your subscription." %}</p>
+                    <p class="help">{% translate "You must verify your email address before notifications begin." %}</p>
                 </div>
 
             </form>

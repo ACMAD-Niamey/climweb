@@ -12,6 +12,7 @@ from django.core.validators import validate_email
 from django.core.files.base import ContentFile
 from django.core.mail import send_mail
 from django.db import transaction
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html_join, strip_tags
@@ -19,10 +20,43 @@ from wagtail.images import get_image_model
 from wagtailcache.cache import clear_cache
 from PIL import Image
 
-from .models import StaffEmployment, StaffEmploymentEvent, StaffMember, StaffPage, StaffPageSelection, StaffProfileAccess, StaffProfileUpdate
+from .models import (
+    StaffEmployment,
+    StaffEmploymentEvent,
+    StaffMember,
+    StaffPage,
+    StaffPageSelection,
+    StaffProfileAccess,
+    StaffProfileUpdate,
+    StaffTrainingAssignment,
+    StaffTrainingReport,
+)
+from .notifications import _email_logo_url, queue_report_reviewed_notification
 
 
 INVITATION_LIFETIME = timedelta(hours=48)
+
+
+def _send_profile_portal_email(*, subject, recipient, greeting, headline, message, action_url, action_label, details):
+    context = {
+        "subject": subject,
+        "greeting": greeting,
+        "headline": headline,
+        "message": message,
+        "action_url": action_url,
+        "action_label": action_label,
+        "details": details,
+        "comment": "",
+        "logo_url": _email_logo_url(),
+    }
+    return send_mail(
+        subject,
+        render_to_string("staff/email/workflow_notification.txt", context),
+        settings.DEFAULT_FROM_EMAIL,
+        [recipient],
+        html_message=render_to_string("staff/email/workflow_notification.html", context),
+        fail_silently=False,
+    )
 
 
 @transaction.atomic
@@ -217,15 +251,39 @@ def invite_staff(member, email, request):
     url = request.build_absolute_uri(reverse("staff_portal:accept", args=[access.pk, token]))
     # Intentionally outside the transaction: failed delivery leaves a safe,
     # passwordless account that the administrator can resend an invitation to.
-    send_mail(
-        "Set up your ACMAD staff profile account",
-        f"Hello {member.name},\n\nYou have been invited to manage your ACMAD staff profile.\n"
-        f"Set your own password using this single-use link (valid for 48 hours):\n{url}\n\n"
-        "Your photo and biography changes will be reviewed before publication.\n"
-        "If you were not expecting this invitation, contact your website administrator.\n",
-        settings.DEFAULT_FROM_EMAIL, [email], fail_silently=False,
+    _send_profile_portal_email(
+        subject="Set up your ACMAD staff profile account",
+        recipient=email,
+        greeting=f"Hello {member.name},",
+        headline="Set up your ACMAD staff profile",
+        message="You have been invited to manage your ACMAD staff profile. Create your password, then review and complete your profile.",
+        action_url=url,
+        action_label="Create password",
+        details=[
+            {"label": "Account", "value": email},
+            {"label": "Invitation validity", "value": "48 hours"},
+        ],
     )
     return access
+
+
+def send_profile_update_reminder(access, request):
+    """Remind an activated or linked staff account to complete its profile."""
+    if not access.user.is_active or not access.user.email:
+        raise ValidationError("This staff account has no active work email.")
+    if not access.member.is_current_staff:
+        raise ValidationError("Former staff cannot receive profile reminders.")
+    url = request.build_absolute_uri(reverse("staff_portal:login"))
+    _send_profile_portal_email(
+        subject="Complete your ACMAD staff profile",
+        recipient=access.user.email,
+        greeting=f"Hello {access.member.name},",
+        headline="Complete your ACMAD staff profile",
+        message="Your profile is ready for you to review and update. Your changes will be reviewed before they are published on the ACMAD website.",
+        action_url=url,
+        action_label="Open staff portal",
+        details=[{"label": "Account", "value": access.user.email}],
+    )
 
 
 @transaction.atomic
@@ -274,3 +332,37 @@ def review_update(update_id, reviewer, action, comment):
     update.reviewed_at = timezone.now()
     update.save()
     return update
+
+
+@transaction.atomic
+def review_training_report_submission(report_id, reviewer, action, comment):
+    if not reviewer.is_active or not reviewer.has_perm("staff.review_staff_profiles"):
+        raise ValidationError("You do not have permission to review activity reports.")
+    if action not in {"approve", "request_changes"}:
+        raise ValidationError("Unknown review action.")
+    report = (
+        StaffTrainingReport.objects.select_for_update(of=("self",))
+        .select_related("assignment__member__profile_access__user")
+        .get(pk=report_id)
+    )
+    if report.status != StaffTrainingReport.Status.SUBMITTED:
+        raise ValidationError("Only a submitted report can be reviewed.")
+
+    report.reviewed_by = reviewer
+    report.reviewed_at = timezone.now()
+    report.reviewer_comment = comment
+    if action == "approve":
+        report.status = StaffTrainingReport.Status.APPROVED
+        report.approved_at = timezone.now()
+        report.assignment.status = StaffTrainingAssignment.Status.COMPLETED
+        report.assignment.save(update_fields=["status", "updated_at"])
+        message = "Activity report approved."
+    else:
+        if not comment.strip():
+            raise ValidationError("Please explain the requested changes.")
+        report.status = StaffTrainingReport.Status.CHANGES_REQUESTED
+        report.approved_at = None
+        message = "Changes requested from the staff member."
+    report.save()
+    queue_report_reviewed_notification(report)
+    return report, message

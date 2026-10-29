@@ -20,9 +20,8 @@ from django.utils.safestring import mark_safe
 register = template.Library()
 
 
-@register.simple_tag(takes_context=True)
-def rcc_navigation(context):
-    """Return the dedicated RCC navigation when the request belongs to RCC."""
+def _rcc_navigation(context):
+    """Return RCC navigation data when the request belongs to the RCC section."""
     from climweb.pages.services.models import ServicePage
 
     request = context.get("request")
@@ -59,6 +58,7 @@ def rcc_navigation(context):
     monitoring_page = rcc_page.climate_monitoring_page
     main_site = Site.objects.filter(is_default_site=True).first()
     return {
+        "kind": "rcc",
         "home_url": home_url,
         "main_site_url": main_site.root_url if main_site else "/",
         "products_url": (
@@ -76,8 +76,72 @@ def rcc_navigation(context):
             if monitoring_page
             else f"{home_url}#rcc-monitoring"
         ),
-        "show_events": rcc_page.events.exists(),
+        "show_events": rcc_page.show_events_section and rcc_page.events.exists(),
     }
+
+
+def _climsa_navigation(context):
+    """Return CLIMSA navigation data for the CLIMSA page tree or Site root."""
+    from climweb.pages.climsa.models import ClimsaHomePage
+
+    request = context.get("request")
+    page = context.get("page")
+    climsa_page = None
+
+    if page:
+        climsa_page = (
+            ClimsaHomePage.objects.live()
+            .ancestor_of(page, inclusive=True)
+            .first()
+        )
+
+    if not climsa_page and request:
+        current_site = Site.find_for_request(request)
+        if current_site:
+            root_page = current_site.root_page.specific
+            if isinstance(root_page, ClimsaHomePage):
+                climsa_page = root_page
+
+    if not climsa_page:
+        return None
+
+    home_url = public_page_url(
+        climsa_page.get_url(request=request) or climsa_page.url
+    )
+    main_site = Site.objects.filter(is_default_site=True).first()
+
+    def destination(page_field, anchor):
+        if page_field:
+            return public_page_url(page_field.get_url(request=request) or page_field.url)
+        return f"{home_url}{anchor}"
+
+    return {
+        "kind": "climsa",
+        "page": climsa_page,
+        "logo": climsa_page.climsa_logo,
+        "home_url": home_url,
+        "main_site_url": main_site.root_url if main_site else "/",
+        "about_url": destination(climsa_page.about_page, "#climsa-about"),
+        "activities_url": destination(climsa_page.activities_page, "#climsa-outputs"),
+        "products_url": destination(climsa_page.products_page, "#climsa-products"),
+        "news_url": destination(climsa_page.news_page, "#climsa-news"),
+        "publications_url": destination(
+            climsa_page.publications_page, "#climsa-publications"
+        ),
+        "events_url": destination(climsa_page.events_page, "#climsa-events"),
+    }
+
+
+@register.simple_tag(takes_context=True)
+def section_navigation(context):
+    """Return navigation for the active ACMAD programme section, if any."""
+    return _climsa_navigation(context) or _rcc_navigation(context)
+
+
+@register.simple_tag(takes_context=True)
+def rcc_navigation(context):
+    """Backward-compatible RCC-only navigation tag."""
+    return _rcc_navigation(context)
 
 
 @register.filter

@@ -1,8 +1,10 @@
+import hashlib
 from datetime import date, timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core import mail
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -21,7 +23,21 @@ from climweb.pages.products.product_notifications import (
 )
 
 
+@override_settings(
+    CACHES={
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "product-subscription-tests",
+        }
+    }
+)
 class TestProductSubscriptions(TestCase):
+    def setUp(self):
+        captcha_patcher = patch("django_recaptcha.fields.client.submit")
+        captcha_submit = captcha_patcher.start()
+        captcha_submit.return_value.is_valid = True
+        self.addCleanup(captcha_patcher.stop)
+
     def test_subscription_page_uses_product_alert_layout(self):
         response = self.client.get(reverse("product_subscription"))
 
@@ -35,6 +51,7 @@ class TestProductSubscriptions(TestCase):
         self.assertContains(response, "Public Sector")
         self.assertContains(response, "Select all")
         self.assertContains(response, "products/css/subscription.css")
+        self.assertContains(response, "g-recaptcha")
 
     def test_previous_product_subscription_url_redirects_to_main_page(self):
         response = self.client.get(reverse("product_subscription_legacy"))
@@ -44,7 +61,7 @@ class TestProductSubscriptions(TestCase):
     @patch(
         "climweb.pages.products.tasks.send_product_subscription_confirmation.delay"
     )
-    def test_subscription_is_stored_locally_active(self, delay):
+    def test_subscription_stays_pending_until_email_is_verified(self, delay):
         with self.captureOnCommitCallbacks(execute=True):
             response = self.client.post(
                 reverse("product_subscription"),
@@ -58,12 +75,14 @@ class TestProductSubscriptions(TestCase):
                     ),
                     "product_families": ["rainfall", "heat-stress"],
                     "consent": "on",
+                    "g-recaptcha-response": "test-response",
                 },
             )
 
         self.assertEqual(response.status_code, 200)
         subscriber = ProductSubscriber.objects.get(email="user@example.com")
-        self.assertEqual(subscriber.status, ProductSubscriber.STATUS_ACTIVE)
+        self.assertEqual(subscriber.status, ProductSubscriber.STATUS_PENDING)
+        self.assertIsNone(subscriber.confirmed_at)
         self.assertEqual(subscriber.sector, ProductSubscriber.Sector.RESEARCH)
         self.assertEqual(subscriber.organization_name, "Test Org")
         self.assertEqual(
@@ -75,6 +94,93 @@ class TestProductSubscriptions(TestCase):
             {"rainfall", "heat-stress"},
         )
         delay.assert_called_once_with(subscriber.pk)
+
+    @patch(
+        "climweb.pages.products.tasks.send_product_subscription_confirmation.delay"
+    )
+    def test_encoded_organization_payload_is_rejected(self, delay):
+        response = self.client.post(
+            reverse("product_subscription"),
+            {
+                "email": "bot@example.com",
+                "organization_name": "&#x20;**&#x74;zAsaBkTQyfnQkWQOvkgl",
+                "product_families": ["rainfall"],
+                "consent": "on",
+                "g-recaptcha-response": "test-response",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(ProductSubscriber.objects.filter(email="bot@example.com").exists())
+        self.assertContains(response, "Enter plain text without HTML entities")
+        delay.assert_not_called()
+
+    @patch(
+        "climweb.pages.products.tasks.send_product_subscription_confirmation.delay"
+    )
+    def test_honeypot_submission_is_rejected(self, delay):
+        response = self.client.post(
+            reverse("product_subscription"),
+            {
+                "email": "bot@example.com",
+                "contact_url": "https://spam.example",
+                "product_families": ["rainfall"],
+                "consent": "on",
+                "g-recaptcha-response": "test-response",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(ProductSubscriber.objects.filter(email="bot@example.com").exists())
+        delay.assert_not_called()
+
+    @override_settings(PRODUCT_SUBSCRIPTION_RATE_LIMIT_IP=1)
+    @patch(
+        "climweb.pages.products.tasks.send_product_subscription_confirmation.delay"
+    )
+    def test_rate_limit_silently_drops_excess_subscriptions(self, delay):
+        client_ip = "203.0.113.45"
+        cache_key = "product-subscription:ip:" + hashlib.sha256(
+            client_ip.encode("utf-8")
+        ).hexdigest()
+        cache.delete(cache_key)
+        payload = {
+            "organization_name": "Example Organisation",
+            "product_families": ["rainfall"],
+            "consent": "on",
+            "g-recaptcha-response": "test-response",
+        }
+
+        with self.captureOnCommitCallbacks(execute=True):
+            first = self.client.post(
+                reverse("product_subscription"),
+                {**payload, "email": "first@example.com"},
+                REMOTE_ADDR=client_ip,
+            )
+            second = self.client.post(
+                reverse("product_subscription"),
+                {**payload, "email": "second@example.com"},
+                REMOTE_ADDR=client_ip,
+            )
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertContains(second, "Check your email")
+        self.assertTrue(ProductSubscriber.objects.filter(email="first@example.com").exists())
+        self.assertFalse(ProductSubscriber.objects.filter(email="second@example.com").exists())
+        delay.assert_called_once()
+        cache.delete(cache_key)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_pending_subscriber_receives_verification_link(self):
+        from climweb.pages.products.tasks import send_product_subscription_confirmation
+
+        subscriber = ProductSubscriber.objects.create(email="verify@example.com")
+        send_product_subscription_confirmation(subscriber.pk)
+
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Verify", mail.outbox[0].subject)
+        self.assertIn(str(subscriber.confirmation_token), mail.outbox[0].body)
 
     def test_confirmation_and_unsubscribe_change_local_status(self):
         subscriber = ProductSubscriber.objects.create(email="alerts@example.com")
