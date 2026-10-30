@@ -75,17 +75,19 @@
         {% include 'products/featured_product_card.html' with product=featured_product %}
       {% else %}
         <figure class="intro-figure">
-        {% if page.introduction_image %}
-          {% if page.introduction_image.url %}
-            {% svg page.introduction_image.file.name %}
-          {% else %}
-            {% image page.introduction_image original as intro_img %}
-            <img class="progressive__img progressive--not-loaded intro-img"
-                 data-progressive="{{ intro_img.url }}"
-                 src="{% lazy_image_url intro_img %}"
-                 alt="{{ page.introduction_title }}" />
+        {% with introduction_media=display_introduction_image|default:page.introduction_image %}
+          {% if introduction_media %}
+            {% if introduction_media.url %}
+              {% svg introduction_media.file.name %}
+            {% else %}
+              {% image introduction_media original as intro_img %}
+              <img class="progressive__img progressive--not-loaded intro-img"
+                   data-progressive="{{ intro_img.url }}"
+                   src="{% lazy_image_url intro_img %}"
+                   alt="{{ page.introduction_title|default:page.title }}" />
+            {% endif %}
           {% endif %}
-        {% endif %}
+        {% endwith %}
         </figure>
       {% endif %}
     </div>
