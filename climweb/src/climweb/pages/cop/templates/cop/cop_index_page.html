@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags wagtailimages_tags static i18n %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'cop/css/cop.css' %}?v=6">
+{% endblock %}
+
+{% block body_class %}cop-page cop-index-page{% endblock %}
+
+{% block content %}
+<main>
+    {% with current=page.current_edition %}
+        <section class="cop-index-hero{% if current and current.hero_image %} cop-index-hero--image{% endif %}"
+                 {% if current %}style="--cop-primary: {{ current.primary_color }}; --cop-secondary: {{ current.secondary_color }}; --cop-accent: {{ current.accent_color }}; --cop-on-primary: {{ current.text_on_primary_color }};{% if current.hero_image %}{% image current.hero_image width-2000 as hero_bg %} --cop-hero-image: url('{{ hero_bg.url }}');{% endif %}"{% endif %}>
+            <div class="cop-index-hero__overlay"></div>
+            <div class="container cop-index-hero__content">
+                {% if current %}
+                    <div class="cop-index-hero__copy">
+                        <p class="cop-eyebrow">{% translate "ACMAD at the UN Climate Conference" %}</p>
+                        <h1>COP{{ current.cop_number }}</h1>
+                        <p class="cop-index-hero__location">{{ current.host_city }}, {{ current.host_country }}</p>
+                        <p class="cop-index-hero__dates">{{ current.start_date|date:"j F Y" }} – {{ current.end_date|date:"j F Y" }}</p>
+                        <a class="cop-button cop-button--light" href="{{ current.slug }}/">{% translate "Explore the current COP" %}</a>
+                    </div>
+                    {% if current.logo %}
+                        {% image current.logo max-420x260 as current_logo %}
+                        <img class="cop-index-hero__logo" src="{{ current_logo.url }}" alt="COP{{ current.cop_number }}">
+                    {% endif %}
+                {% else %}
+                    <div class="cop-index-hero__copy">
+                        <p class="cop-eyebrow">{% translate "ACMAD at the UN Climate Conference" %}</p>
+                        <h1>{{ page.title }}</h1>
+                        <p>{% translate "COP edition information will appear here once it is published." %}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+
+        {% if page.introduction %}
+            <section class="cop-section cop-index-intro">
+                <div class="container cop-prose cop-prose--lead">{{ page.introduction|richtext }}</div>
+            </section>
+        {% endif %}
+
+        {% if current %}
+            <section class="cop-section cop-current-summary">
+                <div class="container cop-current-summary__grid">
+                    <div>
+                        <p class="cop-eyebrow cop-eyebrow--dark">{% translate "Current edition" %}</p>
+                        <h2>{% blocktranslate with number=current.cop_number %}ACMAD at COP{{ number }}{% endblocktranslate %}</h2>
+                        <div class="cop-prose">{{ current.acmad_participation|richtext }}</div>
+                        <a class="cop-text-link" href="{{ current.slug }}/">{% translate "Read the full COP programme" %} <span aria-hidden="true">→</span></a>
+                    </div>
+                    <aside class="cop-facts" aria-label="{% translate 'Current COP details' %}">
+                        <div><span>{% translate "Starts" %}</span><strong>{{ current.start_date|date:"j F Y" }}</strong></div>
+                        <div><span>{% translate "Ends" %}</span><strong>{{ current.end_date|date:"j F Y" }}</strong></div>
+                        <div><span>{% translate "Location" %}</span><strong>{{ current.host_city }}, {{ current.host_country }}</strong></div>
+                        <div><span>{% translate "Side events" %}</span><strong>{{ current.side_events|length }}</strong></div>
+                    </aside>
+                </div>
+            </section>
+        {% endif %}
+
+        {% if page.previous_editions %}
+            <section class="cop-section cop-archive">
+                <div class="container">
+                    <p class="cop-eyebrow cop-eyebrow--dark">{% translate "Archive" %}</p>
+                    <h2>{{ page.archive_heading }}</h2>
+                    <div class="cop-edition-grid">
+                        {% for edition in page.previous_editions %}
+                            <article class="cop-edition-card" style="--card-primary: {{ edition.primary_color }}; --card-accent: {{ edition.accent_color }};">
+                                <a class="cop-edition-card__image" href="{{ edition.slug }}/">
+                                    {% if edition.hero_image %}
+                                        {% image edition.hero_image fill-720x420 as edition_image %}
+                                        <img src="{{ edition_image.url }}" alt="">
+                                    {% else %}
+                                        <span>COP{{ edition.cop_number }}</span>
+                                    {% endif %}
+                                </a>
+                                <div class="cop-edition-card__body">
+                                    <p>{{ edition.start_date|date:"Y" }} · {{ edition.host_country }}</p>
+                                    <h3><a href="{{ edition.slug }}/">COP{{ edition.cop_number }}</a></h3>
+                                    <span>{{ edition.host_city }} · {{ edition.start_date|date:"j M" }}–{{ edition.end_date|date:"j M Y" }}</span>
+                                </div>
+                            </article>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+        {% endif %}
+    {% endwith %}
+</main>
+{% endblock %}
+

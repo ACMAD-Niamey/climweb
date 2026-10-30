@@ -60,6 +60,7 @@ HOME_SUBPAGE_TYPES = [
     'mediacenter.MediaIndexPage',
     'organisation.OrganisationIndexPage',
     'events.EventIndexPage',
+    'cop.CopIndexPage',
     'surveys.SurveyPage',
     'email_subscription.MailchimpMailingListSubscriptionPage',
     'email_subscription.MauticMailingListSubscriptionPage',
