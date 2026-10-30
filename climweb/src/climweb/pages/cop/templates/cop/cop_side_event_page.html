@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags wagtailimages_tags static i18n %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'cop/css/cop.css' %}?v=6">
+{% endblock %}
+
+{% block body_class %}cop-page cop-side-event-page{% endblock %}
+
+{% block content %}
+{% with edition=page.cop_edition %}
+<main class="cop-themed" style="--cop-primary: {{ edition.primary_color }}; --cop-secondary: {{ edition.secondary_color }}; --cop-accent: {{ edition.accent_color }}; --cop-on-primary: {{ edition.text_on_primary_color }};">
+    <section class="cop-event-hero">
+        <div class="container cop-event-hero__content">
+            <div>
+                <a class="cop-event-hero__back" href="../">← COP{{ edition.cop_number }}</a>
+                <p class="cop-eyebrow">{% blocktranslate with number=page.side_event_number %}Side event {{ number }}{% endblocktranslate %}</p>
+                <h1>{{ page.title }}</h1>
+            </div>
+            {% if page.featured_image %}
+                {% image page.featured_image fill-760x560 as featured %}
+                <img src="{{ featured.url }}" alt="">
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="cop-meta-strip cop-event-meta">
+        <div class="container cop-meta-strip__grid">
+            <div><span>{% translate "Date" %}</span><strong>{{ page.local_start_datetime|date:"l j F Y" }}</strong></div>
+            <div><span>{% translate "Time" %}</span><strong>{{ page.local_start_datetime|date:"H:i" }}–{{ page.local_end_datetime|date:"H:i" }} ({{ page.timezone }})</strong></div>
+            <div><span>{% translate "Venue" %}</span><strong>{{ page.venue }}</strong></div>
+        </div>
+    </section>
+
+    <nav class="cop-section-nav" aria-label="{% translate 'Page sections' %}">
+        <div class="container">
+            <a href="#overview">{% translate "Overview" %}</a>
+            {% if page.objectives %}<a href="#objectives">{% translate "Objectives" %}</a>{% endif %}
+            {% if page.participants %}<a href="#participants">{% translate "Participants" %}</a>{% endif %}
+            {% if page.panelists %}<a href="#panelists">{% translate "Panelists" %}</a>{% endif %}
+            {% if page.concept_note or page.presentations or page.additional_documents %}<a href="#documents">{% translate "Documents" %}</a>{% endif %}
+            {% if page.gallery %}<a href="#gallery">{% translate "Gallery" %}</a>{% endif %}
+        </div>
+    </nav>
+
+    <section id="overview" class="cop-section">
+        <div class="container cop-content-grid">
+            <div><p class="cop-eyebrow cop-eyebrow--dark">{% translate "Side event" %}</p><h2>{% translate "Overview" %}</h2></div>
+            <div class="cop-prose cop-prose--lead">{{ page.summary|richtext }}{% if page.description %}{{ page.description|richtext }}{% endif %}</div>
+        </div>
+    </section>
+
+    {% if page.objectives or page.participants %}
+        <section class="cop-section cop-overview-sections">
+            <div class="container cop-overview-sections__grid cop-overview-sections__grid--two">
+                {% if page.objectives %}<article id="objectives"><p class="cop-eyebrow cop-eyebrow--dark">{% translate "Purpose" %}</p><h2>{% translate "Objectives" %}</h2><div class="cop-prose">{{ page.objectives|richtext }}</div></article>{% endif %}
+                {% if page.participants %}<article id="participants"><p class="cop-eyebrow cop-eyebrow--dark">{% translate "Who is involved" %}</p><h2>{% translate "Participants" %}</h2><div class="cop-prose">{{ page.participants|richtext }}</div></article>{% endif %}
+            </div>
+        </section>
+    {% endif %}
+
+    {% if page.panelists %}
+        <section id="panelists" class="cop-section cop-panelists-section">
+            <div class="container">
+                <p class="cop-eyebrow cop-eyebrow--dark">{% translate "People" %}</p>
+                <h2>{% translate "Panelists and speakers" %}</h2>
+                <div class="cop-panelist-grid">
+                    {% for person in page.panelists %}
+                        <article class="cop-panelist-card">
+                            {% if person.value.image %}{% image person.value.image fill-480x480 as person_image %}<img src="{{ person_image.url }}" alt="">{% else %}<div class="cop-panelist-card__placeholder" aria-hidden="true">{{ person.value.name|first }}</div>{% endif %}
+                            <div class="cop-panelist-card__body">
+                                <p>{{ person.value.role }}</p>
+                                <h3>{{ person.value.name }}</h3>
+                                {% if person.value.position or person.value.organisation %}<span>{{ person.value.position }}{% if person.value.position and person.value.organisation %}, {% endif %}{{ person.value.organisation }}</span>{% endif %}
+                                {% if person.value.topic_title %}<strong>{{ person.value.topic_title }}</strong>{% endif %}
+                                {% if person.value.bio %}<div class="cop-prose cop-prose--small">{{ person.value.bio|richtext }}</div>{% endif %}
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+    {% endif %}
+
+    {% if page.concept_note or page.presentations or page.additional_documents %}
+        <section id="documents" class="cop-section cop-documents-section">
+            <div class="container">
+                <p class="cop-eyebrow cop-eyebrow--dark">{% translate "Resources" %}</p>
+                <h2>{% translate "Side-event documents" %}</h2>
+                <div class="cop-document-grid">
+                    {% if page.concept_note %}<a class="cop-document-card" href="{{ page.concept_note.url }}"><span class="cop-document-card__icon" aria-hidden="true">↓</span><span><strong>{% translate "Concept note" %}</strong><small>{{ page.concept_note.title }}</small></span></a>{% endif %}
+                    {% for item in page.presentations %}<a class="cop-document-card" href="{{ item.value.document.url }}"><span class="cop-document-card__icon" aria-hidden="true">↓</span><span><strong>{{ item.value.title }}</strong><small>{% translate "Presentation" %}{% if item.value.description %} · {{ item.value.description }}{% endif %}</small></span></a>{% endfor %}
+                    {% for item in page.additional_documents %}<a class="cop-document-card" href="{{ item.value.document.url }}"><span class="cop-document-card__icon" aria-hidden="true">↓</span><span><strong>{{ item.value.title }}</strong>{% if item.value.description %}<small>{{ item.value.description }}</small>{% endif %}</span></a>{% endfor %}
+                </div>
+            </div>
+        </section>
+    {% endif %}
+
+    {% if page.gallery %}
+        <section id="gallery" class="cop-section cop-gallery-section">
+            <div class="container">
+                <p class="cop-eyebrow cop-eyebrow--dark">{% translate "Highlights" %}</p>
+                <h2>{% translate "Picture gallery" %}</h2>
+                <div class="cop-gallery" data-cop-gallery>
+                    {% for item in page.gallery %}
+                        {% image item.value.image fill-720x500 as thumb %}{% image item.value.image max-2000x1400 as full %}
+                        <figure>
+                            <button type="button" data-gallery-image data-src="{{ full.url }}" data-alt="{{ item.value.caption|default:'' }}">
+                                <img src="{{ thumb.url }}" alt="{{ item.value.caption|default:'' }}">
+                            </button>
+                            {% if item.value.caption or item.value.credit %}<figcaption>{{ item.value.caption }}{% if item.value.credit %}<small>{% translate "Photo" %}: {{ item.value.credit }}</small>{% endif %}</figcaption>{% endif %}
+                        </figure>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+        <dialog class="cop-gallery-dialog" data-gallery-dialog aria-label="{% translate 'Image viewer' %}">
+            <button type="button" class="cop-gallery-dialog__close" data-gallery-close aria-label="{% translate 'Close image viewer' %}">×</button>
+            <button type="button" class="cop-gallery-dialog__previous" data-gallery-previous aria-label="{% translate 'Previous image' %}">‹</button>
+            <img src="" alt="" data-gallery-dialog-image>
+            <button type="button" class="cop-gallery-dialog__next" data-gallery-next aria-label="{% translate 'Next image' %}">›</button>
+            <p data-gallery-counter></p>
+        </dialog>
+    {% endif %}
+
+    {% if page.partners %}
+        <section class="cop-section cop-partners-section"><div class="container"><p class="cop-eyebrow cop-eyebrow--dark">{% translate "Collaboration" %}</p><h2>{% translate "Partner organisations" %}</h2><div class="cop-partner-grid">{% for partner in page.partners %}{% if partner.value.website_url %}<a href="{{ partner.value.website_url }}" rel="noopener noreferrer">{% else %}<div>{% endif %}{% if partner.value.logo %}{% image partner.value.logo max-260x140 as partner_logo %}<img src="{{ partner_logo.url }}" alt="{{ partner.value.name }}">{% endif %}<span>{{ partner.value.name }}</span>{% if partner.value.website_url %}</a>{% else %}</div>{% endif %}{% endfor %}</div></div></section>
+    {% endif %}
+
+    <section class="cop-back-link"><div class="container"><a href="../">← {% blocktranslate with number=edition.cop_number %}Back to COP{{ number }}{% endblocktranslate %}</a></div></section>
+</main>
+{% endwith %}
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    {% if page.gallery %}<script src="{% static 'cop/js/cop_gallery.js' %}?v=1"></script>{% endif %}
+{% endblock %}
+

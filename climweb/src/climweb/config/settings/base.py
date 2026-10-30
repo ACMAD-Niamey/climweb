@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "climweb.pages.contact",
     "climweb.pages.feedback",
     "climweb.pages.events",
+    "climweb.pages.cop",
     "climweb.pages.summer_school",
     "climweb.pages.organisation_pages.organisation",
     "climweb.pages.organisation_pages.about",
