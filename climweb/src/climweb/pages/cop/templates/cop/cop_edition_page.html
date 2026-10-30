@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags wagtailimages_tags static i18n %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'cop/css/cop.css' %}?v=6">
+{% endblock %}
+
+{% block body_class %}cop-page cop-edition-page{% endblock %}
+
+{% block content %}
+<main class="cop-themed" style="--cop-primary: {{ page.primary_color }}; --cop-secondary: {{ page.secondary_color }}; --cop-accent: {{ page.accent_color }}; --cop-on-primary: {{ page.text_on_primary_color }};">
+    <section class="cop-edition-overview">
+        <div class="container">
+            <h1>COP {{ page.cop_number }}</h1>
+            <div class="cop-edition-overview__grid">
+                <aside class="cop-edition-facts" aria-label="{% translate 'COP event details' %}">
+                    <div><span>{% translate "Start date" %}</span><strong>{{ page.start_date|date:"j F Y" }}</strong></div>
+                    <div><span>{% translate "End date" %}</span><strong>{{ page.end_date|date:"j F Y" }}</strong></div>
+                    <div><span>{% translate "Location" %}</span><strong>{{ page.host_country }}, {{ page.host_city }}{% if page.venue %}<small>{{ page.venue }}</small>{% endif %}</strong></div>
+                    {% if page.official_website_url %}<a class="cop-edition-facts__link" href="{{ page.official_website_url }}" rel="noopener noreferrer">{% translate "Official COP website" %} <span aria-hidden="true">↗</span></a>{% endif %}
+                </aside>
+                <div id="acmad-at-cop" class="cop-edition-overview__main">
+                    {% if page.hero_image %}
+                        {% image page.hero_image width-1400 as hero_banner %}
+                        <img class="cop-edition-overview__banner" src="{{ hero_banner.url }}" alt="COP{{ page.cop_number }} — {{ page.host_city }}, {{ page.host_country }}">
+                    {% endif %}
+                    <h2>{% blocktranslate with number=page.cop_number %}ACMAD at COP{{ number }}{% endblocktranslate %}</h2>
+                    <div class="cop-prose cop-prose--lead">{{ page.acmad_participation|richtext }}</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {% if page.about or page.objectives or page.expected_outcomes %}
+        <section class="cop-section cop-overview-sections">
+            <div class="container cop-overview-sections__grid cop-overview-sections__grid--stacked">
+                <article class="cop-overview-card">
+                    {% if page.about %}<section id="about"><h2>{% translate "About the COP" %}</h2><div class="cop-prose">{{ page.about|richtext }}</div></section>{% endif %}
+                    {% if page.objectives %}<section id="objectives"><h2>{% translate "Objectives" %}</h2><div class="cop-prose">{{ page.objectives|richtext }}</div></section>{% endif %}
+                    {% if page.expected_outcomes %}<section id="outcomes"><h2>{% translate "Expected outcomes" %}</h2><div class="cop-prose">{{ page.expected_outcomes|richtext }}</div></section>{% endif %}
+                </article>
+            </div>
+        </section>
+    {% endif %}
+
+    {% if page.schedule_documents %}
+        <section id="schedule" class="cop-section cop-documents-section">
+            <div class="container">
+                <h2>{% translate "Side-event schedules" %}</h2>
+                <div class="cop-document-grid">
+                    {% for item in page.schedule_documents %}
+                        <a class="cop-document-card" href="{{ item.value.document.url }}">
+                            <span class="cop-document-card__icon" aria-hidden="true">↓</span>
+                            <span><strong>{{ item.value.title }}</strong>{% if item.value.description %}<small>{{ item.value.description }}</small>{% endif %}</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+    {% endif %}
+
+    {% if page.side_events %}
+        <section id="side-events" class="cop-section cop-side-events-section">
+            <div class="container">
+                <h2>{% translate "Side events" %}</h2>
+                <div class="cop-side-event-grid">
+                    {% for event in page.side_events %}
+                        <article class="cop-side-event-card">
+                            <a class="cop-side-event-card__image" href="{{ event.slug }}/">
+                                {% if event.featured_image %}
+                                    {% image event.featured_image fill-720x430 as event_image %}
+                                    <img src="{{ event_image.url }}" alt="">
+                                {% else %}
+                                    <span>{{ event.side_event_number|stringformat:"02d" }}</span>
+                                {% endif %}
+                            </a>
+                            <div class="cop-side-event-card__body">
+                                <p>{% blocktranslate with number=event.side_event_number %}Side event {{ number }}{% endblocktranslate %}</p>
+                                <h3><a href="{{ event.slug }}/">{{ event.title }}</a></h3>
+                                <dl>
+                                    <div><dt>{% translate "When" %}</dt><dd>{{ event.local_start_datetime|date:"D j M, H:i" }}–{{ event.local_end_datetime|date:"H:i" }}</dd></div>
+                                    <div><dt>{% translate "Where" %}</dt><dd>{{ event.venue }}</dd></div>
+                                </dl>
+                                <a class="cop-text-link" href="{{ event.slug }}/">{% translate "View side event" %} <span aria-hidden="true">→</span></a>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+    {% endif %}
+
+    <section class="cop-back-link"><div class="container"><a href="../">← {% translate "All COP editions" %}</a></div></section>
+</main>
+{% endblock %}
+
