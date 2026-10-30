@@ -75,6 +75,41 @@ class TestProductPages(WagtailPageTestCase):
         self.assertPageIsRenderable(self.product1_page)
         self.assertPageIsRenderable(self.product2_page)
 
+    def test_product_page_introduction_title_is_optional(self):
+        form_class = type(self.product1_page).get_edit_handler().get_form_class()
+
+        self.assertFalse(form_class.base_fields["introduction_title"].required)
+
+    def test_product_page_introduction_uses_latest_product_thumbnail(self):
+        older_thumbnail = self.product1_page_product_item_page.products_listing_image
+        latest_thumbnail = wagtail_factories.ImageFactory(title="Latest product thumbnail")
+        product_types = self.product1_page.product.product_item_types
+        latest_product = ProductItemPageFactory(
+            parent=self.product1_page,
+            date=timezone.now().date() + timedelta(days=1),
+            products__0__image_product__product_type=product_types[0][0],
+            products__0__image_product__date=timezone.now().date() + timedelta(days=1),
+            products__0__image_product__image=latest_thumbnail,
+        )
+        product_page = self.product1_page.__class__.objects.get(
+            pk=self.product1_page.pk
+        )
+
+        self.assertNotEqual(latest_product.products_listing_image, older_thumbnail)
+        self.assertEqual(product_page.introduction_display_image, latest_thumbnail)
+
+        response = self.client.get(product_page.url)
+        response_html = response.content.decode()
+        intro_start = response_html.index('<figure class="intro-figure">')
+        intro_end = response_html.index("</figure>", intro_start)
+        intro_html = response_html[intro_start:intro_end]
+
+        self.assertIn(latest_thumbnail.get_rendition("original").url, intro_html)
+        self.assertNotIn(
+            product_page.introduction_image.get_rendition("original").url,
+            intro_html,
+        )
+
     def test_product_page_shows_gis_application_in_intro_media_position(self):
         application = Application.objects.create(
             title="Observed Daily Rainfall",
