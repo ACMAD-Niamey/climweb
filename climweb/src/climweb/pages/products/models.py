@@ -154,6 +154,14 @@ class BaseProductPage(AbstractIntroPage):
     subpage_types = ['products.ProductItemPage']
     show_in_menus_default = True
 
+    introduction_title = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name=_("Introduction Title"),
+        help_text=_("Introduction section title"),
+    )
+
     header_title = models.CharField(
         max_length=255,
         blank=True,
@@ -249,6 +257,15 @@ class BaseProductPage(AbstractIntroPage):
         if self.default_listing_thumbnail:
             return self.default_listing_thumbnail
         return None
+
+    @cached_property
+    def introduction_display_image(self):
+        """Use the newest product issue thumbnail in the introduction."""
+        latest_product = self.all_products.first()
+        if latest_product and latest_product.products_listing_image:
+            return latest_product.products_listing_image
+
+        return self.introduction_image
     
     @cached_property
     def filters(self):
