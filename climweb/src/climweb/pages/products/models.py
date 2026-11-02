@@ -161,6 +161,13 @@ class BaseProductPage(AbstractIntroPage):
         verbose_name=_("Introduction Title"),
         help_text=_("Introduction section title"),
     )
+    show_latest_product_thumbnail_in_introduction = models.BooleanField(
+        default=True,
+        verbose_name=_("Show latest product thumbnail in introduction"),
+        help_text=_(
+            "When disabled, the configured introduction image is used instead."
+        ),
+    )
 
     header_title = models.CharField(
         max_length=255,
@@ -261,9 +268,10 @@ class BaseProductPage(AbstractIntroPage):
     @cached_property
     def introduction_display_image(self):
         """Use the newest product issue thumbnail in the introduction."""
-        latest_product = self.all_products.first()
-        if latest_product and latest_product.products_listing_image:
-            return latest_product.products_listing_image
+        if self.show_latest_product_thumbnail_in_introduction:
+            latest_product = self.all_products.first()
+            if latest_product and latest_product.products_listing_image:
+                return latest_product.products_listing_image
 
         return self.introduction_image
     
@@ -354,6 +362,7 @@ class ProductPage(BaseProductPage):
             heading=_("Category Header"),
         ),
         *AbstractIntroPage.content_panels,
+        FieldPanel('show_latest_product_thumbnail_in_introduction'),
         FieldPanel('gis_application'),
         MultiFieldPanel(
             [FieldPanel('product_partners', widget=forms.CheckboxSelectMultiple)],
@@ -1677,6 +1686,7 @@ class SubNationalProductPage(BaseProductPage):
             heading=_("Category Header"),
         ),
         *AbstractIntroPage.content_panels,
+        FieldPanel('show_latest_product_thumbnail_in_introduction'),
         FieldPanel('gis_application'),
         MultiFieldPanel(
             [FieldPanel('product_partners', widget=forms.CheckboxSelectMultiple)],
