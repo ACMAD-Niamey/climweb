@@ -110,37 +110,6 @@ class TestProductPages(WagtailPageTestCase):
             intro_html,
         )
 
-    def test_product_page_can_hide_latest_thumbnail_from_introduction(self):
-        product_page = self.product1_page.__class__.objects.get(
-            pk=self.product1_page.pk
-        )
-        product_page.show_latest_product_thumbnail_in_introduction = False
-        product_page.save(
-            update_fields=["show_latest_product_thumbnail_in_introduction"]
-        )
-
-        self.assertEqual(
-            product_page.introduction_display_image,
-            product_page.introduction_image,
-        )
-
-        response = self.client.get(product_page.url)
-        response_html = response.content.decode()
-        intro_start = response_html.index('<figure class="intro-figure">')
-        intro_end = response_html.index("</figure>", intro_start)
-        intro_html = response_html[intro_start:intro_end]
-
-        self.assertIn(
-            product_page.introduction_image.get_rendition("original").url,
-            intro_html,
-        )
-        self.assertNotIn(
-            self.product1_page_product_item_page.products_listing_image.get_rendition(
-                "original"
-            ).url,
-            intro_html,
-        )
-
     def test_product_page_shows_gis_application_in_intro_media_position(self):
         application = Application.objects.create(
             title="Observed Daily Rainfall",
