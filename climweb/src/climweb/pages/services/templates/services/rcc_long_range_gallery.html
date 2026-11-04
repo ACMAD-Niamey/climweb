@@ -67,7 +67,12 @@
 
                 <div class="rcc-forecast-layout">
                     <section class="rcc-forecast-map" aria-label="{{ selected_map.title }}">
-                        <img src="{% static selected_map.asset_path %}" alt="{{ selected_map.title }} for Africa" width="1653" height="1921">
+                        {% if selected_map.image %}
+                            {% image selected_map.image original as forecast_image %}
+                            <img src="{{ forecast_image.url }}" alt="{{ selected_map.title }} for Africa" width="{{ forecast_image.width }}" height="{{ forecast_image.height }}">
+                        {% else %}
+                            <img src="{% static selected_map.asset_path %}" alt="{{ selected_map.title }} for Africa" width="1653" height="1921">
+                        {% endif %}
                     </section>
 
                     <aside class="rcc-forecast-guidance" aria-label="{% translate 'Forecast overview' %}">
