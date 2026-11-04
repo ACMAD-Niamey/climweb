@@ -678,9 +678,19 @@ class TestServicesPages(WagtailPageTestCase):
             parent=rcc_page,
             seasonal_forecast_overview="<p>Editor supplied overview.</p>",
         )
+        forecast_image = wagtail_factories.ImageFactory(
+            title="Dashboard seasonal temperature map",
+        )
         RCCSeasonalOutlookDiscussion.objects.create(
             page=forecasting_page,
-            outlook_key="t2m-jfm-2027",
+            outlook_key="dashboard-temperature-jfm-2027",
+            variable="temperature",
+            season="JFM",
+            season_label="January-March 2027",
+            issue_month=10,
+            issue_year=2026,
+            title="Dashboard-managed seasonal temperature forecast",
+            image=forecast_image,
             discussion="<p>Editor supplied outlook discussion.</p>",
         )
 
@@ -699,8 +709,27 @@ class TestServicesPages(WagtailPageTestCase):
         self.assertContains(response, "Editor supplied outlook discussion.")
         self.assertContains(
             response,
-            "ACMAD_objective_forecast_T2M_JFM_2027_map.png",
+            forecast_image.get_rendition("original").url,
         )
+        self.assertContains(
+            response,
+            "Dashboard-managed seasonal temperature forecast",
+        )
+
+        page_form = RCCLongRangeForecastingPage.get_edit_handler().get_form_class()
+        outlook_form = page_form.formsets["seasonal_outlooks"].form
+        for field_name in (
+            "image",
+            "variable",
+            "season",
+            "season_label",
+            "issue_month",
+            "issue_year",
+            "title",
+            "discussion",
+            "is_active",
+        ):
+            self.assertIn(field_name, outlook_form.base_fields)
 
     def test_long_range_forecasting_seed_links_existing_menu_item(self):
         rcc_page = ServicePageFactory(

@@ -1188,12 +1188,12 @@ class RCCLongRangeForecastingPage(AbstractBannerWithIntroPage):
         *AbstractBannerWithIntroPage.content_panels,
         FieldPanel("seasonal_forecast_overview"),
         InlinePanel(
-            "seasonal_outlook_discussions",
-            label=_("Seasonal outlook discussion"),
-            heading=_("Seasonal outlook discussions"),
+            "seasonal_outlooks",
+            label=_("Seasonal outlook map"),
+            heading=_("Seasonal outlook maps"),
             help_text=_(
-                "Add one discussion for each forecast map. The outlook key "
-                "identifies the map whose discussion is displayed."
+                "Upload and manage the rainfall and temperature maps shown "
+                "on the Seasonal Forecasts page."
             ),
         ),
     ]
@@ -1334,33 +1334,123 @@ class RCCLongRangeForecastingPage(AbstractBannerWithIntroPage):
 
 
 class RCCSeasonalOutlookDiscussion(Orderable):
-    OUTLOOK_CHOICES = (
-        ("prcp-ndj-2026", _("Rainfall · NDJ 2026/27")),
-        ("prcp-djf-2026", _("Rainfall · DJF 2026/27")),
-        ("prcp-jfm-2027", _("Rainfall · JFM 2027")),
-        ("t2m-ndj-2026", _("Temperature · NDJ 2026/27")),
-        ("t2m-djf-2026", _("Temperature · DJF 2026/27")),
-        ("t2m-jfm-2027", _("Temperature · JFM 2027")),
+    VARIABLE_CHOICES = (
+        ("precipitation", _("Rainfall")),
+        ("temperature", _("Temperature")),
+    )
+    SEASON_CHOICES = (
+        ("JFM", _("JFM")),
+        ("FMA", _("FMA")),
+        ("MAM", _("MAM")),
+        ("AMJ", _("AMJ")),
+        ("MJJ", _("MJJ")),
+        ("JJA", _("JJA")),
+        ("JAS", _("JAS")),
+        ("ASO", _("ASO")),
+        ("SON", _("SON")),
+        ("OND", _("OND")),
+        ("NDJ", _("NDJ")),
+        ("DJF", _("DJF")),
+    )
+    MONTH_CHOICES = (
+        (1, _("January")),
+        (2, _("February")),
+        (3, _("March")),
+        (4, _("April")),
+        (5, _("May")),
+        (6, _("June")),
+        (7, _("July")),
+        (8, _("August")),
+        (9, _("September")),
+        (10, _("October")),
+        (11, _("November")),
+        (12, _("December")),
     )
 
     page = ParentalKey(
         RCCLongRangeForecastingPage,
         on_delete=models.CASCADE,
-        related_name="seasonal_outlook_discussions",
+        related_name="seasonal_outlooks",
     )
-    outlook_key = models.CharField(
-        max_length=30,
-        choices=OUTLOOK_CHOICES,
-        verbose_name=_("Outlook"),
+    outlook_key = models.SlugField(
+        max_length=80,
+        verbose_name=_("Outlook key"),
+        help_text=_(
+            "Stable identifier such as prcp-ndj-2026. Do not change it after "
+            "publishing unless the outlook is being replaced."
+        ),
+    )
+    variable = models.CharField(
+        max_length=20,
+        choices=VARIABLE_CHOICES,
+        default="precipitation",
+        verbose_name=_("Variable"),
+    )
+    season = models.CharField(
+        max_length=3,
+        choices=SEASON_CHOICES,
+        default="DJF",
+        verbose_name=_("Forecast season"),
+    )
+    season_label = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name=_("Season display label"),
+        help_text=_("For example: December-February 2026/27."),
+    )
+    issue_month = models.PositiveSmallIntegerField(
+        choices=MONTH_CHOICES,
+        verbose_name=_("Issue month"),
+    )
+    issue_year = models.PositiveSmallIntegerField(
+        verbose_name=_("Issue year"),
+    )
+    title = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_("Accessible map title"),
+        help_text=_(
+            "Used as alternative text for the map. The title printed inside "
+            "the image is not repeated above it."
+        ),
+    )
+    image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Forecast map image"),
+        help_text=_(
+            "Upload or select the map displayed for this outlook. Existing "
+            "seeded outlooks keep using their bundled map until one is selected."
+        ),
+    )
+    legacy_asset_path = models.CharField(
+        max_length=255,
+        blank=True,
+        editable=False,
     )
     discussion = RichTextField(
         features=SUMMARY_RICHTEXT_FEATURES,
         verbose_name=_("Discussion"),
     )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_("Show on Seasonal Forecasts page"),
+    )
 
     panels = [
         FieldPanel("outlook_key"),
+        FieldPanel("variable"),
+        FieldPanel("season"),
+        FieldPanel("season_label"),
+        FieldPanel("issue_month"),
+        FieldPanel("issue_year"),
+        FieldPanel("title"),
+        FieldPanel("image"),
         FieldPanel("discussion"),
+        FieldPanel("is_active"),
     ]
 
     class Meta:
@@ -1368,10 +1458,20 @@ class RCCSeasonalOutlookDiscussion(Orderable):
             models.UniqueConstraint(
                 fields=("page", "outlook_key"),
                 name="unique_seasonal_outlook_discussion_per_page",
-            )
+            ),
+            models.UniqueConstraint(
+                fields=(
+                    "page",
+                    "variable",
+                    "season",
+                    "issue_year",
+                    "issue_month",
+                ),
+                name="unique_seasonal_outlook_map_per_page",
+            ),
         ]
-        verbose_name = _("Seasonal outlook discussion")
-        verbose_name_plural = _("Seasonal outlook discussions")
+        verbose_name = _("Seasonal outlook map")
+        verbose_name_plural = _("Seasonal outlook maps")
 
 
 class RCCTrainingPage(AbstractBannerWithIntroPage):
