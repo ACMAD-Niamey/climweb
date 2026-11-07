@@ -1,6 +1,33 @@
 (function () {
     "use strict";
 
+    var carousel = document.querySelector("[data-gallery-carousel]");
+    if (carousel) {
+        var track = carousel.querySelector("[data-gallery-track]");
+        var previousPage = carousel.querySelector("[data-gallery-scroll-previous]");
+        var nextPage = carousel.querySelector("[data-gallery-scroll-next]");
+        var scrolling;
+
+        function updateCarouselButtons() {
+            var maxScroll = Math.max(0, track.scrollWidth - track.clientWidth);
+            previousPage.disabled = track.scrollLeft <= 2;
+            nextPage.disabled = track.scrollLeft >= maxScroll - 2;
+        }
+
+        function scrollGallery(direction) {
+            track.scrollBy({ left: direction * track.clientWidth, behavior: "smooth" });
+        }
+
+        previousPage.addEventListener("click", function () { scrollGallery(-1); });
+        nextPage.addEventListener("click", function () { scrollGallery(1); });
+        track.addEventListener("scroll", function () {
+            window.clearTimeout(scrolling);
+            scrolling = window.setTimeout(updateCarouselButtons, 80);
+        });
+        window.addEventListener("resize", updateCarouselButtons);
+        updateCarouselButtons();
+    }
+
     var dialog = document.querySelector("[data-gallery-dialog]");
     var triggers = Array.from(document.querySelectorAll("[data-gallery-image]"));
     if (!dialog || !triggers.length || typeof dialog.showModal !== "function") return;
@@ -33,4 +60,3 @@
         if (event.key === "ArrowRight") show(current + 1);
     });
 }());
-

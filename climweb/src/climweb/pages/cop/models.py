@@ -1,8 +1,10 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.forms import CheckboxSelectMultiple
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
+from modelcluster.fields import ParentalManyToManyField
 from timezone_field import TimeZoneField
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel
 from wagtail.fields import RichTextField, StreamField
@@ -14,7 +16,6 @@ from .blocks import (
     CopDocumentBlock,
     CopGalleryImageBlock,
     CopPanelistBlock,
-    CopPartnerBlock,
 )
 
 
@@ -92,16 +93,13 @@ class CopEditionPage(MetadataPageMixin, Page):
     venue = models.CharField(max_length=180, blank=True, verbose_name=_("Venue"))
     official_website_url = models.URLField(blank=True, verbose_name=_("Official COP website"))
 
-    acmad_participation = RichTextField(
+    description = RichTextField(
         features=SUMMARY_FEATURES,
-        verbose_name=_("ACMAD at this COP"),
-    )
-    about = RichTextField(blank=True, features=SUMMARY_FEATURES, verbose_name=_("About the COP"))
-    objectives = RichTextField(blank=True, features=SUMMARY_FEATURES, verbose_name=_("Objectives"))
-    expected_outcomes = RichTextField(
-        blank=True,
-        features=SUMMARY_FEATURES,
-        verbose_name=_("Expected outcomes"),
+        verbose_name=_("Description"),
+        help_text=_(
+            "Combine ACMAD's participation, background, objectives and expected "
+            "outcomes in this field."
+        ),
     )
 
     logo = models.ForeignKey(
@@ -148,10 +146,7 @@ class CopEditionPage(MetadataPageMixin, Page):
         ),
         MultiFieldPanel(
             [
-                FieldPanel("acmad_participation"),
-                FieldPanel("about"),
-                FieldPanel("objectives"),
-                FieldPanel("expected_outcomes"),
+                FieldPanel("description"),
                 FieldPanel("schedule_documents"),
             ],
             heading=_("COP content"),
@@ -202,13 +197,23 @@ class CopSideEventPage(MetadataPageMixin, Page):
         verbose_name=_("Timezone"),
     )
     venue = models.CharField(max_length=180, verbose_name=_("Venue or pavilion"))
-    summary = RichTextField(features=SUMMARY_FEATURES, verbose_name=_("Summary"))
-    description = RichTextField(blank=True, features=SUMMARY_FEATURES, verbose_name=_("Description"))
-    objectives = RichTextField(blank=True, features=SUMMARY_FEATURES, verbose_name=_("Objectives"))
-    participants = RichTextField(
+    theme = models.CharField(
+        max_length=255,
         blank=True,
+        verbose_name=_("Theme"),
+    )
+    lead_organizer = models.ForeignKey(
+        "partners.Partner",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="cop_side_events_led",
+        verbose_name=_("Lead organizer"),
+    )
+    description = RichTextField(
         features=SUMMARY_FEATURES,
-        verbose_name=_("Participants and invited organisations"),
+        verbose_name=_("Description"),
+        help_text=_("Combine the summary, detailed description and objectives here."),
     )
     featured_image = models.ForeignKey(
         "wagtailimages.Image",
@@ -251,11 +256,12 @@ class CopSideEventPage(MetadataPageMixin, Page):
         use_json_field=True,
         verbose_name=_("Picture gallery"),
     )
-    partners = StreamField(
-        [("partner", CopPartnerBlock())],
+    partners = ParentalManyToManyField(
+        "partners.Partner",
         blank=True,
-        use_json_field=True,
-        verbose_name=_("Partner organisations"),
+        related_name="cop_side_events",
+        verbose_name=_("Partners"),
+        help_text=_("Select partner organisations from the central Partners list."),
     )
 
     content_panels = Page.content_panels + [
@@ -266,16 +272,15 @@ class CopSideEventPage(MetadataPageMixin, Page):
                 FieldPanel("end_datetime"),
                 FieldPanel("timezone"),
                 FieldPanel("venue"),
+                FieldPanel("theme"),
+                FieldPanel("lead_organizer"),
                 FieldPanel("featured_image"),
             ],
             heading=_("Side-event details"),
         ),
         MultiFieldPanel(
             [
-                FieldPanel("summary"),
                 FieldPanel("description"),
-                FieldPanel("objectives"),
-                FieldPanel("participants"),
             ],
             heading=_("Content"),
         ),
@@ -289,7 +294,7 @@ class CopSideEventPage(MetadataPageMixin, Page):
         ),
         FieldPanel("panelists"),
         FieldPanel("gallery"),
-        FieldPanel("partners"),
+        FieldPanel("partners", widget=CheckboxSelectMultiple),
     ]
 
     class Meta:
@@ -320,4 +325,3 @@ class CopSideEventPage(MetadataPageMixin, Page):
         if not meta_image and self.cop_edition:
             meta_image = self.cop_edition.hero_image or self.cop_edition.logo
         return meta_image
-
