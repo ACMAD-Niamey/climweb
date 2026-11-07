@@ -3,7 +3,7 @@
 
 {% block extra_css %}
     {{ block.super }}
-    <link rel="stylesheet" href="{% static 'cop/css/cop.css' %}?v=6">
+    <link rel="stylesheet" href="{% static 'cop/css/cop.css' %}?v=13">
 {% endblock %}
 
 {% block body_class %}cop-page cop-edition-page{% endblock %}
@@ -12,7 +12,13 @@
 <main class="cop-themed" style="--cop-primary: {{ page.primary_color }}; --cop-secondary: {{ page.secondary_color }}; --cop-accent: {{ page.accent_color }}; --cop-on-primary: {{ page.text_on_primary_color }};">
     <section class="cop-edition-overview">
         <div class="container">
-            <h1>COP {{ page.cop_number }}</h1>
+            <div class="cop-edition-title-row">
+                <h1>COP {{ page.cop_number }}</h1>
+                {% if page.logo %}
+                    {% image page.logo max-360x180 as cop_logo %}
+                    <img class="cop-edition-title-row__logo" src="{{ cop_logo.url }}" alt="COP{{ page.cop_number }} logo">
+                {% endif %}
+            </div>
             <div class="cop-edition-overview__grid">
                 <aside class="cop-edition-facts" aria-label="{% translate 'COP event details' %}">
                     <div><span>{% translate "Start date" %}</span><strong>{{ page.start_date|date:"j F Y" }}</strong></div>
@@ -25,36 +31,50 @@
                         {% image page.hero_image width-1400 as hero_banner %}
                         <img class="cop-edition-overview__banner" src="{{ hero_banner.url }}" alt="COP{{ page.cop_number }} — {{ page.host_city }}, {{ page.host_country }}">
                     {% endif %}
-                    <h2>{% blocktranslate with number=page.cop_number %}ACMAD at COP{{ number }}{% endblocktranslate %}</h2>
-                    <div class="cop-prose cop-prose--lead">{{ page.acmad_participation|richtext }}</div>
+                    <div class="cop-description is-collapsed" data-read-more>
+                        <div id="cop-description" class="cop-prose cop-prose--lead cop-description__content" data-read-more-content>{{ page.description|richtext }}</div>
+                        <button class="cop-read-more" type="button" aria-expanded="false" aria-controls="cop-description" data-read-more-toggle data-label-more="{% translate 'Read more' %}" data-label-less="{% translate 'Read less' %}" hidden>
+                            <span data-read-more-label>{% translate "Read more" %}</span>
+                            <span aria-hidden="true">↓</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 
-    {% if page.about or page.objectives or page.expected_outcomes %}
-        <section class="cop-section cop-overview-sections">
-            <div class="container cop-overview-sections__grid cop-overview-sections__grid--stacked">
-                <article class="cop-overview-card">
-                    {% if page.about %}<section id="about"><h2>{% translate "About the COP" %}</h2><div class="cop-prose">{{ page.about|richtext }}</div></section>{% endif %}
-                    {% if page.objectives %}<section id="objectives"><h2>{% translate "Objectives" %}</h2><div class="cop-prose">{{ page.objectives|richtext }}</div></section>{% endif %}
-                    {% if page.expected_outcomes %}<section id="outcomes"><h2>{% translate "Expected outcomes" %}</h2><div class="cop-prose">{{ page.expected_outcomes|richtext }}</div></section>{% endif %}
-                </article>
-            </div>
-        </section>
-    {% endif %}
-
     {% if page.schedule_documents %}
         <section id="schedule" class="cop-section cop-documents-section">
             <div class="container">
-                <h2>{% translate "Side-event schedules" %}</h2>
-                <div class="cop-document-grid">
-                    {% for item in page.schedule_documents %}
-                        <a class="cop-document-card" href="{{ item.value.document.url }}">
-                            <span class="cop-document-card__icon" aria-hidden="true">↓</span>
-                            <span><strong>{{ item.value.title }}</strong>{% if item.value.description %}<small>{{ item.value.description }}</small>{% endif %}</span>
-                        </a>
-                    {% endfor %}
+                <div class="cop-section-heading-row">
+                    <h2>{% translate "Side-event schedules" %}</h2>
+                    {% if page.schedule_documents|length > 1 %}
+                        <div class="cop-carousel-controls">
+                            <button type="button" data-schedule-previous aria-label="{% translate 'Previous schedule' %}">←</button>
+                            <span data-schedule-counter></span>
+                            <button type="button" data-schedule-next aria-label="{% translate 'Next schedule' %}">→</button>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="cop-schedule-carousel" data-schedule-carousel>
+                    <div class="cop-schedule-carousel__track" data-schedule-track>
+                        {% for item in page.schedule_documents %}
+                            <article class="cop-schedule-slide" data-schedule-slide>
+                                <a class="cop-schedule-slide__preview" href="{{ item.value.document.url }}">
+                                    {% if item.value.preview_image %}
+                                        {% image item.value.preview_image width-1200 as schedule_preview %}
+                                        <img src="{{ schedule_preview.url }}" alt="{{ item.value.title }}">
+                                    {% else %}
+                                        <span aria-hidden="true">PDF</span>
+                                    {% endif %}
+                                </a>
+                                <div class="cop-schedule-slide__caption">
+                                    <div><strong>{{ item.value.title }}</strong>{% if item.value.description %}<small>{{ item.value.description }}</small>{% endif %}</div>
+                                    <a href="{{ item.value.document.url }}">{% translate "Open schedule" %} <span aria-hidden="true">↗</span></a>
+                                </div>
+                            </article>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </section>
@@ -63,28 +83,29 @@
     {% if page.side_events %}
         <section id="side-events" class="cop-section cop-side-events-section">
             <div class="container">
-                <h2>{% translate "Side events" %}</h2>
-                <div class="cop-side-event-grid">
+                <div class="cop-section-heading-row">
+                    <h2>{% translate "Side events" %}</h2>
+                    <div class="cop-view-toggle" role="group" aria-label="{% translate 'Side-event view' %}">
+                        <button type="button" class="is-active" aria-pressed="true" data-events-view="list">{% translate "List" %}</button>
+                        <button type="button" aria-pressed="false" data-events-view="grid">{% translate "Grid" %}</button>
+                    </div>
+                </div>
+                <div class="cop-side-event-grid is-list" data-side-events>
                     {% for event in page.side_events %}
-                        <article class="cop-side-event-card">
-                            <a class="cop-side-event-card__image" href="{{ event.slug }}/">
-                                {% if event.featured_image %}
-                                    {% image event.featured_image fill-720x430 as event_image %}
-                                    <img src="{{ event_image.url }}" alt="">
-                                {% else %}
-                                    <span>{{ event.side_event_number|stringformat:"02d" }}</span>
-                                {% endif %}
-                            </a>
+                        <a class="cop-side-event-card" href="{{ event.slug }}/" aria-label="{% blocktranslate with number=event.side_event_number title=event.title %}View side event {{ number }}: {{ title }}{% endblocktranslate %}">
+                            <div class="cop-side-event-card__number" aria-hidden="true"><span>{{ event.side_event_number|stringformat:"02d" }}</span></div>
                             <div class="cop-side-event-card__body">
                                 <p>{% blocktranslate with number=event.side_event_number %}Side event {{ number }}{% endblocktranslate %}</p>
-                                <h3><a href="{{ event.slug }}/">{{ event.title }}</a></h3>
+                                <h3>{{ event.title }}</h3>
                                 <dl>
                                     <div><dt>{% translate "When" %}</dt><dd>{{ event.local_start_datetime|date:"D j M, H:i" }}–{{ event.local_end_datetime|date:"H:i" }}</dd></div>
                                     <div><dt>{% translate "Where" %}</dt><dd>{{ event.venue }}</dd></div>
+                                    {% if event.theme %}<div><dt>{% translate "Theme" %}</dt><dd>{{ event.theme }}</dd></div>{% endif %}
+                                    {% if event.lead_organizer %}<div><dt>{% translate "Lead" %}</dt><dd>{{ event.lead_organizer.name }}</dd></div>{% endif %}
                                 </dl>
-                                <a class="cop-text-link" href="{{ event.slug }}/">{% translate "View side event" %} <span aria-hidden="true">→</span></a>
+                                <span class="cop-text-link">{% translate "View side event" %} <span aria-hidden="true">→</span></span>
                             </div>
-                        </article>
+                        </a>
                     {% endfor %}
                 </div>
             </div>
@@ -95,3 +116,7 @@
 </main>
 {% endblock %}
 
+{% block extra_js %}
+    {{ block.super }}
+    <script src="{% static 'cop/js/cop_page.js' %}?v=3"></script>
+{% endblock %}

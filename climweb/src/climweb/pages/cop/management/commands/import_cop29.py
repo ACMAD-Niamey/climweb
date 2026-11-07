@@ -27,10 +27,12 @@ SCHEDULES = (
     (
         "COP29 side-events schedule - Week 1",
         f"{SOURCE_BASE}/wp-content/uploads/2019/03/Week1_COP29_Agenda.pdf",
+        f"{SOURCE_BASE}/wp-content/uploads/2024/11/ACMADatCOP29-2-1024x683.png",
     ),
     (
         "COP29 side-events schedule - Week 2",
         f"{SOURCE_BASE}/wp-content/uploads/2019/03/Week2_COP29_Agenda.pdf",
+        f"{SOURCE_BASE}/wp-content/uploads/2024/11/Week2_COP29_Agenda-1024x683.png",
     ),
 )
 
@@ -117,32 +119,33 @@ class Command(BaseCommand):
         if not root:
             raise CommandError("The archived COP29 page has no Elementor content root.")
 
-        values = {
-            "acmad_participation": self._widget_html_containing(root, "ACMAD will participate"),
-            "about": self._strip_leading_label(
-                self._widget_html_containing(root, "About COP 29"),
-                {"about cop 29"},
-            ),
-            "objectives": self._strip_leading_label(
-                self._widget_html_containing(root, "Objectives"),
-                {"objectives"},
-            ),
-            "expected_outcomes": self._strip_leading_label(
-                self._widget_html_containing(root, "Expected outcomes"),
-                {"expected outcomes", "expected outcomes:"},
-            ),
-        }
-        if not values["acmad_participation"]:
+        participation = self._widget_html_containing(root, "ACMAD will participate")
+        about = self._strip_leading_label(
+            self._widget_html_containing(root, "About COP 29"),
+            {"about cop 29"},
+        )
+        objectives = self._strip_leading_label(
+            self._widget_html_containing(root, "Objectives"),
+            {"objectives"},
+        )
+        outcomes = self._strip_leading_label(
+            self._widget_html_containing(root, "Expected outcomes"),
+            {"expected outcomes", "expected outcomes:"},
+        )
+        if not participation:
             raise CommandError("Could not locate the COP29 participation statement.")
+        description = self._merge_sections((participation, about, objectives, outcomes))
 
         hero = self._download_image(HERO_URL, "ACMAD at COP29")
         schedule_documents = []
-        for title, url in SCHEDULES:
+        for title, url, preview_url in SCHEDULES:
             document = self._download_document(url, title)
             if document:
+                preview = self._download_image(preview_url, f"{title} flyer")
                 schedule_documents.append(("document", {
                     "title": title,
                     "document": document,
+                    "preview_image": preview,
                     "description": "Archived ACMAD COP29 side-event programme",
                 }))
 
@@ -166,8 +169,8 @@ class Command(BaseCommand):
             "secondary_color": "#ff9700",
             "accent_color": "#eaf5f5",
             "text_on_primary_color": "#ffffff",
+            "description": description,
             "schedule_documents": schedule_documents,
-            **values,
         }
 
         if edition:
@@ -212,7 +215,8 @@ class Command(BaseCommand):
         venue = self._clean_text(venue_match.group(1)) if venue_match else "COP29 venue"
 
         content = self._main_content_widget(root)
-        summary, description = self._split_summary(content, title)
+        summary, detail = self._split_summary(content, title)
+        description = "".join(part for part in (summary, detail) if part)
         concept_note = None
         presentations = []
         additional_documents = []
@@ -281,7 +285,6 @@ class Command(BaseCommand):
             "end_datetime": datetime.strptime(end, "%Y-%m-%d %H:%M").replace(tzinfo=baku_timezone),
             "timezone": "Asia/Baku",
             "venue": venue,
-            "summary": summary,
             "description": description,
             "concept_note": concept_note,
             "presentations": presentations,
@@ -427,3 +430,5 @@ class Command(BaseCommand):
             first.decompose()
         return str(fragment)
 
+    def _merge_sections(self, sections):
+        return "".join(content for content in sections if content)

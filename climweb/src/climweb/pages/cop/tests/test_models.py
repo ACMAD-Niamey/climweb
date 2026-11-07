@@ -6,6 +6,7 @@ from django.utils import timezone
 from wagtail.test.utils import WagtailPageTestCase
 
 from climweb.pages.home.tests.factories import get_or_create_homepage
+from climweb.pages.organisation_pages.partners.tests.factories import PartnerFactory
 from ..models import CopEditionPage, CopIndexPage, CopSideEventPage
 
 
@@ -38,7 +39,7 @@ class TestCopPages(WagtailPageTestCase):
                 end_date=date(2026, 11, 20),
                 host_city="Antalya",
                 host_country="Türkiye",
-                acmad_participation="<p>ACMAD participation summary.</p>",
+                description="<p>ACMAD participation summary.</p>",
                 primary_color="#123456",
                 secondary_color="#d6a83b",
                 accent_color="#e6f3ee",
@@ -55,9 +56,10 @@ class TestCopPages(WagtailPageTestCase):
                 end_date=date(2024, 11, 22),
                 host_city="Baku",
                 host_country="Azerbaijan",
-                acmad_participation="<p>ACMAD at COP29.</p>",
+                description="<p>ACMAD at COP29.</p>",
             ),
         )
+        cls.partner = PartnerFactory(name="African Climate Partner")
         start = timezone.make_aware(datetime(2026, 11, 10, 12, 0))
         cls.side_event = publish_child(
             cls.current,
@@ -68,9 +70,13 @@ class TestCopPages(WagtailPageTestCase):
                 start_datetime=start,
                 end_datetime=start + timedelta(hours=1, minutes=30),
                 venue="African Pavilion",
-                summary="<p>Climate services side-event summary.</p>",
+                theme="Climate resilience",
+                lead_organizer=cls.partner,
+                description="<p>Climate services side-event summary.</p>",
             ),
         )
+        cls.side_event.partners.add(cls.partner)
+        cls.side_event.save_revision().publish()
 
     def test_pages_render(self):
         self.assertPageIsRenderable(self.index)
@@ -104,21 +110,62 @@ class TestCopPages(WagtailPageTestCase):
         self.assertContains(response, "Location")
         self.assertNotContains(response, 'class="cop-section-nav"')
 
-    def test_edition_overview_uses_one_stacked_card_without_taglines(self):
-        self.current.about = "<p>About this COP.</p>"
-        self.current.objectives = "<p>Edition objectives.</p>"
-        self.current.expected_outcomes = "<p>Expected results.</p>"
+    def test_edition_uses_one_collapsible_description(self):
+        response = self.client.get(self.current.url)
+        self.assertContains(response, 'data-read-more')
+        self.assertContains(response, 'data-read-more-toggle')
+        self.assertContains(response, "ACMAD participation summary")
+
+    def test_optional_logo_is_rendered_beside_edition_title(self):
+        logo = wagtail_factories.ImageFactory(title="COP31 logo")
+        self.current.logo = logo
         self.current.save_revision().publish()
 
         response = self.client.get(self.current.url)
-        self.assertContains(response, 'class="cop-overview-card"', count=1)
-        self.assertContains(response, 'id="about"')
-        self.assertContains(response, 'id="objectives"')
-        self.assertContains(response, 'id="outcomes"')
-        self.assertNotContains(response, "Our participation")
-        self.assertNotContains(response, "Context")
-        self.assertNotContains(response, "Priorities")
-        self.assertNotContains(response, "Looking ahead")
+        self.assertContains(response, 'class="cop-edition-title-row"')
+        self.assertContains(response, 'class="cop-edition-title-row__logo"')
+        self.assertContains(response, "COP31 logo")
+
+    def test_side_event_uses_compact_image_free_header_and_full_width_overview(self):
+        self.side_event.featured_image = wagtail_factories.ImageFactory(title="Detail image")
+        self.side_event.save_revision().publish()
+
+        response = self.client.get(self.side_event.url)
+        hero = response.content.split(b'<section class="cop-event-hero">', 1)[1].split(b"</section>", 1)[0]
+        self.assertNotIn(b"<img", hero)
+        self.assertContains(response, 'class="cop-event-hero__title"')
+        self.assertContains(response, 'class="container cop-event-overview"')
+        self.assertContains(response, 'class="cop-section-nav"')
+
+    def test_side_events_default_to_list_with_grid_control_and_numbers_only(self):
+        self.side_event.featured_image = wagtail_factories.ImageFactory(title="Hidden card image")
+        self.side_event.save_revision().publish()
+
+        response = self.client.get(self.current.url)
+        self.assertContains(response, 'data-events-view="list"')
+        self.assertContains(response, 'data-events-view="grid"')
+        self.assertContains(response, 'class="cop-side-event-grid is-list"')
+        self.assertContains(response, f'<a class="cop-side-event-card" href="{self.side_event.slug}/"')
+        self.assertContains(response, 'class="cop-side-event-card__number"')
+        self.assertNotContains(response, 'class="cop-side-event-card__image"')
+
+    def test_schedule_flyer_is_rendered_in_carousel(self):
+        document = wagtail_factories.DocumentFactory(title="COP31 schedule")
+        flyer = wagtail_factories.ImageFactory(title="COP31 schedule flyer")
+        self.current.schedule_documents = [
+            ("document", {
+                "title": "Week one schedule",
+                "document": document,
+                "preview_image": flyer,
+                "description": "Programme flyer",
+            })
+        ]
+        self.current.save_revision().publish()
+
+        response = self.client.get(self.current.url)
+        self.assertContains(response, 'data-schedule-carousel')
+        self.assertContains(response, 'class="cop-schedule-slide__preview"')
+        self.assertContains(response, "Week one schedule")
 
     def test_page_hierarchy_is_restricted(self):
         self.assertTrue(CopEditionPage.can_create_at(self.index))
@@ -129,6 +176,31 @@ class TestCopPages(WagtailPageTestCase):
     def test_concept_note_exists_only_on_side_event(self):
         self.assertNotIn("concept_note", {field.name for field in CopEditionPage._meta.fields})
         self.assertIn("concept_note", {field.name for field in CopSideEventPage._meta.fields})
+
+    def test_consolidated_content_fields_replace_legacy_fields(self):
+        edition_fields = {field.name for field in CopEditionPage._meta.fields}
+        side_event_fields = {field.name for field in CopSideEventPage._meta.fields}
+        self.assertIn("description", edition_fields)
+        self.assertNotIn("acmad_participation", edition_fields)
+        self.assertNotIn("about", edition_fields)
+        self.assertNotIn("objectives", edition_fields)
+        self.assertNotIn("expected_outcomes", edition_fields)
+        self.assertIn("description", side_event_fields)
+        self.assertIn("theme", side_event_fields)
+        self.assertIn("lead_organizer", side_event_fields)
+        self.assertNotIn("summary", side_event_fields)
+        self.assertNotIn("objectives", side_event_fields)
+        self.assertNotIn("participants", side_event_fields)
+
+    def test_side_event_uses_partner_directory(self):
+        response = self.client.get(self.side_event.url)
+        self.assertContains(response, "Climate resilience")
+        self.assertContains(response, "African Climate Partner")
+        self.assertContains(response, 'id="partners"')
+        self.assertContains(response, 'class="partner-card"')
+        self.assertContains(response, 'class="image partner-logo-figure"')
+        self.assertNotContains(response, "Collaboration")
+        self.assertEqual(list(self.side_event.partners.all()), [self.partner])
 
     def test_side_event_has_no_livestream_or_recording_fields(self):
         field_names = {field.name for field in CopSideEventPage._meta.fields}
@@ -145,7 +217,7 @@ class TestCopPages(WagtailPageTestCase):
             end_date=date(2026, 11, 9),
             host_city="Test",
             host_country="Test",
-            acmad_participation="<p>Test</p>",
+            description="<p>Test</p>",
         )
         with self.assertRaises(ValidationError):
             page.full_clean()
@@ -159,7 +231,7 @@ class TestCopPages(WagtailPageTestCase):
             start_datetime=start,
             end_datetime=start - timedelta(minutes=30),
             venue="Test pavilion",
-            summary="<p>Test</p>",
+            description="<p>Test</p>",
         )
         with self.assertRaises(ValidationError):
             page.full_clean()
@@ -176,6 +248,8 @@ class TestCopPages(WagtailPageTestCase):
 
         response = self.client.get(self.side_event.url)
         self.assertContains(response, 'id="gallery"')
+        self.assertContains(response, 'data-gallery-carousel')
+        self.assertContains(response, 'data-gallery-scroll-previous')
+        self.assertContains(response, 'data-gallery-scroll-next')
         self.assertContains(response, "Panel discussion")
-        self.assertContains(response, "ACMAD")
-
+        self.assertNotContains(response, "<figcaption")

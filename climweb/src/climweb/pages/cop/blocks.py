@@ -8,6 +8,10 @@ from climweb.config.settings.base import SUMMARY_RICHTEXT_FEATURES
 class CopDocumentBlock(blocks.StructBlock):
     title = blocks.CharBlock(max_length=220)
     document = DocumentChooserBlock()
+    preview_image = ImageChooserBlock(
+        required=False,
+        help_text="Flyer preview displayed in the schedule carousel.",
+    )
     description = blocks.CharBlock(max_length=300, required=False)
 
     class Meta:
@@ -58,4 +62,3 @@ class CopPartnerBlock(blocks.StructBlock):
     class Meta:
         icon = "group"
         label = "Partner organisation"
-
