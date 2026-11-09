@@ -110,6 +110,20 @@
               <img src="{{ climsa_mobile_logo.url }}" alt="CLIMSA">
             </a>
           {% endif %}
+          {% if section_nav.kind != "climsa" and section_nav.kind != "rcc" %}
+            {% with navigation=settings.base.NavigationSettings %}
+              {% if navigation.featured_navigation_enabled and navigation.featured_navigation_label %}
+                {% if navigation.featured_navigation_page or navigation.featured_navigation_external_url %}
+                  <a class="navbar-item nav-item-link nav-item-link--featured nav-item-link--featured-mobile"
+                     {% if navigation.featured_navigation_page %}href="{{ navigation.featured_navigation_page|public_page_url }}"
+                     {% else %}href="{{ navigation.featured_navigation_external_url }}" target="_blank" rel="noopener noreferrer"
+                     {% endif %}>
+                    {{ navigation.featured_navigation_label }}
+                  </a>
+                {% endif %}
+              {% endif %}
+            {% endwith %}
+          {% endif %}
           <button id="navBurger"
                   class="nav-burger navbar-burger"
                   data-target="mainNav"
@@ -174,6 +188,18 @@
                 {% include_block block %}
               {% endif %}
             {% endfor %}
+            {% with navigation=settings.base.NavigationSettings %}
+              {% if navigation.featured_navigation_enabled and navigation.featured_navigation_label %}
+                {% if navigation.featured_navigation_page or navigation.featured_navigation_external_url %}
+                  <a class="navbar-item nav-item-link nav-item-link--featured nav-item-link--featured-desktop"
+                     {% if navigation.featured_navigation_page %}href="{{ navigation.featured_navigation_page|public_page_url }}"
+                     {% else %}href="{{ navigation.featured_navigation_external_url }}" target="_blank" rel="noopener noreferrer"
+                     {% endif %}>
+                    {{ navigation.featured_navigation_label }}
+                  </a>
+                {% endif %}
+              {% endif %}
+            {% endwith %}
           {% endif %}
 
           <!-- MOBILE UTILITY BUTTONS -->

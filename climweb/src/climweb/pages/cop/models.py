@@ -92,6 +92,11 @@ class CopEditionPage(MetadataPageMixin, Page):
     host_country = models.CharField(max_length=120, verbose_name=_("Host country"))
     venue = models.CharField(max_length=180, blank=True, verbose_name=_("Venue"))
     official_website_url = models.URLField(blank=True, verbose_name=_("Official COP website"))
+    linkedin_url = models.URLField(
+        blank=True,
+        verbose_name=_("Follow us on LinkedIn URL"),
+        help_text=_("Optional LinkedIn page shown as a Follow us link on this COP page."),
+    )
 
     description = RichTextField(
         features=SUMMARY_FEATURES,
@@ -129,6 +134,19 @@ class CopEditionPage(MetadataPageMixin, Page):
         use_json_field=True,
         verbose_name=_("Schedules and programme documents"),
     )
+    gallery = StreamField(
+        [("image", CopGalleryImageBlock())],
+        blank=True,
+        use_json_field=True,
+        verbose_name=_("Picture gallery"),
+    )
+    partners = ParentalManyToManyField(
+        "partners.Partner",
+        blank=True,
+        related_name="cop_editions",
+        verbose_name=_("Partners"),
+        help_text=_("Select partner organisations from the central Partners list."),
+    )
 
     content_panels = Page.content_panels + [
         MultiFieldPanel(
@@ -141,6 +159,7 @@ class CopEditionPage(MetadataPageMixin, Page):
                 FieldPanel("host_country"),
                 FieldPanel("venue"),
                 FieldPanel("official_website_url"),
+                FieldPanel("linkedin_url"),
             ],
             heading=_("Edition details"),
         ),
@@ -148,6 +167,8 @@ class CopEditionPage(MetadataPageMixin, Page):
             [
                 FieldPanel("description"),
                 FieldPanel("schedule_documents"),
+                FieldPanel("gallery"),
+                FieldPanel("partners", widget=CheckboxSelectMultiple),
             ],
             heading=_("COP content"),
         ),
@@ -188,6 +209,11 @@ class CopSideEventPage(MetadataPageMixin, Page):
     subpage_types = []
 
     side_event_number = models.PositiveSmallIntegerField(verbose_name=_("Side-event number"))
+    acmad_is_co_organizer = models.BooleanField(
+        default=False,
+        verbose_name=_("ACMAD is a co-organizer"),
+        help_text=_("Use ACMAD's green treatment for this side event on the COP page."),
+    )
     start_datetime = models.DateTimeField(verbose_name=_("Start date and time"))
     end_datetime = models.DateTimeField(verbose_name=_("End date and time"))
     timezone = TimeZoneField(
@@ -268,6 +294,7 @@ class CopSideEventPage(MetadataPageMixin, Page):
         MultiFieldPanel(
             [
                 FieldPanel("side_event_number"),
+                FieldPanel("acmad_is_co_organizer"),
                 FieldPanel("start_datetime"),
                 FieldPanel("end_datetime"),
                 FieldPanel("timezone"),
