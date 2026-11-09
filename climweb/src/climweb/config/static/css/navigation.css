@@ -636,6 +636,29 @@ header {
   border-bottom-color: var(--primary-color);
 }
 
+.nav-item-link--featured {
+  align-self: center;
+  height: auto;
+  min-height: 40px;
+  margin: 0 0 0 10px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--primary-color);
+  box-shadow: 0 5px 12px color-mix(in srgb, var(--primary-color) 28%, transparent);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.nav-item-link--featured:hover,
+.nav-item-link--featured:focus-visible {
+  border: 0;
+  color: #fff;
+  background: var(--primary-color);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--primary-color) 38%, transparent);
+  transform: translateY(-2px);
+}
+
 /* active state — Bulma adds .is-active or you can target current page */
 .nav-item-link.is-active,
 .navbar-item.is-active>.nav-item-link {
@@ -868,6 +891,22 @@ header {
     border-bottom: none !important;
     border-left-color: var(--primary-color);
     background: #f8f9fb;
+  }
+
+  .nav-item-link--featured {
+    align-self: stretch;
+    min-height: 46px;
+    margin: 10px 16px;
+    justify-content: center;
+    border-left: 0 !important;
+    color: #fff;
+  }
+
+  .nav-item-link--featured:hover,
+  .nav-item-link--featured:focus-visible {
+    border-left: 0 !important;
+    color: #fff;
+    background: var(--primary-color);
   }
 
   /* dropdowns go inline on mobile */

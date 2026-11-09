@@ -498,12 +498,44 @@ class NavigationSettings(BaseSiteSetting):
     footer_menu = StreamField([
         ("navigation_item", FooterNavigationItemBlock()),
     ], use_json_field=True, blank=True, null=True)
+    featured_navigation_enabled = models.BooleanField(
+        default=False,
+        verbose_name=_("Show highlighted navigation item"),
+        help_text=_("Display a primary-colour activity link at the far right of the main menu."),
+    )
+    featured_navigation_label = models.CharField(
+        max_length=60,
+        blank=True,
+        verbose_name=_("Highlighted navigation label"),
+    )
+    featured_navigation_page = models.ForeignKey(
+        "wagtailcore.Page",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Highlighted navigation page"),
+    )
+    featured_navigation_external_url = models.URLField(
+        blank=True,
+        verbose_name=_("Highlighted navigation external URL"),
+        help_text=_("Used only when no internal page is selected."),
+    )
     
     panels = [
         FieldPanel("main_menu"),
         FieldPanel("rcc_main_menu"),
         FieldPanel("climsa_main_menu"),
         FieldPanel("header_utility_links"),
+        MultiFieldPanel(
+            [
+                FieldPanel("featured_navigation_enabled"),
+                FieldPanel("featured_navigation_label"),
+                PageChooserPanel("featured_navigation_page"),
+                FieldPanel("featured_navigation_external_url"),
+            ],
+            heading=_("Highlighted activity navigation"),
+        ),
         FieldPanel("footer_menu"),
     ]
     
