@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load wagtailcore_tags wagtailimages_tags static i18n lazyimages_tags %}
+{% load wagtailcore_tags wagtailimages_tags static i18n lazyimages_tags tz %}
 
 {% block extra_css %}
     {{ block.super }}
@@ -102,11 +102,12 @@
                 </div>
                 <div class="cop-side-event-grid is-list" data-side-events>
                     {% for event in page.side_events %}
+                        {% timezone event.timezone %}
                         <a class="cop-side-event-card{% if event.acmad_is_co_organizer %} is-acmad-co-organized{% endif %}" href="{{ event.slug }}/" aria-label="{% blocktranslate with number=event.side_event_number title=event.title %}View side event {{ number }}: {{ title }}{% endblocktranslate %}">
                             <div class="cop-side-event-card__datetime">
-                                <time datetime="{{ event.local_start_datetime|date:'c' }}">
-                                    <strong>{{ event.local_start_datetime|date:"j M" }}</strong>
-                                    <span>{{ event.local_start_datetime|date:"H:i" }}–{{ event.local_end_datetime|date:"H:i" }}</span>
+                                <time datetime="{{ event.start_datetime|date:'c' }}">
+                                    <strong>{{ event.start_datetime|date:"j M" }}</strong>
+                                    <span>{{ event.start_datetime|date:"H:i" }}–{{ event.end_datetime|date:"H:i" }}</span>
                                 </time>
                             </div>
                             <div class="cop-side-event-card__body">
@@ -116,7 +117,7 @@
                                 </p>
                                 <h3>{{ event.title }}</h3>
                                 <dl>
-                                    <div><dt>{% translate "When" %}</dt><dd>{{ event.local_start_datetime|date:"D j M, H:i" }}–{{ event.local_end_datetime|date:"H:i" }}</dd></div>
+                                    <div><dt>{% translate "When" %}</dt><dd>{{ event.start_datetime|date:"D j M, H:i" }}–{{ event.end_datetime|date:"H:i" }}</dd></div>
                                     <div><dt>{% translate "Where" %}</dt><dd>{{ event.venue }}</dd></div>
                                     {% if event.theme %}<div><dt>{% translate "Theme" %}</dt><dd>{{ event.theme }}</dd></div>{% endif %}
                                     {% if event.lead_organizer %}<div><dt>{% translate "Lead" %}</dt><dd>{{ event.lead_organizer.name }}</dd></div>{% endif %}
@@ -124,6 +125,7 @@
                                 <span class="cop-text-link">{% translate "View side event" %} <span aria-hidden="true">→</span></span>
                             </div>
                         </a>
+                        {% endtimezone %}
                     {% endfor %}
                 </div>
             </div>

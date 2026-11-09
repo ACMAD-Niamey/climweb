@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load wagtailcore_tags wagtailimages_tags static i18n lazyimages_tags %}
+{% load wagtailcore_tags wagtailimages_tags static i18n lazyimages_tags tz %}
 
 {% block extra_css %}
     {{ block.super }}
@@ -21,10 +21,11 @@
         </div>
     </section>
 
+    {% timezone page.timezone %}
     <section class="cop-meta-strip cop-event-meta">
         <div class="container cop-meta-strip__grid">
-            <div><span>{% translate "Date" %}</span><strong>{{ page.local_start_datetime|date:"l j F Y" }}</strong></div>
-            <div><span>{% translate "Time" %}</span><strong>{{ page.local_start_datetime|date:"H:i" }}–{{ page.local_end_datetime|date:"H:i" }} ({{ page.timezone }})</strong></div>
+            <div><span>{% translate "Date" %}</span><strong>{{ page.start_datetime|date:"l j F Y" }}</strong></div>
+            <div><span>{% translate "Time" %}</span><strong>{{ page.start_datetime|date:"H:i" }}–{{ page.end_datetime|date:"H:i" }} ({{ page.timezone }})</strong></div>
             <div><span>{% translate "Venue" %}</span><strong>{{ page.venue }}</strong></div>
             {% if page.theme %}<div><span>{% translate "Theme" %}</span><strong>{{ page.theme }}</strong></div>{% endif %}
             {% if page.lead_organizer or page.acmad_is_co_organizer %}
@@ -38,6 +39,7 @@
             {% endif %}
         </div>
     </section>
+    {% endtimezone %}
 
     <nav class="cop-section-nav" aria-label="{% translate 'Page sections' %}">
         <div class="container">

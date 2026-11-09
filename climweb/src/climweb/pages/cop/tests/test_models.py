@@ -157,7 +157,8 @@ class TestCopPages(WagtailPageTestCase):
         self.side_event.featured_image = wagtail_factories.ImageFactory(title="Hidden card image")
         self.side_event.save_revision().publish()
 
-        response = self.client.get(self.current.url)
+        with timezone.override("America/New_York"):
+            response = self.client.get(self.current.url)
         self.assertContains(response, 'data-events-view="list"')
         self.assertContains(response, 'data-events-view="grid"')
         self.assertContains(response, 'class="cop-side-event-grid is-list"')
