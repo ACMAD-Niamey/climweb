@@ -17,7 +17,8 @@ class FeaturedNavigationTests(WagtailPageTestCase):
 
         response = self.client.get(home.url)
 
-        self.assertContains(response, 'class="navbar-item nav-item-link nav-item-link--featured"')
+        self.assertContains(response, "nav-item-link--featured-desktop")
+        self.assertContains(response, "nav-item-link--featured-mobile")
         self.assertContains(response, "COP 31")
 
     def test_highlighted_activity_fields_are_editable(self):
