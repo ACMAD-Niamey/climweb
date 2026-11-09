@@ -116,7 +116,7 @@ class TestCopPages(WagtailPageTestCase):
         self.assertContains(response, 'data-read-more-toggle')
         self.assertContains(response, "ACMAD participation summary")
 
-    def test_optional_logo_is_rendered_beside_edition_title(self):
+    def test_optional_logo_is_rendered_in_edition_title_row(self):
         logo = wagtail_factories.ImageFactory(title="COP31 logo")
         self.current.logo = logo
         self.current.save_revision().publish()
@@ -125,6 +125,22 @@ class TestCopPages(WagtailPageTestCase):
         self.assertContains(response, 'class="cop-edition-title-row"')
         self.assertContains(response, 'class="cop-edition-title-row__logo"')
         self.assertContains(response, "COP31 logo")
+
+    def test_official_logo_replaces_visible_title_and_links_to_official_site(self):
+        logo = wagtail_factories.ImageFactory(title="Official COP31 logo")
+        self.current.logo = logo
+        self.current.official_website_url = "https://cop31.example.org/"
+        self.current.save_revision().publish()
+
+        response = self.client.get(self.current.url)
+        title_row = response.content.split(b'<div class="cop-edition-title-row">', 1)[1].split(
+            b'<div class="cop-edition-overview__grid">', 1
+        )[0]
+
+        self.assertIn(b'class="is-sr-only">COP 31</h1>', title_row)
+        self.assertIn(b'class="cop-edition-title-row__logo-link"', title_row)
+        self.assertIn(b'href="https://cop31.example.org/"', title_row)
+        self.assertNotContains(response, "Official COP website")
 
     def test_side_event_uses_compact_image_free_header_and_full_width_overview(self):
         self.side_event.featured_image = wagtail_factories.ImageFactory(title="Detail image")
@@ -137,17 +153,69 @@ class TestCopPages(WagtailPageTestCase):
         self.assertContains(response, 'class="container cop-event-overview"')
         self.assertContains(response, 'class="cop-section-nav"')
 
-    def test_side_events_default_to_list_with_grid_control_and_numbers_only(self):
+    def test_side_events_default_to_list_with_grid_control_and_date_time(self):
         self.side_event.featured_image = wagtail_factories.ImageFactory(title="Hidden card image")
         self.side_event.save_revision().publish()
 
-        response = self.client.get(self.current.url)
+        with timezone.override("America/New_York"):
+            response = self.client.get(self.current.url)
         self.assertContains(response, 'data-events-view="list"')
         self.assertContains(response, 'data-events-view="grid"')
         self.assertContains(response, 'class="cop-side-event-grid is-list"')
         self.assertContains(response, f'<a class="cop-side-event-card" href="{self.side_event.slug}/"')
-        self.assertContains(response, 'class="cop-side-event-card__number"')
+        self.assertContains(response, 'class="cop-side-event-card__datetime"')
+        self.assertContains(response, self.side_event.local_start_datetime.strftime("%-d %b"))
+        self.assertContains(response, self.side_event.local_start_datetime.strftime("%H:%M"))
         self.assertNotContains(response, 'class="cop-side-event-card__image"')
+
+    def test_edition_can_show_linkedin_follow_link(self):
+        self.current.linkedin_url = "https://www.linkedin.com/company/acmad/"
+        self.current.save_revision().publish()
+
+        response = self.client.get(self.current.url)
+        title_row = response.content.split(b'<div class="cop-edition-title-row">', 1)[1].split(
+            b'<div class="cop-edition-overview__grid">', 1
+        )[0]
+
+        self.assertContains(response, "Follow us on LinkedIn")
+        self.assertContains(response, self.current.linkedin_url)
+        self.assertIn(b'cop-edition-title-row__follow', title_row)
+        self.assertIn(self.current.linkedin_url.encode(), title_row)
+
+    def test_acmad_co_organized_side_event_uses_green_card_treatment(self):
+        self.side_event.acmad_is_co_organizer = True
+        self.side_event.save_revision().publish()
+
+        edition_response = self.client.get(self.current.url)
+        side_event_response = self.client.get(self.side_event.url)
+
+        self.assertContains(edition_response, "is-acmad-co-organized")
+        self.assertContains(edition_response, "ACMAD co-organizer")
+        self.assertContains(side_event_response, "Organizers")
+        self.assertContains(side_event_response, "ACMAD co-organizer")
+        self.assertContains(side_event_response, "cop-acmad-badge--on-primary")
+
+    def test_edition_gallery_and_partners_match_side_event_components(self):
+        gallery_image = wagtail_factories.ImageFactory(title="COP31 plenary")
+        partner_logo = wagtail_factories.ImageFactory(title="Partner logo")
+        self.partner.logo = partner_logo
+        self.partner.save()
+        self.current.gallery = [
+            ("image", {"image": gallery_image, "caption": "COP31 plenary", "credit": "ACMAD"})
+        ]
+        self.current.partners.add(self.partner)
+        self.current.save_revision().publish()
+
+        response = self.client.get(self.current.url)
+
+        self.assertContains(response, 'id="gallery"')
+        self.assertContains(response, "data-gallery-carousel")
+        self.assertContains(response, "data-gallery-scroll-previous")
+        self.assertContains(response, "data-gallery-scroll-next")
+        self.assertContains(response, 'id="partners"')
+        self.assertContains(response, 'class="partner-card"')
+        self.assertContains(response, 'class="image partner-logo-figure"')
+        self.assertContains(response, "African Climate Partner")
 
     def test_schedule_flyer_is_rendered_in_carousel(self):
         document = wagtail_factories.DocumentFactory(title="COP31 schedule")

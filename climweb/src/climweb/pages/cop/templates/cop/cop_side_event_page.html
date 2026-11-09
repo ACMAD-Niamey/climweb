@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% load wagtailcore_tags wagtailimages_tags static i18n lazyimages_tags %}
+{% load wagtailcore_tags wagtailimages_tags static i18n lazyimages_tags tz %}
 
 {% block extra_css %}
     {{ block.super }}
-    <link rel="stylesheet" href="{% static 'cop/css/cop.css' %}?v=13">
+    <link rel="stylesheet" href="{% static 'cop/css/cop.css' %}?v=16">
 {% endblock %}
 
 {% block body_class %}cop-page cop-side-event-page{% endblock %}
@@ -21,15 +21,25 @@
         </div>
     </section>
 
+    {% timezone page.timezone %}
     <section class="cop-meta-strip cop-event-meta">
         <div class="container cop-meta-strip__grid">
-            <div><span>{% translate "Date" %}</span><strong>{{ page.local_start_datetime|date:"l j F Y" }}</strong></div>
-            <div><span>{% translate "Time" %}</span><strong>{{ page.local_start_datetime|date:"H:i" }}–{{ page.local_end_datetime|date:"H:i" }} ({{ page.timezone }})</strong></div>
+            <div><span>{% translate "Date" %}</span><strong>{{ page.start_datetime|date:"l j F Y" }}</strong></div>
+            <div><span>{% translate "Time" %}</span><strong>{{ page.start_datetime|date:"H:i" }}–{{ page.end_datetime|date:"H:i" }} ({{ page.timezone }})</strong></div>
             <div><span>{% translate "Venue" %}</span><strong>{{ page.venue }}</strong></div>
             {% if page.theme %}<div><span>{% translate "Theme" %}</span><strong>{{ page.theme }}</strong></div>{% endif %}
-            {% if page.lead_organizer %}<div><span>{% translate "Lead organizer" %}</span><strong>{{ page.lead_organizer.name }}</strong></div>{% endif %}
+            {% if page.lead_organizer or page.acmad_is_co_organizer %}
+                <div>
+                    <span>{% if page.acmad_is_co_organizer %}{% translate "Organizers" %}{% else %}{% translate "Lead organizer" %}{% endif %}</span>
+                    <strong class="cop-organizer-line">
+                        {% if page.lead_organizer %}{{ page.lead_organizer.name }}{% endif %}
+                        {% if page.acmad_is_co_organizer %}<span class="cop-acmad-badge cop-acmad-badge--on-primary">{% translate "ACMAD co-organizer" %}</span>{% endif %}
+                    </strong>
+                </div>
+            {% endif %}
         </div>
     </section>
+    {% endtimezone %}
 
     <nav class="cop-section-nav" aria-label="{% translate 'Page sections' %}">
         <div class="container">
