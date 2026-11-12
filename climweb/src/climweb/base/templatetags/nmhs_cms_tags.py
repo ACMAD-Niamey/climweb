@@ -20,6 +20,81 @@ from django.utils.safestring import mark_safe
 register = template.Library()
 
 
+def _page_path_for_site(page, site):
+    """Build a stable path without relying on Wagtail's cached site-root map."""
+    if not page or not site:
+        return ""
+    root_path = site.root_page.url_path
+    if not page.url_path.startswith(root_path):
+        return ""
+    suffix = page.url_path[len(root_path):]
+    return f"/{suffix.lstrip('/')}" if suffix else "/"
+
+
+def _climate_health_navigation(context):
+    """Return navigation data for the Climate and Health Desk site."""
+    from climweb.pages.climate_health.models import (
+        ClimateHealthAboutPage,
+        ClimateHealthContentPage,
+        ClimateHealthDeskHomePage,
+        ClimateHealthPolicyPage,
+    )
+
+    request = context.get("request")
+    page = context.get("page")
+    home = None
+
+    if page:
+        if isinstance(page.specific, ClimateHealthDeskHomePage):
+            home = page.specific
+        else:
+            home = ClimateHealthDeskHomePage.objects.live().ancestor_of(
+                page, inclusive=True
+            ).first()
+
+    if not home and request:
+        current_site = Site.find_for_request(request)
+        if current_site and isinstance(
+            current_site.root_page.specific, ClimateHealthDeskHomePage
+        ):
+            home = current_site.root_page.specific
+
+    if not home:
+        return None
+
+    health_site = Site.objects.filter(root_page=home).order_by("pk").first()
+    children = home.get_children().live().specific()
+    content_urls = {
+        child.listing_type: _page_path_for_site(child, health_site)
+        for child in children
+        if isinstance(child, ClimateHealthContentPage)
+    }
+    policy_page = next(
+        (child for child in children if isinstance(child, ClimateHealthPolicyPage)),
+        None,
+    )
+    about_page = next(
+        (child for child in children if isinstance(child, ClimateHealthAboutPage)),
+        None,
+    )
+    main_site = Site.objects.filter(is_default_site=True).first()
+    return {
+        "kind": "climate-health",
+        "home_url": _page_path_for_site(home, health_site) or "/",
+        "main_site_url": main_site.root_url if main_site else "/",
+        "about_url": (
+            _page_path_for_site(about_page, health_site) if about_page else "#"
+        ),
+        "products_url": content_urls.get("products", "#"),
+        "publications_url": content_urls.get("publications", "#"),
+        "platforms_url": content_urls.get("platforms", "#"),
+        "events_url": content_urls.get("events", "#"),
+        "policies_url": (
+            _page_path_for_site(policy_page, health_site) if policy_page else "#"
+        ),
+    }
+
+
 def _rcc_navigation(context):
     """Return RCC navigation data when the request belongs to the RCC section."""
     from climweb.pages.services.models import ServicePage
@@ -135,7 +210,17 @@ def _climsa_navigation(context):
 @register.simple_tag(takes_context=True)
 def section_navigation(context):
     """Return navigation for the active ACMAD programme section, if any."""
-    return _climsa_navigation(context) or _rcc_navigation(context)
+    return (
+        _climate_health_navigation(context)
+        or _climsa_navigation(context)
+        or _rcc_navigation(context)
+    )
+
+
+@register.simple_tag(takes_context=True)
+def climate_health_navigation(context):
+    """Backward-compatible Climate and Health navigation tag."""
+    return _climate_health_navigation(context)
 
 
 @register.simple_tag(takes_context=True)
