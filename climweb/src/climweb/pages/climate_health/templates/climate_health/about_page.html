@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static i18n wagtailcore_tags nmhs_cms_tags %}
+{% load static i18n wagtailcore_tags wagtailimages_tags nmhs_cms_tags %}
 
 {% block extra_css %}{{ block.super }}<link rel="stylesheet" href="{% static 'css/services_rcc.css' %}"><link rel="stylesheet" href="{% static 'climate_health/css/climate_health.css' %}?v={% now 'U' %}">{% endblock %}
 {% block body_class %}rcc-service-page climate-health-desk{% endblock %}
@@ -7,7 +7,20 @@
 <main>
   <section class="page-hero ch-inner-hero"><div class="page-hero-overlay"></div><div class="page-hero-body"><div class="container"><span class="page-hero-badge">{% translate "Climate and Health Desk" %}</span><h1 class="page-hero-title">{{ page.banner_title|default:page.title }}</h1>{% if page.banner_subtitle %}<p class="page-hero-subtitle">{{ page.banner_subtitle }}</p>{% endif %}</div></div></section>
 
-  <section class="rcc-section ch-about-intro"><div class="container ch-policy-body__grid"><aside><h2>{{ page.introduction_title|default:page.title }}</h2></aside><div class="format-text">{{ page.introduction_text|richtext }}</div></div></section>
+  <section class="rcc-section ch-about-intro">
+    <div class="container ch-about-intro__grid{% if not page.introduction_image %} ch-about-intro__grid--text-only{% endif %}">
+      <div class="ch-about-intro__content">
+        <h2>{{ page.introduction_title|default:page.title }}</h2>
+        <div class="format-text">{{ page.introduction_text|richtext }}</div>
+      </div>
+      {% if page.introduction_image %}
+        {% image page.introduction_image fill-900x620 as intro_image %}
+        <figure class="ch-about-intro__image">
+          <img src="{{ intro_image.url }}" width="{{ intro_image.width }}" height="{{ intro_image.height }}" alt="{{ page.introduction_image.title }}" loading="lazy">
+        </figure>
+      {% endif %}
+    </div>
+  </section>
 
   <section class="ch-vision"><div class="container"><span>{% translate "Our vision" %}</span><div class="format-text">{{ page.vision|richtext }}</div></div></section>
 
