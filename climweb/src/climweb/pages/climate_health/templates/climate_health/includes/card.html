@@ -1,0 +1,41 @@
+{% load i18n wagtailimages_tags nmhs_cms_tags %}
+<article class="ch-card">
+  <a class="ch-card__link" href="{% if content_type == 'platforms' %}{{ item.url }}{% else %}{{ item|public_page_url }}{% endif %}"{% if content_type == 'platforms' %} target="_blank" rel="noopener noreferrer"{% endif %}>
+    <div class="ch-card__media">
+      {% if content_type == 'products' and item.listing_image %}
+        {% image item.listing_image fill-720x440 as card_image %}
+        <img src="{{ card_image.url }}" alt="">
+      {% elif content_type == 'publications' and item.thumbnail %}
+        {% image item.thumbnail fill-720x440 as card_image %}
+        <img src="{{ card_image.url }}" alt="">
+      {% elif content_type == 'news' and item.get_meta_image %}
+        {% image item.get_meta_image fill-720x440 as card_image %}
+        <img src="{{ card_image.url }}" alt="">
+      {% elif content_type == 'events' and item.image %}
+        {% image item.image fill-720x440 as card_image %}
+        <img src="{{ card_image.url }}" alt="">
+      {% elif content_type == 'platforms' and item.thumbnail %}
+        {% image item.thumbnail fill-720x440 as card_image %}
+        <img src="{{ card_image.url }}" alt="">
+      {% else %}
+        <div class="ch-card__placeholder" aria-hidden="true"><span>+</span></div>
+      {% endif %}
+      <span class="ch-card__type">{{ content_type|capfirst }}</span>
+    </div>
+    <div class="ch-card__body">
+      <h3>{{ item.title }}</h3>
+      {% if content_type == 'publications' %}
+        <p>{{ item.publication_date|date:"j M Y" }}{% if item.publication_type %} · {{ item.publication_type }}{% endif %}</p>
+      {% elif content_type == 'news' %}
+        <p>{{ item.date|date:"j M Y" }}{% if item.news_type %} · {{ item.news_type }}{% endif %}</p>
+      {% elif content_type == 'events' %}
+        <p>{{ item.date_from|date:"j M Y" }}{% if item.location %} · {{ item.location }}{% endif %}</p>
+      {% elif content_type == 'products' %}
+        {% with latest=item.all_products.first %}<p>{% if latest %}{% translate "Latest issue" %}: {{ latest.date|date:"j M Y" }}{% else %}{% translate "Browse available issues" %}{% endif %}</p>{% endwith %}
+      {% else %}
+        <p>{% translate "Open climate-health platform" %}</p>
+      {% endif %}
+      <span class="ch-card__cta">{% if content_type == 'platforms' %}{% translate "Open platform" %} ↗{% else %}{% translate "View details" %} →{% endif %}</span>
+    </div>
+  </a>
+</article>

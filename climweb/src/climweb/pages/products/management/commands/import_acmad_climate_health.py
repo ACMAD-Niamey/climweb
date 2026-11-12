@@ -33,6 +33,7 @@ from climweb.pages.products.tasks import (
     _get_products_raw,
     _save_products_raw,
 )
+from climweb.pages.climate_health.models import CLIMATE_HEALTH_SERVICE_NAME
 
 
 DEFAULT_API_URL = (
@@ -359,17 +360,10 @@ class Command(BaseCommand):
             index = ProductIndexPage.objects.live().first()
             if not index:
                 raise CommandError("A live ProductIndexPage was not found")
-            service = ServiceCategory.objects.filter(
-                name="Climate Monitoring and Assessment"
-            ).first()
-            if not service:
-                service = ServiceCategory.objects.filter(
-                    name="Weather Watch and Prediction"
-                ).first()
-            if not service:
-                raise CommandError(
-                    "A suitable Climate and Health service was not found"
-                )
+            service, _ = ServiceCategory.objects.get_or_create(
+                name=CLIMATE_HEALTH_SERVICE_NAME,
+                defaults={"icon": "heart-pulse"},
+            )
             product_page = ProductPage(
                 title="Climate and Health",
                 slug="climate-and-health",
@@ -384,6 +378,14 @@ class Command(BaseCommand):
             )
             index.add_child(instance=product_page)
             product_page.save_revision().publish()
+        else:
+            service, _ = ServiceCategory.objects.get_or_create(
+                name=CLIMATE_HEALTH_SERVICE_NAME,
+                defaults={"icon": "heart-pulse"},
+            )
+            if product_page.service_id != service.pk:
+                product_page.service = service
+                product_page.save_revision().publish()
         return product_page, item_types
 
     @staticmethod

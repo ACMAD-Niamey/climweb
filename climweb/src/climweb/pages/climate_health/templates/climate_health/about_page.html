@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load static i18n wagtailcore_tags nmhs_cms_tags %}
+
+{% block extra_css %}{{ block.super }}<link rel="stylesheet" href="{% static 'css/services_rcc.css' %}"><link rel="stylesheet" href="{% static 'climate_health/css/climate_health.css' %}?v={% now 'U' %}">{% endblock %}
+{% block body_class %}rcc-service-page climate-health-desk{% endblock %}
+{% block content %}
+<main>
+  <section class="page-hero ch-inner-hero"><div class="page-hero-overlay"></div><div class="page-hero-body"><div class="container"><span class="page-hero-badge">{% translate "Climate and Health Desk" %}</span><h1 class="page-hero-title">{{ page.banner_title|default:page.title }}</h1>{% if page.banner_subtitle %}<p class="page-hero-subtitle">{{ page.banner_subtitle }}</p>{% endif %}</div></div></section>
+
+  <section class="rcc-section ch-about-intro"><div class="container ch-policy-body__grid"><aside><h2>{{ page.introduction_title|default:page.title }}</h2></aside><div class="format-text">{{ page.introduction_text|richtext }}</div></div></section>
+
+  <section class="ch-vision"><div class="container"><span>{% translate "Our vision" %}</span><div class="format-text">{{ page.vision|richtext }}</div></div></section>
+
+  <section class="rcc-section ch-about-details"><div class="container"><div class="ch-about-details__grid"><article class="ch-about-card-group"><span>01</span><h2>{% translate "What we do" %}</h2><div class="format-text">{{ page.what_we_do|richtext }}</div></article><article class="ch-about-card-group"><span>02</span><h2>{% translate "Areas of focus" %}</h2><div class="format-text">{{ page.focus_areas|richtext }}</div></article></div></div></section>
+
+  {% if page.launch_context %}<section class="rcc-section ch-launch"><div class="container ch-launch__inner"><div><h2>{% translate "Official launch" %}</h2></div><div class="format-text">{{ page.launch_context|richtext }}</div></div></section>{% endif %}
+</main>
+{% endblock %}

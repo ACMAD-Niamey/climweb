@@ -16,7 +16,7 @@
     {% for item in value.sub_items %}
       {% if item.value.is_action %}
         <a class="footer-nav-action button is-small is-rounded is-outlined"
-           {% if item.value.page.url %}
+           {% if item.value.page %}
              href="{{ item.value.page|public_page_url }}"
            {% else %}
              href="{{ item.value.external_url }}"
@@ -27,7 +27,7 @@
         </a>
       {% else %}
         <a class="footer-nav-link"
-           {% if item.value.page.url %}
+           {% if item.value.page %}
              href="{{ item.value.page|public_page_url }}"
            {% else %}
              href="{{ item.value.external_url }}"

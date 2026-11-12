@@ -1,4 +1,4 @@
-{% load i18n static wagtailiconchooser_tags %}
+{% load i18n static wagtailiconchooser_tags nmhs_cms_tags %}
 {% with utility_links=settings.base.NavigationSettings.header_utility_links %}
   {% if utility_links %}
     {% for block in utility_links %}
@@ -7,7 +7,7 @@
           {% if item.action == "faq" %}
             {% include "navigation/faq_utility_button.html" with label=item.label mobile=mobile %}
           {% elif item.external_url or item.page %}
-            <a href="{% if item.external_url %}{{ item.external_url }}{% else %}{{ item.page.url }}{% endif %}"
+            <a href="{% if item.external_url %}{{ item.external_url }}{% else %}{{ item.page|public_page_url }}{% endif %}"
                class="{% if mobile %}button is-fullwidth mobile-util-link{% else %}util-link{% endif %}"
                {% if item.open_in_new_tab %}target="_blank" rel="noopener noreferrer"{% endif %}>
               <span>{{ item.label }}</span>
@@ -22,7 +22,7 @@
   {% else %}
     {# Preserve existing utility links until a custom list is configured. #}
     {% if settings.base.ImportantPages.cap_warnings_list_page %}
-      <a href="{{ settings.base.ImportantPages.cap_warnings_list_page.url }}"
+      <a href="{{ settings.base.ImportantPages.cap_warnings_list_page|public_page_url }}"
          class="{% if mobile %}button is-fullwidth mobile-util-link{% else %}util-link util-link--alert{% endif %}">
         <span>{% translate "Alerts" %}</span>
         {% if not mobile %}
@@ -43,14 +43,14 @@
     {% endif %}
 
     {% if settings.base.ImportantPages.contact_us_page %}
-      <a href="{{ settings.base.ImportantPages.contact_us_page.url }}"
+      <a href="{{ settings.base.ImportantPages.contact_us_page|public_page_url }}"
          class="{% if mobile %}button is-fullwidth mobile-util-link mobile-util-link--cta{% else %}header-cta{% endif %}">
         {% translate "Contact us" %}
       </a>
     {% endif %}
 
     {% if settings.base.ImportantPages.feedback_page %}
-      <a href="{{ settings.base.ImportantPages.feedback_page.url }}"
+      <a href="{{ settings.base.ImportantPages.feedback_page|public_page_url }}"
          class="{% if mobile %}button is-fullwidth mobile-util-link mobile-util-link--cta{% else %}header-cta header-cta--feedback{% endif %}">
         {% translate "Feedback" %}
       </a>

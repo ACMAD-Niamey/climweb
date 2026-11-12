@@ -2,6 +2,7 @@
 {% url 'wagtailadmin_home' as wagtail_admin_url %}
 {% wagtail_site as current_site %}
 {% rcc_navigation as rcc_nav %}
+{% climate_health_navigation as health_nav %}
 
 <header class="site-header">
 
@@ -71,7 +72,7 @@
 
       <!-- MOBILE BRAND -->
       <div class="site-nav-brand">
-        <a class="mobile-logo" data-main-site-logo href="{% if main_site_logo_url %}{{ main_site_logo_url }}{% elif rcc_nav %}{{ rcc_nav.main_site_url }}{% else %}{{ current_site.root_url }}{% endif %}">
+        <a class="mobile-logo" data-main-site-logo href="{% if main_site_logo_url %}{{ main_site_logo_url }}{% elif health_nav %}{{ health_nav.main_site_url }}{% elif rcc_nav %}{{ rcc_nav.main_site_url }}{% else %}{{ current_site.root_url }}{% endif %}">
           {% if settings.base.OrganisationSetting.country_flag %}
             {% image settings.base.OrganisationSetting.country_flag original as country_flag %}
             <img src="{{ country_flag.url }}" alt="Flag" style="height:32px;">
@@ -92,7 +93,7 @@
       </div>
 
       <!-- DESKTOP BRAND -->
-      <a class="site-logo site-logo--desktop" data-main-site-logo href="{% if main_site_logo_url %}{{ main_site_logo_url }}{% elif rcc_nav %}{{ rcc_nav.main_site_url }}{% else %}{{ current_site.root_url }}{% endif %}"
+      <a class="site-logo site-logo--desktop" data-main-site-logo href="{% if main_site_logo_url %}{{ main_site_logo_url }}{% elif health_nav %}{{ health_nav.main_site_url }}{% elif rcc_nav %}{{ rcc_nav.main_site_url }}{% else %}{{ current_site.root_url }}{% endif %}"
          aria-label="{{ settings.base.OrganisationSetting.name|default:'ACMAD' }}">
         {% if settings.base.OrganisationSetting.logo %}
           {% image settings.base.OrganisationSetting.logo original as logo %}
@@ -118,7 +119,9 @@
             </button>
         </div>
         <div class="navbar-start">
-          {% if rcc_nav %}
+          {% if health_nav %}
+            {% include "navigation/climate_health_main_menu.html" %}
+          {% elif rcc_nav %}
             {% if settings.base.NavigationSettings.rcc_main_menu %}
               {% for block in settings.base.NavigationSettings.rcc_main_menu %}
                 {% include_block block %}
