@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     
     "climweb.pages.home",
     "climweb.pages.climsa",
+    "climweb.pages.climate_health",
     "climweb.pages.services",
     "climweb.pages.products",
     "climweb.pages.mediacenter",

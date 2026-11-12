@@ -286,6 +286,12 @@
         if (!tabsRow) {
             return;
         }
+        if (config.hideTabs) {
+            tabsRow.hidden = true;
+            tabsRow.innerHTML = '';
+            return;
+        }
+        tabsRow.hidden = false;
         tabsRow.innerHTML = '';
         tabs.forEach((tab) => {
             const button = document.createElement('button');
@@ -595,6 +601,8 @@
             msgLatest: mount.dataset.msgLatest || 'Latest',
             msgNoData: mount.dataset.msgNoData || 'No data available for this category',
             msgUnavailable: mount.dataset.msgUnavailable || 'Map data is temporarily unavailable',
+            categoryFilter: mount.dataset.categoryFilter || '',
+            hideTabs: mount.dataset.hideTabs === 'true',
         };
 
         if (!config.apiBaseUrl || !window.maplibregl) {
@@ -618,19 +626,34 @@
                 // Flood set so the card is never empty.
                 const aligned = dataLayers.length > 0;
                 let tabLayers = dataLayers;
-                if (!aligned) {
-                    console.info(
-                        'Multi-Hazard: no layers flagged display_on_homepage — '
-                        + 'showing the curated fallback set. Flag layers in the '
-                        + 'Multi-Hazard admin to control what appears here.'
-                    );
-                    tabLayers = layers.filter((layer) => layer.icon && layer.icon.url && hasDataset(layer));
-                }
+                let tabs = [];
 
-                groupedLayers = groupByCategory(tabLayers, categories);
-                const tabs = aligned
-                    ? flaggedTabs(categories, groupedLayers)
-                    : visibleTabs(categories, groupedLayers);
+                if (config.categoryFilter) {
+                    // Section sites can lock the shared map to one catalogue
+                    // category. The dataset still comes from the same API,
+                    // but visitors are not offered unrelated hazard options.
+                    tabLayers = layers.filter(
+                        (layer) => hasDataset(layer)
+                            && inferCategory(layer) === config.categoryFilter
+                    );
+                    groupedLayers = groupByCategory(tabLayers, categories);
+                    tabs = flaggedTabs(categories, groupedLayers).filter(
+                        (tab) => tab.key === config.categoryFilter
+                    );
+                } else {
+                    if (!aligned) {
+                        console.info(
+                            'Multi-Hazard: no layers flagged display_on_homepage — '
+                            + 'showing the curated fallback set. Flag layers in the '
+                            + 'Multi-Hazard admin to control what appears here.'
+                        );
+                        tabLayers = layers.filter((layer) => layer.icon && layer.icon.url && hasDataset(layer));
+                    }
+                    groupedLayers = groupByCategory(tabLayers, categories);
+                    tabs = aligned
+                        ? flaggedTabs(categories, groupedLayers)
+                        : visibleTabs(categories, groupedLayers);
+                }
 
                 if (!tabs.length && !topLayers.length) {
                     showUnavailable(mount);

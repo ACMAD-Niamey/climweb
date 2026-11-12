@@ -1,0 +1,28 @@
+{% load wagtailimages_tags lazyimages_tags i18n nmhs_cms_tags %}
+<a href="{{ item|public_page_url }}"
+   class="app-card"
+   data-ga-action="click"
+   data-ga-event-category="Climate and Health Product"
+   data-ga-event-label="{{ item.title }}"
+   data-ga-value="{{ page.title }}">
+  <div class="app-img">
+    {% if item.listing_image %}
+      {% image item.listing_image original as product_img %}
+      <img class="progressive__img progressive--not-loaded"
+           data-progressive="{{ product_img.url }}"
+           src="{% lazy_image_url product_img %}"
+           alt="{{ item.title }}">
+    {% else %}
+      <div class="app-img-placeholder"></div>
+    {% endif %}
+    <div class="app-overlay">
+      <span class="app-name">{{ item.title }}</span>
+      <span class="app-view">
+        {% translate "Open Product" %}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </span>
+    </div>
+  </div>
+</a>

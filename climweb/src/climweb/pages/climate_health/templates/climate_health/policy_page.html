@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load static i18n wagtailcore_tags %}
+
+{% block extra_css %}{{ block.super }}<link rel="stylesheet" href="{% static 'css/services_rcc.css' %}"><link rel="stylesheet" href="{% static 'climate_health/css/climate_health.css' %}?v={% now 'U' %}">{% endblock %}
+{% block body_class %}rcc-service-page climate-health-desk{% endblock %}
+{% block content %}
+<main>
+  <section class="page-hero ch-inner-hero"><div class="page-hero-overlay"></div><div class="page-hero-body"><div class="container"><span class="page-hero-badge">{% translate "Climate and Health Desk" %}</span><h1 class="page-hero-title">{{ page.banner_title|default:page.title }}</h1>{% if page.banner_subtitle %}<p class="page-hero-subtitle">{{ page.banner_subtitle }}</p>{% endif %}</div></div></section>
+  <section class="rcc-section ch-policy-body"><div class="container ch-policy-body__grid"><aside><h2>{{ page.introduction_title|default:page.title }}</h2></aside><div class="format-text">{% if page.introduction_text %}{{ page.introduction_text|richtext }}{% endif %}{{ page.body|richtext }}</div></div></section>
+  <section class="rcc-section ch-section--tint"><div class="container"><div class="rcc-section-heading"><div><h2>{% translate "Policies, strategies and action plans" %}</h2></div></div><div class="ch-card-grid">{% for item in page.related_publications %}{% include "climate_health/includes/card.html" with content_type="publications" %}{% empty %}<div class="ch-empty ch-empty--large"><p>{% translate "Climate and Health publications identified as a policy, strategy or action plan will appear here automatically." %}</p></div>{% endfor %}</div></div></section>
+</main>
+{% endblock %}
