@@ -36,6 +36,7 @@ from climweb.base.mixins import MetadataPageMixin
 from climweb.base.registries import plugin_registry
 from climweb.config.settings.base import SUMMARY_RICHTEXT_FEATURES
 from climweb.pages.events.models import EventPage
+from climweb.pages.cop.models import CopEditionPage, CopIndexPage
 from climweb.pages.news.models import NewsPage
 from climweb.pages.organisation_pages.partners.models import Partner
 from climweb.pages.organisation_pages.staff.models import StaffMember
@@ -50,6 +51,7 @@ logger = logging.getLogger(__name__)
 CLIMWEB_ADDITIONAL_APPS = getattr(settings, "CLIMWEB_ADDITIONAL_APPS", [])
 
 HOME_SUBPAGE_TYPES = [
+    'climsa.ClimsaHomePage',
     'contact.ContactPage',
     'services.ServiceIndexPage',
     'products.ProductIndexPage',
@@ -59,6 +61,7 @@ HOME_SUBPAGE_TYPES = [
     'mediacenter.MediaIndexPage',
     'organisation.OrganisationIndexPage',
     'events.EventIndexPage',
+    'cop.CopIndexPage',
     'surveys.SurveyPage',
     'email_subscription.MailchimpMailingListSubscriptionPage',
     'email_subscription.MauticMailingListSubscriptionPage',
@@ -98,6 +101,7 @@ def default_hero_carousel_order():
         ("event", None),
         ("event_2", None),
         ("el_nino", None),
+        ("cop", None),
         ("summer_school", None),
     ]
 
@@ -549,6 +553,11 @@ class HomePage(MetadataPageMixin, Page):
         default=True, verbose_name=_("Show Summer School"),
         help_text=_("Include the Summer School programme slide in the carousel."),
     )
+    hero_show_cop = models.BooleanField(
+        default=True,
+        verbose_name=_("Show current COP"),
+        help_text=_("Include the current published COP edition in the homepage carousel."),
+    )
     show_enso_section = models.BooleanField(
         default=True,
         verbose_name=_("Show ENSO section"),
@@ -709,6 +718,7 @@ class HomePage(MetadataPageMixin, Page):
             FieldPanel('hero_updates_mode'),
             FieldPanel('hero_featured_updates'),
             FieldPanel('hero_show_el_nino'),
+            FieldPanel('hero_show_cop'),
             FieldPanel('hero_show_summer_school'),
         ], heading=_("Hero Carousel")) if settings.IS_METEOROLOGICAL else MultiFieldPanel(),
         MultiFieldPanel([
@@ -1060,6 +1070,36 @@ class HomePage(MetadataPageMixin, Page):
                     "cta_url": canonical_public_page_url(bulletin_url),
                 }
 
+        cop_index = None
+        if self.hero_show_cop:
+            cop_index = CopIndexPage.objects.live().public().descendant_of(self).filter(
+                locale_id=self.locale_id,
+            ).first()
+        if cop_index:
+            current_cop = CopEditionPage.objects.live().public().child_of(cop_index).filter(
+                is_current=True,
+                locale_id=self.locale_id,
+            ).order_by("-cop_number", "-start_date").first()
+            if current_cop:
+                page_url = current_cop.get_url(request=request)
+                if page_url:
+                    slides_by_kind["cop"] = {
+                        "id": f"cop-{current_cop.pk}",
+                        "title": current_cop.title,
+                        "kind": "cop",
+                        "badge": _("COP %(number)s") % {"number": current_cop.cop_number},
+                        "cta_label": _("Explore COP %(number)s") % {"number": current_cop.cop_number},
+                        "date": current_cop.start_date,
+                        "end_date": current_cop.end_date,
+                        "image": current_cop.hero_image or current_cop.logo,
+                        "image_alt": _("COP %(number)s in %(city)s, %(country)s") % {
+                            "number": current_cop.cop_number,
+                            "city": current_cop.host_city,
+                            "country": current_cop.host_country,
+                        },
+                        "url": canonical_public_page_url(page_url),
+                    }
+
         summer_school_index = None
         if self.hero_show_summer_school:
             summer_school_index = SummerSchoolIndexPage.objects.live().public().descendant_of(self).filter(
@@ -1099,9 +1139,9 @@ class HomePage(MetadataPageMixin, Page):
 
         if self.hero_updates_mode == "manual":
             order = [slot for slot, _item in pages]
-            order.extend(["el_nino", "summer_school"])
+            order.extend(["cop", "el_nino", "summer_school"])
         else:
-            order = ["news", "el_nino", "summer_school"]
+            order = ["news", "cop", "el_nino", "summer_school"]
 
         return [slides_by_kind[kind] for kind in order if kind in slides_by_kind]
 

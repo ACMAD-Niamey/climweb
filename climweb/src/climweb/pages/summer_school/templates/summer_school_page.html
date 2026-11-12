@@ -60,9 +60,15 @@
                 </section>
             {% endif %}
 
-            {% if page.gallery_images %}
-                <section id="gallery">
-                    {% include 'summer_school_gallery_include.html' %}
+            {% if page.daily_activities %}
+                <section id="daily-activities">
+                    {% include 'summer_school_daily_activities_include.html' %}
+                </section>
+            {% endif %}
+
+            {% if page.reviews %}
+                <section id="reviews">
+                    {% include 'summer_school_reviews_include.html' %}
                 </section>
             {% endif %}
 

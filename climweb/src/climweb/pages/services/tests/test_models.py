@@ -24,6 +24,7 @@ from climweb.pages.services.models import (
     RCCClimateProductsPage,
     RCCCoordinationPage,
     RCCLongRangeForecastingPage,
+    RCCSeasonalOutlookDiscussion,
     ServiceApplication,
 )
 from .factories import (
@@ -543,7 +544,7 @@ class TestServicesPages(WagtailPageTestCase):
         self.assertContains(response, "Performance and verification")
         self.assertContains(
             response,
-            "Tailored Precipitation and Temperature Forecasts",
+            "Seasonal Forecasts",
         )
         self.assertContains(response, "Statistical and Dynamical Model Performance")
         self.assertContains(response, "Forecast and Outlook Verification")
@@ -600,6 +601,106 @@ class TestServicesPages(WagtailPageTestCase):
         )
         self.assertNotContains(response, "sgbd.acmad.org")
         self.assertNotContains(response, "rcc.acmad.org")
+
+    def test_seasonal_forecasts_render_selected_map_directly(self):
+        url = reverse("rcc_tailored_forecast_gallery")
+
+        self.assertEqual(url, "/rcc/long-range/seasonal-forecasts/")
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Seasonal Forecasts")
+        self.assertContains(
+            response,
+            "ACMAD_objective_forecast_PRCP_DJF_2026_map.png",
+        )
+        self.assertContains(response, "Discussion")
+        self.assertContains(response, "Overview")
+        self.assertContains(response, "Read the full forecast report")
+        self.assertContains(response, 'class="rcc-forecast-discussion"')
+        self.assertNotContains(response, 'class="rcc-forecast-map__heading"')
+        self.assertNotContains(response, 'id="selected-forecast-title"')
+        self.assertNotContains(response, 'class="rcc-lrg-breadcrumb"')
+        self.assertNotContains(response, "Current seasonal outlook")
+        self.assertNotContains(
+            response,
+            "Seasonal rainfall and temperature outlooks",
+        )
+        self.assertNotContains(
+            response,
+            "Explore the latest objective seasonal rainfall and temperature forecasts for Africa.",
+        )
+        self.assertNotContains(response, 'class="rcc-lrg-card"')
+        self.assertNotContains(response, 'name="region"')
+        self.assertContains(response, 'name="issue_month"')
+        self.assertContains(response, 'name="issue_year"')
+        self.assertNotContains(response, 'name="issue"')
+
+        selected_response = self.client.get(
+            url,
+            {
+                "variable": "temperature",
+                "season": "JFM",
+                "issue": "2026-10",
+            },
+        )
+
+        self.assertEqual(selected_response.status_code, 200)
+        self.assertContains(
+            selected_response,
+            "ACMAD_objective_forecast_T2M_JFM_2027_map.png",
+        )
+        self.assertContains(
+            selected_response,
+            "Seasonal temperature forecast: January-March 2027",
+        )
+        self.assertNotContains(
+            selected_response,
+            "ACMAD_objective_forecast_PRCP_DJF_2026_map.png",
+        )
+        legacy_response = self.client.get(
+            reverse("rcc_tailored_forecast_gallery_legacy")
+        )
+        self.assertRedirects(
+            legacy_response,
+            url,
+            status_code=301,
+            fetch_redirect_response=False,
+        )
+
+    def test_seasonal_forecast_copy_is_editable_on_long_range_page(self):
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center seasonal forecast copy",
+            service__name="Regional Climate Center",
+        )
+        forecasting_page = RCCLongRangeForecastingPageFactory(
+            parent=rcc_page,
+            seasonal_forecast_overview="<p>Editor supplied overview.</p>",
+        )
+        RCCSeasonalOutlookDiscussion.objects.create(
+            page=forecasting_page,
+            outlook_key="t2m-jfm-2027",
+            discussion="<p>Editor supplied outlook discussion.</p>",
+        )
+
+        response = self.client.get(
+            reverse("rcc_tailored_forecast_gallery"),
+            {
+                "variable": "temperature",
+                "season": "JFM",
+                "issue_month": "10",
+                "issue_year": "2026",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Editor supplied overview.")
+        self.assertContains(response, "Editor supplied outlook discussion.")
+        self.assertContains(
+            response,
+            "ACMAD_objective_forecast_T2M_JFM_2027_map.png",
+        )
 
     def test_long_range_forecasting_seed_links_existing_menu_item(self):
         rcc_page = ServicePageFactory(

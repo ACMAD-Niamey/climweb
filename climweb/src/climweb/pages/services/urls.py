@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.generic import RedirectView
 
 from . import views
 
@@ -15,10 +16,18 @@ urlpatterns = [
         name="rcc_consensus_forum_detail",
     ),
     path(
-        "rcc/long-range/tailored-forecasts/",
+        "rcc/long-range/seasonal-forecasts/",
         views.rcc_long_range_gallery,
         {"gallery": "tailored-forecasts"},
         name="rcc_tailored_forecast_gallery",
+    ),
+    path(
+        "rcc/long-range/tailored-forecasts/",
+        RedirectView.as_view(
+            pattern_name="rcc_tailored_forecast_gallery",
+            permanent=True,
+        ),
+        name="rcc_tailored_forecast_gallery_legacy",
     ),
     path(
         "rcc/long-range/model-performance/",

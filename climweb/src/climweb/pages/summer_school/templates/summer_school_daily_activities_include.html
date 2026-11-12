@@ -1,0 +1,76 @@
+{% load i18n wagtailcore_tags wagtailimages_tags %}
+
+<div class="ss-section-header">
+    <h2 class="ss-section-heading">{% translate "Daily Activities" %}</h2>
+    <p>{% translate "Follow each day through its key moments, photos, and videos." %}</p>
+</div>
+
+<div class="ss-activities">
+    {% for activity in page.daily_activities %}
+        <article class="ss-activity">
+            <header class="ss-activity-header">
+                <button class="ss-activity-toggle" type="button" id="activity-toggle-{{ forloop.counter }}" aria-expanded="true" aria-controls="activity-panel-{{ forloop.counter }}">
+                    <span class="ss-activity-day">{% blocktranslate with number=forloop.counter %}Day {{ number }}{% endblocktranslate %}</span>
+                    <span class="ss-activity-heading">
+                        <span class="ss-activity-title">{{ activity.value.title }}</span>
+                    {% if activity.value.date %}
+                        <time datetime="{{ activity.value.date|date:'Y-m-d' }}">{{ activity.value.date|date:"l, j F Y" }}</time>
+                    {% endif %}
+                    </span>
+                    <span class="ss-activity-toggle-icon" aria-hidden="true"></span>
+                </button>
+            </header>
+            <div class="ss-activity-panel" id="activity-panel-{{ forloop.counter }}" role="region" aria-labelledby="activity-toggle-{{ forloop.counter }}">
+                <div class="ss-activity-content{% if activity.value.media %} has-media{% endif %}">
+                    <div class="ss-activity-summary rich-text">{{ activity.value.summary|richtext }}</div>
+
+                    {% if activity.value.media %}
+                        <div class="ss-activity-media" aria-label="{% blocktranslate with number=forloop.counter %}Day {{ number }} media gallery{% endblocktranslate %}">
+                            {% for media in activity.value.media %}
+                                {% if media.block_type == "image" %}
+                                    <figure class="ss-activity-media-item">
+                                        {% image media.value.image fill-900x600 as activity_image %}
+                                        <a href="{{ media.value.image.file.url }}" target="_blank" rel="noopener">
+                                            <img src="{{ activity_image.url }}" width="{{ activity_image.width }}" height="{{ activity_image.height }}" alt="{{ media.value.alt_text|default:media.value.caption|default:media.value.image.title }}" loading="lazy">
+                                        </a>
+                                        {% if media.value.caption %}<figcaption>{{ media.value.caption }}</figcaption>{% endif %}
+                                    </figure>
+                                {% elif media.block_type == "video" %}
+                                    <figure class="ss-activity-media-item ss-activity-video">
+                                        <video controls preload="metadata"{% if media.value.poster %}{% image media.value.poster fill-900x506 as poster %} poster="{{ poster.url }}"{% endif %}>
+                                            <source src="{{ media.value.video.url }}">
+                                            <a href="{{ media.value.video.url }}">{% translate "Download video" %}</a>
+                                        </video>
+                                        {% if media.value.caption %}<figcaption>{{ media.value.caption }}</figcaption>{% endif %}
+                                    </figure>
+                                {% else %}
+                                    <article class="ss-activity-media-item ss-hosted-video-card">
+                                        {% if media.value.thumbnail %}
+                                            {% image media.value.thumbnail fill-900x506 as thumbnail %}
+                                            <img src="{{ thumbnail.url }}" width="{{ thumbnail.width }}" height="{{ thumbnail.height }}" alt="" loading="lazy">
+                                        {% endif %}
+                                        <div class="ss-hosted-video-card-body">
+                                            <span aria-hidden="true">&#9654;</span>
+                                            <a href="{{ media.value.url }}" target="_blank" rel="noopener">
+                                                {% if media.value.title %}{{ media.value.title }}{% else %}{% translate "Watch video" %}{% endif %}
+                                            </a>
+                                        </div>
+                                    </article>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        <nav class="ss-activity-media-pagination" aria-label="{% blocktranslate with number=forloop.counter %}Day {{ number }} gallery pagination{% endblocktranslate %}" data-page-label="{% translate 'Page' %}" data-of-label="{% translate 'of' %}" hidden>
+                            <button class="ss-media-page-button ss-media-page-previous" type="button">
+                                <span aria-hidden="true">&#8592;</span> {% translate "Previous" %}
+                            </button>
+                            <span class="ss-media-page-status" aria-live="polite"></span>
+                            <button class="ss-media-page-button ss-media-page-next" type="button">
+                                {% translate "Next" %} <span aria-hidden="true">&#8594;</span>
+                            </button>
+                        </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </article>
+    {% endfor %}
+</div>

@@ -98,7 +98,7 @@ class ElNinoPageFactory(ProductPageFactory):
 
     title = "ENSO in Africa"
     introduction_title = "Understanding ENSO and its implications for Africa"
-    
+
     @factory.lazy_attribute
     def enso_explanation(self):
         return RichText(

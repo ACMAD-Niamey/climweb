@@ -1,4 +1,5 @@
 from wagtail import blocks
+from wagtail.documents.blocks import DocumentChooserBlock
 from wagtail.images.blocks import ImageChooserBlock
 from wagtailiconchooser.blocks import IconChooserBlock
 
@@ -122,3 +123,109 @@ class SummerSchoolPartnerBlock(blocks.StructBlock):
     class Meta:
         icon = "group"
         label = "Sponsor / Organizer / Partner"
+
+
+class ActivityImageBlock(blocks.StructBlock):
+    image = ImageChooserBlock(help_text="Select or upload a photo from this day")
+    caption = blocks.CharBlock(max_length=255, required=False)
+    alt_text = blocks.CharBlock(
+        max_length=255,
+        required=False,
+        help_text="Describe the image for visitors using screen readers",
+    )
+
+    class Meta:
+        icon = "image"
+        label = "Photo"
+
+
+class ActivityVideoBlock(blocks.StructBlock):
+    video = DocumentChooserBlock(
+        help_text="Upload or select a video file (for example MP4 or WebM)",
+    )
+    caption = blocks.CharBlock(max_length=255, required=False)
+    poster = ImageChooserBlock(
+        required=False,
+        help_text="Optional preview image displayed before the video plays",
+    )
+
+    class Meta:
+        icon = "media"
+        label = "Uploaded video"
+
+
+class ActivityHostedVideoBlock(blocks.StructBlock):
+    url = blocks.URLBlock(help_text="YouTube, Vimeo, or another hosted video URL")
+    title = blocks.CharBlock(max_length=255, required=False)
+    thumbnail = ImageChooserBlock(required=False, help_text="Optional preview image")
+
+    class Meta:
+        icon = "link"
+        label = "Hosted video"
+
+
+class DailyActivityBlock(blocks.StructBlock):
+    date = blocks.DateBlock(required=False, help_text="Date of the activity")
+    title = blocks.CharBlock(max_length=255, help_text="For example: Day 1 - Welcome and orientation")
+    summary = blocks.RichTextBlock(
+        features=SUMMARY_RICHTEXT_FEATURES,
+        help_text="A short summary of the day's sessions, visits, and highlights",
+    )
+    media = blocks.StreamBlock(
+        [
+            ("image", ActivityImageBlock()),
+            ("video", ActivityVideoBlock()),
+            ("hosted_video", ActivityHostedVideoBlock()),
+        ],
+        required=False,
+        help_text="Add photos and videos in the order they should appear",
+    )
+
+    class Meta:
+        icon = "date"
+        label = "Day"
+
+
+class SummerSchoolReviewBlock(blocks.StructBlock):
+    SOURCE_CHOICES = (
+        ("feedback_form", "Feedback form"),
+        ("facebook", "Facebook"),
+        ("instagram", "Instagram"),
+        ("linkedin", "LinkedIn"),
+        ("x", "X / Twitter"),
+        ("youtube", "YouTube"),
+        ("other", "Other"),
+    )
+
+    quote = blocks.TextBlock(help_text="The review or testimonial text")
+    reviewer_name = blocks.CharBlock(max_length=150, required=False)
+    reviewer_details = blocks.CharBlock(
+        max_length=255,
+        required=False,
+        help_text="Optional role, organisation, cohort, or country",
+    )
+    source = blocks.ChoiceBlock(choices=SOURCE_CHOICES, default="feedback_form")
+    source_label = blocks.CharBlock(
+        max_length=100,
+        required=False,
+        help_text="Optional custom source name when Other is selected",
+    )
+    rating = blocks.IntegerBlock(
+        min_value=1,
+        max_value=5,
+        required=False,
+        help_text="Optional rating out of 5",
+    )
+    review_date = blocks.DateBlock(required=False)
+    source_url = blocks.URLBlock(
+        required=False,
+        help_text="Link to the original social post, video, or published review",
+    )
+    screenshot = ImageChooserBlock(
+        required=False,
+        help_text="Optional screenshot of the social post or feedback form",
+    )
+
+    class Meta:
+        icon = "comment"
+        label = "Review"

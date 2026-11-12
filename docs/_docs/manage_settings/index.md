@@ -10,6 +10,8 @@ Manage-Settings
 Manage-Menus
 Manage-Google-Translate
 Manage-Google-Meet
+Manage-Staff-Workspace
+Manage-Staff-Google-Drive
 Manage-Navigation
 Manage-Important-Pages
 Manage-Satellite-Imagery

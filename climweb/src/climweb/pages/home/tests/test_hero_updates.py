@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 from unittest.mock import patch
 
 from django.template.loader import render_to_string
@@ -9,6 +9,7 @@ from wagtail.models import PageViewRestriction
 from wagtail.test.utils import WagtailPageTestCase
 
 from climweb.pages.events.models import EventPage
+from climweb.pages.cop.models import CopEditionPage, CopIndexPage
 from climweb.pages.events.tests.factories import EventIndexPageFactory, EventPageFactory
 from climweb.pages.news.models import NewsPage
 from climweb.pages.news.tests.factories import NewsIndexPageFactory, NewsPageFactory
@@ -94,6 +95,7 @@ class HeroUpdatesTests(WagtailPageTestCase):
         self.assertIn("hero_updates_mode", form.base_fields)
         self.assertIn("hero_featured_updates", form.base_fields)
         self.assertIn("hero_show_el_nino", form.base_fields)
+        self.assertIn("hero_show_cop", form.base_fields)
         self.assertIn("hero_show_summer_school", form.base_fields)
         self.assertIn("hero_featured_products", form.base_fields)
         self.assertIn("show_enso_section", form.base_fields)
@@ -246,6 +248,36 @@ class HeroUpdatesTests(WagtailPageTestCase):
         self.assertEqual(slides[2]["url"], summer_school_index.url)
         self.assertEqual(slides[2]["cta_url"], "https://summerschool.acmad.org/")
         self.assertEqual(slides[2]["title"], summer_school.hero_heading)
+
+    def test_current_cop_is_included_in_homepage_carousel(self):
+        cop_index = CopIndexPage(title="COP", slug="cop")
+        self.home.add_child(instance=cop_index)
+        cop_index.save_revision().publish()
+        hero_image = wagtail_factories.ImageFactory(title="COP31 Antalya")
+        cop = CopEditionPage(
+            title="COP 31",
+            slug="cop31",
+            cop_number=31,
+            is_current=True,
+            start_date=date(2026, 11, 9),
+            end_date=date(2026, 11, 20),
+            host_city="Antalya",
+            host_country="Türkiye",
+            description="<p>ACMAD at COP31.</p>",
+            hero_image=hero_image,
+        )
+        cop_index.add_child(instance=cop)
+        cop.save_revision().publish()
+
+        slide = self.home.get_hero_updates()[0]
+
+        self.assertEqual(slide["kind"], "cop")
+        self.assertEqual(slide["title"], "COP 31")
+        self.assertEqual(slide["date"], date(2026, 11, 9))
+        self.assertEqual(slide["end_date"], date(2026, 11, 20))
+        self.assertEqual(slide["image"], hero_image)
+        self.assertEqual(slide["url"], cop.url)
+        self.assertEqual(slide["cta_label"], "Explore COP 31")
 
     def test_summer_school_slide_links_to_online_meeting_when_configured(self):
         summer_school_index = SummerSchoolIndexPageFactory(parent=self.home)

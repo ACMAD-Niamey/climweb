@@ -42,7 +42,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-
+output/
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
@@ -197,6 +197,7 @@ backup/
 .vscode/
 node_modules/
 tmp/
+output/
 .claude/
 climweb_dump.dump
 # Local runtime data (docker bind mounts)

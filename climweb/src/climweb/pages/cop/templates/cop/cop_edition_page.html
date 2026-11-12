@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags wagtailimages_tags static i18n lazyimages_tags tz %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'cop/css/cop.css' %}?v=16">
+{% endblock %}
+
+{% block body_class %}cop-page cop-edition-page{% endblock %}
+
+{% block content %}
+<main class="cop-themed" style="--cop-primary: {{ page.primary_color }}; --cop-secondary: {{ page.secondary_color }}; --cop-accent: {{ page.accent_color }}; --cop-on-primary: {{ page.text_on_primary_color }};">
+    <section class="cop-edition-overview">
+        <div class="container">
+            <div class="cop-edition-title-row">
+                <div class="cop-edition-title-row__identity">
+                    {% if page.logo %}
+                        <h1 class="is-sr-only">COP {{ page.cop_number }}</h1>
+                        {% image page.logo max-480x220 as cop_logo %}
+                        {% if page.official_website_url %}<a class="cop-edition-title-row__logo-link" href="{{ page.official_website_url }}" target="_blank" rel="noopener noreferrer" aria-label="{% blocktranslate with number=page.cop_number %}Visit the official COP {{ number }} website{% endblocktranslate %}">{% endif %}
+                            <img class="cop-edition-title-row__logo" src="{{ cop_logo.url }}" alt="COP{{ page.cop_number }} logo">
+                        {% if page.official_website_url %}</a>{% endif %}
+                    {% else %}
+                        <h1>{% if page.official_website_url %}<a href="{{ page.official_website_url }}" target="_blank" rel="noopener noreferrer">COP {{ page.cop_number }}</a>{% else %}COP {{ page.cop_number }}{% endif %}</h1>
+                    {% endif %}
+                </div>
+                {% if page.linkedin_url %}
+                    <a class="cop-edition-title-row__follow" href="{{ page.linkedin_url }}" target="_blank" rel="noopener noreferrer">
+                        {% translate "Follow us on LinkedIn" %} <span aria-hidden="true">↗</span>
+                    </a>
+                {% endif %}
+            </div>
+            <div class="cop-edition-overview__grid">
+                <aside class="cop-edition-facts" aria-label="{% translate 'COP event details' %}">
+                    <div><span>{% translate "Start date" %}</span><strong>{{ page.start_date|date:"j F Y" }}</strong></div>
+                    <div><span>{% translate "End date" %}</span><strong>{{ page.end_date|date:"j F Y" }}</strong></div>
+                    <div><span>{% translate "Location" %}</span><strong>{{ page.host_country }}, {{ page.host_city }}{% if page.venue %}<small>{{ page.venue }}</small>{% endif %}</strong></div>
+                </aside>
+                <div id="acmad-at-cop" class="cop-edition-overview__main">
+                    {% if page.hero_image %}
+                        {% image page.hero_image width-1400 as hero_banner %}
+                        <img class="cop-edition-overview__banner" src="{{ hero_banner.url }}" alt="COP{{ page.cop_number }} — {{ page.host_city }}, {{ page.host_country }}">
+                    {% endif %}
+                    <div class="cop-description is-collapsed" data-read-more>
+                        <div id="cop-description" class="cop-prose cop-prose--lead cop-description__content" data-read-more-content>{{ page.description|richtext }}</div>
+                        <button class="cop-read-more" type="button" aria-expanded="false" aria-controls="cop-description" data-read-more-toggle data-label-more="{% translate 'Read more' %}" data-label-less="{% translate 'Read less' %}" hidden>
+                            <span data-read-more-label>{% translate "Read more" %}</span>
+                            <span aria-hidden="true">↓</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {% if page.schedule_documents %}
+        <section id="schedule" class="cop-section cop-documents-section">
+            <div class="container">
+                <div class="cop-section-heading-row">
+                    <h2>{% translate "Side-event schedules" %}</h2>
+                    {% if page.schedule_documents|length > 1 %}
+                        <div class="cop-carousel-controls">
+                            <button type="button" data-schedule-previous aria-label="{% translate 'Previous schedule' %}">←</button>
+                            <span data-schedule-counter></span>
+                            <button type="button" data-schedule-next aria-label="{% translate 'Next schedule' %}">→</button>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="cop-schedule-carousel" data-schedule-carousel>
+                    <div class="cop-schedule-carousel__track" data-schedule-track>
+                        {% for item in page.schedule_documents %}
+                            <article class="cop-schedule-slide" data-schedule-slide>
+                                <a class="cop-schedule-slide__preview" href="{{ item.value.document.url }}">
+                                    {% if item.value.preview_image %}
+                                        {% image item.value.preview_image width-1200 as schedule_preview %}
+                                        <img src="{{ schedule_preview.url }}" alt="{{ item.value.title }}">
+                                    {% else %}
+                                        <span aria-hidden="true">PDF</span>
+                                    {% endif %}
+                                </a>
+                                <div class="cop-schedule-slide__caption">
+                                    <div><strong>{{ item.value.title }}</strong>{% if item.value.description %}<small>{{ item.value.description }}</small>{% endif %}</div>
+                                    <a href="{{ item.value.document.url }}">{% translate "Open schedule" %} <span aria-hidden="true">↗</span></a>
+                                </div>
+                            </article>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </section>
+    {% endif %}
+
+    {% if page.side_events %}
+        <section id="side-events" class="cop-section cop-side-events-section">
+            <div class="container">
+                <div class="cop-section-heading-row">
+                    <h2>{% translate "Side events" %}</h2>
+                    <div class="cop-view-toggle" role="group" aria-label="{% translate 'Side-event view' %}">
+                        <button type="button" class="is-active" aria-pressed="true" data-events-view="list">{% translate "List" %}</button>
+                        <button type="button" aria-pressed="false" data-events-view="grid">{% translate "Grid" %}</button>
+                    </div>
+                </div>
+                <div class="cop-side-event-grid is-list" data-side-events>
+                    {% for event in page.side_events %}
+                        {% timezone event.timezone %}
+                        <a class="cop-side-event-card{% if event.acmad_is_co_organizer %} is-acmad-co-organized{% endif %}" href="{{ event.slug }}/" aria-label="{% blocktranslate with number=event.side_event_number title=event.title %}View side event {{ number }}: {{ title }}{% endblocktranslate %}">
+                            <div class="cop-side-event-card__datetime">
+                                <time datetime="{{ event.start_datetime|date:'c' }}">
+                                    <strong>{{ event.start_datetime|date:"j M" }}</strong>
+                                    <span>{{ event.start_datetime|date:"H:i" }}–{{ event.end_datetime|date:"H:i" }}</span>
+                                </time>
+                            </div>
+                            <div class="cop-side-event-card__body">
+                                <p>
+                                    {% blocktranslate with number=event.side_event_number %}Side event {{ number }}{% endblocktranslate %}
+                                    {% if event.acmad_is_co_organizer %}<span class="cop-acmad-badge">{% translate "ACMAD co-organizer" %}</span>{% endif %}
+                                </p>
+                                <h3>{{ event.title }}</h3>
+                                <dl>
+                                    <div><dt>{% translate "When" %}</dt><dd>{{ event.start_datetime|date:"D j M, H:i" }}–{{ event.end_datetime|date:"H:i" }}</dd></div>
+                                    <div><dt>{% translate "Where" %}</dt><dd>{{ event.venue }}</dd></div>
+                                    {% if event.theme %}<div><dt>{% translate "Theme" %}</dt><dd>{{ event.theme }}</dd></div>{% endif %}
+                                    {% if event.lead_organizer %}<div><dt>{% translate "Lead" %}</dt><dd>{{ event.lead_organizer.name }}</dd></div>{% endif %}
+                                </dl>
+                                <span class="cop-text-link">{% translate "View side event" %} <span aria-hidden="true">→</span></span>
+                            </div>
+                        </a>
+                        {% endtimezone %}
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+    {% endif %}
+
+    {% if page.gallery %}
+        <section id="gallery" class="cop-section cop-gallery-section">
+            <div class="container">
+                <h2>{% translate "Picture gallery" %}</h2>
+                <div class="cop-gallery-carousel" data-gallery-carousel>
+                    <button type="button" class="cop-gallery-carousel__button cop-gallery-carousel__button--previous" data-gallery-scroll-previous aria-label="{% translate 'Previous gallery images' %}">‹</button>
+                    <div class="cop-gallery" data-cop-gallery data-gallery-track>
+                        {% for item in page.gallery %}
+                            {% image item.value.image fill-720x500 as thumb %}{% image item.value.image max-2000x1400 as full %}
+                            <figure data-gallery-item>
+                                <button type="button" data-gallery-image data-src="{{ full.url }}" data-alt="{{ item.value.caption|default:'' }}">
+                                    <img src="{{ thumb.url }}" alt="{{ item.value.caption|default:'' }}">
+                                </button>
+                            </figure>
+                        {% endfor %}
+                    </div>
+                    <button type="button" class="cop-gallery-carousel__button cop-gallery-carousel__button--next" data-gallery-scroll-next aria-label="{% translate 'Next gallery images' %}">›</button>
+                </div>
+            </div>
+        </section>
+        <dialog class="cop-gallery-dialog" data-gallery-dialog aria-label="{% translate 'Image viewer' %}">
+            <button type="button" class="cop-gallery-dialog__close" data-gallery-close aria-label="{% translate 'Close image viewer' %}">×</button>
+            <button type="button" class="cop-gallery-dialog__previous" data-gallery-previous aria-label="{% translate 'Previous image' %}">‹</button>
+            <img src="" alt="" data-gallery-dialog-image>
+            <button type="button" class="cop-gallery-dialog__next" data-gallery-next aria-label="{% translate 'Next image' %}">›</button>
+            <p data-gallery-counter></p>
+        </dialog>
+    {% endif %}
+
+    {% if page.partners.all %}
+        <section id="partners" class="cop-section cop-partners-section">
+            <div class="container">
+                <h2>{% translate "Partners" %}</h2>
+                <div class="columns is-multiline is-mobile is-centered partners-list cop-partner-grid">
+                    {% for partner in page.partners.all %}
+                        {% if partner.logo %}
+                            <div class="column is-4-mobile is-3-tablet is-2-desktop">
+                                {% if partner.link %}<a href="{{ partner.link }}" target="_blank" rel="noopener" class="partner-card" title="{{ partner.name }}">{% else %}<div class="partner-card" title="{{ partner.name }}">{% endif %}
+                                    <figure class="image partner-logo-figure">
+                                        {% image partner.logo original as partner_logo %}
+                                        <img class="progressive__img progressive--not-loaded partner-logo-img" data-progressive="{{ partner_logo.url }}" src="{% lazy_image_url partner_logo %}" alt="{{ partner.name }}">
+                                    </figure>
+                                    <span class="partner-name">{{ partner.name }}</span>
+                                {% if partner.link %}</a>{% else %}</div>{% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+    {% endif %}
+
+    <section class="cop-back-link"><div class="container"><a href="../">← {% translate "All COP editions" %}</a></div></section>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <script src="{% static 'cop/js/cop_page.js' %}?v=3"></script>
+    {% if page.gallery %}<script src="{% static 'cop/js/cop_gallery.js' %}?v=2"></script>{% endif %}
+{% endblock %}

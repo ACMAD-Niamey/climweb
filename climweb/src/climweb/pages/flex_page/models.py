@@ -15,6 +15,7 @@ class FlexPage(AbstractBannerPage):
         'services.ServicePage',
         'organisation.OrganisationIndexPage',
         'about.AboutPage',
+        'climsa.ClimsaHomePage',
     ]
 
     content = StreamField(
