@@ -25,6 +25,10 @@ class TestBoardPages(WagtailPageTestCase):
             role="Director General",
             department=department,
             bio="<p>A leader committed to climate services.</p>",
+            website="https://example.test/director-general",
+            linkedin="https://www.linkedin.com/in/director-general",
+            github="https://github.com/director-general",
+            publications="https://example.test/director-general/publications",
         )
         StaffPageSelection.objects.create(page=cls.staff_page, member=cls.director_general)
         cls.director_general_page = DirectorGeneralPageFactory(parent=cls.staff_page)
@@ -88,6 +92,13 @@ class TestBoardPages(WagtailPageTestCase):
         self.assertContains(response, "Director General of ACMAD")
         self.assertContains(response, "ojt-page board-president-page director-general-page")
         self.assertContains(response, 'class="dg-profile-image-frame"')
+        self.assertContains(response, 'class="staff-profile-links"')
+        self.assertContains(response, 'href="https://example.test/director-general"')
+        self.assertContains(response, 'href="https://www.linkedin.com/in/director-general"')
+        self.assertContains(response, 'href="https://github.com/director-general"')
+        self.assertContains(response, 'href="https://example.test/director-general/publications"')
+        html = response.content.decode()
+        self.assertLess(html.index("Dr. Director General"), html.index("staff-profile-links"))
 
     def test_page_type_relationships(self):
         self.assertAllowedParentPageTypes(BoardPage, {OrganisationIndexPage})

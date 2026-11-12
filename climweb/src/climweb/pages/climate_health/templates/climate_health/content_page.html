@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load static i18n wagtailcore_tags %}
+
+{% block extra_css %}{{ block.super }}<link rel="stylesheet" href="{% static 'css/services_rcc.css' %}"><link rel="stylesheet" href="{% static 'climate_health/css/climate_health.css' %}?v={% now 'U' %}">{% endblock %}
+{% block body_class %}rcc-service-page climate-health-desk{% endblock %}
+
+{% block content %}
+<main>
+  <section class="page-hero ch-inner-hero"><div class="page-hero-overlay"></div><div class="page-hero-body"><div class="container"><span class="page-hero-badge">{% translate "Climate and Health Desk" %}</span><h1 class="page-hero-title">{{ page.banner_title|default:page.title }}</h1>{% if page.banner_subtitle %}<p class="page-hero-subtitle">{{ page.banner_subtitle }}</p>{% endif %}</div></div></section>
+  <section class="rcc-section ch-listing">
+    <div class="container">
+      {% if page.introduction_text %}<div class="ch-listing__intro format-text">{{ page.introduction_text|richtext }}</div>{% endif %}
+      <form class="ch-filter" method="get" role="search">
+        <label><span class="is-sr-only">{% translate "Search" %}</span><input type="search" name="q" value="{{ query }}" placeholder="{% blocktranslate with type=page.get_listing_type_display|lower %}Search {{ type }}{% endblocktranslate %}"></label>
+        {% if page.listing_type == 'publications' or page.listing_type == 'events' %}<label><span class="is-sr-only">{% translate "Year" %}</span><input type="number" name="year" value="{{ selected_year }}" min="2000" max="2100" placeholder="{% translate 'Year' %}"></label>{% endif %}
+        <button type="submit">{% translate "Filter" %}</button>
+        {% if query or selected_year %}<a href="{{ page.url }}">{% translate "Clear" %}</a>{% endif %}
+      </form>
+      <div class="ch-results-heading"><p>{% blocktranslate count counter=result_count %}{{ counter }} result{% plural %}{{ counter }} results{% endblocktranslate %}</p></div>
+      <div class="ch-card-grid">{% for item in items %}{% include "climate_health/includes/card.html" with content_type=page.listing_type %}{% empty %}<div class="ch-empty ch-empty--large"><h2>{% translate "No content found" %}</h2><p>{% translate "Content appears here when it is classified under Climate and Health on the main website." %}</p></div>{% endfor %}</div>
+      {% if items.paginator.num_pages > 1 %}<nav class="ch-pagination" aria-label="{% translate 'Pagination' %}">{% if items.has_previous %}<a href="?q={{ query|urlencode }}&year={{ selected_year|urlencode }}&page={{ items.previous_page_number }}">← {% translate "Previous" %}</a>{% endif %}<span>{% blocktranslate with current=items.number total=items.paginator.num_pages %}Page {{ current }} of {{ total }}{% endblocktranslate %}</span>{% if items.has_next %}<a href="?q={{ query|urlencode }}&year={{ selected_year|urlencode }}&page={{ items.next_page_number }}">{% translate "Next" %} →</a>{% endif %}</nav>{% endif %}
+    </div>
+  </section>
+</main>
+{% endblock %}

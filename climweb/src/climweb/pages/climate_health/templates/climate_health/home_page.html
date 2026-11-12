@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% load static i18n wagtailcore_tags wagtailimages_tags nmhs_cms_tags %}
+
+{% block extra_css %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/services_rcc.css' %}">
+  <link rel="stylesheet" href="{% static 'css/maplibre-gl.css' %}">
+  <link rel="stylesheet" href="{% static 'css/multi_hazard_map.css' %}">
+  <link rel="stylesheet" href="{% static 'climate_health/css/climate_health.css' %}?v={% now 'U' %}">
+{% endblock %}
+
+{% block body_class %}rcc-service-page climate-health-desk{% endblock %}
+
+{% block content %}
+{% climate_health_navigation as health_nav %}
+<main>
+  <section class="page-hero ch-hero{% if page.banner_image %} ch-hero--image{% endif %}"{% if page.banner_image %} style="--ch-hero-image:url('{{ page.banner_image.file.url }}')"{% endif %}>
+    <div class="page-hero-overlay"></div>
+    <div class="page-hero-body">
+      <div class="container ch-hero__content">
+        <span class="page-hero-badge">{{ page.hero_kicker }}</span>
+        <h1 class="page-hero-title">{% translate "Climate and Health Desk" %}</h1>
+      </div>
+    </div>
+  </section>
+
+  <section class="rcc-overview ch-map-section">
+    <div class="container rcc-overview__grid ch-map-section__grid">
+      <div class="rcc-overview__content ch-map-section__intro">
+        <h2>{{ page.map_section_title }}</h2>
+        <div class="rcc-overview__copy format-text">
+          {{ page.map_section_text|richtext }}
+        </div>
+      </div>
+      <div class="rcc-overview__map mhz-card ch-map-card">
+        <div class="mhz-card-header">
+          <div class="mhz-card-title"><span class="ch-map-dot" aria-hidden="true"></span><span>{{ page.map_card_title }}</span></div>
+          <a class="mhz-viewer-btn" href="{{ page.map_viewer_url }}" target="_blank" rel="noopener noreferrer">{{ page.map_viewer_label }} ↗</a>
+        </div>
+        {% if multi_hazard_api_base_url %}
+          <div id="multi-hazard-tabs" class="mhz-tabs-row" hidden></div>
+          <div id="multi-hazard-map" class="mhz-map"
+               data-api-base-url="{{ multi_hazard_api_base_url }}"
+               data-project-slug="{{ multi_hazard_project_slug }}"
+               data-country-bounds="{{ country_bounds }}"
+               data-category-filter="climate-and-health"
+               data-hide-tabs="true"
+               data-msg-latest="{% translate 'Latest' %}"
+               data-msg-no-data="{% translate 'No Climate and Health map is currently available' %}"
+               data-msg-unavailable="{% translate 'Map data is temporarily unavailable' %}">
+            <div class="mhz-placeholder">{% translate "Loading Climate and Health map…" %}</div>
+          </div>
+        {% else %}
+          <div class="mhz-map mhz-map--static"><div class="mhz-unavailable">{% translate "Map data is temporarily unavailable" %}</div></div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="container rcc-functions">
+      {% for priority in page.priorities.all %}<article class="rcc-function"><span class="rcc-function__number">{{ forloop.counter|stringformat:"02d" }}</span><h3>{{ priority.title }}</h3><p>{{ priority.description }}</p></article>{% endfor %}
+    </div>
+  </section>
+
+  {% if featured_products %}
+  <section class="rcc-section ch-section ch-section--tint">
+    <div class="container">
+      <div class="rcc-section-heading"><div><h2>{{ page.products_section_title }}</h2></div>{% if section_pages.products %}<a class="ch-view-all" href="{{ health_nav.products_url }}">{% translate "View all products" %} →</a>{% endif %}</div>
+      <div class="app-grid">{% for item in featured_products %}{% include "climate_health/includes/product_application_card.html" %}{% endfor %}</div>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="rcc-section ch-knowledge">
+    <div class="container">
+      <div class="rcc-section-heading"><div><h2>{{ page.updates_section_title }}</h2></div></div>
+      <div class="ch-split">
+        <div>
+          <div class="ch-subheading"><h3>{% translate "News" %}</h3></div>
+          <div class="ch-card-grid ch-card-grid--compact">{% for item in latest_news %}{% include "climate_health/includes/card.html" with content_type="news" %}{% empty %}<p class="ch-empty">{% translate "Classify news under Climate and Health to show it here." %}</p>{% endfor %}</div>
+        </div>
+        <div>
+          <div class="ch-subheading"><h3>{% translate "Events" %}</h3>{% if section_pages.events %}<a href="{{ health_nav.events_url }}">{% translate "All events" %}</a>{% endif %}</div>
+          <div class="ch-event-list">{% for item in latest_events %}<a href="{{ item|public_page_url }}"><time datetime="{{ item.date_from|date:'Y-m-d' }}"><strong>{{ item.date_from|date:"d" }}</strong><span>{{ item.date_from|date:"M Y" }}</span></time><span><strong>{{ item.title }}</strong><small>{{ item.location }}</small></span><b aria-hidden="true">→</b></a>{% empty %}<p class="ch-empty">{% translate "Classify events under Climate and Health to show them here." %}</p>{% endfor %}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="rcc-section ch-platforms">
+    <div class="container">
+      <div class="rcc-section-heading"><div><h2>{{ page.platforms_section_title }}</h2></div>{% if section_pages.platforms %}<a class="ch-view-all" href="{{ health_nav.platforms_url }}">{% translate "View all platforms" %} →</a>{% endif %}</div>
+      <div class="app-grid">{% for item in featured_platforms %}{% include "application_card.html" with application=item %}{% empty %}<p class="ch-empty">{% translate "Climate and health platforms will appear here once configured." %}</p>{% endfor %}</div>
+    </div>
+  </section>
+
+  {% if health_partners %}
+  <section class="rcc-section ch-partners">
+    <div class="container">
+      <div class="rcc-section-heading"><div><h2>{{ page.partners_section_title }}</h2></div></div>
+      <div class="columns is-multiline is-mobile is-centered partners-list">
+        {% for partner in health_partners %}
+        <div class="column is-4-mobile is-3-tablet is-2-desktop">
+          {% if partner.link %}<a class="partner-card" href="{{ partner.link }}" target="_blank" rel="noopener noreferrer" title="{{ partner.name }}">{% else %}<div class="partner-card" title="{{ partner.name }}">{% endif %}
+            <figure class="image partner-logo-figure">
+              {% if partner.logo %}{% image partner.logo original as partner_logo %}<img class="partner-logo-img" src="{{ partner_logo.url }}" alt="{{ partner.name }}">{% else %}<span class="ch-partner-fallback">{{ partner.name|slice:":2"|upper }}</span>{% endif %}
+            </figure>
+            <span class="partner-name">{{ partner.name }}</span>
+          {% if partner.link %}</a>{% else %}</div>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+</main>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script defer src="{% static 'js/maplibre-gl.js' %}"></script>
+<script defer src="{% static 'js/multi_hazard_map.js' %}?v={% now 'U' %}"></script>
+{% endblock %}
