@@ -298,6 +298,36 @@
     line-height: 1.45;
 }
 
+.director-general-page .staff-profile-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: 1rem;
+}
+
+.director-general-page .staff-profile-links a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary-color, #307461);
+    color: #fff;
+    transition: filter .2s ease, transform .2s ease;
+}
+
+.director-general-page .staff-profile-links a:hover {
+    filter: brightness(.85);
+    transform: translateY(-1px);
+}
+
+.director-general-page .staff-profile-links a:focus-visible {
+    outline: 3px solid var(--primary-color, #307461);
+    outline-offset: 4px;
+}
+
 .dg-inaugural-heading {
     margin: 1.25rem 0 .75rem;
     color: var(--ojt-heading, #0a192f);

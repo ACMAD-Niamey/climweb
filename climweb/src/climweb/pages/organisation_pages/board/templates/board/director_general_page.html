@@ -45,6 +45,9 @@
                     <div class="president-profile-copy">
                         <p class="ojt-eyebrow">{{ director_general.role|default:director_general_label }}</p>
                         <h2>{{ director_general.name|default:director_general_label }}</h2>
+                        {% if director_general %}
+                            {% include "staff/includes/profile_links.html" with member=director_general only %}
+                        {% endif %}
                     </div>
                     {% if page.inaugural_speech_title %}<h3 class="dg-inaugural-heading">{{ page.inaugural_speech_title }}</h3>{% endif %}
                     {% if page.inaugural_speech %}<div class="president-biography format-text">{{ page.inaugural_speech|richtext }}</div>{% endif %}
