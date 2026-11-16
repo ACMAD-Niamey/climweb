@@ -9,7 +9,7 @@ Run migrations, then create the page tree and hostname mapping:
 
 ```bash
 python manage.py migrate
-python manage.py bootstrap_climate_health_desk --hostname climatehealthdesk.example.org
+python manage.py bootstrap_climate_health_desk --hostname climatehealthdesk.acmad.org
 ```
 
 The command is idempotent. It creates the homepage, Products, Publications,

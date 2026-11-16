@@ -5,7 +5,7 @@ from django.test import RequestFactory
 from wagtail.models import Site
 from wagtail.test.utils import WagtailPageTestCase
 
-from climweb.base.models import ServiceCategory
+from climweb.base.models import NavigationSettings, ServiceCategory
 from climweb.base.templatetags.nmhs_cms_tags import climate_health_navigation
 from climweb.pages.climate_health.models import (
     ClimateHealthAboutPage,
@@ -78,3 +78,59 @@ class ClimateHealthDeskTests(WagtailPageTestCase):
         self.assertEqual(
             navigation["policies_url"], "/action-plan-policies/"
         )
+
+    def test_homepage_features_up_to_five_products_and_platforms(self):
+        call_command(
+            "bootstrap_climate_health_desk",
+            hostname="health.example.test",
+            port=80,
+            stdout=StringIO(),
+        )
+
+        desk = ClimateHealthDeskHomePage.objects.get()
+        site = Site.objects.get(hostname="health.example.test")
+        request = RequestFactory().get("/", HTTP_HOST=site.hostname)
+        request.site = site
+        desk.__dict__.update(
+            products=list(range(6)),
+            news=[],
+            events=[],
+            platforms=list(range(6)),
+            partners=[],
+        )
+
+        context = desk.get_context(request)
+
+        self.assertEqual(context["featured_products"], list(range(5)))
+        self.assertEqual(context["featured_platforms"], list(range(5)))
+
+    def test_health_main_menu_can_be_configured_in_navigation_settings(self):
+        call_command(
+            "bootstrap_climate_health_desk",
+            hostname="health.example.test",
+            port=80,
+            stdout=StringIO(),
+        )
+
+        site = Site.objects.get(hostname="health.example.test")
+        navigation = NavigationSettings.for_site(site)
+        navigation.climate_health_main_menu = [
+            (
+                "navigation_item",
+                {
+                    "label": "Health Data Hub",
+                    "page": None,
+                    "external_url": "https://example.test/health-data/",
+                    "include_subpages": False,
+                    "large_submenu": False,
+                    "sub_items": [],
+                },
+            )
+        ]
+        navigation.save()
+
+        response = self.client.get("/", HTTP_HOST=site.hostname)
+
+        self.assertContains(response, "Health Data Hub")
+        self.assertContains(response, 'href="https://example.test/health-data/"')
+        self.assertNotContains(response, ">Action Plan &amp; Policies</a>")
