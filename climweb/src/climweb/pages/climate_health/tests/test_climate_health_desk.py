@@ -134,3 +134,55 @@ class ClimateHealthDeskTests(WagtailPageTestCase):
         self.assertContains(response, "Health Data Hub")
         self.assertContains(response, 'href="https://example.test/health-data/"')
         self.assertNotContains(response, ">Action Plan &amp; Policies</a>")
+
+    def test_health_main_menu_uses_main_site_setting_as_fallback(self):
+        call_command(
+            "bootstrap_climate_health_desk",
+            hostname="health.example.test",
+            port=80,
+            stdout=StringIO(),
+        )
+
+        health_site = Site.objects.get(hostname="health.example.test")
+        main_site = Site.objects.get(is_default_site=True)
+        navigation = NavigationSettings.for_site(main_site)
+        navigation.climate_health_main_menu = [
+            (
+                "navigation_item",
+                {
+                    "label": "Main Dashboard Health Menu",
+                    "page": None,
+                    "external_url": "https://example.test/main-health-menu/",
+                    "include_subpages": False,
+                    "large_submenu": False,
+                    "sub_items": [],
+                },
+            )
+        ]
+        navigation.save()
+
+        response = self.client.get("/", HTTP_HOST=health_site.hostname)
+
+        self.assertContains(response, "Main Dashboard Health Menu")
+        self.assertContains(
+            response, 'href="https://example.test/main-health-menu/"'
+        )
+
+    def test_fallback_health_menu_has_working_links(self):
+        call_command(
+            "bootstrap_climate_health_desk",
+            hostname="health.example.test",
+            port=80,
+            stdout=StringIO(),
+        )
+
+        site = Site.objects.get(hostname="health.example.test")
+        response = self.client.get("/", HTTP_HOST=site.hostname)
+
+        self.assertContains(response, 'href="/about/">About</a>')
+        self.assertContains(response, 'href="/products/">Products</a>')
+        self.assertContains(response, 'href="/platforms/">Platforms</a>')
+        self.assertContains(
+            response,
+            'href="/action-plan-policies/">Action Plan & Policies</a>',
+        )
