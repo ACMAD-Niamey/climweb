@@ -487,6 +487,16 @@ class NavigationSettings(BaseSiteSetting):
         verbose_name=_("CLIMSA main menu"),
         help_text=_("Links shown in the main header while browsing CLIMSA pages."),
     )
+    climate_health_main_menu = StreamField(
+        [("navigation_item", NavigationItemBlock())],
+        use_json_field=True,
+        blank=True,
+        null=True,
+        verbose_name=_("Climate and Health main menu"),
+        help_text=_(
+            "Links shown in the main header while browsing Climate and Health pages."
+        ),
+    )
     header_utility_links = StreamField(
         [("utility_link", HeaderUtilityLinkBlock())],
         use_json_field=True,
@@ -526,6 +536,7 @@ class NavigationSettings(BaseSiteSetting):
         FieldPanel("main_menu"),
         FieldPanel("rcc_main_menu"),
         FieldPanel("climsa_main_menu"),
+        FieldPanel("climate_health_main_menu"),
         FieldPanel("header_utility_links"),
         MultiFieldPanel(
             [
