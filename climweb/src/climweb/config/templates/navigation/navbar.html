@@ -171,7 +171,13 @@
               {% include "navigation/climsa_main_menu.html" %}
             {% endif %}
           {% elif section_nav.kind == "climate-health" %}
-            {% include "navigation/climate_health_main_menu.html" %}
+            {% if section_nav.main_menu %}
+              {% for block in section_nav.main_menu %}
+                {% include_block block %}
+              {% endfor %}
+            {% else %}
+              {% include "navigation/climate_health_main_menu.html" %}
+            {% endif %}
           {% elif section_nav.kind == "rcc" %}
             {% if settings.base.NavigationSettings.rcc_main_menu %}
               {% for block in settings.base.NavigationSettings.rcc_main_menu %}

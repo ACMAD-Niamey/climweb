@@ -228,10 +228,10 @@ class ClimateHealthDeskHomePage(AbstractBannerWithOptionalIntroPage):
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
         context.update({
-            "featured_products": self.products[:3],
+            "featured_products": self.products[:5],
             "latest_news": self.news[:3],
             "latest_events": self.events[:3],
-            "featured_platforms": self.platforms[:3],
+            "featured_platforms": self.platforms[:5],
             "health_partners": self.partners,
             "section_pages": self.section_pages,
         })

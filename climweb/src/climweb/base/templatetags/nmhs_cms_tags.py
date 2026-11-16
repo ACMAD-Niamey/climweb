@@ -33,6 +33,7 @@ def _page_path_for_site(page, site):
 
 def _climate_health_navigation(context):
     """Return navigation data for the Climate and Health Desk site."""
+    from climweb.base.models import NavigationSettings
     from climweb.pages.climate_health.models import (
         ClimateHealthAboutPage,
         ClimateHealthContentPage,
@@ -78,8 +79,16 @@ def _climate_health_navigation(context):
         None,
     )
     main_site = Site.objects.filter(is_default_site=True).first()
+    navigation_settings = (
+        NavigationSettings.for_site(health_site) if health_site else None
+    )
     return {
         "kind": "climate-health",
+        "main_menu": (
+            navigation_settings.climate_health_main_menu
+            if navigation_settings
+            else None
+        ),
         "home_url": _page_path_for_site(home, health_site) or "/",
         "main_site_url": main_site.root_url if main_site else "/",
         "about_url": (
