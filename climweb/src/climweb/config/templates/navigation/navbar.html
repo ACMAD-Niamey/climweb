@@ -176,7 +176,7 @@
                 {% include_block block %}
               {% endfor %}
             {% else %}
-              {% include "navigation/climate_health_main_menu.html" %}
+              {% include "navigation/climate_health_main_menu.html" with health_nav=section_nav %}
             {% endif %}
           {% elif section_nav.kind == "rcc" %}
             {% if settings.base.NavigationSettings.rcc_main_menu %}

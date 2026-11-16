@@ -79,16 +79,25 @@ def _climate_health_navigation(context):
         None,
     )
     main_site = Site.objects.filter(is_default_site=True).first()
-    navigation_settings = (
+    health_navigation_settings = (
         NavigationSettings.for_site(health_site) if health_site else None
+    )
+    main_navigation_settings = (
+        NavigationSettings.for_site(main_site) if main_site else None
+    )
+    main_menu = (
+        health_navigation_settings.climate_health_main_menu
+        if health_navigation_settings
+        and health_navigation_settings.climate_health_main_menu
+        else (
+            main_navigation_settings.climate_health_main_menu
+            if main_navigation_settings
+            else None
+        )
     )
     return {
         "kind": "climate-health",
-        "main_menu": (
-            navigation_settings.climate_health_main_menu
-            if navigation_settings
-            else None
-        ),
+        "main_menu": main_menu,
         "home_url": _page_path_for_site(home, health_site) or "/",
         "main_site_url": main_site.root_url if main_site else "/",
         "about_url": (
