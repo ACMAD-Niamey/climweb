@@ -234,8 +234,46 @@ def _seasonal_forecast_context(request, config):
     variable = (request.GET.get("variable") or "").strip()
     season = (request.GET.get("season") or "").strip()
 
+    long_range_page = RCCLongRangeForecastingPage.objects.live().first()
+    configured_maps = []
+    if long_range_page:
+        for forecast_issue in long_range_page.seasonal_forecast_issues.filter(
+            is_active=True
+        ).select_related("report"):
+            for item in forecast_issue.maps.filter(is_active=True).select_related(
+                "image"
+            ):
+                if not item.image and not item.legacy_asset_path:
+                    continue
+                configured_maps.append(
+                    {
+                        "key": item.outlook_key,
+                        "variable": item.variable,
+                        "variable_label": item.get_variable_display(),
+                        "season": item.season,
+                        "season_label": item.season_label or item.season,
+                        "issue": (
+                            f"{forecast_issue.issue_year:04d}-"
+                            f"{forecast_issue.issue_month:02d}"
+                        ),
+                        "issue_label": (
+                            f"{forecast_issue.get_issue_month_display()} "
+                            f"{forecast_issue.issue_year}"
+                        ),
+                        "title": item.title
+                        or f"Seasonal {item.get_variable_display().lower()} "
+                        f"forecast: {item.season_label or item.season}",
+                        "image": item.image,
+                        "asset_path": item.legacy_asset_path,
+                        "discussion": item.discussion,
+                        "overview": forecast_issue.overview,
+                        "report": forecast_issue.report,
+                    }
+                )
+    forecast_maps = configured_maps or list(SEASONAL_FORECAST_MAPS)
+
     latest_map = max(
-        SEASONAL_FORECAST_MAPS,
+        forecast_maps,
         key=lambda item: (
             item["issue"],
             item["variable"] == "precipitation" and item["season"] == "DJF",
@@ -244,7 +282,7 @@ def _seasonal_forecast_context(request, config):
     selected_map = next(
         (
             forecast_map
-            for forecast_map in SEASONAL_FORECAST_MAPS
+            for forecast_map in forecast_maps
             if forecast_map["issue"] == issue
             and forecast_map["variable"] == variable
             and forecast_map["season"] == season
@@ -252,25 +290,19 @@ def _seasonal_forecast_context(request, config):
         latest_map,
     )
 
-    long_range_page = RCCLongRangeForecastingPage.objects.live().first()
-    editable_discussions = {
-        item.outlook_key: item.discussion
-        for item in (
-            long_range_page.seasonal_outlook_discussions.all()
-            if long_range_page
-            else ()
-        )
-    }
-    selected_map = {
-        **selected_map,
-        "discussion": editable_discussions.get(
-            selected_map["key"], selected_map["discussion"]
-        ),
-    }
     month_labels = {
         f"{month:02d}": datetime(2000, month, 1).strftime("%B")
         for month in range(1, 13)
     }
+    overview = (
+        selected_map.get("overview")
+        or (
+            long_range_page.seasonal_forecast_overview
+            if long_range_page
+            else ""
+        )
+        or SEASONAL_FORECAST_OVERVIEW
+    )
 
     return {
         **config,
@@ -279,13 +311,14 @@ def _seasonal_forecast_context(request, config):
         "variable_options": tuple(
             dict.fromkeys(
                 (item["variable"], item["variable_label"])
-                for item in SEASONAL_FORECAST_MAPS
+                for item in forecast_maps
             )
         ),
-        "season_options": (
-            ("NDJ", "November-January 2026/27"),
-            ("DJF", "December-February 2026/27"),
-            ("JFM", "January-March 2027"),
+        "season_options": tuple(
+            dict.fromkeys(
+                (item["season"], item["season_label"])
+                for item in forecast_maps
+            )
         ),
         "issue_month_options": tuple(
             sorted(
@@ -294,24 +327,23 @@ def _seasonal_forecast_context(request, config):
                         item["issue"].split("-")[1],
                         month_labels[item["issue"].split("-")[1]],
                     )
-                    for item in SEASONAL_FORECAST_MAPS
+                    for item in forecast_maps
                 ),
                 reverse=True,
             )
         ),
         "issue_year_options": tuple(
             sorted(
-                {item["issue"].split("-")[0] for item in SEASONAL_FORECAST_MAPS},
+                {item["issue"].split("-")[0] for item in forecast_maps},
                 reverse=True,
             )
         ),
-        "overview": (
-            long_range_page.seasonal_forecast_overview
-            if long_range_page and long_range_page.seasonal_forecast_overview
-            else SEASONAL_FORECAST_OVERVIEW
-        ),
+        "overview": overview,
+        "reference_document": selected_map.get("report"),
         "reference_document_path": (
             "documents/seasonal_forecasts/ACMAD-RCOF-Forecast.pdf"
+            if selected_map["issue"] == "2026-10"
+            else ""
         ),
         "long_range_page": long_range_page,
     }

@@ -5,6 +5,7 @@ from pathlib import Path
 import wagtail_factories
 from django.core.management import call_command
 from django.urls import reverse
+from wagtail.admin.panels import get_edit_handler
 from wagtail.models import Site
 from wagtail.test.utils import WagtailPageTestCase
 
@@ -24,6 +25,7 @@ from climweb.pages.services.models import (
     RCCClimateProductsPage,
     RCCCoordinationPage,
     RCCLongRangeForecastingPage,
+    RCCSeasonalForecastIssue,
     RCCSeasonalOutlookDiscussion,
     ServiceApplication,
 )
@@ -678,9 +680,23 @@ class TestServicesPages(WagtailPageTestCase):
             parent=rcc_page,
             seasonal_forecast_overview="<p>Editor supplied overview.</p>",
         )
-        RCCSeasonalOutlookDiscussion.objects.create(
+        forecast_image = wagtail_factories.ImageFactory(
+            title="Dashboard seasonal temperature map",
+        )
+        forecast_issue = RCCSeasonalForecastIssue.objects.create(
             page=forecasting_page,
-            outlook_key="t2m-jfm-2027",
+            issue_month=10,
+            issue_year=2026,
+            overview="<p>Editor supplied issue overview.</p>",
+        )
+        forecast_map = RCCSeasonalOutlookDiscussion.objects.create(
+            issue=forecast_issue,
+            outlook_key="dashboard-temperature-jfm-2027",
+            variable="temperature",
+            season="JFM",
+            season_label="January-March 2027",
+            title="Dashboard-managed seasonal temperature forecast",
+            image=forecast_image,
             discussion="<p>Editor supplied outlook discussion.</p>",
         )
 
@@ -695,11 +711,53 @@ class TestServicesPages(WagtailPageTestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Editor supplied overview.")
+        self.assertContains(response, "Editor supplied issue overview.")
+        self.assertNotContains(response, "Editor supplied overview.")
         self.assertContains(response, "Editor supplied outlook discussion.")
         self.assertContains(
             response,
-            "ACMAD_objective_forecast_T2M_JFM_2027_map.png",
+            forecast_image.get_rendition("original").url,
+        )
+        self.assertContains(
+            response,
+            "Dashboard-managed seasonal temperature forecast",
+        )
+
+        issue_form = get_edit_handler(
+            RCCSeasonalForecastIssue
+        ).get_form_class()
+        self.assertIn("maps", issue_form.formsets)
+        self.assertIn("issue_month", issue_form.base_fields)
+        self.assertIn("issue_year", issue_form.base_fields)
+        outlook_form = issue_form.formsets["maps"].form
+        for field_name in (
+            "image",
+            "variable",
+            "season",
+            "season_label",
+            "title",
+            "discussion",
+            "is_active",
+        ):
+            self.assertIn(field_name, outlook_form.base_fields)
+        self.assertTrue(
+            RCCSeasonalOutlookDiscussion._meta.get_field("discussion").blank
+        )
+
+        forecast_map.discussion = ""
+        forecast_map.save(update_fields=["discussion"])
+        response_without_discussion = self.client.get(
+            reverse("rcc_tailored_forecast_gallery"),
+            {
+                "variable": "temperature",
+                "season": "JFM",
+                "issue_month": "10",
+                "issue_year": "2026",
+            },
+        )
+        self.assertNotContains(
+            response_without_discussion,
+            'class="rcc-forecast-discussion"',
         )
 
     def test_long_range_forecasting_seed_links_existing_menu_item(self):

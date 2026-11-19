@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 from modelcluster.fields import ParentalKey
+from modelcluster.models import ClusterableModel
 from wagtail.admin.panels import (FieldPanel, MultiFieldPanel, PageChooserPanel, InlinePanel)
 from wagtail.fields import RichTextField, StreamField
 from wagtail.models import Page, Orderable
@@ -1187,15 +1188,6 @@ class RCCLongRangeForecastingPage(AbstractBannerWithIntroPage):
     content_panels = Page.content_panels + [
         *AbstractBannerWithIntroPage.content_panels,
         FieldPanel("seasonal_forecast_overview"),
-        InlinePanel(
-            "seasonal_outlook_discussions",
-            label=_("Seasonal outlook discussion"),
-            heading=_("Seasonal outlook discussions"),
-            help_text=_(
-                "Add one discussion for each forecast map. The outlook key "
-                "identifies the map whose discussion is displayed."
-            ),
-        ),
     ]
 
     outlook_product_definitions = (
@@ -1333,45 +1325,204 @@ class RCCLongRangeForecastingPage(AbstractBannerWithIntroPage):
         verbose_name = _("RCC Long-range Forecasting Page")
 
 
-class RCCSeasonalOutlookDiscussion(Orderable):
-    OUTLOOK_CHOICES = (
-        ("prcp-ndj-2026", _("Rainfall · NDJ 2026/27")),
-        ("prcp-djf-2026", _("Rainfall · DJF 2026/27")),
-        ("prcp-jfm-2027", _("Rainfall · JFM 2027")),
-        ("t2m-ndj-2026", _("Temperature · NDJ 2026/27")),
-        ("t2m-djf-2026", _("Temperature · DJF 2026/27")),
-        ("t2m-jfm-2027", _("Temperature · JFM 2027")),
-    )
+SEASONAL_FORECAST_VARIABLE_CHOICES = (
+    ("precipitation", _("Rainfall")),
+    ("temperature", _("Temperature")),
+)
+SEASONAL_FORECAST_SEASON_CHOICES = (
+    ("JFM", _("JFM")),
+    ("FMA", _("FMA")),
+    ("MAM", _("MAM")),
+    ("AMJ", _("AMJ")),
+    ("MJJ", _("MJJ")),
+    ("JJA", _("JJA")),
+    ("JAS", _("JAS")),
+    ("ASO", _("ASO")),
+    ("SON", _("SON")),
+    ("OND", _("OND")),
+    ("NDJ", _("NDJ")),
+    ("DJF", _("DJF")),
+)
+SEASONAL_FORECAST_MONTH_CHOICES = (
+    (1, _("January")),
+    (2, _("February")),
+    (3, _("March")),
+    (4, _("April")),
+    (5, _("May")),
+    (6, _("June")),
+    (7, _("July")),
+    (8, _("August")),
+    (9, _("September")),
+    (10, _("October")),
+    (11, _("November")),
+    (12, _("December")),
+)
 
-    page = ParentalKey(
+
+@register_snippet
+class RCCSeasonalForecastIssue(ClusterableModel):
+    page = models.ForeignKey(
         RCCLongRangeForecastingPage,
         on_delete=models.CASCADE,
-        related_name="seasonal_outlook_discussions",
+        related_name="seasonal_forecast_issues",
+        verbose_name=_("Long-range Forecasting page"),
     )
-    outlook_key = models.CharField(
-        max_length=30,
-        choices=OUTLOOK_CHOICES,
-        verbose_name=_("Outlook"),
+    issue_month = models.PositiveSmallIntegerField(
+        choices=SEASONAL_FORECAST_MONTH_CHOICES,
+        verbose_name=_("Issue month"),
+    )
+    issue_year = models.PositiveSmallIntegerField(verbose_name=_("Issue year"))
+    overview = RichTextField(
+        blank=True,
+        features=SUMMARY_RICHTEXT_FEATURES,
+        verbose_name=_("Issue overview"),
+        help_text=_(
+            "Optional overview for this issue. If empty, the page-wide seasonal "
+            "forecast overview is used."
+        ),
+    )
+    report = models.ForeignKey(
+        "wagtaildocs.Document",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Issue forecast report"),
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_("Show this issue on the Seasonal Forecasts page"),
+    )
+
+    panels = [
+        PageChooserPanel("page", "services.RCCLongRangeForecastingPage"),
+        MultiFieldPanel(
+            [FieldPanel("issue_month"), FieldPanel("issue_year")],
+            heading=_("Issue date"),
+        ),
+        FieldPanel("overview"),
+        FieldPanel("report"),
+        FieldPanel("is_active"),
+        InlinePanel(
+            "maps",
+            label=_("Forecast map"),
+            heading=_("Rainfall and temperature maps"),
+            help_text=_(
+                "Add every map published for this issue. The month and year "
+                "are inherited from the issue above."
+            ),
+        ),
+    ]
+
+    class Meta:
+        ordering = ("-issue_year", "-issue_month")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("page", "issue_year", "issue_month"),
+                name="unique_seasonal_forecast_issue_per_page",
+            )
+        ]
+        verbose_name = _("Seasonal forecast issue")
+        verbose_name_plural = _("Seasonal forecast issues")
+
+    def __str__(self):
+        return f"{self.get_issue_month_display()} {self.issue_year}"
+
+
+class RCCSeasonalOutlookDiscussion(Orderable):
+    issue = ParentalKey(
+        RCCSeasonalForecastIssue,
+        on_delete=models.CASCADE,
+        related_name="maps",
+    )
+
+    outlook_key = models.SlugField(
+        max_length=80,
+        verbose_name=_("Outlook key"),
+        help_text=_(
+            "Stable identifier such as prcp-ndj-2026. Do not change it after "
+            "publishing unless the outlook is being replaced."
+        ),
+    )
+    variable = models.CharField(
+        max_length=20,
+        choices=SEASONAL_FORECAST_VARIABLE_CHOICES,
+        default="precipitation",
+        verbose_name=_("Variable"),
+    )
+    season = models.CharField(
+        max_length=3,
+        choices=SEASONAL_FORECAST_SEASON_CHOICES,
+        default="DJF",
+        verbose_name=_("Forecast season"),
+    )
+    season_label = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name=_("Season display label"),
+        help_text=_("For example: December-February 2026/27."),
+    )
+    title = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_("Accessible map title"),
+        help_text=_(
+            "Used as alternative text for the map. The title printed inside "
+            "the image is not repeated above it."
+        ),
+    )
+    image = models.ForeignKey(
+        "wagtailimages.Image",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name=_("Forecast map image"),
+        help_text=_(
+            "Upload or select the map displayed for this outlook. Existing "
+            "seeded outlooks keep using their bundled map until one is selected."
+        ),
+    )
+    legacy_asset_path = models.CharField(
+        max_length=255,
+        blank=True,
+        editable=False,
     )
     discussion = RichTextField(
+        blank=True,
         features=SUMMARY_RICHTEXT_FEATURES,
         verbose_name=_("Discussion"),
+        help_text=_("Optional interpretation for this individual map."),
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_("Show on Seasonal Forecasts page"),
     )
 
     panels = [
         FieldPanel("outlook_key"),
+        FieldPanel("variable"),
+        FieldPanel("season"),
+        FieldPanel("season_label"),
+        FieldPanel("title"),
+        FieldPanel("image"),
         FieldPanel("discussion"),
+        FieldPanel("is_active"),
     ]
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=("page", "outlook_key"),
-                name="unique_seasonal_outlook_discussion_per_page",
-            )
+                fields=("issue", "outlook_key"),
+                name="unique_seasonal_outlook_key_per_issue",
+            ),
+            models.UniqueConstraint(
+                fields=("issue", "variable", "season"),
+                name="unique_seasonal_outlook_map_per_issue",
+            ),
         ]
-        verbose_name = _("Seasonal outlook discussion")
-        verbose_name_plural = _("Seasonal outlook discussions")
+        verbose_name = _("Seasonal outlook map")
+        verbose_name_plural = _("Seasonal outlook maps")
 
 
 class RCCTrainingPage(AbstractBannerWithIntroPage):
