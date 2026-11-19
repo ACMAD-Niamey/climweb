@@ -43,8 +43,8 @@
                data-api-base-url="{{ multi_hazard_api_base_url }}"
                data-project-slug="{{ multi_hazard_project_slug }}"
                data-country-bounds="{{ country_bounds }}"
-               data-category-filter="climate-and-health"
-               data-hide-tabs="true"
+               data-dataset-ids="{{ page.map_meningitis_dataset_id }}|{{ page.map_heat_index_dataset_id }}"
+               data-dataset-labels="{{ page.map_meningitis_tab_label }}|{{ page.map_heat_index_tab_label }}"
                data-msg-latest="{% translate 'Latest' %}"
                data-msg-no-data="{% translate 'No Climate and Health map is currently available' %}"
                data-msg-unavailable="{% translate 'Map data is temporarily unavailable' %}">
@@ -92,25 +92,7 @@
     </div>
   </section>
 
-  {% if health_partners %}
-  <section class="rcc-section ch-partners">
-    <div class="container">
-      <div class="rcc-section-heading"><div><h2>{{ page.partners_section_title }}</h2></div></div>
-      <div class="columns is-multiline is-mobile is-centered partners-list">
-        {% for partner in health_partners %}
-        <div class="column is-4-mobile is-3-tablet is-2-desktop">
-          {% if partner.link %}<a class="partner-card" href="{{ partner.link }}" target="_blank" rel="noopener noreferrer" title="{{ partner.name }}">{% else %}<div class="partner-card" title="{{ partner.name }}">{% endif %}
-            <figure class="image partner-logo-figure">
-              {% if partner.logo %}{% image partner.logo original as partner_logo %}<img class="partner-logo-img" src="{{ partner_logo.url }}" alt="{{ partner.name }}">{% else %}<span class="ch-partner-fallback">{{ partner.name|slice:":2"|upper }}</span>{% endif %}
-            </figure>
-            <span class="partner-name">{{ partner.name }}</span>
-          {% if partner.link %}</a>{% else %}</div>{% endif %}
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-  </section>
-  {% endif %}
+  {% include "climate_health/includes/partners_section.html" with partners=health_partners section_title=page.partners_section_title %}
 
 </main>
 {% endblock %}
