@@ -1,0 +1,20 @@
+{% load wagtailimages_tags %}
+{% if partners %}
+<section class="rcc-section ch-partners">
+  <div class="container">
+    <div class="rcc-section-heading"><div><h2>{{ section_title }}</h2></div></div>
+    <div class="columns is-multiline is-mobile is-centered partners-list">
+      {% for partner in partners %}
+      <div class="column is-4-mobile is-3-tablet is-2-desktop">
+        {% if partner.link %}<a class="partner-card" href="{{ partner.link }}" target="_blank" rel="noopener noreferrer" title="{{ partner.name }}">{% else %}<div class="partner-card" title="{{ partner.name }}">{% endif %}
+          <figure class="image partner-logo-figure">
+            {% if partner.logo %}{% image partner.logo original as partner_logo %}<img class="partner-logo-img" src="{{ partner_logo.url }}" alt="{{ partner.name }}">{% else %}<span class="ch-partner-fallback">{{ partner.name|slice:":2"|upper }}</span>{% endif %}
+          </figure>
+          <span class="partner-name">{{ partner.name }}</span>
+        {% if partner.link %}</a>{% else %}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}

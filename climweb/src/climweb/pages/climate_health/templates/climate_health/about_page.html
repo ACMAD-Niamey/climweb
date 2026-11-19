@@ -27,5 +27,7 @@
   <section class="rcc-section ch-about-details"><div class="container"><div class="ch-about-details__grid"><article class="ch-about-card-group"><span>01</span><h2>{% translate "What we do" %}</h2><div class="format-text">{{ page.what_we_do|richtext }}</div></article><article class="ch-about-card-group"><span>02</span><h2>{% translate "Areas of focus" %}</h2><div class="format-text">{{ page.focus_areas|richtext }}</div></article></div></div></section>
 
   {% if page.launch_context %}<section class="rcc-section ch-launch"><div class="container ch-launch__inner"><div><h2>{% translate "Official launch" %}</h2></div><div class="format-text">{{ page.launch_context|richtext }}</div></div></section>{% endif %}
+
+  {% include "climate_health/includes/partners_section.html" with partners=health_partners section_title=partners_section_title %}
 </main>
 {% endblock %}

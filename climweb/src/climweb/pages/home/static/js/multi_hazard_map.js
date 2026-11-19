@@ -35,6 +35,7 @@
         drought: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 3c3 4 6 7.5 6 11a6 6 0 1 1-12 0c0-3.5 3-7 6-11Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
         climate: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3c2.5 2.5 3.75 5.5 3.75 9s-1.25 6.5-3.75 9c-2.5-2.5-3.75-5.5-3.75-9S9.5 5.5 12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
         flood: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M3 15c1.5 1.3 3 1.3 4.5 0s3-1.3 4.5 0 3 1.3 4.5 0 3-1.3 4.5 0M3 19c1.5 1.3 3 1.3 4.5 0s3-1.3 4.5 0 3 1.3 4.5 0 3-1.3 4.5 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+        heat: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M14 14.76V5a3 3 0 0 0-6 0v9.76a5 5 0 1 0 6 0Z" stroke="currentColor" stroke-width="1.6"/><path d="M11 7v9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
         default: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/></svg>',
     };
 
@@ -252,6 +253,26 @@
             .filter((category) => category && grouped[category.key] && grouped[category.key].length);
     }
 
+    function explicitDatasetTabs(layers, datasetIds, datasetLabels) {
+        groupedLayers = {};
+        return datasetIds.reduce((tabs, datasetId, index) => {
+            const layer = layers.find(
+                (candidate) => candidate.id === datasetId
+                    || (candidate.dataset && candidate.dataset.id === datasetId)
+            );
+            if (!layer || !hasDataset(layer)) {
+                return tabs;
+            }
+            groupedLayers[datasetId] = [layer];
+            tabs.push({
+                key: datasetId,
+                label: datasetLabels[index] || datasetTitle(layer) || datasetId,
+                iconKey: /heat/i.test(datasetId) ? 'heat' : 'climate',
+            });
+            return tabs;
+        }, []);
+    }
+
     function createMap(mount) {
         map = new maplibregl.Map({
             container: mount,
@@ -301,7 +322,7 @@
             // Icon HTML comes only from the local, hardcoded TAB_ICONS set
             // (never from API/user data); the label is set via textContent
             // on a separate span so it's always safely escaped.
-            button.innerHTML = TAB_ICONS[tab.key] || TAB_ICONS.default;
+            button.innerHTML = TAB_ICONS[tab.iconKey || tab.key] || TAB_ICONS.default;
             const labelSpan = document.createElement('span');
             labelSpan.textContent = tab.label;
             button.appendChild(labelSpan);
@@ -603,6 +624,8 @@
             msgUnavailable: mount.dataset.msgUnavailable || 'Map data is temporarily unavailable',
             categoryFilter: mount.dataset.categoryFilter || '',
             hideTabs: mount.dataset.hideTabs === 'true',
+            datasetIds: (mount.dataset.datasetIds || '').split('|').map((value) => value.trim()).filter(Boolean),
+            datasetLabels: (mount.dataset.datasetLabels || '').split('|').map((value) => value.trim()),
         };
 
         if (!config.apiBaseUrl || !window.maplibregl) {
@@ -628,7 +651,13 @@
                 let tabLayers = dataLayers;
                 let tabs = [];
 
-                if (config.categoryFilter) {
+                if (config.datasetIds.length) {
+                    tabs = explicitDatasetTabs(
+                        layers,
+                        config.datasetIds,
+                        config.datasetLabels
+                    );
+                } else if (config.categoryFilter) {
                     // Section sites can lock the shared map to one catalogue
                     // category. The dataset still comes from the same API,
                     // but visitors are not offered unrelated hazard options.

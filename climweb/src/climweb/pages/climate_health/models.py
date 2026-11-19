@@ -4,9 +4,15 @@ from django.core.paginator import Paginator
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 from modelcluster.fields import ParentalKey
-from wagtail.admin.panels import FieldPanel, InlinePanel, MultiFieldPanel
+from wagtail.admin.panels import (
+    FieldPanel,
+    InlinePanel,
+    MultiFieldPanel,
+    PageChooserPanel,
+)
 from wagtail.fields import RichTextField
 from wagtail.models import Orderable, Page
+from wagtail.snippets.widgets import AdminSnippetChooser
 
 from climweb.base.models import (
     AbstractBannerWithOptionalIntroPage,
@@ -14,6 +20,7 @@ from climweb.base.models import (
     ServiceCategory,
 )
 from climweb.config.settings.base import FULL_RICHTEXT_FRATURES
+from climweb.pages.organisation_pages.partners.models import Partner
 
 
 CLIMATE_HEALTH_SERVICE_NAME = "Climate and Health"
@@ -72,6 +79,28 @@ class ClimateHealthDeskHomePage(AbstractBannerWithOptionalIntroPage):
         default="https://multi-hazard.acmad.org/geoportal",
         verbose_name=_("Map viewer URL"),
     )
+    map_meningitis_tab_label = models.CharField(
+        max_length=80,
+        default="Meningitis Vigilance Outlook",
+        verbose_name=_("Meningitis tab label"),
+    )
+    map_meningitis_dataset_id = models.CharField(
+        max_length=120,
+        default="meningitis-vigilance-weeky",
+        verbose_name=_("Meningitis dataset ID"),
+        help_text=_("Dataset identifier from the Multi-Hazard catalogue."),
+    )
+    map_heat_index_tab_label = models.CharField(
+        max_length=80,
+        default="Heat Index",
+        verbose_name=_("Heat-index tab label"),
+    )
+    map_heat_index_dataset_id = models.CharField(
+        max_length=120,
+        default="heat-index-valid-24",
+        verbose_name=_("Heat-index dataset ID"),
+        help_text=_("Dataset identifier from the Multi-Hazard catalogue."),
+    )
     products_section_title = models.CharField(
         max_length=160,
         default="Climate and health products",
@@ -117,6 +146,10 @@ class ClimateHealthDeskHomePage(AbstractBannerWithOptionalIntroPage):
                 FieldPanel("map_card_title"),
                 FieldPanel("map_viewer_label"),
                 FieldPanel("map_viewer_url"),
+                FieldPanel("map_meningitis_tab_label"),
+                FieldPanel("map_meningitis_dataset_id"),
+                FieldPanel("map_heat_index_tab_label"),
+                FieldPanel("map_heat_index_dataset_id"),
             ],
             heading=_("Interactive map section"),
         ),
@@ -137,6 +170,12 @@ class ClimateHealthDeskHomePage(AbstractBannerWithOptionalIntroPage):
         MultiFieldPanel(
             [FieldPanel("mission_title"), FieldPanel("mission_text")],
             heading=_("Mission"),
+        ),
+        InlinePanel(
+            "product_links",
+            label=_("Product"),
+            heading=_("Homepage products (drag to set display order)"),
+            max_num=5,
         ),
         InlinePanel(
             "platform_links",
@@ -167,6 +206,16 @@ class ClimateHealthDeskHomePage(AbstractBannerWithOptionalIntroPage):
             Q(service=self.service_category)
             | Q(other_services=self.service_category)
         ).distinct().order_by("menu_order", "title")
+
+    @cached_property
+    def homepage_products(self):
+        selected = [
+            link.product
+            for link in self.product_links.select_related("product")
+            .filter(product__live=True)
+            .order_by("sort_order", "pk")
+        ]
+        return selected or list(self.products[:5])
 
     @cached_property
     def publications(self):
@@ -207,11 +256,12 @@ class ClimateHealthDeskHomePage(AbstractBannerWithOptionalIntroPage):
 
     @cached_property
     def partners(self):
-        from climweb.pages.organisation_pages.partners.models import Partner
-
-        return Partner.objects.filter(
-            climate_health_links__page=self
-        ).distinct().order_by("order", "name")
+        return [
+            link.partner
+            for link in self.partner_links.select_related("partner").order_by(
+                "sort_order", "pk"
+            )
+        ]
 
     @cached_property
     def section_pages(self):
@@ -228,7 +278,7 @@ class ClimateHealthDeskHomePage(AbstractBannerWithOptionalIntroPage):
     def get_context(self, request, *args, **kwargs):
         context = super().get_context(request, *args, **kwargs)
         context.update({
-            "featured_products": self.products[:5],
+            "featured_products": self.homepage_products[:5],
             "latest_news": self.news[:3],
             "latest_events": self.events[:3],
             "featured_platforms": self.platforms[:5],
@@ -270,6 +320,22 @@ class ClimateHealthPlatformLink(Orderable):
     panels = [FieldPanel("application")]
 
 
+class ClimateHealthProductLink(Orderable):
+    page = ParentalKey(
+        ClimateHealthDeskHomePage,
+        on_delete=models.CASCADE,
+        related_name="product_links",
+    )
+    product = models.ForeignKey(
+        "products.ProductPage",
+        on_delete=models.CASCADE,
+        related_name="climate_health_homepage_links",
+        verbose_name=_("Existing product"),
+    )
+
+    panels = [PageChooserPanel("product", ["products.ProductPage"])]
+
+
 class ClimateHealthPriority(Orderable):
     page = ParentalKey(
         ClimateHealthDeskHomePage,
@@ -295,7 +361,7 @@ class ClimateHealthPartnerLink(Orderable):
         verbose_name=_("Existing partner"),
     )
 
-    panels = [FieldPanel("partner")]
+    panels = [FieldPanel("partner", widget=AdminSnippetChooser(Partner))]
 
 
 class ClimateHealthAboutPage(AbstractBannerWithOptionalIntroPage):
@@ -336,6 +402,18 @@ class ClimateHealthAboutPage(AbstractBannerWithOptionalIntroPage):
 
     class Meta:
         verbose_name = _("Climate and Health About page")
+
+    @cached_property
+    def desk_home(self):
+        return self.get_parent().specific
+
+    def get_context(self, request, *args, **kwargs):
+        context = super().get_context(request, *args, **kwargs)
+        context.update({
+            "health_partners": self.desk_home.partners,
+            "partners_section_title": self.desk_home.partners_section_title,
+        })
+        return context
 
 
 class ClimateHealthContentPage(AbstractBannerWithOptionalIntroPage):
