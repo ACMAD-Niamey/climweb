@@ -237,39 +237,29 @@ def _seasonal_forecast_context(request, config):
     long_range_page = RCCLongRangeForecastingPage.objects.live().first()
     configured_maps = []
     if long_range_page:
-        for forecast_issue in long_range_page.seasonal_forecast_issues.filter(
-            is_active=True
-        ).select_related("report"):
-            for item in forecast_issue.maps.filter(is_active=True).select_related(
-                "image"
-            ):
-                if not item.image and not item.legacy_asset_path:
-                    continue
-                configured_maps.append(
-                    {
-                        "key": item.outlook_key,
-                        "variable": item.variable,
-                        "variable_label": item.get_variable_display(),
-                        "season": item.season,
-                        "season_label": item.season_label or item.season,
-                        "issue": (
-                            f"{forecast_issue.issue_year:04d}-"
-                            f"{forecast_issue.issue_month:02d}"
-                        ),
-                        "issue_label": (
-                            f"{forecast_issue.get_issue_month_display()} "
-                            f"{forecast_issue.issue_year}"
-                        ),
-                        "title": item.title
-                        or f"Seasonal {item.get_variable_display().lower()} "
-                        f"forecast: {item.season_label or item.season}",
-                        "image": item.image,
-                        "asset_path": item.legacy_asset_path,
-                        "discussion": item.discussion,
-                        "overview": forecast_issue.overview,
-                        "report": forecast_issue.report,
-                    }
-                )
+        configured_maps = [
+            {
+                "key": item.outlook_key,
+                "variable": item.variable,
+                "variable_label": item.get_variable_display(),
+                "season": item.season,
+                "season_label": item.season_label or item.season,
+                "issue": f"{item.issue_year:04d}-{item.issue_month:02d}",
+                "issue_label": (
+                    f"{item.get_issue_month_display()} {item.issue_year}"
+                ),
+                "title": item.title
+                or f"Seasonal {item.get_variable_display().lower()} forecast: "
+                f"{item.season_label or item.season}",
+                "image": item.image,
+                "asset_path": item.legacy_asset_path,
+                "discussion": item.discussion,
+            }
+            for item in long_range_page.seasonal_outlooks.filter(
+                is_active=True
+            ).select_related("image")
+            if item.image or item.legacy_asset_path
+        ]
     forecast_maps = configured_maps or list(SEASONAL_FORECAST_MAPS)
 
     latest_map = max(
