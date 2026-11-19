@@ -237,29 +237,39 @@ def _seasonal_forecast_context(request, config):
     long_range_page = RCCLongRangeForecastingPage.objects.live().first()
     configured_maps = []
     if long_range_page:
-        configured_maps = [
-            {
-                "key": item.outlook_key,
-                "variable": item.variable,
-                "variable_label": item.get_variable_display(),
-                "season": item.season,
-                "season_label": item.season_label or item.season,
-                "issue": f"{item.issue_year:04d}-{item.issue_month:02d}",
-                "issue_label": (
-                    f"{item.get_issue_month_display()} {item.issue_year}"
-                ),
-                "title": item.title
-                or f"Seasonal {item.get_variable_display().lower()} forecast: "
-                f"{item.season_label or item.season}",
-                "image": item.image,
-                "asset_path": item.legacy_asset_path,
-                "discussion": item.discussion,
-            }
-            for item in long_range_page.seasonal_outlooks.filter(
-                is_active=True
-            ).select_related("image")
-            if item.image or item.legacy_asset_path
-        ]
+        for forecast_issue in long_range_page.seasonal_forecast_issues.filter(
+            is_active=True
+        ).select_related("report"):
+            for item in forecast_issue.maps.filter(is_active=True).select_related(
+                "image"
+            ):
+                if not item.image and not item.legacy_asset_path:
+                    continue
+                configured_maps.append(
+                    {
+                        "key": item.outlook_key,
+                        "variable": item.variable,
+                        "variable_label": item.get_variable_display(),
+                        "season": item.season,
+                        "season_label": item.season_label or item.season,
+                        "issue": (
+                            f"{forecast_issue.issue_year:04d}-"
+                            f"{forecast_issue.issue_month:02d}"
+                        ),
+                        "issue_label": (
+                            f"{forecast_issue.get_issue_month_display()} "
+                            f"{forecast_issue.issue_year}"
+                        ),
+                        "title": item.title
+                        or f"Seasonal {item.get_variable_display().lower()} "
+                        f"forecast: {item.season_label or item.season}",
+                        "image": item.image,
+                        "asset_path": item.legacy_asset_path,
+                        "discussion": item.discussion,
+                        "overview": forecast_issue.overview,
+                        "report": forecast_issue.report,
+                    }
+                )
     forecast_maps = configured_maps or list(SEASONAL_FORECAST_MAPS)
 
     latest_map = max(
@@ -284,6 +294,15 @@ def _seasonal_forecast_context(request, config):
         f"{month:02d}": datetime(2000, month, 1).strftime("%B")
         for month in range(1, 13)
     }
+    overview = (
+        selected_map.get("overview")
+        or (
+            long_range_page.seasonal_forecast_overview
+            if long_range_page
+            else ""
+        )
+        or SEASONAL_FORECAST_OVERVIEW
+    )
 
     return {
         **config,
@@ -319,13 +338,12 @@ def _seasonal_forecast_context(request, config):
                 reverse=True,
             )
         ),
-        "overview": (
-            long_range_page.seasonal_forecast_overview
-            if long_range_page and long_range_page.seasonal_forecast_overview
-            else SEASONAL_FORECAST_OVERVIEW
-        ),
+        "overview": overview,
+        "reference_document": selected_map.get("report"),
         "reference_document_path": (
             "documents/seasonal_forecasts/ACMAD-RCOF-Forecast.pdf"
+            if selected_map["issue"] == "2026-10"
+            else ""
         ),
         "long_range_page": long_range_page,
     }
