@@ -202,7 +202,7 @@
     fill: #bbb;
 }
 
-/* ── PRODUCT PAGE INTRO HEADER OVERRIDES ── */
+/* ── PRODUCT CATEGORY INTRO HEADER OVERRIDES ── */
 .product-page .intro-section {
     padding: 0 !important;
 }
@@ -210,9 +210,9 @@
 .product-page .intro-figure img,
 .product-page .intro-img,
 .product-page .intro-figure svg {
-    max-height: 180px !important;
-    height: 100% !important;
-    width: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: 420px !important;
     object-fit: contain;
     border-radius: 16px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
