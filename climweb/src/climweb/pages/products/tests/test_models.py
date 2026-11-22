@@ -203,10 +203,14 @@ class TestProductPages(WagtailPageTestCase):
         response_html = response.content.decode()
 
         title_position = response_html.index('class="pd-page-title has-summary"')
-        summary_position = response_html.index(summary)
+        summary_container_position = response_html.index(
+            'class="pd-page-summary format-text"'
+        )
+        summary_position = response_html.index(summary, summary_container_position)
         layout_position = response_html.index('class="pd-layout"')
 
-        self.assertLess(title_position, summary_position)
+        self.assertLess(title_position, summary_container_position)
+        self.assertLess(summary_container_position, summary_position)
         self.assertLess(summary_position, layout_position)
         self.assertContains(response, 'class="pd-page-summary format-text"')
     
