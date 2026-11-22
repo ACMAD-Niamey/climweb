@@ -2,6 +2,7 @@ from datetime import timedelta
 
 import wagtail_factories
 from django.utils import timezone
+from wagtail.rich_text import RichText
 from wagtail.test.utils import WagtailPageTestCase
 
 from climweb.base.models import Application
@@ -185,6 +186,33 @@ class TestProductPages(WagtailPageTestCase):
     
     def test_product_item_page_render(self):
         self.assertPageIsRenderable(self.product1_page_product_item_page)
+
+    def test_product_item_summary_is_rendered_below_title(self):
+        product_types = self.product2_page.product.product_item_types
+        summary = "Document summary shown below the product title."
+        product_item_page = ProductItemPageFactory(
+            parent=self.product2_page,
+            products__0__document_product__product_type=product_types[0][0],
+            products__0__document_product__date=timezone.now().date(),
+            products__0__document_product__description=RichText(
+                f"<p>{summary}</p>"
+            ),
+        )
+
+        response = self.client.get(product_item_page.url)
+        response_html = response.content.decode()
+
+        title_position = response_html.index('class="pd-page-title has-summary"')
+        summary_container_position = response_html.index(
+            'class="pd-page-summary format-text"'
+        )
+        summary_position = response_html.index(summary, summary_container_position)
+        layout_position = response_html.index('class="pd-layout"')
+
+        self.assertLess(title_position, summary_container_position)
+        self.assertLess(summary_container_position, summary_position)
+        self.assertLess(summary_position, layout_position)
+        self.assertContains(response, 'class="pd-page-summary format-text"')
     
     def test_product_item_page_meta_tags(self):
         resp = self.client.get(self.product1_page_product_item_page.get_url())
