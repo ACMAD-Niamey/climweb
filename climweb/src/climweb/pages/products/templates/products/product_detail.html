@@ -13,7 +13,22 @@
   <section class="pd-section">
     <div class="container">
 
-      <h1 class="pd-page-title">{{ page.title }}</h1>
+      <h1 class="pd-page-title{% if page.product_listing_description %} has-summary{% endif %}">{{ page.title }}</h1>
+
+      {% if page.product_listing_description %}
+      <div class="pd-page-summaries" aria-live="polite">
+        {% for slug, item_products_dict in products.items %}
+          {% for product_item in item_products_dict.products %}
+            {% if product_item.value.description %}
+            <div class="pd-page-summary format-text"
+              data-summary-for="pditem-{{ slug }}-{{ forloop.counter }}">
+              {{ product_item.value.description|richtext }}
+            </div>
+            {% endif %}
+          {% endfor %}
+        {% endfor %}
+      </div>
+      {% endif %}
 
       <div class="pd-layout">
 
@@ -161,12 +176,6 @@
                 </div>
                 {% endif %}
 
-                {% if product_item.value.description %}
-                <div class="pd-description format-text">
-                  {{ product_item.value.description|richtext }}
-                </div>
-                {% endif %}
-
               </div>
             </div>
             {% endfor %}
@@ -190,6 +199,17 @@
     const contents = $(".pd-content");
     const datePills = $(".pd-date-pill");
     const productItems = $(".pd-item");
+    const summaries = $(".pd-page-summary");
+
+    function showSummary($item) {
+      summaries.removeClass("is-active");
+      if (!$item || !$item.length) return;
+
+      const itemId = $item.attr("id");
+      summaries.filter(function () {
+        return $(this).attr("data-summary-for") === itemId;
+      }).addClass("is-active");
+    }
 
     /* ── activate a content panel and its first date pill + product item ── */
     function activateContent($content) {
@@ -208,6 +228,7 @@
       productItems.removeClass("is-active");
       const $items = $content.find(".pd-item");
       $items.first().addClass("is-active");
+      showSummary($items.first());
     }
 
     /* ── activate a specific product item via date pill ── */
@@ -222,7 +243,9 @@
       /* deactivate items in this content panel only, then activate target */
       const $panel = $pill.closest(".pd-content");
       $panel.find(".pd-item").removeClass("is-active");
-      $("#" + target).addClass("is-active");
+      const $item = $("#" + target);
+      $item.addClass("is-active");
+      showSummary($item);
     }
 
     /* ── TAB CLICKS ── */
