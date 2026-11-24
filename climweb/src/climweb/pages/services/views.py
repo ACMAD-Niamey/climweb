@@ -221,6 +221,32 @@ SEASONAL_FORECAST_OVERVIEW = (
     "category or insufficient hindcast skill."
 )
 
+SEASON_START_MONTHS = {
+    season: month
+    for month, season in enumerate(
+        (
+            "JFM",
+            "FMA",
+            "MAM",
+            "AMJ",
+            "MJJ",
+            "JJA",
+            "JAS",
+            "ASO",
+            "SON",
+            "OND",
+            "NDJ",
+            "DJF",
+        ),
+        start=1,
+    )
+}
+
+
+def _forecast_season_lead(issue_month, season):
+    """Return the number of months from an issue to a season's first month."""
+    return (SEASON_START_MONTHS[season] - issue_month) % 12
+
 
 def _seasonal_forecast_context(request, config):
     legacy_issue = (request.GET.get("issue") or "").strip()
@@ -279,15 +305,85 @@ def _seasonal_forecast_context(request, config):
             item["variable"] == "precipitation" and item["season"] == "DJF",
         ),
     )
+    available_issues = sorted(
+        {item["issue"] for item in forecast_maps}, reverse=True
+    )
+    if issue in available_issues:
+        selected_issue = issue
+    else:
+        issues_for_year = [
+            item for item in available_issues if item.startswith(f"{issue_year}-")
+        ]
+        issues_for_month = [
+            item for item in available_issues if item.endswith(f"-{issue_month}")
+        ]
+        selected_issue = (
+            issues_for_year[0]
+            if issues_for_year
+            else issues_for_month[0]
+            if issues_for_month
+            else latest_map["issue"]
+        )
+
+    selected_issue_month = int(selected_issue.split("-")[1])
+    issue_maps = [
+        item for item in forecast_maps if item["issue"] == selected_issue
+    ]
+    future_issue_maps = [
+        item
+        for item in issue_maps
+        if _forecast_season_lead(selected_issue_month, item["season"]) > 0
+    ]
+    # Existing content should always contain a future season. Retain a safe
+    # fallback so an incomplete dashboard entry cannot make the page crash.
+    selectable_maps = future_issue_maps or issue_maps
+
+    selectable_seasons = {item["season"] for item in selectable_maps}
+    selected_season = season if season in selectable_seasons else ""
+    if not selected_season:
+        preferred_map = next(
+            (
+                item
+                for item in selectable_maps
+                if item["key"] == latest_map["key"]
+            ),
+            None,
+        )
+        selected_season = (
+            preferred_map["season"]
+            if preferred_map
+            else min(
+                selectable_maps,
+                key=lambda item: _forecast_season_lead(
+                    selected_issue_month, item["season"]
+                ),
+            )["season"]
+        )
+
+    season_maps = [
+        item for item in selectable_maps if item["season"] == selected_season
+    ]
+    selectable_variables = {item["variable"] for item in season_maps}
+    selected_variable = variable if variable in selectable_variables else ""
+    if not selected_variable:
+        preferred_map = next(
+            (
+                item
+                for item in season_maps
+                if item["key"] == latest_map["key"]
+            ),
+            None,
+        )
+        selected_variable = (
+            preferred_map["variable"]
+            if preferred_map
+            else season_maps[0]["variable"]
+        )
+
     selected_map = next(
-        (
-            forecast_map
-            for forecast_map in forecast_maps
-            if forecast_map["issue"] == issue
-            and forecast_map["variable"] == variable
-            and forecast_map["season"] == season
-        ),
-        latest_map,
+        item
+        for item in season_maps
+        if item["variable"] == selected_variable
     )
 
     month_labels = {
@@ -311,13 +407,18 @@ def _seasonal_forecast_context(request, config):
         "variable_options": tuple(
             dict.fromkeys(
                 (item["variable"], item["variable_label"])
-                for item in forecast_maps
+                for item in season_maps
             )
         ),
         "season_options": tuple(
-            dict.fromkeys(
-                (item["season"], item["season_label"])
-                for item in forecast_maps
+            sorted(
+                dict.fromkeys(
+                    (item["season"], item["season_label"])
+                    for item in selectable_maps
+                ),
+                key=lambda option: _forecast_season_lead(
+                    selected_issue_month, option[0]
+                ),
             )
         ),
         "issue_month_options": tuple(
@@ -328,6 +429,8 @@ def _seasonal_forecast_context(request, config):
                         month_labels[item["issue"].split("-")[1]],
                     )
                     for item in forecast_maps
+                    if item["issue"].split("-")[0]
+                    == selected_issue.split("-")[0]
                 ),
                 reverse=True,
             )
@@ -338,6 +441,8 @@ def _seasonal_forecast_context(request, config):
                 reverse=True,
             )
         ),
+        "selected_issue_month": selected_issue.split("-")[1],
+        "selected_issue_year": selected_issue.split("-")[0],
         "overview": overview,
         "reference_document": selected_map.get("report"),
         "reference_document_path": (

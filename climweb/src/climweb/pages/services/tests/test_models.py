@@ -637,6 +637,19 @@ class TestServicesPages(WagtailPageTestCase):
         self.assertContains(response, 'name="issue_month"')
         self.assertContains(response, 'name="issue_year"')
         self.assertNotContains(response, 'name="issue"')
+        content = response.content.decode()
+        self.assertLess(
+            content.index('name="issue_year"'),
+            content.index('name="issue_month"'),
+        )
+        self.assertLess(
+            content.index('name="issue_month"'),
+            content.index('name="season"'),
+        )
+        self.assertLess(
+            content.index('name="season"'),
+            content.index('name="variable"'),
+        )
 
         selected_response = self.client.get(
             url,
@@ -758,6 +771,77 @@ class TestServicesPages(WagtailPageTestCase):
         self.assertNotContains(
             response_without_discussion,
             'class="rcc-forecast-discussion"',
+        )
+
+    def test_season_options_are_future_and_limited_to_selected_issue(self):
+        rcc_page = ServicePageFactory(
+            parent=self.index_page,
+            title="Regional Climate Center issue filters",
+            service__name="Regional Climate Center",
+        )
+        forecasting_page = RCCLongRangeForecastingPageFactory(parent=rcc_page)
+        forecast_image = wagtail_factories.ImageFactory(title="Season filter map")
+        october_issue = RCCSeasonalForecastIssue.objects.create(
+            page=forecasting_page,
+            issue_month=10,
+            issue_year=2026,
+        )
+        november_issue = RCCSeasonalForecastIssue.objects.create(
+            page=forecasting_page,
+            issue_month=11,
+            issue_year=2026,
+        )
+        RCCSeasonalOutlookDiscussion.objects.create(
+            issue=october_issue,
+            outlook_key="october-ndj",
+            variable="precipitation",
+            season="NDJ",
+            image=forecast_image,
+        )
+        RCCSeasonalOutlookDiscussion.objects.create(
+            issue=november_issue,
+            outlook_key="november-ndj-not-ahead",
+            variable="precipitation",
+            season="NDJ",
+            image=forecast_image,
+        )
+        RCCSeasonalOutlookDiscussion.objects.create(
+            issue=november_issue,
+            outlook_key="november-djf-rainfall",
+            variable="precipitation",
+            season="DJF",
+            image=forecast_image,
+        )
+        RCCSeasonalOutlookDiscussion.objects.create(
+            issue=november_issue,
+            outlook_key="november-djf-temperature",
+            variable="temperature",
+            season="DJF",
+            image=forecast_image,
+        )
+        RCCSeasonalOutlookDiscussion.objects.create(
+            issue=november_issue,
+            outlook_key="november-jfm-rainfall",
+            variable="precipitation",
+            season="JFM",
+            image=forecast_image,
+        )
+
+        response = self.client.get(
+            reverse("rcc_tailored_forecast_gallery"),
+            {"issue_year": "2026", "issue_month": "11"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["selected_issue_year"], "2026")
+        self.assertEqual(response.context["selected_issue_month"], "11")
+        self.assertEqual(
+            [value for value, _label in response.context["season_options"]],
+            ["DJF", "JFM"],
+        )
+        self.assertEqual(
+            {value for value, _label in response.context["variable_options"]},
+            {"precipitation", "temperature"},
         )
 
     def test_long_range_forecasting_seed_links_existing_menu_item(self):
