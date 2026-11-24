@@ -39,27 +39,27 @@
             {% if is_seasonal_forecast %}
                 <form class="rcc-lrg-filters rcc-forecast-filters" method="get" aria-label="{% translate 'Select a seasonal forecast map' %}">
                     <div>
-                        <label for="variable-filter">{% translate "Variable" %}</label>
-                        <select id="variable-filter" name="variable">
-                            {% for value, label in variable_options %}<option value="{{ value }}" {% if selected_map.variable == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
-                        </select>
-                    </div>
-                    <div>
-                        <label for="season-filter">{% translate "Forecast season" %}</label>
-                        <select id="season-filter" name="season">
-                            {% for value, label in season_options %}<option value="{{ value }}" {% if selected_map.season == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                        <label for="issue-year-filter">{% translate "Issue year" %}</label>
+                        <select id="issue-year-filter" name="issue_year" data-forecast-parent>
+                            {% for year in issue_year_options %}<option value="{{ year }}" {% if selected_issue_year == year %}selected{% endif %}>{{ year }}</option>{% endfor %}
                         </select>
                     </div>
                     <div>
                         <label for="issue-month-filter">{% translate "Issue month" %}</label>
-                        <select id="issue-month-filter" name="issue_month">
-                            {% for value, label in issue_month_options %}<option value="{{ value }}" {% if selected_map.issue|slice:"5:7" == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                        <select id="issue-month-filter" name="issue_month" data-forecast-parent>
+                            {% for value, label in issue_month_options %}<option value="{{ value }}" {% if selected_issue_month == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
                         </select>
                     </div>
                     <div>
-                        <label for="issue-year-filter">{% translate "Issue year" %}</label>
-                        <select id="issue-year-filter" name="issue_year">
-                            {% for year in issue_year_options %}<option value="{{ year }}" {% if selected_map.issue|slice:":4" == year %}selected{% endif %}>{{ year }}</option>{% endfor %}
+                        <label for="season-filter">{% translate "Forecast season" %}</label>
+                        <select id="season-filter" name="season" data-forecast-parent>
+                            {% for value, label in season_options %}<option value="{{ value }}" {% if selected_map.season == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="variable-filter">{% translate "Variable" %}</label>
+                        <select id="variable-filter" name="variable">
+                            {% for value, label in variable_options %}<option value="{{ value }}" {% if selected_map.variable == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
                         </select>
                     </div>
                     <button type="submit">{% translate "Show forecast" %}</button>
@@ -169,3 +169,14 @@
     </section>
 </main>
 {% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <script>
+        document.querySelectorAll(".rcc-forecast-filters [data-forecast-parent]").forEach(function (select) {
+            select.addEventListener("change", function () {
+                select.form.requestSubmit();
+            });
+        });
+    </script>
+{% endblock extra_js %}
