@@ -115,8 +115,12 @@ ENV GEOMANAGER_AUTO_INGEST_RASTER_DATA_DIR=/climweb/geomanager/data
 RUN mkdir -p $GEOMANAGER_AUTO_INGEST_RASTER_DATA_DIR && chown -R $UID:$GID $GEOMANAGER_AUTO_INGEST_RASTER_DATA_DIR
 
 # install climweb as a package
+# The locked runtime requirements already install the setuptools version
+# declared in pyproject.toml. Reuse it here instead of creating an isolated
+# build environment that downloads the latest setuptools wheel during every
+# image build (and makes this final layer depend on another CDN download).
 RUN chmod a+x /climweb/web/docker/docker-entrypoint.sh && \
-    /climweb/venv/bin/pip install --no-cache-dir -e /climweb/web/
+    /climweb/venv/bin/pip install --no-cache-dir --no-build-isolation -e /climweb/web/
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/bin/bash", "/climweb/web/docker/docker-entrypoint.sh"]
 
