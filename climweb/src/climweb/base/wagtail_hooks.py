@@ -2,19 +2,15 @@ from django.conf import settings
 
 if "capcomposer.cap" in settings.INSTALLED_APPS:
     from capcomposer.cap.utils import get_currently_active_alerts
-from django.contrib import messages
 from django.contrib.auth.models import Permission
 from django.core.cache import cache
-from django.db.models import CharField, F, TextField
-from django.http import HttpResponseRedirect
+from django.db.models import F
 from django.middleware.csrf import get_token
 from django.templatetags.static import static
 from django.urls import path, reverse
-from django.utils.html import format_html, strip_tags
+from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
-from better_profanity import profanity
 from wagtail import hooks
-from wagtail.fields import RichTextField, StreamField
 from wagtail.admin.ui.components import Component
 from wagtail.snippets.models import register_snippet
 from wagtail.snippets.views.snippets import SnippetViewSet
@@ -128,71 +124,6 @@ def clear_wagtailcache(request, page):
 def clear_cache_after_snippet_edit(request, snippet):
     clear_cache()
     cache.clear()
-
-
-# Optional extra terms for this platform (e.g. domain-specific abuse).
-# better-profanity's built-in list already covers common profanity and
-# leet-speak variants; add words here that are specific to ClimWeb.
-_EXTRA_TERMS = getattr(settings, "CLIMWEB_BLOCKED_TERMS", [
-    "kill yourself", "go die", "you should die",
-    "bomb threat", "death threat",
-])
-_ALLOWED_TERMS = getattr(settings, "CLIMWEB_ALLOWED_TERMS", [
-    # Roman numeral used in official resolution references, e.g. 540 (XX).
-    "xx",
-])
-
-profanity.load_censor_words(whitelist_words=_ALLOWED_TERMS)
-if _EXTRA_TERMS:
-    profanity.add_censor_words(_EXTRA_TERMS)
-
-
-def _page_text(page):
-    """Collect all author-facing text from every CharField, TextField, RichTextField, and
-    StreamField on the specific page type.
-
-    StreamField values are walked via each block's `get_searchable_content()` (the same API
-    Wagtail's own search indexing uses) rather than naively stringifying the StreamValue -
-    a plain str() would include non-text block markup (e.g. an IconChooserBlock's stored
-    value can be raw inline SVG such as `stroke="currentColor"`, and "stroke" happens to be
-    profanity-listed, so a page merely choosing an icon would false-positive on publish).
-    RichTextField HTML is tag-stripped for the same reason (attribute values, not authored
-    text, shouldn't feed the profanity check).
-    """
-    specific = page.specific
-    parts = [specific.title or ""]
-    for field in specific._meta.get_fields():
-        if not isinstance(field, (CharField, TextField, RichTextField, StreamField)):
-            continue
-        if field.name == "title":
-            continue
-        value = getattr(specific, field.name, None)
-        if not value:
-            continue
-        if isinstance(field, StreamField):
-            parts.extend(str(item) for item in field.stream_block.get_searchable_content(value))
-        elif isinstance(field, RichTextField):
-            parts.append(strip_tags(str(value)))
-        else:
-            parts.append(str(value))
-    return " ".join(parts)
-
-
-@hooks.register("before_publish_page")
-def block_harmful_content_on_publish(request, page):
-    text = _page_text(page)
-    if profanity.contains_profanity(text):
-        messages.error(
-            request,
-            _(
-                "This page could not be published because it contains content "
-                "that violates the ClimWeb Harassment Protection Policy. "
-                "Please review and edit the page before publishing."
-            ),
-        )
-        return HttpResponseRedirect(
-            request.headers.get("Referer", reverse("wagtailadmin_home"))
-        )
 
 
 @hooks.register("register_icons")
