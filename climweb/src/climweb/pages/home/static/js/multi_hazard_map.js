@@ -41,6 +41,7 @@
 
     let map = null;
     let tabsRow = null;
+    let viewerLink = null;
     let activeToken = 0;
     let groupedLayers = {};
     let config = {};
@@ -340,6 +341,19 @@
         });
     }
 
+    function updateViewerLink(datasetId) {
+        if (!viewerLink || !datasetId) {
+            return;
+        }
+        try {
+            const target = new URL(viewerLink.href, window.location.href);
+            target.searchParams.set('dataset', datasetId);
+            viewerLink.href = target.toString();
+        } catch (error) {
+            // Keep the dashboard-configured fallback URL if it cannot be parsed.
+        }
+    }
+
     // Above this many classes, a per-segment label under each strip
     // segment gets too cramped to read inside the legend's ~240px width -
     // fall back to labelling just the two ends, with the full label still
@@ -560,6 +574,7 @@
         }
 
         const dataset = layer.dataset;
+        updateViewerLink(dataset.id);
         const cadence = dataset.cadence || 'monthly';
         const availabilityUrl = joinUrl(
             config.apiBaseUrl,
@@ -613,6 +628,7 @@
             return;
         }
         tabsRow = document.getElementById('multi-hazard-tabs');
+        viewerLink = document.getElementById('multi-hazard-viewer-link');
 
         config = {
             apiBaseUrl: mount.dataset.apiBaseUrl || '',
