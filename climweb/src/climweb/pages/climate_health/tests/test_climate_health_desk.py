@@ -197,6 +197,25 @@ class ClimateHealthDeskTests(WagtailPageTestCase):
             'data-dataset-labels="Meningitis Vigilance Outlook|Heat Index"',
         )
         self.assertNotContains(response, 'data-hide-tabs="true"')
+        self.assertContains(
+            response,
+            'id="multi-hazard-viewer-link"',
+        )
+        self.assertContains(
+            response,
+            'href="https://multi-hazard.acmad.org/geoportal?dataset=meningitis-vigilance-weeky"',
+        )
+
+    def test_map_viewer_deep_link_preserves_existing_query_parameters(self):
+        desk = ClimateHealthDeskHomePage(
+            map_viewer_url="https://multi-hazard.acmad.org/geoportal?lang=fr",
+            map_meningitis_dataset_id="meningitis-vigilance-weeky",
+        )
+
+        self.assertEqual(
+            desk.map_viewer_deep_link,
+            "https://multi-hazard.acmad.org/geoportal?lang=fr&dataset=meningitis-vigilance-weeky",
+        )
 
     def test_health_main_menu_can_be_configured_in_navigation_settings(self):
         call_command(

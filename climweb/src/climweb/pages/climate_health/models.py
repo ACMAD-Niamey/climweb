@@ -1,3 +1,5 @@
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
 from django.db import models
 from django.db.models import Q
 from django.core.paginator import Paginator
@@ -101,6 +103,27 @@ class ClimateHealthDeskHomePage(AbstractBannerWithOptionalIntroPage):
         verbose_name=_("Heat-index dataset ID"),
         help_text=_("Dataset identifier from the Multi-Hazard catalogue."),
     )
+
+    @property
+    def map_viewer_deep_link(self):
+        """Open the full geoportal with the homepage's default dataset active."""
+        parts = urlsplit(self.map_viewer_url)
+        query = [
+            item
+            for item in parse_qsl(parts.query, keep_blank_values=True)
+            if item[0] != "dataset"
+        ]
+        query.append(("dataset", self.map_meningitis_dataset_id))
+        return urlunsplit(
+            (
+                parts.scheme,
+                parts.netloc,
+                parts.path,
+                urlencode(query),
+                parts.fragment,
+            )
+        )
+
     products_section_title = models.CharField(
         max_length=160,
         default="Climate and health products",
